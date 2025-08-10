@@ -9,6 +9,12 @@ function Footer() {
       <div className="footer__container">
         <div className="footer__brand">
           <img src={logo} alt="Synapse UK" className="footer__logo" />
+          <div className="footer__social">
+            <a target="_blank" href="https://www.instagram.com/synapse_uk/" aria-label="Instagram"><FaInstagram /></a>
+            <a target="_blank" href="https://x.com/_Synapse_UK" aria-label="X / Twitter"><FaXTwitter /></a>
+            <a target="_blank" href="https://www.facebook.com/profile.php?id=61563402495874" aria-label="Facebook"><FaFacebookF /></a>
+            <a target="_blank" href="mailto:admin@synapseuk.org" aria-label="Email"><FaEnvelope /></a>
+          </div>
         </div>
 
         <div className="footer__content">
@@ -24,13 +30,6 @@ function Footer() {
           </form>
 
           <p className="footer__opt">Opt-out at any time</p>
-
-          <div className="footer__social">
-            <a target="_blank" href="https://www.instagram.com/synapse_uk/" aria-label="Instagram"><FaInstagram /></a>
-            <a target="_blank" href="https://x.com/_Synapse_UK" aria-label="X / Twitter"><FaXTwitter /></a>
-            <a target="_blank" href="https://www.facebook.com/profile.php?id=61563402495874" aria-label="Facebook"><FaFacebookF /></a>
-            <a target="_blank" href="mailto:admin@synapseuk.org" aria-label="Email"><FaEnvelope /></a>
-          </div>
 
           <div className="footer__copy">
             © 2025 SynapseUK Ltd. All rights reserved. SynapseUK® is a registered trademark.

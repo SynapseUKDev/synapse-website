@@ -1,21 +1,76 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import './Hero.css'
 import doctorIllustration from '../../assets/landing/hero-doctor.svg'
 import demoImage from '../../assets/landing/hero-demo.png'
+import { area as d3Area, curveBasis } from 'd3-shape'
 
 function Hero() {
   return (
     <section className="hero">
       <div className="hero__bg" aria-hidden="true">
-        <svg className="hero__wave hero__wave--1" viewBox="0 0 1440 320" preserveAspectRatio="none">
-          <path fill="#7BD0F1" d="M0,64L80,85.3C160,107,320,149,480,144C640,139,800,85,960,80C1120,75,1280,117,1360,138.7L1440,160L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z" />
-        </svg>
-        <svg className="hero__wave hero__wave--2" viewBox="0 0 1440 320" preserveAspectRatio="none">
-          <path fill="#58BFE7" d="M0,224L60,208C120,192,240,160,360,165.3C480,171,600,213,720,224C840,235,960,213,1080,176C1200,139,1320,85,1380,58.7L1440,32L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z" />
-        </svg>
-        <svg className="hero__wave hero__wave--3" viewBox="0 0 1440 320" preserveAspectRatio="none">
-          <path fill="#3CA2CA" d="M0,288L60,272C120,256,240,224,360,218.7C480,213,600,235,720,234.7C840,235,960,213,1080,208C1200,203,1320,213,1380,218.7L1440,224L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z" />
-        </svg>
+        {(() => {
+          const W = 1440
+          const H = 320
+          const steps = 16
+          const xs = Array.from({ length: steps + 1 }, (_, i) => (i / steps) * W)
+          const make = (amp, base, freq, phase = 0) =>
+            xs.map((x) => ({
+              x,
+              y:
+                base +
+                amp * Math.sin((x / W) * Math.PI * freq + phase) +
+                amp * 0.4 * Math.sin((x / W) * Math.PI * (freq * 0.5) + phase * 0.5),
+            }))
+
+          const wave1 = make(28, 110, 2.2)
+          const wave2 = make(34, 180, 2.0, 0.6)
+          const wave3 = make(38, 250, 1.8, 1.2)
+
+          const aTop = d3Area()
+            .x((d) => d.x)
+            .y1((d) => d.y)
+            .y0(0)
+            .curve(curveBasis)
+
+          const aBottom = d3Area()
+            .x((d) => d.x)
+            .y1((d) => d.y)
+            .y0(H + 40) 
+            .curve(curveBasis)
+
+          const wave1Path = aTop(wave1)
+          const wave2Path = aTop(wave2)
+          const wave3Path = aBottom(wave3)
+
+          const clipTopPath = d3Area()
+            .x((d) => d.x)
+            .y1((d) => d.y)
+            .y0(0)
+            .curve(curveBasis)(wave3)
+
+          const overlap = make(24, H - 12, 1.6, 1.2)
+          const overlapPath = d3Area()
+            .x((d) => d.x)
+            .y1((d) => d.y)
+            .y0(H + 60)
+            .curve(curveBasis)(overlap)
+
+          return (
+            <svg className="hero__svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+              <defs>
+                <clipPath id="clip-above-wave3">
+                  <path d={clipTopPath || ''} />
+                </clipPath>
+              </defs>
+              <g clipPath="url(#clip-above-wave3)">
+                <path fill="#7BD0F1" d={wave1Path || ''} />
+                <path fill="#7BD0F1" d={wave2Path || ''} />
+              </g>
+              <path fill="#3CA2CA" d={wave3Path || ''} />
+              <path fill="#ffffff" d={overlapPath || ''} />
+            </svg>
+          )
+        })()}
       </div>
 
       <div className="hero__container">

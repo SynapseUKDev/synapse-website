@@ -1,20 +1,17 @@
 import React from 'react'
-import Navbar from './components/navbar/Navbar.jsx'
-import Footer from './components/footer/Footer.jsx'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Landing from './landing/Landing.jsx'
+import Auth from './auth/Auth.jsx'
 import './App.css'
 
 function App() {
   return (
-    <div className="landing">
-      <Navbar />
-
-      <main>
-        <Landing />
-      </main>
-
-      <Footer />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/auth" element={<Auth />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

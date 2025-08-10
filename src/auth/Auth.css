@@ -1,0 +1,460 @@
+/* Split screen auth */
+
+.auth { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  min-height: 100vh; 
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+.auth__split { position: relative; }
+
+/* Left decorative side */
+.auth__split--left {
+  background: linear-gradient(135deg, #58BFE7 0%, #3CA2CA 50%, #2B8CB8 100%);
+  overflow: hidden;
+  position: relative;
+}
+
+.auth__leftContent { 
+  max-width: 640px; 
+  margin: 0 auto; 
+  padding: 48px 40px 48px 28px; 
+  color: #fff; 
+  height: 100%; 
+  display: flex; 
+  flex-direction: column; 
+  position: relative;
+  z-index: 20;
+  align-items: flex-end;
+  text-align: right;
+  justify-content: center;
+}
+
+.auth__brand { 
+  display: flex; 
+  align-items: center; 
+  justify-content: flex-end;
+  margin-bottom: 24px;
+  z-index: 25;
+  position: relative;
+}
+
+.auth__logo { 
+  width: 100px; 
+  height: 100px; 
+  border-radius: 12px;
+}
+
+/* Hero Section */
+.auth__hero {
+  margin: 0 0 28px;
+  z-index: 25;
+  position: relative;
+}
+
+.auth__headline { 
+  margin: 0 0 16px; 
+  font-size: 42px; 
+  line-height: 1.15; 
+  font-weight: 800;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth__gradient-text {
+  background: linear-gradient(135deg, #F1C269 0%, #FFE082 50%, #FFF176 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
+}
+
+.auth__subtitle { 
+  margin: 0 0 32px; 
+  color: #e6f6ff; 
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 100%;
+  width: 100%;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+/* Statistics Section */
+.auth__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 0 0 32px;
+  z-index: 25;
+  position: relative;
+}
+
+.auth__stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.auth__stat:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+}
+
+.auth__stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.auth__stat-icon--green {
+  background: linear-gradient(135deg, #4CAF50, #66BB6A);
+}
+
+.auth__stat-icon--purple {
+  background: linear-gradient(135deg, #9C27B0, #BA68C8);
+}
+
+.auth__stat-icon--orange {
+  background: linear-gradient(135deg, #FF9800, #FFB74D);
+}
+
+.auth__stat-content {
+  min-width: 0;
+}
+
+.auth__stat-number {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0B1637;
+  line-height: 1.2;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth__stat-label {
+  font-size: 13px;
+  color: #66708a;
+  font-weight: 500;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+/* Features Section */
+.auth__features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 0 32px;
+  z-index: 25;
+  position: relative;
+}
+
+.auth__feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.auth__feature:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateX(-6px) translateY(-2px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.auth__feature-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #58BFE7, #3CA2CA);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(88, 191, 231, 0.3);
+  transition: all 0.3s ease;
+}
+
+.auth__feature:hover .auth__feature-icon {
+  transform: scale(1.1);
+  box-shadow: 0 8px 24px rgba(88, 191, 231, 0.4);
+}
+
+.auth__feature-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.auth__feature-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0B1637;
+  margin-bottom: 4px;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth__feature-desc {
+  font-size: 14px;
+  color: #66708a;
+  line-height: 1.5;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth__art { 
+  position: absolute;
+  bottom: 48px;
+  right: 40px;
+  width: clamp(200px, 35%, 320px);
+  z-index: 15;
+}
+
+/* Modern abstract pattern overlay */
+.auth__split--left::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    /* Molecular dots pattern */
+    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 1px, transparent 1px),
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 1px, transparent 1px),
+    radial-gradient(circle at 40% 40%, rgba(255,255,255,0.08) 1px, transparent 1px),
+    /* Geometric grid */
+    linear-gradient(45deg, transparent 24%, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.05) 26%, transparent 27%, transparent 74%, rgba(255,255,255,0.05) 75%, rgba(255,255,255,0.05) 76%, transparent 77%),
+    /* Hexagonal pattern */
+    linear-gradient(30deg, rgba(255,255,255,0.03) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.03) 87.5%, rgba(255,255,255,0.03)),
+    linear-gradient(150deg, rgba(255,255,255,0.03) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.03) 87.5%, rgba(255,255,255,0.03));
+  background-size: 
+    200px 200px,
+    180px 180px, 
+    120px 120px,
+    60px 60px,
+    40px 40px,
+    40px 40px;
+  background-position:
+    0 0,
+    100px 100px,
+    50px 50px,
+    0 0,
+    0 0,
+    20px 20px;
+  z-index: 1;
+}
+
+/* Floating geometric shapes */
+.auth__split--left::after {
+  content: "";
+  position: absolute;
+  top: 10%;
+  right: -5%;
+  width: 300px;
+  height: 300px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 50%;
+  filter: blur(60px);
+  animation: float 6s ease-in-out infinite;
+  z-index: 2;
+}
+
+/* DNA helix inspired pattern */
+.auth__leftContent::before {
+  content: "";
+  position: absolute;
+  top: 15%;
+  left: -10%;
+  width: 120px;
+  height: 60%;
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.1) 0px,
+      rgba(255,255,255,0.1) 2px,
+      transparent 2px,
+      transparent 20px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255,255,255,0.08) 0px,
+      rgba(255,255,255,0.08) 2px,
+      transparent 2px,
+      transparent 20px
+    );
+  border-radius: 20px;
+  transform: rotate(15deg);
+  z-index: 3;
+}
+
+/* Small cross pattern */
+.auth__leftContent::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 18px,
+      rgba(255,255,255,0.04) 19px,
+      rgba(255,255,255,0.04) 21px,
+      transparent 22px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 18px,
+      rgba(255,255,255,0.04) 19px,
+      rgba(255,255,255,0.04) 21px,
+      transparent 22px
+    );
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+/* Right form side */
+.auth__split--right { 
+  background: #F6FAFF; 
+  display: grid; 
+  place-items: center; 
+  padding: 24px; 
+}
+
+@media (max-width: 1024px) {
+  .auth { grid-template-columns: 1fr; }
+  .auth__split--left { min-height: 50vh; }
+  
+  .auth__leftContent {
+    align-items: center;
+    text-align: center;
+    padding: 32px 24px;
+    justify-content: flex-start;
+  }
+  
+  .auth__brand {
+    align-self: center;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  
+  .auth__art {
+    position: static;
+    margin-top: 32px;
+    align-self: center;
+    width: clamp(180px, 50%, 280px);
+  }
+  
+  .auth__headline {
+    font-size: 36px;
+  }
+  
+  .auth__stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .auth__stat {
+    padding: 14px;
+  }
+  
+  .auth__stat-icon {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .auth__stat-number {
+    font-size: 18px;
+  }
+  
+  .auth__feature {
+    padding: 18px;
+  }
+  
+  .auth__feature-icon {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 768px) {
+  .auth__headline {
+    font-size: 32px;
+  }
+  
+  .auth__subtitle {
+    font-size: 15px;
+  }
+  
+  .auth__stats {
+    gap: 10px;
+  }
+  
+  .auth__stat {
+    padding: 12px;
+    gap: 10px;
+  }
+  
+  .auth__stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .auth__stat-number {
+    font-size: 16px;
+  }
+  
+  .auth__stat-label {
+    font-size: 12px;
+  }
+  
+  .auth__features {
+    gap: 12px;
+  }
+  
+  .auth__feature {
+    padding: 16px;
+    gap: 14px;
+  }
+  
+  .auth__feature-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .auth__feature-title {
+    font-size: 15px;
+  }
+  
+  .auth__feature-desc {
+    font-size: 13px;
+  }
+}
+
+

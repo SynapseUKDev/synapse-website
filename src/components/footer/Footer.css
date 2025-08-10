@@ -15,8 +15,8 @@
   align-items: start;
 }
 
-.footer__brand { display: flex; justify-content: center; }
-.footer__logo { width: 100px; height: auto; }
+.footer__brand { display: flex; justify-content: center; flex-direction: column; align-items: center; gap: 10px;} 
+.footer__logo { width: 150px; height: auto; }
 
 .footer__title {
   text-transform: uppercase;

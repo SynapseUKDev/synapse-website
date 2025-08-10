@@ -2,16 +2,14 @@
 
 .hero {
   position: relative;
-  overflow: hidden;
-  background: #7BD0F1; /* base to avoid flash */
+  overflow: visible; 
+  background: #58BFE7; 
   color: #0B1637;
+  z-index: 1;
 }
 
 .hero__bg { position: absolute; inset: 0; }
-.hero__wave { position: absolute; left: 0; width: 100%; height: 100%; }
-.hero__wave--1 { top: 0; opacity: 0.9; }
-.hero__wave--2 { top: 5px; opacity: 0.95; }
-.hero__wave--3 { bottom: -10%; }
+.hero__svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 .hero__container {
   position: relative;
@@ -101,6 +99,22 @@
   .hero__title { font-size: 56px; }
   .hero__demo { top: 20px; }
   .hero__doctor { right: 80px; }
+}
+
+@media (max-width: 640px) {
+  .hero__svg { transform: scaleY(0.7); transform-origin: bottom center; }
+  .hero__container { padding: 40px 16px 56px; }
+  .hero__right { min-height: 440px; }
+  .hero__demo {
+    left: 50%; right: auto; top: 24px;
+    width: 88vw; max-width: 540px;
+    transform: translateX(-50%) rotate(-2deg);
+  }
+  .hero__doctor {
+    left: 50%; right: auto; bottom: 36px;
+    width: 58vw; max-width: 420px;
+    transform: translateX(-50%);
+  }
 }
 
 

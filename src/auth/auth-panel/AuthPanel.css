@@ -1,0 +1,218 @@
+/* Auth Panel Component */
+
+.auth-panel { 
+  width: min(680px, 94%); 
+  background: #fff; 
+  border-radius: 20px; 
+  box-shadow: 0 40px 80px rgba(21, 35, 66, 0.12), 0 8px 24px rgba(21, 35, 66, 0.08); 
+  padding: 42px 40px 42px; 
+}
+
+.auth-panel__tabs-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.auth-panel__tabs { 
+  display: inline-flex; 
+  background: #E8EBF3; 
+  border: 1px solid #D1D6E3;
+  border-radius: 999px; 
+  padding: 4px; 
+  gap: 2px; 
+  width: fit-content;
+}
+
+.auth-panel__tab { 
+  appearance: none; 
+  border: 0; 
+  background: transparent; 
+  padding: 8px 20px; 
+  border-radius: 999px; 
+  font-weight: 700; 
+  font-size: 15px;
+  color: #42506b; 
+  cursor: pointer; 
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+  transition: all 0.2s ease;
+}
+
+.auth-panel__tab:hover {
+  color: #0B1637;
+}
+
+.auth-panel__tab.is-active { 
+  background: #fff; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04); 
+  color: #0B1637; 
+}
+
+.auth-panel__header { 
+  margin: 0 0 16px; 
+  text-align: left;
+}
+
+.auth-panel__title { 
+  margin: 0; 
+  font-size: 32px; 
+  font-weight: 800;
+  color: #0B1637;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth-panel__desc { 
+  color: #66708a; 
+  margin: 12px 0 0; 
+  font-size: 16px; 
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth-panel__form { 
+  display: grid; 
+  gap: 14px; 
+  margin-top: 20px; 
+}
+
+.auth-panel__label { 
+  font-weight: 700; 
+  font-size: 16px; 
+  color: #0B1637; 
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth-panel__input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-panel__input { 
+  height: 52px; 
+  padding: 14px 16px; 
+  border: 1px solid #e5e7ef; 
+  border-radius: 14px; 
+  background: #f9fbff; 
+  font-size: 16px; 
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.auth-panel__input-wrapper .auth-panel__input {
+  padding-right: 50px;
+}
+
+.auth-panel__input:focus { 
+  outline: none; 
+  border-color: #8bb8ff; 
+  box-shadow: 0 0 0 3px rgba(139, 184, 255, 0.3); 
+  background: #fff;
+}
+
+.auth-panel__input::placeholder {
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth-panel__eye-btn {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #66708a;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.auth-panel__eye-btn:hover {
+  color: #42506b;
+  background: rgba(102, 112, 138, 0.1);
+}
+
+.auth-panel__eye-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(139, 184, 255, 0.3);
+}
+
+.auth-panel__row { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-top: 6px; 
+}
+
+.auth-panel__checkbox { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 10px; 
+  color: #4b5673; 
+  font-size: 15px;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth-panel__link { 
+  color: #6c7ee2; 
+  text-decoration: none; 
+  font-size: 15px;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+  transition: all 0.2s ease;
+}
+
+.auth-panel__link:hover { 
+  text-decoration: underline; 
+  color: #5a6dd8;
+}
+
+.auth-panel__cta { 
+  margin-top: 12px; 
+  height: 52px; 
+  border: 0; 
+  border-radius: 14px; 
+  background: linear-gradient(180deg, #1B4DE7, #061A86); 
+  color: #fff; 
+  font-weight: 800; 
+  font-size: 16px;
+  cursor: pointer; 
+  box-shadow: 0 8px 20px rgba(6, 26, 134, 0.25); 
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+  transition: all 0.2s ease;
+}
+
+.auth-panel__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(6, 26, 134, 0.35);
+  background: linear-gradient(180deg, #2056f0, #0a1e92);
+}
+
+.auth-panel__cta:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 16px rgba(6, 26, 134, 0.25);
+}
+
+@media (max-width: 768px) {
+  .auth-panel { 
+    padding: 32px 24px 32px; 
+    width: min(580px, 94%);
+  }
+  
+  .auth-panel__title { 
+    font-size: 28px; 
+  }
+  
+  .auth-panel__input,
+  .auth-panel__cta { 
+    height: 48px; 
+  }
+  
+  .auth-panel__tab {
+    padding: 6px 16px;
+    font-size: 14px;
+  }
+}
