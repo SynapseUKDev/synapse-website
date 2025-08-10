@@ -1,0 +1,39 @@
+# Node.js
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+jspm_packages/
+
+# Vite
+.vite
+
+# Local env files
+.env.local
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw*
+
+# MacOS
+.DS_Store
+
+# Build output
+dist/
+
+# Misc
+*.pem
+*.key
+*.crt
+*.pfx
