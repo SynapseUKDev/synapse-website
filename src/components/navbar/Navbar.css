@@ -1,0 +1,65 @@
+/* Navbar styles for landing page */
+
+.nav {
+  background-color: #4FAFD5; /* specified */
+}
+
+.nav__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav__brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav__logo {
+  height: 64px;
+  width: auto;
+  display: block;
+}
+
+.nav__links {
+  display: none;
+  gap: 28px;
+}
+
+.nav__links a {
+  color: white;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: color 140ms ease, background-color 140ms ease, transform 140ms ease;
+}
+
+.nav__links a:hover { color: #021e26; background: rgba(255,255,255,0.35); transform: translateY(-1px); }
+
+.nav__login {
+  color: #0B1637;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #F1C269 0%, #EEAE36 100%);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.nav__login:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.18); filter: brightness(1.02); }
+.nav__login:active { transform: translateY(0); box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+
+@media (min-width: 768px) {
+  .nav__links { display: flex; }
+  .nav__container { gap: 24px; }
+  .nav__login { margin-left: 8px; }
+}
+
+
