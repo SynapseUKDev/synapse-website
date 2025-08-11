@@ -23,7 +23,7 @@ function App() {
       <HashRedirector />
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/auth" element={<Auth />} />
+        <Route path="/login" element={<Auth />} />
         <Route path="/auth/callback" element={<Callback />} />
         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>

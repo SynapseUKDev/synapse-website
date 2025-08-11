@@ -8,6 +8,12 @@ function Auth() {
   return (
     <section className="auth">
       <div className="auth__split auth__split--left">
+        <div style={{ width: '100%', display: 'grid', placeItems: 'center' }}>
+          <AuthPanel />
+        </div>
+      </div>
+
+      <div className="auth__split auth__split--right">
         <div className="auth__leftContent">
           <div className="auth__brand">
             <img src={logo} alt="Synapse UK" className="auth__logo" />
@@ -107,9 +113,7 @@ function Auth() {
         </div>
       </div>
 
-      <div className="auth__split auth__split--right">
-        <AuthPanel />
-      </div>
+      
     </section>
   )
 }

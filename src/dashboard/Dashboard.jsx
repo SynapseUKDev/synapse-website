@@ -12,7 +12,7 @@ function Dashboard() {
       try {
         const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
         if (res.status === 401) {
-          navigate('/auth')
+          navigate('/login')
           return
         }
         const data = await res.json()

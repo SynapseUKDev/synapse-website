@@ -8,11 +8,12 @@
 }
 .auth__split { position: relative; }
 
-/* Left decorative side */
+/* Left side (form on light background) */
 .auth__split--left {
-  background: linear-gradient(135deg, #58BFE7 0%, #3CA2CA 50%, #2B8CB8 100%);
-  overflow: hidden;
-  position: relative;
+  background: #F6FAFF;
+  display: grid;
+  place-items: center;
+  padding: 24px;
 }
 
 .auth__leftContent { 
@@ -25,15 +26,15 @@
   flex-direction: column; 
   position: relative;
   z-index: 20;
-  align-items: flex-end;
-  text-align: right;
+  align-items: flex-start;
+  text-align: left;
   justify-content: center;
 }
 
 .auth__brand { 
   display: flex; 
   align-items: center; 
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-bottom: 24px;
   z-index: 25;
   position: relative;
@@ -226,8 +227,7 @@
   z-index: 15;
 }
 
-/* Modern abstract pattern overlay */
-.auth__split--left::before {
+.auth__split--right::before {
   content: "";
   position: absolute;
   top: 0;
@@ -262,7 +262,7 @@
 }
 
 /* Floating geometric shapes */
-.auth__split--left::after {
+.auth__split--right::after {
   content: "";
   position: absolute;
   top: 10%;
@@ -339,12 +339,11 @@
   50% { transform: translateY(-20px) rotate(5deg); }
 }
 
-/* Right form side */
+/* Right decorative side */
 .auth__split--right { 
-  background: #F6FAFF; 
-  display: grid; 
-  place-items: center; 
-  padding: 24px; 
+  background: linear-gradient(135deg, #58BFE7 0%, #3CA2CA 50%, #2B8CB8 100%);
+  overflow: hidden;
+  position: relative;
 }
 
 @media (max-width: 1024px) {

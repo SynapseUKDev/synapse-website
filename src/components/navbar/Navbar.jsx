@@ -47,7 +47,7 @@ function Navbar() {
             <span>{user.user_metadata?.username || user.email}</span>
           </button>
         ) : (
-          <Link to="/auth" className="nav__login">Login</Link>
+          <Link to="/login" className="nav__login">Login</Link>
         )}
       </div>
     </header>
