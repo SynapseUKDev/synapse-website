@@ -9,7 +9,7 @@
 }
 
 .hero__bg { position: absolute; inset: 0; }
-.hero__svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero__svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 
 .hero__container {
   position: relative;
