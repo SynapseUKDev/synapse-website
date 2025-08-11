@@ -63,7 +63,7 @@ function Testimonials() {
         </p>
 
         <div className="testimonials__slider">
-          <button className="testimonials__nav testimonials__nav--prev" onClick={prev} aria-label="Previous testimonial" style={{visibility: slides.length > 1 ? 'visible' : 'hidden'}}>
+          <button className="testimonials__nav testimonials__nav--prev" onClick={prev} aria-label="Previous testimonial">
             ‹
           </button>
           <div className="testimonials__viewport">
@@ -72,7 +72,7 @@ function Testimonials() {
                 <div className="testimonials__slide" key={i}>
                   <div className="testimonials__card">
                     <div className="testimonials__avatar" style={{ backgroundImage: `url(${s.avatar})` }} aria-hidden />
-                    <p className="testimonials__quote">“{s.quote}”</p>
+                    <p className="testimonials__quote">"{s.quote}"</p>
                     <div className="testimonials__rating" aria-label="5 out of 5 stars">
                       <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
                     </div>
