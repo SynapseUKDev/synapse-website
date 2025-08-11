@@ -1,28 +1,43 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import './Navbar.css'
 import logo from '../../assets/logo/logo.png'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 
 function Navbar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser] = useState(null)
 
-  useEffect(() => {
+  const checkAuth = useCallback(async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-    ;(async () => {
-      try {
-        const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          setUser(data.user)
-        } else {
-          setUser(null)
-        }
-      } catch {
+    try {
+      const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data.user)
+      } else {
         setUser(null)
       }
-    })()
+    } catch {
+      setUser(null)
+    }
   }, [])
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth, location.pathname])
+
+  useEffect(() => {
+    const handler = () => checkAuth()
+    window.addEventListener('auth:changed', handler)
+    window.addEventListener('focus', handler)
+    document.addEventListener('visibilitychange', handler)
+    return () => {
+      window.removeEventListener('auth:changed', handler)
+      window.removeEventListener('focus', handler)
+      document.removeEventListener('visibilitychange', handler)
+    }
+  }, [checkAuth])
 
   return (
     <header className="nav">
@@ -44,7 +59,7 @@ function Navbar() {
             aria-label="Go to dashboard"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span>{user.user_metadata?.username || user.email}</span>
+            <span>{user.username || user.user_metadata?.username || user.email}</span>
           </button>
         ) : (
           <Link to="/login" className="nav__login">Login</Link>

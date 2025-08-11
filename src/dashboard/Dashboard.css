@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap');
+
+.dash {
+  display: flex;
+  min-height: 100vh;
+  font-family: 'Urbanist', sans-serif;
+}
+
+.dash__content { 
+  flex: 1;
+  background: #f8fafc; 
+}
+
+.dash__content h1 {
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.dash__content p {
+  font-family: 'Urbanist', sans-serif;
+  color: #64748b;
+}
+
+
