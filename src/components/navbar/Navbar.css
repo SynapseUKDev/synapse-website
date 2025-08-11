@@ -62,4 +62,24 @@
   .nav__login { margin-left: 8px; }
 }
 
+.nav__user {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #0B1637;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #F1C269 0%, #EEAE36 100%);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+  border: 0;
+  cursor: pointer;
+}
+.nav__user:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.18); filter: brightness(1.02); }
+.nav__user:active { transform: translateY(0); box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+.nav__user svg { color: #0B1637; }
+
 
