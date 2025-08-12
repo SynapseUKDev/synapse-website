@@ -1,10 +1,27 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './Auth.css'
 import authImg2 from '../assets/auth/auth-img2.svg'
 import logo from '../assets/logo/logo.png'
 import AuthPanel from './auth-panel/AuthPanel.jsx'
 
 function Auth() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    ;(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
+        if (res.ok) {
+          navigate('/dashboard', { replace: true })
+        }
+      } catch {
+        // ignore
+      }
+    })()
+  }, [navigate])
+
   return (
     <section className="auth">
       <div className="auth__split auth__split--left">

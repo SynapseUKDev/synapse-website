@@ -14,8 +14,16 @@ function Callback() {
     const access_token = params.get('access_token')
     const refresh_token = params.get('refresh_token')
     if (!access_token || !refresh_token) {
-      setMessage('Missing tokens in callback.')
-      return
+      const searchParams = new URLSearchParams(search)
+      const hashParams = new URLSearchParams(hash)
+      const access = access_token || searchParams.get('access_token') || hashParams.get('access_token')
+      const refresh = refresh_token || searchParams.get('refresh_token') || hashParams.get('refresh_token')
+      if (!access || !refresh) {
+        setMessage('Missing tokens in callback.')
+        return
+      }
+      params.set('access_token', access)
+      params.set('refresh_token', refresh)
     }
     ;(async () => {
       try {
@@ -23,7 +31,11 @@ function Callback() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ access_token, refresh_token })
+          body: JSON.stringify({
+            access_token: params.get('access_token'),
+            refresh_token: params.get('refresh_token'),
+            remember: true,
+          })
         })
         if (!res.ok) throw new Error('Failed to establish session')
         navigate('/dashboard')

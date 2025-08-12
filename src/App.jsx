@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import Landing from './landing/Landing.jsx'
 import Auth from './auth/Auth.jsx'
 import Dashboard from './dashboard/Dashboard.jsx'
@@ -26,6 +26,7 @@ function App() {
         <Route path="/login" element={<Auth />} />
         <Route path="/auth/callback" element={<Callback />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )
