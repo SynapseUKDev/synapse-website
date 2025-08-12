@@ -11,7 +11,7 @@ function Navbar() {
   const checkAuth = useCallback(async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     try {
-      const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
+      const res = await fetch(`${API_BASE}/me`, { credentials: 'include', cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
         setUser(data.user)

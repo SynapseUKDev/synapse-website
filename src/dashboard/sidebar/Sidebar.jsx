@@ -17,6 +17,9 @@ function Sidebar({ user, onLogout }) {
     setIsCollapsed(!isCollapsed)
   }
 
+  const displayUsername = user?.username || user?.user_metadata?.username || null
+  const initial = (displayUsername || user?.email || 'U').charAt(0).toUpperCase()
+
   return (
     <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}>
       <div className="sidebar__brand">
@@ -44,11 +47,11 @@ function Sidebar({ user, onLogout }) {
           <div className="sidebar__user-info">
             <div className="sidebar__avatar">
               <div className="sidebar__avatar-placeholder">
-                {user?.username ? user.username.charAt(0).toUpperCase() : (user?.email ? user.email.charAt(0).toUpperCase() : 'U')}
+                {initial}
               </div>
             </div>
             <div className="sidebar__user-details">
-              <div className="sidebar__user-name">{user?.username || 'User'}</div>
+              <div className="sidebar__user-name">{displayUsername || user?.email || 'User'}</div>
               <div className="sidebar__user-role">{user?.email || 'No email'}</div>
             </div>
           </div>

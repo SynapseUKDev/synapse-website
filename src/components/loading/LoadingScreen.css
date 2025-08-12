@@ -1,0 +1,55 @@
+.loading {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #cde9fb; 
+  z-index: 9999;
+}
+
+.loading__content {
+  display: grid;
+  place-items: center;
+  gap: 16px;
+}
+
+.loading__logo-wrap {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  background: white;
+}
+
+.loading__logo {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+}
+
+.loading__spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  border-top-color: #2f57ff; /* deep blue accent */
+  animation: loading-spin 1s linear infinite;
+}
+
+.loading__message {
+  margin: 0;
+  color: #0c2257;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+

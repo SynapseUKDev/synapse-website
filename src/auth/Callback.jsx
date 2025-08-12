@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 
 function Callback() {
   const navigate = useNavigate()
@@ -45,12 +46,7 @@ function Callback() {
     })()
   }, [location.hash, navigate])
 
-  return (
-    <div style={{ padding: '48px', maxWidth: 640, margin: '0 auto' }}>
-      <h1>Email verified</h1>
-      <p>{message}</p>
-    </div>
-  )
+  return <LoadingScreen message={message} />
 }
 
 export default Callback

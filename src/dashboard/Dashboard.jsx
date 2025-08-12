@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from './sidebar/Sidebar'
+import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import './Dashboard.css'
 
 function Dashboard() {
@@ -12,7 +13,7 @@ function Dashboard() {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     ;(async () => {
       try {
-        const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
+        const res = await fetch(`${API_BASE}/me`, { credentials: 'include', cache: 'no-store' })
         if (res.status === 401) {
           navigate('/')
           return
@@ -25,13 +26,7 @@ function Dashboard() {
     })()
   }, [navigate])
 
-  if (loading) {
-    return (
-      <div style={{ padding: '48px', maxWidth: 960, margin: '0 auto' }}>
-        <p>Loading...</p>
-      </div>
-    )
-  }
+  if (loading) return <LoadingScreen message="Loading your dashboard..." />
 
   const handleLogout = async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'

@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
 import authImg2 from '../assets/auth/auth-img2.svg'
 import logo from '../assets/logo/logo.png'
 import AuthPanel from './auth-panel/AuthPanel.jsx'
+import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 
 function Auth() {
   const navigate = useNavigate()
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -18,9 +20,15 @@ function Auth() {
         }
       } catch {
         // ignore
+      } finally {
+        setChecking(false)
       }
     })()
   }, [navigate])
+
+  if (checking) {
+    return <LoadingScreen message="Checking your session..." />
+  }
 
   return (
     <section className="auth">

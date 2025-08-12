@@ -20,13 +20,18 @@
 }
 
 .sidebar__brand {
-  padding: 15px;
+  padding: 12px;
   border-bottom: 1px solid #eef2f7;
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 80px;
 }
+
+/* .sidebar--collapsed .sidebar__brand {
+  justify-content: center;
+  gap: 0;
+} */
 
 .sidebar__logo {
   width: 45px;

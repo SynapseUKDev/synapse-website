@@ -5,6 +5,7 @@ import Auth from './auth/Auth.jsx'
 import Dashboard from './dashboard/Dashboard.jsx'
 import Callback from './auth/Callback.jsx'
 import './App.css'
+import './components/loading/LoadingScreen.css'
 
 function HashRedirector() {
   const location = useLocation()
