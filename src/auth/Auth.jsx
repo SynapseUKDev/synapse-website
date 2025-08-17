@@ -14,7 +14,7 @@ function Auth() {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     ;(async () => {
       try {
-        const res = await fetch(`${API_BASE}/me`, { credentials: 'include' })
+        const res = await fetch(`${API_BASE}/me`, { credentials: 'include', cache: 'no-store' })
         if (res.ok) {
           navigate('/dashboard', { replace: true })
         }

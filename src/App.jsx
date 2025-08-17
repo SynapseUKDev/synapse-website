@@ -6,6 +6,9 @@ import Dashboard from './dashboard/Dashboard.jsx'
 import Callback from './auth/Callback.jsx'
 import './App.css'
 import './components/loading/LoadingScreen.css'
+import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
+import QuestionBank from './dashboard/QuestionBank.jsx'
+import Practice from './dashboard/Practice.jsx'
 
 function HashRedirector() {
   const location = useLocation()
@@ -26,7 +29,11 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/auth/callback" element={<Callback />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="question-bank" element={<QuestionBank />} />
+          <Route path="question-bank/practice" element={<Practice />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

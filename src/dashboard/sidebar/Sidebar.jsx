@@ -1,16 +1,19 @@
 import React, { useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuPanelLeft } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import './Sidebar.css'
 
 function Sidebar({ user, onLogout }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, active: true },
-    { id: 'question-bank', label: 'Question Bank', icon: LuFolder, active: false },
-    { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, active: false },
-    { id: 'mock-exams', label: 'Mock Exams', icon: LuTimer, active: false },
+    { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
+    { id: 'question-bank', label: 'Question Bank', icon: LuFolder, to: '/dashboard/question-bank' },
+    { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },
+    { id: 'mock-exams', label: 'Mock Exams', icon: LuTimer, to: '/dashboard/mock-exams' },
   ]
 
   const toggleSidebar = () => {
@@ -33,7 +36,8 @@ function Sidebar({ user, onLogout }) {
           return (
             <button
               key={item.id}
-              className={`sidebar__item ${item.active ? 'sidebar__item--active' : ''}`}
+              className={`sidebar__item ${location.pathname === item.to ? 'sidebar__item--active' : ''}`}
+              onClick={() => navigate(item.to)}
             >
               <IconComponent className="sidebar__icon" />
               {!isCollapsed && <span className="sidebar__text">{item.label}</span>}
