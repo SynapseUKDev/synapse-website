@@ -7,8 +7,8 @@ import Callback from './auth/Callback.jsx'
 import './App.css'
 import './components/loading/LoadingScreen.css'
 import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
-import QuestionBank from './dashboard/QuestionBank.jsx'
-import Practice from './dashboard/Practice.jsx'
+import QuestionBank from './dashboard/question-bank/QuestionBank.jsx'
+import Practice from './dashboard/practice/Practice.jsx'
 
 function HashRedirector() {
   const location = useLocation()
