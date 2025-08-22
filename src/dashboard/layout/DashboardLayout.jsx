@@ -13,13 +13,36 @@ function DashboardLayout() {
   const fetchUser = useCallback(async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     try {
-      const res = await fetch(`${API_BASE}/me`, { credentials: 'include', cache: 'no-store' })
+      console.log('Fetching user from:', `${API_BASE}/me`)
+      const res = await fetch(`${API_BASE}/me`, { 
+        credentials: 'include', 
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      console.log('User fetch response status:', res.status)
+      
       if (res.status === 401) {
+        console.log('User not authenticated, redirecting to login')
         navigate('/')
         return
       }
+      
+      if (!res.ok) {
+        console.error('Failed to fetch user:', res.status, res.statusText)
+        const errorText = await res.text()
+        console.error('Error response:', errorText)
+        navigate('/')
+        return
+      }
+      
       const data = await res.json()
+      console.log('User data received:', data.user?.id)
       setUser(data.user)
+    } catch (error) {
+      console.error('Error fetching user:', error)
+      navigate('/')
     } finally {
       setLoading(false)
     }

@@ -56,36 +56,46 @@ function AuthPanel() {
           setLoading(true)
           try {
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+            console.log('API_BASE:', API_BASE)
+            
             if (mode === 'signup') {
               if (password !== confirmPassword) {
                 setError('Passwords do not match')
                 return
               }
+              console.log('Attempting signup...')
               const res = await fetch(`${API_BASE}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ email, password, username })
               })
+              console.log('Signup response status:', res.status)
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data?.error || 'Sign up failed')
+                console.error('Signup error:', data)
+                throw new Error(data?.error || `Sign up failed (${res.status})`)
               }
               setStep('check-email')
             } else {
+              console.log('Attempting signin...')
               const res = await fetch(`${API_BASE}/auth/signin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ email, password, remember })
               })
+              console.log('Signin response status:', res.status)
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data?.error || 'Sign in failed')
+                console.error('Signin error:', data)
+                throw new Error(data?.error || `Sign in failed (${res.status})`)
               }
+              console.log('Signin successful, navigating to dashboard')
               navigate('/dashboard')
             }
           } catch (err) {
+            console.error('Auth error:', err)
             setError(err.message || 'Something went wrong')
           } finally {
             setLoading(false)
