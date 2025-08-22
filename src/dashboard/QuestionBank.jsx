@@ -56,7 +56,7 @@ function SpecialtyCard({ item }) {
         </div>
       </div>
       <div className="qb-card__actions">
-        <button className="qb-btn" onClick={() => navigate(`/dashboard/question-bank/practice?specialty_id=${item.specialty_id}`)}>Start Practicing</button>
+        <button className="qb-btn" onClick={() => navigate(`/dashboard/question-bank/setup?specialty_id=${item.specialty_id}&specialty_name=${encodeURIComponent(item.specialty_name)}`)}>Start Practicing</button>
       </div>
     </div>
   )

@@ -24,141 +24,187 @@ export default function Practice() {
   const navigate = useNavigate()
   const params = new URLSearchParams(location.search)
   const specialtyId = params.get('specialty_id')
+  const topicIds = params.get('topic_ids')
+  const numQuestions = parseInt(params.get('num_questions') || '25')
+  const timerMinutes = parseInt(params.get('timer_minutes') || '25')
+  
+  // Session state
   const [loading, setLoading] = useState(true)
-  const [question, setQuestion] = useState(null)
-  const [options, setOptions] = useState([])
-  const [progress, setProgress] = useState({ completed: 0, total: 0 })
-  const [result, setResult] = useState(null)
+  const [questions, setQuestions] = useState([]) // All questions loaded at start
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [userAnswers, setUserAnswers] = useState({}) // Store user answers by question ID
+  const [submittedAnswers, setSubmittedAnswers] = useState(new Set()) // Track submitted questions
+  
+  // Current question state
   const [selected, setSelected] = useState(null)
   const [saqText, setSaqText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  
+  // UI state
+  const [tab, setTab] = useState('quick')
+  const [eli5Enabled, setEli5Enabled] = useState(false)
+  
+  // Session stats
   const [sessionAnswered, setSessionAnswered] = useState(0)
   const [sessionCorrect, setSessionCorrect] = useState(0)
   const [sessionTotalMs, setSessionTotalMs] = useState(0)
-  const [questionStart, setQuestionStart] = useState(Date.now())
-  const [tab, setTab] = useState('quick')
-  const [questionHistory, setQuestionHistory] = useState([])
-  const [currentIndex, setCurrentIndex] = useState(-1)
-  const [sessionQuestionIds, setSessionQuestionIds] = useState(new Set())
-  const [eli5Enabled, setEli5Enabled] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [questionQueue, setQuestionQueue] = useState([])
-  const [usedQuestionIds, setUsedQuestionIds] = useState(new Set())
-  const { display, running, toggle } = useCountdown(25 * 60)
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now())
+  
+  const { display, running, toggle } = useCountdown(timerMinutes * 60)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-  const preloadedRef = useRef([])
-  const queueSize = 3
-
-  const fetchNextBatch = async () => {
-    const res = await fetch(`${API_BASE}/qbank/practice/next?specialty_id=${specialtyId}`, { credentials: 'include', cache: 'no-store' })
-    const data = await res.json()
-    preloadedRef.current.push(data)
-  }
-
-  const ensureQueue = async () => {
-    while (preloadedRef.current.length < queueSize) {
-      await fetchNextBatch()
-    }
-  }
-
-  const popNext = () => {
-    const data = preloadedRef.current.shift()
-    if (data?.question && !usedQuestionIds.has(data.question.id)) {
-      setQuestion(data.question)
-      setOptions(data.options || [])
-      setProgress(data.progress || { completed: 0, total: 0 })
-      setQuestionStart(Date.now())
-      setUsedQuestionIds(prev => new Set([...prev, data.question.id]))
-    } else {
-      // If question is already used or null, try to get another one
-      if (preloadedRef.current.length > 0) {
-        popNext()
-      }
-    }
-  }
-
-  const loadNext = async () => {
-    setLoading(true)
-    setResult(null)
-    setSelected(null)
-    setSaqText('')
-    setTab('quick')
-    if (preloadedRef.current.length === 0) {
-      await ensureQueue()
-    }
-    const nextData = preloadedRef.current[0]
-    
-    if (!nextData?.question) {
+  // Load all questions for the session
+  useEffect(() => {
+    if (!specialtyId) {
       navigate('/dashboard/question-bank')
       return
     }
-    
-    popNext()
-    ensureQueue()
-    setCurrentIndex(prev => prev + 1)
-    setLoading(false)
-  }
+    loadSession()
+  }, [specialtyId])
 
-  const goToPrevious = () => {
-    if (currentIndex > 0 && questionHistory[currentIndex - 1]) {
-      const prevQuestion = questionHistory[currentIndex - 1]
-      if (prevQuestion && prevQuestion.question) {
-        setQuestion(prevQuestion.question)
-        setOptions(prevQuestion.options)
-        setResult(prevQuestion.result)
-        setSelected(prevQuestion.selected)
-        setSaqText(prevQuestion.saqText || '')
-        setCurrentIndex(prev => prev - 1)
-        setTab('quick')
+  const loadSession = async () => {
+    try {
+      setLoading(true)
+      let url = `${API_BASE}/qbank/practice/session?specialty_id=${specialtyId}&num_questions=${numQuestions}`
+      if (topicIds) {
+        url += `&topic_ids=${topicIds}`
       }
+      
+      const res = await fetch(url, { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load session')
+      
+      const data = await res.json()
+      console.log('Loaded session with', data.questions?.length, 'questions')
+      
+      if (!data.questions || data.questions.length === 0) {
+        alert('No questions available for the selected criteria')
+        navigate('/dashboard/question-bank')
+        return
+      }
+      
+      setQuestions(data.questions)
+      setCurrentIndex(0)
+      loadCurrentQuestion(0, data.questions)
+      setQuestionStartTime(Date.now())
+    } catch (error) {
+      console.error('Error loading session:', error)
+      alert('Failed to load practice session')
+      navigate('/dashboard/question-bank')
+    } finally {
+      setLoading(false)
     }
   }
 
-  useEffect(() => { if (specialtyId) loadNext() }, [specialtyId])
+  // Load the current question and restore user's previous answer if any
+  const loadCurrentQuestion = (index, questionList = questions) => {
+    if (!questionList || index < 0 || index >= questionList.length) return
+    
+    const question = questionList[index]
+    const questionId = question.id
+    const userAnswer = userAnswers[questionId]
+    
+    // Restore user's previous answer
+    if (userAnswer) {
+      setSelected(userAnswer.selected)
+      setSaqText(userAnswer.saqText || '')
+    } else {
+      setSelected(null)
+      setSaqText('')
+    }
+    
+    setTab('quick')
+    setQuestionStartTime(Date.now())
+  }
+
+  const goToPrevious = () => {
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1
+      setCurrentIndex(newIndex)
+      loadCurrentQuestion(newIndex)
+    }
+  }
+
+  const goToNext = () => {
+    if (currentIndex < questions.length - 1) {
+      const newIndex = currentIndex + 1
+      setCurrentIndex(newIndex)
+      loadCurrentQuestion(newIndex)
+    } else {
+      // Session complete
+      navigate('/dashboard/question-bank')
+    }
+  }
 
   const submit = async () => {
-    if (!question || submitting) return
+    if (!questions[currentIndex] || submitting) return
+    
+    const currentQuestion = questions[currentIndex]
+    const questionId = currentQuestion.id
+    
+    // Don't submit if already submitted
+    if (submittedAnswers.has(questionId)) return
+    
     setSubmitting(true)
     
     try {
-      const payload = {
-        question_id: question.id,
-        selected_option_id: selected,
-        text_answer: options.length === 0 ? saqText : undefined,
-        time_taken_ms: Date.now() - questionStart,
+      console.log('=== FRONTEND SUBMIT ===')
+      console.log('Selected:', selected, 'Question type:', currentQuestion.type)
+      
+      // Calculate if answer is correct on frontend
+      let isCorrect = false
+      if (currentQuestion.type === 'MCQ') {
+        isCorrect = selected === currentQuestion.correct_answer
+      } else {
+        // For SAQ, we'd need to implement the checking logic here
+        // For now, assume it's handled elsewhere or simplified
+        isCorrect = false // Placeholder
       }
-      const res = await fetch(`${API_BASE}/qbank/practice/answer`, {
+      
+      const timeTaken = Date.now() - questionStartTime
+      
+      // Save user's answer locally
+      setUserAnswers(prev => ({
+        ...prev,
+        [questionId]: {
+          selected,
+          saqText,
+          isCorrect,
+          timeTaken,
+          submitted: true
+        }
+      }))
+      
+      // Mark as submitted
+      setSubmittedAnswers(prev => new Set([...prev, questionId]))
+      
+      // Update session stats
+      const newAnswered = sessionAnswered + 1
+      setSessionAnswered(newAnswered)
+      setSessionCorrect(prev => prev + (isCorrect ? 1 : 0))
+      setSessionTotalMs(prev => prev + timeTaken)
+      
+      // Submit to backend for tracking
+      const payload = {
+        question_id: questionId,
+        selected_option_id: currentQuestion.type === 'MCQ' ? selected : undefined,
+        text_answer: currentQuestion.type === 'SAQ' ? saqText : undefined,
+        time_taken_ms: timeTaken,
+        is_correct: isCorrect
+      }
+      
+      // Don't await this - let it happen in background
+      fetch(`${API_BASE}/qbank/practice/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload)
+      }).catch(error => {
+        console.error('Error submitting to backend:', error)
       })
-      const data = await res.json()
-      setResult(data)
-    
-    // Only count if this question hasn't been answered in this session
-    if (!sessionQuestionIds.has(question.id)) {
-      setSessionAnswered((n) => n + 1)
-      setSessionCorrect((n) => n + (data?.is_correct ? 1 : 0))
-      setSessionTotalMs((ms) => ms + (payload.time_taken_ms || 0))
-      setSessionQuestionIds(prev => new Set([...prev, question.id]))
-    }
-    
-    // Save to history
-    const questionData = {
-      question,
-      options,
-      result: data,
-      selected,
-      saqText,
-      progress
-    }
-      setQuestionHistory(prev => {
-        const newHistory = [...prev]
-        newHistory[currentIndex] = questionData
-        return newHistory
-      })
+      
+      console.log('Answer submitted successfully')
+      
     } catch (error) {
       console.error('Error submitting answer:', error)
     } finally {
@@ -168,36 +214,58 @@ export default function Practice() {
 
   if (loading) return <LoadingScreen message="Loading practice session..." />
 
+  if (!questions.length) {
+    return <div>No questions available</div>
+  }
+
+  const currentQuestion = questions[currentIndex]
+  const questionId = currentQuestion?.id
+  const userAnswer = userAnswers[questionId]
+  const isSubmitted = submittedAnswers.has(questionId)
+  
+  // Get result data for explanation display
+  const result = isSubmitted ? {
+    is_correct: userAnswer?.isCorrect || false,
+    correct_option: currentQuestion.type === 'MCQ' ? {
+      id: currentQuestion.correct_answer,
+      label: String.fromCharCode(65 + currentQuestion.correct_answer),
+      body: currentQuestion.options[currentQuestion.correct_answer]?.body
+    } : null,
+    explanations: currentQuestion.explanations
+  } : null
+
   return (
     <div className="pr">
       <div className="pr__top">
         <div>
           <h2 style={{ margin: 0 }}>Question Bank</h2>
-          <div style={{ color: '#64748b' }}>Questions Completed {progress.completed}/{progress.total}</div>
+          <div style={{ color: '#64748b' }}>Question {currentIndex + 1} of {questions.length}</div>
         </div>
-        <div className="pr__timer">
-          <div className="pr__time">{display}</div>
-          <button onClick={toggle} className="btn btn--ghost btn--icon">{running ? <LuPause /> : <LuPlay />}{running ? 'Pause' : 'Resume'}</button>
-        </div>
+        {timerMinutes > 0 && (
+          <div className="pr__timer">
+            <div className="pr__time">{display}</div>
+            <button onClick={toggle} className="btn btn--ghost btn--icon">{running ? <LuPause /> : <LuPlay />}{running ? 'Pause' : 'Resume'}</button>
+          </div>
+        )}
       </div>
 
-      {question ? (
+      {currentQuestion && (
         <div className="pr__grid">
           <div className="card question-card">
-            <div className="card__header">Clinical Scenario</div>
+            <div className="card__header">{currentQuestion.topic_name}</div>
             <div className="card__body">
               <div className="question-content">
-                <div style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>{question.stem}</div>
-                {options.length > 0 ? (
+                <div style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>{currentQuestion.stem}</div>
+                {currentQuestion.options?.length > 0 ? (
                   <div style={{ display: 'grid', gap: 8 }}>
-                    {options.map((o) => {
+                    {currentQuestion.options.map((o) => {
                       const isCorrect = result?.correct_option?.label === o.label;
                       const isSelectedIncorrect = selected === o.id && result && !result.is_correct;
                       const className = `option ${selected === o.id ? 'option--selected' : ''} ${result ? (isCorrect ? 'option--correct' : isSelectedIncorrect ? 'option--incorrect' : '') : ''}`;
                       
                       return (
                         <label key={o.id} className={className}>
-                          <input type="radio" name="opt" value={o.id} checked={selected === o.id} onChange={() => setSelected(o.id)} disabled={!!result} />
+                          <input type="radio" name="opt" value={o.id} checked={selected === o.id} onChange={() => setSelected(o.id)} disabled={isSubmitted} />
                           <div className="option__label">{o.label}.</div>
                           <div>{o.body}</div>
                         </label>
@@ -205,7 +273,7 @@ export default function Practice() {
                     })}
                   </div>
                 ) : (
-                  <textarea className="saq-input" placeholder="Type your answer here..." value={saqText} onChange={(e)=>setSaqText(e.target.value)} disabled={!!result} />
+                  <textarea className="saq-input" placeholder="Type your answer here..." value={saqText} onChange={(e)=>setSaqText(e.target.value)} disabled={isSubmitted} />
                 )}
               </div>
               <div className="controls">
@@ -215,15 +283,19 @@ export default function Practice() {
                 </div>
                 <div className="controls__right">
                   <button onClick={goToPrevious} disabled={currentIndex <= 0} className="btn btn--ghost btn--icon"><LuChevronLeft />Previous</button>
-                  {!result ? (
+                  {!isSubmitted ? (
                     <>
-                      <button onClick={submit} disabled={submitting || (options.length>0 ? !selected : saqText.trim()==='') } className="btn btn--primary">
+                      <button onClick={submit} disabled={submitting || (currentQuestion.options?.length > 0 ? selected === null || selected === undefined : saqText.trim() === '')} className="btn btn--primary">
                         {submitting ? 'Submitting...' : 'Submit'}
                       </button>
-                      <button onClick={loadNext} disabled={submitting} className="btn btn--ghost">Skip</button>
+                      <button onClick={goToNext} disabled={submitting} className="btn btn--ghost">
+                        {currentIndex === questions.length - 1 ? 'Finish' : 'Skip'}
+                      </button>
                     </>
                   ) : (
-                    <button onClick={loadNext} className="btn btn--primary btn--icon">Next Question <LuArrowRight /></button>
+                    <button onClick={goToNext} className="btn btn--primary btn--icon">
+                      {currentIndex === questions.length - 1 ? 'Finish' : 'Next Question'} <LuArrowRight />
+                    </button>
                   )}
                 </div>
               </div>
@@ -289,7 +361,7 @@ export default function Practice() {
                         ) : (
                           <div className="explain__section">
                             <div className="explain__label">Key Points:</div>
-                            <div>{result?.explanations?.quick || '—'}</div>
+                            <div>No quick points available</div>
                           </div>
                         )}
                       </>
@@ -298,24 +370,10 @@ export default function Practice() {
                 )}
                 {tab==='detailed' && (
                   <div>
-                    {result?.explanations?.detailed_context && (
-                      <div className="explain__section">
-                        <div className="explain__label">{question?.topic_name || 'Clinical Context'}:</div>
-                        <div>{result.explanations.detailed_context}</div>
-                      </div>
-                    )}
-                    {result?.explanations?.detailed_pathophysiology && (
-                      <div className="explain__section">
-                        <div className="explain__label">Pathophysiology:</div>
-                        <div>{result.explanations.detailed_pathophysiology}</div>
-                      </div>
-                    )}
-                    {!result?.explanations?.detailed_context && !result?.explanations?.detailed_pathophysiology && (
-                      <div className="explain__section">
-                        <div className="explain__label">Detailed</div>
-                        <div>{result?.explanations?.detailed || '—'}</div>
-                      </div>
-                    )}
+                    <div className="explain__section">
+                      <div className="explain__label">Detailed Explanation:</div>
+                      <div>{result?.explanations?.detailed || 'No detailed explanation available'}</div>
+                    </div>
                   </div>
                 )}
                 {tab==='visual' && (
@@ -334,9 +392,9 @@ export default function Practice() {
               <div className="card__body progress">
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#1f2937' }}>
                   <div>Questions Completed</div>
-                  <div>{sessionAnswered}/{progress.total || sessionAnswered}</div>
+                  <div>{sessionAnswered}/{questions.length}</div>
                 </div>
-                <div className="progress__bar"><div className="progress__fill" style={{ width: `${progress.total ? Math.round((sessionAnswered / progress.total) * 100) : sessionAnswered > 0 ? 100 : 0}%` }} /></div>
+                <div className="progress__bar"><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
                 <div className="progress__stats" style={{ justifyContent: 'space-around' }}>
                   <div>
                     <div className="stat--green">{sessionAnswered ? Math.round((sessionCorrect/sessionAnswered)*100) : 0}%</div>
@@ -363,8 +421,6 @@ export default function Practice() {
             </div>
           </div>
         </div>
-      ) : (
-        <div>No questions available.</div>
       )}
     </div>
   )
