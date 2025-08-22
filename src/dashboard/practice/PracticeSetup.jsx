@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft, LuPlay } from 'react-icons/lu'
 import './PracticeSetup.css'
-import LoadingScreen from '../components/loading/LoadingScreen'
+import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 
 export default function PracticeSetup() {
   const navigate = useNavigate()
