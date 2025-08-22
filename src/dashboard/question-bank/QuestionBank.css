@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&display=swap');
 
 .qb { padding: 28px; font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; }
+.qb > .loading--inline { min-height: calc(100vh - 56px); }
 .qb__title { margin: 0 0 10px; font-size: 32px; font-weight: 800; color: #0b1637; }
 .qb__subtitle { margin: 0 0 20px; color: #64748b; font-size: 16px; }
 

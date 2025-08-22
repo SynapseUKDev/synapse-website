@@ -2,9 +2,10 @@ import React from 'react'
 import './LoadingScreen.css'
 import logo from '../../assets/logo/logo.png'
 
-function LoadingScreen({ message }) {
+function LoadingScreen({ message, inline = false }) {
+  const containerClass = inline ? 'loading loading--inline' : 'loading'
   return (
-    <div className="loading">
+    <div className={containerClass}>
       <div className="loading__content" role="status" aria-live="polite" aria-busy="true">
         <div className="loading__logo-wrap">
           <img src={logo} alt="Synapse UK" className="loading__logo" />

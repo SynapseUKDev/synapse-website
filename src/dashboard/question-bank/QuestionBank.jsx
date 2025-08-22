@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom'
 import * as Lu from 'react-icons/lu'
 import { LuTarget, LuListCheck, LuFlame, LuTimer } from 'react-icons/lu'
 import './QuestionBank.css'
-import LoadingScreen from '../components/loading/LoadingScreen'
+import LoadingScreen from '../../components/loading/LoadingScreen'
 
 function StatCard({ title, value, sub, Icon }) {
   return (
@@ -89,7 +89,11 @@ export default function QuestionBank() {
   }, [])
 
   if (loading) {
-    return <LoadingScreen message="Loading question bank..." />
+    return (
+      <div className="qb">
+        <LoadingScreen message="Loading question bank..." inline />
+      </div>
+    )
   }
 
   return (

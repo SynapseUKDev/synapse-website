@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb } from 'react-icons/lu'
-import LoadingScreen from '../components/loading/LoadingScreen'
+import LoadingScreen from '../../components/loading/LoadingScreen'
 
 function useCountdown(initialSec = 1800) {
   const [seconds, setSeconds] = useState(initialSec)
@@ -212,7 +212,11 @@ export default function Practice() {
     }
   }
 
-  if (loading) return <LoadingScreen message="Loading practice session..." />
+  if (loading) return (
+    <div className="pr">
+      <LoadingScreen message="Loading practice session..." inline />
+    </div>
+  )
 
   if (!questions.length) {
     return <div>No questions available</div>
