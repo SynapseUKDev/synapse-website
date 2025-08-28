@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
+import { authHeaders } from './token'
 import authImg2 from '../assets/auth/auth-img2.svg'
 import logo from '../assets/logo/logo.png'
 import AuthPanel from './auth-panel/AuthPanel.jsx'
@@ -14,7 +15,11 @@ function Auth() {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     ;(async () => {
       try {
-        const res = await fetch(`${API_BASE}/me`, { credentials: 'include', cache: 'no-store' })
+        const res = await fetch(`${API_BASE}/me`, { 
+          credentials: 'include', 
+          cache: 'no-store',
+          headers: authHeaders(),
+        })
         if (res.ok) {
           navigate('/dashboard', { replace: true })
         }

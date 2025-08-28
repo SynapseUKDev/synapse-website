@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
+import { setTokens } from './token'
 
 function Callback() {
   const navigate = useNavigate()
@@ -39,6 +40,10 @@ function Callback() {
           })
         })
         if (!res.ok) throw new Error('Failed to establish session')
+        setTokens({
+          accessToken: params.get('access_token') || '',
+          refreshToken: params.get('refresh_token') || ''
+        })
         navigate('/dashboard')
       } catch (e) {
         setMessage('Could not complete sign-in. Please try signing in again.')

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb } from 'react-icons/lu'
@@ -71,7 +72,7 @@ export default function Practice() {
         url += `&topic_ids=${topicIds}`
       }
       
-      const res = await fetch(url, { credentials: 'include' })
+      const res = await fetch(url, { credentials: 'include', headers: authHeaders() })
       if (!res.ok) throw new Error('Failed to load session')
       
       const data = await res.json()
@@ -196,7 +197,7 @@ export default function Practice() {
       // Don't await this - let it happen in background
       fetch(`${API_BASE}/qbank/practice/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         credentials: 'include',
         body: JSON.stringify(payload)
       }).catch(error => {

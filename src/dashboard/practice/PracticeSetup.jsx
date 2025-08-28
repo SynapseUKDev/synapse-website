@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { authHeaders } from '../../auth/token'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft, LuPlay } from 'react-icons/lu'
 import './PracticeSetup.css'
@@ -30,7 +31,8 @@ export default function PracticeSetup() {
   const loadTopics = async () => {
     try {
       const res = await fetch(`${API_BASE}/qbank/specialty/${specialtyId}/topics`, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: authHeaders(),
       })
       if (!res.ok) throw new Error('Failed to load topics')
       const data = await res.json()

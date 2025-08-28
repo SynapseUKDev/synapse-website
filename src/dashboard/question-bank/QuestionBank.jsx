@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { authHeaders } from '../../auth/token'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import * as Lu from 'react-icons/lu'
 import { LuTarget, LuListCheck, LuFlame, LuTimer } from 'react-icons/lu'
@@ -72,8 +73,8 @@ export default function QuestionBank() {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     ;(async () => {
       try {
-        const sRes = await fetch(`${API_BASE}/qbank/summary`, { credentials: 'include', cache: 'no-store' })
-        const tRes = await fetch(`${API_BASE}/qbank/specialties`, { credentials: 'include', cache: 'no-store' })
+        const sRes = await fetch(`${API_BASE}/qbank/summary`, { credentials: 'include', cache: 'no-store', headers: authHeaders() })
+        const tRes = await fetch(`${API_BASE}/qbank/specialties`, { credentials: 'include', cache: 'no-store', headers: authHeaders() })
         const s = sRes.ok ? await sRes.json().catch(() => ({})) : {}
         const t = tRes.ok ? await tRes.json().catch(() => ({})) : {}
         setSummary(s.summary || { total_answered: 0, accuracy_pct: 0, avg_time_ms: 0 })
