@@ -45,7 +45,6 @@ export default function Practice() {
   
   // UI state
   const [tab, setTab] = useState('quick')
-  const [eli5Enabled, setEli5Enabled] = useState(false)
   
   // Session stats
   const [sessionAnswered, setSessionAnswered] = useState(0)
@@ -336,19 +335,10 @@ export default function Practice() {
                   {result.is_correct ? <LuCircleCheck /> : <LuCircleAlert />}
                   {result.is_correct ? 'Correct' : 'Incorrect'}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div className="eli5-toggle">
-                    <label className="toggle-switch">
-                      <input type="checkbox" checked={eli5Enabled} onChange={(e) => setEli5Enabled(e.target.checked)} />
-                      <span className="toggle-slider"></span>
-                    </label>
-                    <span className="toggle-label">ELI5</span>
-                  </div>
-                  <div className="tabs">
-                    <div className={`tab ${tab==='quick' ? 'tab--active' : ''}`} onClick={()=>setTab('quick')}>Quick</div>
-                    <div className={`tab ${tab==='detailed' ? 'tab--active' : ''}`} onClick={()=>setTab('detailed')}>Detailed</div>
-                    <div className={`tab ${tab==='visual' ? 'tab--active' : ''}`} onClick={()=>setTab('visual')}>Visual</div>
-                  </div>
+                <div className="tabs">
+                  <div className={`tab ${tab==='quick' ? 'tab--active' : ''}`} onClick={()=>setTab('quick')}>Quick</div>
+                  <div className={`tab ${tab==='detailed' ? 'tab--active' : ''}`} onClick={()=>setTab('detailed')}>Detailed</div>
+                  <div className={`tab ${tab==='eli5' ? 'tab--active' : ''}`} onClick={()=>setTab('eli5')}>ELI5</div>
                 </div>
               </div>
               <div className="card__body explain">
@@ -363,35 +353,23 @@ export default function Practice() {
                 )}
                 {tab==='quick' && (
                   <div>
-                    {eli5Enabled && result?.explanations?.eli5 ? (
-                      <div className="eli5-section">
-                        <div className="eli5-header">
-                          <LuLightbulb className="eli5-icon" />
-                          <span className="eli5-title">Explain Like I'm 5</span>
-                        </div>
-                        <div className="eli5-content">{result.explanations.eli5}</div>
+                    {displayQuickPoints && displayQuickPoints.length > 0 ? (
+                      <div className="explain__section">
+                        <div className="explain__label">Key Points:</div>
+                        <ul className="key-points">
+                          {displayQuickPoints.map((point, idx) => (
+                            <li key={idx} className="key-point">
+                              <div className="key-point-icon">✓</div>
+                              <div>{point}</div>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     ) : (
-                      <>
-                        {displayQuickPoints && displayQuickPoints.length > 0 ? (
-                          <div className="explain__section">
-                            <div className="explain__label">Key Points:</div>
-                            <ul className="key-points">
-                              {displayQuickPoints.map((point, idx) => (
-                                <li key={idx} className="key-point">
-                                  <div className="key-point-icon">✓</div>
-                                  <div>{point}</div>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : (
-                          <div className="explain__section">
-                            <div className="explain__label">Key Points:</div>
-                            <div>No quick points available</div>
-                          </div>
-                        )}
-                      </>
+                      <div className="explain__section">
+                        <div className="explain__label">Key Points:</div>
+                        <div>No quick points available</div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -403,10 +381,15 @@ export default function Practice() {
                     </div>
                   </div>
                 )}
-                {tab==='visual' && (
-                  <div className="explain__section">
-                    <div className="explain__label">Visual</div>
-                    <div>—</div>
+                {tab==='eli5' && (
+                  <div>
+                    <div className="eli5-section">
+                      <div className="eli5-header">
+                        <LuLightbulb className="eli5-icon" />
+                        <span className="eli5-title">Explain Like I'm 5</span>
+                      </div>
+                      <div className="eli5-content">{result?.explanations?.eli5 || 'No ELI5 explanation available'}</div>
+                    </div>
                   </div>
                 )}
               </div>
