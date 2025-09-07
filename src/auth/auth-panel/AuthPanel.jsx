@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './AuthPanel.css'
+import { setTokens } from '../token'
 
 function AuthPanel() {
   const navigate = useNavigate()
@@ -90,6 +91,10 @@ function AuthPanel() {
                 const data = await res.json().catch(() => ({}))
                 console.error('Signin error:', data)
                 throw new Error(data?.error || `Sign in failed (${res.status})`)
+              }
+              const data = await res.json().catch(() => ({}))
+              if (data?.access_token) {
+                setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
               }
               console.log('Signin successful, navigating to dashboard')
               navigate('/dashboard')

@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../sidebar/Sidebar'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import '../Dashboard.css'
+import { authHeaders, clearTokens } from '../../auth/token'
 
 function DashboardLayout() {
   const navigate = useNavigate()
@@ -19,6 +20,7 @@ function DashboardLayout() {
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders(),
         }
       })
       console.log('User fetch response status:', res.status)
@@ -57,7 +59,8 @@ function DashboardLayout() {
 
   const handleLogout = async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-    await fetch(`${API_BASE}/auth/signout`, { method: 'POST', credentials: 'include' })
+    await fetch(`${API_BASE}/auth/signout`, { method: 'POST', credentials: 'include', headers: authHeaders() })
+    clearTokens()
     window.dispatchEvent(new Event('auth:changed'))
     navigate('/')
   }
