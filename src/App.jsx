@@ -10,6 +10,7 @@ import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
 import QuestionBank from './dashboard/question-bank/QuestionBank.jsx'
 import Practice from './dashboard/practice/Practice.jsx'
 import PracticeSetup from './dashboard/practice/PracticeSetup.jsx'
+import PracticeResults from './dashboard/practice/PracticeResults.jsx'
 
 function HashRedirector() {
   const location = useLocation()
@@ -35,6 +36,7 @@ function App() {
           <Route path="question-bank" element={<QuestionBank />} />
           <Route path="question-bank/setup" element={<PracticeSetup />} />
           <Route path="question-bank/practice" element={<Practice />} />
+          <Route path="question-bank/results" element={<PracticeResults />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import DiscussionPanel from './DiscussionPanel'
 
 function useCountdown(initialSec = 1800) {
   const [seconds, setSeconds] = useState(initialSec)
@@ -34,6 +35,7 @@ export default function Practice() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userAnswers, setUserAnswers] = useState({}) // Store user answers by question ID
   const [submittedAnswers, setSubmittedAnswers] = useState(new Set()) // Track submitted questions
+  const [flagged, setFlagged] = useState(new Set())
   
   // Current question state
   const [selected, setSelected] = useState(null)
@@ -131,8 +133,14 @@ export default function Practice() {
       setCurrentIndex(newIndex)
       loadCurrentQuestion(newIndex)
     } else {
-      // Session complete
-      navigate('/dashboard/question-bank')
+      const totalQuestions = questions.length
+      const correct = sessionCorrect
+      const skipped = Math.max(totalQuestions - sessionAnswered, 0)
+      const totalMs = sessionTotalMs
+      const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
+      navigate('/dashboard/question-bank/results', {
+        state: { totalQuestions, correct, skipped, totalMs, perQuestionMs }
+      })
     }
   }
 
@@ -238,6 +246,14 @@ export default function Practice() {
     explanations: currentQuestion.explanations
   } : null
 
+  // Determine which quick points to display based on selection-aware mapping
+  const selectionIndex = isSubmitted ? userAnswer?.selected : null
+  const pointsByOption = currentQuestion?.explanations?.points_by_option || null
+  const selectionPoints = (isSubmitted && pointsByOption && selectionIndex !== null && selectionIndex !== undefined)
+    ? (pointsByOption[String(selectionIndex)] || null)
+    : null
+  const displayQuickPoints = selectionPoints || currentQuestion?.explanations?.quick_points || []
+
   return (
     <div className="pr">
       <div className="pr__top">
@@ -283,7 +299,13 @@ export default function Practice() {
               <div className="controls">
                 <div className="controls__left">
                   <button className="btn btn--ghost btn--icon"><LuSave />Save</button>
-                  <button className="btn btn--ghost btn--icon"><LuFlag />Flag</button>
+                  <button className={`btn btn--ghost btn--icon ${flagged.has(questionId) ? 'is-flagged' : ''}`} onClick={()=>{
+                    setFlagged(prev => {
+                      const next = new Set(prev)
+                      if (next.has(questionId)) next.delete(questionId); else next.add(questionId)
+                      return next
+                    })
+                  }}><LuFlag />{flagged.has(questionId) ? 'Flagged' : 'Flag'}</button>
                 </div>
                 <div className="controls__right">
                   <button onClick={goToPrevious} disabled={currentIndex <= 0} className="btn btn--ghost btn--icon"><LuChevronLeft />Previous</button>
@@ -350,11 +372,11 @@ export default function Practice() {
                       </div>
                     ) : (
                       <>
-                        {result?.explanations?.quick_points && result.explanations.quick_points.length > 0 ? (
+                        {displayQuickPoints && displayQuickPoints.length > 0 ? (
                           <div className="explain__section">
                             <div className="explain__label">Key Points:</div>
                             <ul className="key-points">
-                              {result.explanations.quick_points.map((point, idx) => (
+                              {displayQuickPoints.map((point, idx) => (
                                 <li key={idx} className="key-point">
                                   <div className="key-point-icon">✓</div>
                                   <div>{point}</div>
@@ -390,6 +412,11 @@ export default function Practice() {
             </div>
           )}
 
+          {/* Discussion below explanation */}
+          <div style={{ gridColumn: '1', gridRow: '3' }}>
+            <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
+          </div>
+
           <div className="pr__aside">
             <div className="card">
               <div className="card__header">Session Progress</div>
@@ -415,6 +442,28 @@ export default function Practice() {
               </div>
             </div>
 
+            {/* Track Questions Navigator */}
+            <div className="card" style={{ marginTop: 16 }}>
+              <div className="card__header">Track Questions</div>
+              <div className="card__body flagged-nav">
+                <div className="flagged-grid">
+                  {questions.map((q, idx) => {
+                    const num = idx + 1
+                    const isCurrent = idx === currentIndex
+                    const isFlagged = flagged.has(q.id)
+                    const ua = userAnswers[q.id]
+                    const statusClass = ua?.submitted ? (ua.isCorrect ? 'correct' : 'wrong') : ''
+                    return (
+                      <button key={q.id} className={`flagged-pill ${statusClass} ${isFlagged ? 'flagged' : ''} ${isCurrent ? 'current' : ''}`} onClick={()=>{
+                        setCurrentIndex(idx); loadCurrentQuestion(idx)
+                        setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                      }}>{num}</button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
             <div className="card" style={{ marginTop: 16 }}>
               <div className="card__header">Quick Actions</div>
               <div className="card__body quick-actions">
@@ -423,6 +472,7 @@ export default function Practice() {
                 <button className="qa-btn"><LuPlus /> Add to Review Deck</button>
               </div>
             </div>
+
           </div>
         </div>
       )}
