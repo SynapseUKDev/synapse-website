@@ -122,19 +122,32 @@
   padding: 8px 0;
 }
 
-.key-point-icon {
-  width: 20px;
-  height: 20px;
-  background: #16a34a;
-  color: white;
-  border-radius: 50%;
-  display: flex;
+.key-point-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
   font-weight: 800;
+  font-size: 13px;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 1px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #0b1637;
+}
+
+.key-point-badge.is-correct {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.key-point-badge.is-wrong {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
 }
 
 .eli5-section {

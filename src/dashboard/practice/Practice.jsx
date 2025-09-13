@@ -246,13 +246,16 @@ export default function Practice() {
     explanations: currentQuestion.explanations
   } : null
 
-  // Determine which quick points to display based on selection-aware mapping
-  const selectionIndex = isSubmitted ? userAnswer?.selected : null
+  // Build list of all five per-option quick points (always show all)
   const pointsByOption = currentQuestion?.explanations?.points_by_option || null
-  const selectionPoints = (isSubmitted && pointsByOption && selectionIndex !== null && selectionIndex !== undefined)
-    ? (pointsByOption[String(selectionIndex)] || null)
-    : null
-  const displayQuickPoints = selectionPoints || currentQuestion?.explanations?.quick_points || []
+  const allQuickPoints = pointsByOption
+    ? [0,1,2,3,4].map((idx)=>({
+        label: String.fromCharCode(65 + idx),
+        text: (pointsByOption[String(idx)]?.[0]) || null,
+        isCorrect: currentQuestion?.correct_answer === idx,
+      }))
+      .filter((p)=>p.text)
+    : []
 
   return (
     <div className="pr">
@@ -353,21 +356,21 @@ export default function Practice() {
                 )}
                 {tab==='quick' && (
                   <div>
-                    {displayQuickPoints && displayQuickPoints.length > 0 ? (
+                    {allQuickPoints && allQuickPoints.length > 0 ? (
                       <div className="explain__section">
-                        <div className="explain__label">Key Points:</div>
+                        <div className="explain__label">Explanations:</div>
                         <ul className="key-points">
-                          {displayQuickPoints.map((point, idx) => (
-                            <li key={idx} className="key-point">
-                              <div className="key-point-icon">✓</div>
-                              <div>{point}</div>
+                          {allQuickPoints.map((p, idx) => (
+                            <li key={idx} className={`key-point ${p.isCorrect ? 'key-point--correct' : ''}`}>
+                              <div className={`key-point-badge ${p.isCorrect ? 'is-correct' : 'is-wrong'}`}>{p.label}</div>
+                              <div>{p.text}</div>
                             </li>
                           ))}
                         </ul>
                       </div>
                     ) : (
                       <div className="explain__section">
-                        <div className="explain__label">Key Points:</div>
+                        <div className="explain__label">Explanations:</div>
                         <div>No quick points available</div>
                       </div>
                     )}

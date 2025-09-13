@@ -14,7 +14,7 @@
 .qb-stat__sub { margin-top: 6px; color: #8da2bf; font-size: 14px; }
 
 .qb__grid { margin-top: 22px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-.qb-card { background: #fff; border: 1px solid #eef2f7; border-radius: 18px; padding: 22px; }
+.qb-card { background: #fff; border: 1px solid #eef2f7; border-radius: 18px; padding: 22px; display: flex; flex-direction: column; height: 100%; }
 .qb-card__head { display: flex; justify-content: space-between; align-items: center; }
 .qb-card__meta { color: #64748b; font-size: 14px; }
 .qb-card__titlewrap { display: flex; align-items: center; gap: 12px; }
@@ -30,7 +30,7 @@
 .qb-card__topics-title { font-weight: 800; color: #0b1637; margin-bottom: 8px; font-size: 15px; }
 .qb-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .qb-chip { font-size: 12px; background: #f1f5f9; color: #0b1637; border: 1px solid #e5e7eb; padding: 6px 10px; border-radius: 999px; }
-.qb-card__actions { margin-top: 16px; }
+.qb-card__actions { margin-top: auto; padding-top: 16px; }
 .qb-btn { width: 100%; height: 50px; border-radius: 12px; background: #0b1637; color: #fff; font-weight: 800; border: 0; font-family: 'Urbanist', ui-sans-serif, system-ui; transition: all .15s ease; font-size: 16px; }
 .qb-btn:hover { filter: brightness(1.08); transform: translateY(-1px); cursor: pointer; }
 
