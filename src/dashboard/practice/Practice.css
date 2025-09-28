@@ -20,6 +20,8 @@
   align-items: start;
 }
 
+.pr__grid > .card + .card { margin-top: 0; }
+
 .question-card {
   grid-column: 1;
   grid-row: 1;
@@ -315,3 +317,31 @@ input:checked + .toggle-slider:before {
 @media (max-width: 1024px) { .pr__grid { grid-template-columns: 1fr; } }
 
 
+
+/* Reference Ranges Card */
+.refcard__content { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+.refcard__content.is-open { max-height: 560px; }
+.refcard__inner { border-top: 1px solid #eef2f7; }
+.refcat { padding: 12px 16px; }
+.refcat + .refcat { border-top: 1px solid #f1f5f9; }
+.refcat__title { font-weight: 800; color: #0b1637; margin-bottom: 8px; }
+.refcat__items { display: grid; gap: 8px; }
+.refrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.refrow__left { display: flex; align-items: baseline; gap: 8px; }
+.refrow__analyte { font-weight: 700; color: #0b1637; }
+.refrow__pop { font-size: 12px; color: #64748b; background: #f1f5f9; border: 1px solid #e5e7eb; border-radius: 999px; padding: 2px 8px; }
+.refrow__right { display: inline-flex; align-items: baseline; gap: 6px; }
+.refrow__value { font-weight: 800; color: #1f2937; }
+.refrow__unit { font-size: 12px; color: #64748b; }
+.refcard__empty { color: #64748b; font-size: 14px; padding: 12px 16px; }
+
+/* Accordion headers for reference groups */
+.refacc { padding: 8px 12px; display: grid; gap: 8px; }
+.refacc__section { border: 1px solid #eef2f7; border-radius: 10px; background: #fff; overflow: hidden; }
+.refacc__btn { width: 100%; text-align: left; background: #f8fafc; border: 0; padding: 10px 12px; font-weight: 800; color: #0b1637; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.refacc__section.is-open .refacc__btn { background: #fff; }
+.refacc__title { pointer-events: none; }
+.refacc__caret { transform: rotate(0deg); transition: transform .2s ease; }
+.refacc__section.is-open .refacc__caret { transform: rotate(180deg); }
+.refacc__panel { overflow: hidden; transition: max-height .3s ease; border-top: 1px solid #eef2f7; padding: 0 12px; }
+.refacc__section.is-open .refacc__panel { padding-top: 10px; padding-bottom: 10px; }

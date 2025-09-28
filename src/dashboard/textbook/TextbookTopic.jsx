@@ -41,8 +41,10 @@ function RenderBlock({ block }) {
       </figure>
     )
   }
-  // markdown: render as-is; your site CSS styles typographic elements
-  return <div className="tb-md" dangerouslySetInnerHTML={{ __html: (block.content || '').replace(/\n/g, '<br/>') }} />
+  const html = block.content || ''
+  const isHtml = /<[^>]+>/.test(html)
+  const rendered = isHtml ? html : html.replace(/\n/g, '<br/>')
+  return <div className="tb-md" dangerouslySetInnerHTML={{ __html: rendered }} />
 }
 
 export default function TextbookTopic() {
@@ -90,7 +92,13 @@ export default function TextbookTopic() {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
-  if (loading) return <LoadingScreen message="Loading chapter…" />
+  if (loading) {
+    return (
+      <div className="tb-page tb-page--chapter">
+        <LoadingScreen message="Loading chapter…" inline />
+      </div>
+    )
+  }
   if (error) return <div className="tb-error">{error}</div>
   if (!data) return null
 

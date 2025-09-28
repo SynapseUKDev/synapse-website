@@ -78,7 +78,13 @@ export default function Textbook() {
     return []
   }, [data])
 
-  if (loading) return <LoadingScreen message={slug ? 'Loading specialty…' : 'Loading textbook…'} />
+  if (loading) {
+    return (
+      <div className="tb-page">
+        <LoadingScreen message={slug ? 'Loading specialty…' : 'Loading textbook…'} inline />
+      </div>
+    )
+  }
   if (error) return <div className="tb-error">{error}</div>
 
   // Specialty topics view

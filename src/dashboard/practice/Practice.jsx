@@ -37,6 +37,10 @@ export default function Practice() {
   const [userAnswers, setUserAnswers] = useState({}) // Store user answers by question ID
   const [submittedAnswers, setSubmittedAnswers] = useState(new Set()) // Track submitted questions
   const [flagged, setFlagged] = useState(new Set())
+  // Reference ranges
+  const [refRanges, setRefRanges] = useState([])
+  const [showRef, setShowRef] = useState(false)
+  const [openGroups, setOpenGroups] = useState(new Set())
   
   // Current question state
   const [selected, setSelected] = useState(null)
@@ -72,11 +76,15 @@ export default function Practice() {
       if (topicIds) {
         url += `&topic_ids=${topicIds}`
       }
-      
-      const res = await fetch(url, { credentials: 'include', headers: authHeaders() })
-      if (!res.ok) throw new Error('Failed to load session')
-      
-      const data = await res.json()
+      // Load questions and reference ranges in parallel
+      const [qRes, rRes] = await Promise.all([
+        fetch(url, { credentials: 'include', headers: authHeaders() }),
+        fetch(`${API_BASE}/reference-ranges`, { credentials: 'include', headers: authHeaders() })
+      ])
+      if (!qRes.ok) throw new Error('Failed to load session')
+      if (!rRes.ok) throw new Error('Failed to load reference ranges')
+
+      const [data, rData] = await Promise.all([qRes.json(), rRes.json()])
       console.log('Loaded session with', data.questions?.length, 'questions')
       
       if (!data.questions || data.questions.length === 0) {
@@ -89,6 +97,7 @@ export default function Practice() {
       setCurrentIndex(0)
       loadCurrentQuestion(0, data.questions)
       setQuestionStartTime(Date.now())
+      setRefRanges(Array.isArray(rData?.groups) ? rData.groups : [])
     } catch (error) {
       console.error('Error loading session:', error)
       alert('Failed to load practice session')
@@ -399,8 +408,7 @@ export default function Practice() {
             </div>
           )}
 
-          {/* Discussion below explanation */}
-          <div style={{ gridColumn: '1', gridRow: '3' }}>
+          <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
             <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
           </div>
 
@@ -457,6 +465,57 @@ export default function Practice() {
                 <button className="qa-btn"><LuBookOpen /> View in Textbook</button>
                 <button className="qa-btn"><LuShare2 /> Share Question</button>
                 <button className="qa-btn"><LuPlus /> Add to Review Deck</button>
+              </div>
+            </div>
+
+            {/* Reference Ranges */}
+            <div className="card" style={{ marginTop: 16 }}>
+              <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>Reference Ranges</div>
+                <button className="btn btn--ghost btn--icon" onClick={()=> setShowRef(s=>!s)}>{showRef ? 'Hide' : 'Show'}</button>
+              </div>
+              <div className={`refcard__content ${showRef ? 'is-open' : ''}`}>
+                <div className="refcard__inner">
+                  {refRanges && refRanges.length > 0 ? (
+                    <div className="refacc">
+                      {refRanges.map((grp) => {
+                        const isOpen = openGroups.has(grp.id)
+                        return (
+                          <div key={grp.id} className={`refacc__section ${isOpen ? 'is-open' : ''}`}>
+                            <button className="refacc__btn" onClick={() => {
+                              setOpenGroups(prev => {
+                                const next = new Set(prev)
+                                if (next.has(grp.id)) next.delete(grp.id); else next.add(grp.id)
+                                return next
+                              })
+                            }}>
+                              <span className="refacc__title">{grp.title}</span>
+                              <span className="refacc__caret" aria-hidden>▾</span>
+                            </button>
+                            <div className="refacc__panel" style={{ maxHeight: isOpen ? Math.min(400, (grp.items?.length || 0) * 40 + 24) : 0 }}>
+                              <div className="refcat__items">
+                                {(grp.items || []).map((it, j) => (
+                                  <div key={j} className="refrow">
+                                    <div className="refrow__left">
+                                      <div className="refrow__analyte">{it.analyte}</div>
+                                      {it.population && <div className="refrow__pop">{it.population}</div>}
+                                    </div>
+                                    <div className="refrow__right">
+                                      <div className="refrow__value">{it.value_text}</div>
+                                      {it.unit && <div className="refrow__unit">{it.unit}</div>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="refcard__empty">No reference ranges available</div>
+                  )}
+                </div>
               </div>
             </div>
 
