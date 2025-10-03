@@ -9,7 +9,8 @@
 .qb-stat { background: #fff; border: 1px solid #eef2f7; border-radius: 16px; padding: 22px; position: relative; }
 .qb-stat__top { display: flex; justify-content: space-between; align-items: flex-start; }
 .qb-stat__title { color: #64748b; font-weight: 700; font-size: 15px; }
-.qb-stat__icon { background: #fff7ed; border: 1px solid #ffe7cc; color: #fb923c; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
+.qb-stat__icon { background: #fff7ed; border: 1px solid #ffe7cc; color: #fb923c; width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
+.qb-stat__icon svg { display: block; flex-shrink: 0; }
 .qb-stat__value { margin-top: 12px; font-size: 30px; font-weight: 800; color: #0b1637; }
 .qb-stat__sub { margin-top: 6px; color: #8da2bf; font-size: 14px; }
 
@@ -18,12 +19,14 @@
 .qb-card__head { display: flex; justify-content: space-between; align-items: center; }
 .qb-card__meta { color: #64748b; font-size: 14px; }
 .qb-card__titlewrap { display: flex; align-items: center; gap: 12px; }
-.qb-card__icon { width: 46px; height: 46px; border-radius: 14px; background: #ffeff0; color: #e11d48; display: grid; place-items: center; font-weight: 800; }
+.qb-card__icon { width: 46px; height: 46px; border-radius: 14px; background: #ffeff0; color: #e11d48; display: inline-flex; align-items: center; justify-content: center; line-height: 0; font-weight: 800; }
+.qb-card__icon svg { display: block; flex-shrink: 0; }
 .qb-card__title { font-weight: 800; color: #0b1637; font-size: 20px; }
-.qb-card__badge { background: #0b1637; color: #fff; font-size: 12px; padding: 3px 10px; border-radius: 999px; }
+.qb-card__badge { background: #0b1637; color: #fff; font-size: 14px; padding: 3px 10px; border-radius: 999px; }
 .qb-card__bar { height: 10px; border-radius: 999px; background: #e5e7eb; overflow: hidden; margin-top: 14px; }
 .qb-card__fill { height: 100%; background: #0b1637; }
-.qb-card__metrics { display: flex; gap: 28px; margin-top: 16px; color: #64748b; font-size: 14px; }
+.qb-card__metrics { display: flex; gap: 28px; margin-top: 16px; color: #64748b; font-size: 14px; align-items: center; }
+.qb-card__metrics-cta { margin-left: auto; }
 .qb-metric__label { font-weight: 800; color: #0b1637; font-size: 14px; }
 .qb-metric__value { margin-top: 2px; }
 .qb-card__topics { margin-top: 14px; }
@@ -31,8 +34,9 @@
 .qb-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .qb-chip { font-size: 12px; background: #f1f5f9; color: #0b1637; border: 1px solid #e5e7eb; padding: 6px 10px; border-radius: 999px; }
 .qb-card__actions { margin-top: auto; padding-top: 16px; }
-.qb-btn { width: 100%; height: 50px; border-radius: 12px; background: #0b1637; color: #fff; font-weight: 800; border: 0; font-family: 'Urbanist', ui-sans-serif, system-ui; transition: all .15s ease; font-size: 16px; }
+.qb-btn { width: 100%; height: 50px; border-radius: 12px; background: linear-gradient(180deg, #143db8, #061A86); color: #fff; font-weight: 800; border: 0; font-family: 'Urbanist', ui-sans-serif, system-ui; transition: all .15s ease; font-size: 16px; }
 .qb-btn:hover { filter: brightness(1.08); transform: translateY(-1px); cursor: pointer; }
+.qb-btn--sm { width: auto; height: 40px; padding: 0 16px; border-radius: 10px; font-size: 14px; }
 
 @media (max-width: 1200px) { .qb__stats { grid-template-columns: repeat(2, minmax(0,1fr)); } .qb__grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 @media (max-width: 768px) { .qb__stats, .qb__grid { grid-template-columns: 1fr; } .qb__title { font-size: 28px; } }

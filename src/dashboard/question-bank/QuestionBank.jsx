@@ -42,7 +42,7 @@ function SpecialtyCard({ item }) {
             <div className="qb-card__meta">{item.completed_questions}/{item.total_questions} completed</div>
           </div>
         </div>
-        <div className="qb-card__badge">{pct}%</div>
+        <div className="qb-card__badge" style={{ background: 'black', color: '#fff' }}>{pct}%</div>
       </div>
       <div className="qb-card__bar"><div className="qb-card__fill" style={{ width: `${pct}%` }} /></div>
       <div className="qb-card__metrics">
@@ -50,15 +50,16 @@ function SpecialtyCard({ item }) {
         <div><div className="qb-metric__label">Last Studied</div><div className="qb-metric__value">{item.last_studied ? new Date(item.last_studied).toLocaleString() : '—'}</div></div>
         <div><div className="qb-metric__label">Avg Time</div><div className="qb-metric__value">{item.avg_time_ms ? Math.round(item.avg_time_ms / 1000) : '—'} min</div></div>
       </div>
-      <div className="qb-card__topics">
+      <div className="qb-card__actions">
+        <button className="qb-btn" onClick={() => navigate(`/dashboard/question-bank/setup?specialty_id=${item.specialty_id}&specialty_name=${encodeURIComponent(item.specialty_name)}`)}>Start Practicing</button>
+      </div>
+      {/* <div className="qb-card__topics">
         <div className="qb-card__topics-title">Key Topics:</div>
         <div className="qb-chips">
           {(item.key_topics || []).map((slug) => (<span key={slug} className="qb-chip">{slug.replace(/-/g,' ')}</span>))}
         </div>
-      </div>
-      <div className="qb-card__actions">
-        <button className="qb-btn" onClick={() => navigate(`/dashboard/question-bank/setup?specialty_id=${item.specialty_id}&specialty_name=${encodeURIComponent(item.specialty_name)}`)}>Start Practicing</button>
-      </div>
+      </div> */}
+      
     </div>
   )
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './Practice.css'
-import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb } from 'react-icons/lu'
+import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 
@@ -40,7 +40,7 @@ export default function Practice() {
   // Reference ranges
   const [refRanges, setRefRanges] = useState([])
   const [showRef, setShowRef] = useState(false)
-  const [openGroups, setOpenGroups] = useState(new Set())
+  const [openGroupId, setOpenGroupId] = useState(null)
   
   // Current question state
   const [selected, setSelected] = useState(null)
@@ -49,6 +49,8 @@ export default function Practice() {
   
   // UI state
   const [tab, setTab] = useState('quick')
+  const [trkFilter, setTrkFilter] = useState('All') // All | Unanswered | Correct | Wrong | Flagged
+  const [trkJump, setTrkJump] = useState('')
   
   // Session stats
   const [sessionAnswered, setSessionAnswered] = useState(0)
@@ -273,12 +275,15 @@ export default function Practice() {
           <h2 style={{ margin: 0 }}>Question Bank</h2>
           <div style={{ color: '#64748b' }}>Question {currentIndex + 1} of {questions.length}</div>
         </div>
-        {timerMinutes > 0 && (
-          <div className="pr__timer">
-            <div className="pr__time">{display}</div>
-            <button onClick={toggle} className="btn btn--ghost btn--icon">{running ? <LuPause /> : <LuPlay />}{running ? 'Pause' : 'Resume'}</button>
-          </div>
-        )}
+        <div className="pr__top-right">
+          {timerMinutes > 0 && (
+            <div className="pr__timer">
+              <div className="pr__time">{display}</div>
+              <button onClick={toggle} className="btn btn--ghost btn--icon">{running ? <LuPause /> : <LuPlay />}{running ? 'Pause' : 'Resume'}</button>
+            </div>
+          )}
+          <button onClick={() => navigate('/dashboard/question-bank')} className="btn btn--exit btn--icon" title="Exit to Question Bank"><LuX />Exit</button>
+        </div>
       </div>
 
       {currentQuestion && (
@@ -437,24 +442,101 @@ export default function Practice() {
               </div>
             </div>
 
-            {/* Track Questions Navigator */}
+            {/* Track Questions - Segmented Navigator */}
             <div className="card" style={{ marginTop: 16 }}>
               <div className="card__header">Track Questions</div>
-              <div className="card__body flagged-nav">
-                <div className="flagged-grid">
-                  {questions.map((q, idx) => {
-                    const num = idx + 1
-                    const isCurrent = idx === currentIndex
-                    const isFlagged = flagged.has(q.id)
-                    const ua = userAnswers[q.id]
-                    const statusClass = ua?.submitted ? (ua.isCorrect ? 'correct' : 'wrong') : ''
-                    return (
-                      <button key={q.id} className={`flagged-pill ${statusClass} ${isFlagged ? 'flagged' : ''} ${isCurrent ? 'current' : ''}`} onClick={()=>{
+              <div className="card__body">
+                <div className="trk-controls">
+                  <div className="trk-filters">
+                    {['All','Unanswered','Correct','Wrong','Flagged'].map((f)=> (
+                      <button key={f} className={`chip ${trkFilter===f ? 'is-active' : ''}`} onClick={()=>setTrkFilter(f)}>{f}</button>
+                    ))}
+                  </div>
+                  <div className="trk-jump">
+                    <input
+                      type="number"
+                      min="1"
+                      max={questions.length}
+                      placeholder="#"
+                      className="trk-input"
+                      value={trkJump}
+                      onChange={(e)=> setTrkJump(e.target.value)}
+                      onKeyDown={(e)=>{
+                        if (e.key === 'Enter') {
+                          const val = parseInt(trkJump || '0', 10)
+                          if (val >= 1 && val <= questions.length) {
+                            const idx = val - 1
+                            setCurrentIndex(idx); loadCurrentQuestion(idx)
+                            setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                          }
+                        }
+                      }}
+                    />
+                    <button className="btn btn--ghost btn--icon" onClick={()=>{
+                      const val = parseInt(trkJump || '0', 10)
+                      if (val >= 1 && val <= questions.length) {
+                        const idx = val - 1
                         setCurrentIndex(idx); loadCurrentQuestion(idx)
                         setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
-                      }}>{num}</button>
+                      }
+                    }}>Go</button>
+                  </div>
+                </div>
+
+                <div className="trk-rows">
+                  {Array.from({ length: Math.ceil(questions.length / 50) }).map((_, rowIdx) => {
+                    const start = rowIdx * 50
+                    const end = Math.min(start + 50, questions.length)
+                    return (
+                      <div key={rowIdx} className="trk-row">
+                        <div className="trk-row__label">{start + 1}–{end}</div>
+                        <div className="trk-row__grid">
+                          {questions.slice(start, end).map((q, localIdx) => {
+                            const idx = start + localIdx
+                            const qid = q.id
+                            const ua = userAnswers[qid]
+                            const isCurrent = idx === currentIndex
+                            const isFlag = flagged.has(qid)
+                            let status = 'Unanswered'
+                            if (ua?.submitted) status = ua.isCorrect ? 'Correct' : 'Wrong'
+                            const matchesFilter = trkFilter==='All' || (trkFilter==='Flagged' ? isFlag : trkFilter===status)
+                            const classes = `seg seg--${status.toLowerCase()} ${isCurrent ? 'seg--current' : ''} ${isFlag ? 'seg--flagged' : ''} ${matchesFilter ? '' : 'seg--dim'}`
+                            return (
+                              <button
+                                key={qid}
+                                className={classes}
+                                aria-label={`Go to question ${idx+1}. Status: ${status}. ${isFlag ? 'Flagged.' : ''}`}
+                                title={`Q${idx+1} • ${status}${isFlag ? ' • flagged' : ''}`}
+                                onClick={() => {
+                                  setCurrentIndex(idx); loadCurrentQuestion(idx)
+                                  setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                                }}
+                              />
+                            )
+                          })}
+                        </div>
+                      </div>
                     )
                   })}
+                </div>
+
+                {Array.from(flagged).length > 0 && (
+                  <div className="trk-flagged-rail">
+                    <div className="trk-rail__label">Flagged</div>
+                    <div className="trk-rail__list">
+                      {questions.map((q, idx)=> flagged.has(q.id) ? (
+                        <button key={q.id} className="pill" onClick={()=>{ setCurrentIndex(idx); loadCurrentQuestion(idx); setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0) }}>{idx+1}</button>
+                      ) : null)}
+                    </div>
+                  </div>
+                )}
+
+                <div className="trk-legend">
+                  <span className="legend-item"><span className="legend-swatch swatch--correct" /> Correct</span>
+                  <span className="legend-item"><span className="legend-swatch swatch--wrong" /> Wrong</span>
+                  <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> Unanswered</span>
+                  <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
+                  <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>
                 </div>
               </div>
             </div>
@@ -479,20 +561,16 @@ export default function Practice() {
                   {refRanges && refRanges.length > 0 ? (
                     <div className="refacc">
                       {refRanges.map((grp) => {
-                        const isOpen = openGroups.has(grp.id)
+                        const isOpen = openGroupId === grp.id
                         return (
                           <div key={grp.id} className={`refacc__section ${isOpen ? 'is-open' : ''}`}>
                             <button className="refacc__btn" onClick={() => {
-                              setOpenGroups(prev => {
-                                const next = new Set(prev)
-                                if (next.has(grp.id)) next.delete(grp.id); else next.add(grp.id)
-                                return next
-                              })
+                              setOpenGroupId(prev => (prev === grp.id ? null : grp.id))
                             }}>
                               <span className="refacc__title">{grp.title}</span>
                               <span className="refacc__caret" aria-hidden>▾</span>
                             </button>
-                            <div className="refacc__panel" style={{ maxHeight: isOpen ? Math.min(400, (grp.items?.length || 0) * 40 + 24) : 0 }}>
+                            <div className="refacc__panel" style={{ maxHeight: isOpen ? 'none' : 0 }}>
                               <div className="refcat__items">
                                 {(grp.items || []).map((it, j) => (
                                   <div key={j} className="refrow">

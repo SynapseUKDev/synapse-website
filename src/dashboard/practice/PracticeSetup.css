@@ -117,6 +117,7 @@
 .setup__topics {
   display: grid;
   gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .setup__topic {
@@ -180,9 +181,17 @@
   font-weight: 500;
 }
 
-.setup__slider-wrapper {
-  width: 100%;
-}
+/* Quantity stepper + quick chips */
+.setup__qty { display: grid; gap: 10px; }
+.qty__control { display: inline-flex; align-items: center; gap: 8px; }
+.qty__btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; font-weight: 800; cursor: pointer; font-family: 'Urbanist', ui-sans-serif, system-ui; }
+.qty__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.qty__input { width: 92px; height: 36px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0 10px; text-align: center; font-weight: 800; font-family: 'Urbanist', ui-sans-serif, system-ui; }
+.qty__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; font-weight: 700; font-size: 14px; color: #334155; font-family: 'Urbanist', ui-sans-serif, system-ui; }
+.chip.is-active { background: #0b1637; color: #fff; border-color: #0b1637; }
+/* Keep legacy slider styles below in case used elsewhere */
+.setup__slider-wrapper { width: 100%; }
 
 .setup__slider {
   width: 100%;
@@ -422,6 +431,7 @@
   .setup__sidebar {
     position: static;
   }
+  .setup__topics { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {

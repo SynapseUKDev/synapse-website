@@ -13,7 +13,7 @@ function Sidebar({ user, onLogout }) {
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
     { id: 'question-bank', label: 'Question Bank', icon: LuFolder, to: '/dashboard/question-bank' },
     { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },
-    { id: 'mock-exams', label: 'Mock Exams', icon: LuTimer, to: '/dashboard/mock-exams' },
+    // { id: 'mock-exams', label: 'Mock Exams', icon: LuTimer, to: '/dashboard/mock-exams' },
   ]
 
   const toggleSidebar = () => {

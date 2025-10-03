@@ -113,11 +113,17 @@
   border-radius: 12px;
   padding: 12px 14px;
   box-shadow: 0 4px 12px rgba(11,22,55,0.06);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .15s ease, background .15s ease;
 }
+.tb-topic:hover { background: #f8fafc; box-shadow: 0 6px 14px rgba(11,22,55,0.08); transform: translateY(-1px); }
+.tb-topic:active { transform: translateY(0); }
+.tb-topic[disabled], .tb-topic.tb-topic--no-page { cursor: not-allowed; opacity: 0.6; }
 
 .tb-topic__name {
   font-weight: 600;
-  cursor: pointer;
 }
 
 .tb-topic__status {

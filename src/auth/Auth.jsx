@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
-import { authHeaders } from './token'
+import { authHeaders, clearTokens } from './token'
 import authImg2 from '../assets/auth/auth-img2.svg'
 import logo from '../assets/logo/logo.png'
 import AuthPanel from './auth-panel/AuthPanel.jsx'
@@ -22,6 +22,8 @@ function Auth() {
         })
         if (res.ok) {
           navigate('/dashboard', { replace: true })
+        } else if (res.status === 401) {
+          clearTokens()
         }
       } catch {
         // ignore

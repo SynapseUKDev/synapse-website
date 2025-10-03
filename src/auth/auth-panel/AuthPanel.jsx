@@ -15,6 +15,7 @@ function AuthPanel() {
   const [remember, setRemember] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
   const [step, setStep] = useState('form') // 'form' | 'check-email'
 
   return (
@@ -23,14 +24,14 @@ function AuthPanel() {
         <div className="auth-panel__tabs" role="tablist">
           <button
             className={`auth-panel__tab ${mode === 'signin' ? 'is-active' : ''}`}
-            onClick={() => setMode('signin')}
+            onClick={() => { setMode('signin'); setWarning(''); setError(''); setStep('form'); }}
             aria-selected={mode === 'signin'}
           >
             Sign In
           </button>
           <button
             className={`auth-panel__tab ${mode === 'signup' ? 'is-active' : ''}`}
-            onClick={() => setMode('signup')}
+            onClick={() => { setMode('signup'); setWarning(''); setError(''); }}
             aria-selected={mode === 'signup'}
           >
             Sign Up
@@ -54,6 +55,8 @@ function AuthPanel() {
         onSubmit={async (e) => {
           e.preventDefault()
           setError('')
+          setWarning('')
+          setStep('form')
           setLoading(true)
           try {
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -75,6 +78,10 @@ function AuthPanel() {
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
                 console.error('Signup error:', data)
+                if (res.status === 409) {
+                  setWarning(data?.error || 'An account with this email already exists. Please sign in instead.')
+                  return
+                }
                 throw new Error(data?.error || `Sign up failed (${res.status})`)
               }
               setStep('check-email')
@@ -107,6 +114,7 @@ function AuthPanel() {
           }
         }}
       >
+        
         {mode === 'signup' && (
           <>
             <label className="auth-panel__label">Username</label>
@@ -205,16 +213,37 @@ function AuthPanel() {
           </div>
         )}
 
-        {error && (
-          <div className="auth-panel__error" role="alert" style={{ marginTop: 12 }}>
-            {error}
+        <button
+          className="auth-panel__cta"
+          type="submit"
+          disabled={loading || (mode === 'signup' && step === 'check-email')}
+        >
+          {loading
+            ? 'Please wait...'
+            : mode === 'signin'
+              ? 'Sign In'
+              : step === 'check-email'
+                ? 'Verification sent'
+                : 'Create account'}
+        </button>
+
+        {warning && (
+          <div className="auth-panel__notice auth-panel__notice--warning" role="status" style={{ marginTop: 8 }}>
+            <div className="auth-panel__notice-header">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <h3>Account already exists</h3>
+            </div>
+            <p>{warning}</p>
           </div>
         )}
-
-        {step === 'form' && (
-          <button className="auth-panel__cta" type="submit" disabled={loading}>
-            {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create account'}
-          </button>
+        {error && (
+          <div className="auth-panel__notice auth-panel__notice--error" role="alert" style={{ marginTop: 8 }}>
+            <div className="auth-panel__notice-header">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <h3>There was a problem</h3>
+            </div>
+            <p>{error}</p>
+          </div>
         )}
       </form>
 

@@ -239,3 +239,14 @@
   margin: 8px 0 0;
   color: #2e3b63;
 }
+
+/* Notice variants */
+.auth-panel__notice--warning {
+  background: #FFF8E6;
+  border-color: #FFE2A8;
+}
+
+.auth-panel__notice--error {
+  background: #FFEDEE;
+  border-color: #FFC8CD;
+}

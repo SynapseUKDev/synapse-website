@@ -42,10 +42,9 @@ export default function PracticeSetup() {
       const allTopicIds = new Set(data.topics?.map(t => t.id) || [])
       setSelectedTopics(allTopicIds)
       
-      // Set default question count to max available
       const totalAvailable = (data.topics || []).reduce((sum, t) => sum + t.question_count, 0)
       if (totalAvailable > 0) {
-        setNumQuestions(Math.min(totalAvailable, 290))
+        setNumQuestions(totalAvailable)
       }
     } catch (error) {
       console.error('Error loading topics:', error)
@@ -72,7 +71,7 @@ export default function PracticeSetup() {
     if (newTotalAvailable === 0) {
       setNumQuestions(0)
     } else if (numQuestions === 0 || numQuestions > newTotalAvailable) {
-      setNumQuestions(Math.min(newTotalAvailable, 290))
+      setNumQuestions(newTotalAvailable)
     }
   }
 
@@ -97,7 +96,7 @@ export default function PracticeSetup() {
       .reduce((sum, t) => sum + t.question_count, 0)
   }
 
-  const getSliderMin = () => {
+  const getStepperMin = () => {
     const total = getTotalQuestions()
     return total > 0 ? 1 : 0
   }
@@ -130,9 +129,9 @@ export default function PracticeSetup() {
   }
 
   const totalAvailable = getTotalQuestions()
-  const maxQuestions = Math.min(totalAvailable, 290)
-  const sliderMin = getSliderMin()
-  const isSliderDisabled = totalAvailable === 0
+  const maxQuestions = totalAvailable
+  const stepperMin = getStepperMin()
+  const isDisabled = totalAvailable === 0
 
   return (
     <div className="setup">
@@ -197,20 +196,29 @@ export default function PracticeSetup() {
                 Number of Questions
                 <span className="setup__setting-info">{numQuestions} of {totalAvailable} available</span>
               </label>
-              <div className="setup__slider-wrapper">
-                <input
-                  type="range"
-                  min={sliderMin}
-                  max={Math.max(sliderMin, maxQuestions)}
-                  value={numQuestions}
-                  onChange={(e) => setNumQuestions(parseInt(e.target.value))}
-                  className={`setup__slider ${isSliderDisabled ? 'setup__slider--disabled' : ''}`}
-                  style={{'--progress': `${updateSliderProgress(numQuestions, sliderMin, Math.max(sliderMin, maxQuestions))}%`}}
-                  disabled={isSliderDisabled}
-                />
-                <div className="setup__slider-labels-new">
-                  <span className="setup__slider-label-left">{sliderMin}</span>
-                  <span className="setup__slider-label-right">{maxQuestions}</span>
+              <div className="setup__qty">
+                <div className="qty__control">
+                  <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={()=> setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
+                  <input
+                    type="number"
+                    className="qty__input"
+                    value={numQuestions}
+                    min={stepperMin}
+                    max={maxQuestions}
+                    disabled={isDisabled}
+                    onChange={(e)=>{
+                      const v = parseInt(e.target.value || '0', 10)
+                      if (Number.isNaN(v)) return
+                      setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
+                    }}
+                  />
+                  <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={()=> setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
+                </div>
+                <div className="qty__chips">
+                  {[10,25,50,100,200].filter(n => n <= maxQuestions).map(n => (
+                    <button key={n} className={`chip ${numQuestions===n ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(n)}>{n}</button>
+                  ))}
+                  <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
                 </div>
               </div>
             </div>

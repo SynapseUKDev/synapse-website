@@ -26,12 +26,17 @@ function ChapterCard({ specialty, onClick }) {
 function TopicRow({ topic, onClick }) {
   const hasPage = !!topic.has_page || !!(topic.textbook_pages && topic.textbook_pages[0]) || !!topic.page
   return (
-    <div className={`tb-topic ${hasPage ? 'tb-topic--has-page' : 'tb-topic--no-page'}`}>
-      <div className="tb-topic__name" onClick={onClick} role="button" tabIndex={0}>
+    <button
+      className={`tb-topic ${hasPage ? 'tb-topic--has-page' : 'tb-topic--no-page'}`}
+      onClick={hasPage ? onClick : undefined}
+      disabled={!hasPage}
+      aria-disabled={!hasPage}
+    >
+      <div className="tb-topic__name">
         {topic.topic_name || topic.name}
       </div>
       <div className="tb-topic__status">{hasPage ? 'Published' : 'Coming soon'}</div>
-    </div>
+    </button>
   )
 }
 
