@@ -46,11 +46,11 @@ function Navbar() {
           <img src={logo} alt="Synapse UK" className="nav__logo" />
         </Link>
 
-        <nav className="nav__links">
+        {/* <nav className="nav__links">
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
           <a href="#about">About Us</a>
-        </nav>
+        </nav> */}
 
         {user ? (
           <button

@@ -89,14 +89,14 @@ function Hero() {
             interactive textbooks with intelligent question banks to excel in your clinical years.
           </p>
           <div className="hero__actions">
-            <a href="#start" className="hero__cta-primary">
+            <a href="/login" className="hero__cta-primary">
               <span>Start Learning</span>
               <span className="hero__cta-arrow" aria-hidden>➜</span>
             </a>
-            <a href="#demo" className="hero__cta-secondary">
+            {/* <a href="#demo" className="hero__cta-secondary">
               <span className="hero__play" aria-hidden>▶</span>
               Watch Demo
-            </a>
+            </a> */}
           </div>
         </div>
 
