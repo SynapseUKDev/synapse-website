@@ -4,34 +4,30 @@ import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import { authHeaders } from '../auth/token'
 import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen } from 'react-icons/lu'
+import LoadingScreen from '../components/loading/LoadingScreen'
+import useStaleJson from '../utils/useStaleJson'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user } = useOutletContext()
-  const [summary, setSummary] = useState({ study_streak_days: 0, time_today_minutes: 0, questions_today: 0, last_specialty: null, targets: { time_minutes: 180, questions: 30 } })
-  const [trend, setTrend] = useState([])
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+  const summaryReq = useStaleJson(`${API_BASE}/dashboard/summary`, {
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    staleMs: 60_000,
+    persist: 'session',
+    key: 'dashboard:summary',
+  })
+  const trendReq = useStaleJson(`${API_BASE}/qbank/performance/trend`, {
+    headers: authHeaders(),
+    staleMs: 5 * 60_000,
+    persist: 'session',
+    key: 'dashboard:trend',
+    transform: (t) => ({ days: Array.isArray(t.days) ? t.days : buildDemoTrend() }),
+  })
 
-  useEffect(() => {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-    ;(async () => {
-      try {
-        const res = await fetch(`${API_BASE}/dashboard/summary`, { credentials: 'include', headers: { 'Content-Type': 'application/json', ...authHeaders() } })
-        if (res.ok) {
-          const json = await res.json()
-          setSummary(json)
-        }
-        const tRes = await fetch(`${API_BASE}/qbank/performance/trend`, { credentials: 'include', headers: authHeaders() })
-        if (tRes.ok) {
-          const t = await tRes.json()
-          const apiDays = Array.isArray(t.days) ? t.days : []
-          // Fallback demo data so you can preview styling when no data
-          setTrend(apiDays.length > 0 ? apiDays : buildDemoTrend())
-        } else {
-          setTrend(buildDemoTrend())
-        }
-      } catch {}
-    })()
-  }, [])
+  const summary = summaryReq.data || { study_streak_days: 0, time_today_minutes: 0, questions_today: 0, last_specialty: null, targets: { time_minutes: 180, questions: 30 } }
+  const trend = trendReq.data?.days || buildDemoTrend()
+  const loading = summaryReq.loading && !summaryReq.data
 
   const continueQuestions = () => {
     const spec = summary.last_specialty
@@ -42,6 +38,14 @@ export default function Dashboard() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="qb">
+        <LoadingScreen message="Loading dashboard..." inline />
+      </div>
+    )
+  }
+
   return (
     <div className="qb">
       <h1 className="qb__title">Dashboard</h1>
@@ -50,18 +54,18 @@ export default function Dashboard() {
       <div className="qb__stats db-stats">
         <div className="qb-stat">
           <div className="qb-stat__top"><div className="qb-stat__title">Study Streak</div><div className="qb-stat__icon"><LuFlame size={20} /></div></div>
-          <div className="qb-stat__value">{summary.study_streak_days} days</div>
+          <div className="qb-stat__value">{summary?.study_streak_days ?? 0} days</div>
           <div className="qb-stat__sub">Keep it up!</div>
         </div>
         <div className="qb-stat">
           <div className="qb-stat__top"><div className="qb-stat__title">Study Time</div><div className="qb-stat__icon"><LuTimer size={20} /></div></div>
-          <div className="qb-stat__value">{summary.time_today_minutes} mins</div>
-          <div className="qb-stat__sub">Target: {summary.targets?.time_minutes || 180} mins</div>
+          <div className="qb-stat__value">{summary?.time_today_minutes ?? 0} mins</div>
+          <div className="qb-stat__sub">Target: {summary?.targets?.time_minutes || 180} mins</div>
         </div>
         <div className="qb-stat">
           <div className="qb-stat__top"><div className="qb-stat__title">Questions Today</div><div className="qb-stat__icon"><LuTarget size={20} /></div></div>
-          <div className="qb-stat__value">{summary.questions_today}/{summary.targets?.questions || 30}</div>
-          <div className="db-progress"><div className="db-progress__fill" style={{ width: `${Math.min(100, Math.round(((summary.questions_today || 0) / (summary.targets?.questions || 30)) * 100))}%` }} /></div>
+          <div className="qb-stat__value">{summary?.questions_today ?? 0}/{summary?.targets?.questions || 30}</div>
+          <div className="db-progress"><div className="db-progress__fill" style={{ width: `${Math.min(100, Math.round((((summary?.questions_today || 0) / (summary?.targets?.questions || 30)) * 100))) }%` }} /></div>
         </div>
       </div>
 

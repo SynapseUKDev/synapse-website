@@ -4,14 +4,26 @@ import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { authHeaders } from '../../auth/token'
 
-function ChapterCard({ specialty, onClick }) {
+function ChapterCard({ specialty, onClick, priority = false }) {
   const bgStyle = {
     background: `linear-gradient(135deg, ${specialty.icon_bg_start || '#2E2CC4'} 0%, ${specialty.icon_bg_end || '#3C92C1'} 100%)`
   }
+  const img = specialty.thumbnail_url
   return (
     <button className="tb-card" onClick={onClick} aria-label={`Open ${specialty.specialty_name || specialty.name}`}>
       <div className="tb-card__cover" style={bgStyle}>
-        <div className="tb-card__spine" />
+        {img && (
+          <img
+            className="tb-card__img"
+            src={`${img}?width=640&height=360&quality=65&format=webp&resize=cover`}
+            srcSet={`${img}?width=320&height=180&quality=60&format=webp&resize=cover 320w, ${img}?width=640&height=360&quality=65&format=webp&resize=cover 640w, ${img}?width=960&height=540&quality=65&format=webp&resize=cover 960w`}
+            sizes="(max-width: 640px) 90vw, (max-width: 1100px) 45vw, 320px"
+            alt=""
+            loading={priority ? 'eager' : 'lazy'}
+            fetchpriority={priority ? 'high' : 'auto'}
+            decoding="async"
+          />
+        )}
       </div>
       <div className="tb-card__label">
         <div className="tb-card__title">{specialty.specialty_name || specialty.name}</div>
@@ -83,6 +95,37 @@ export default function Textbook() {
     return []
   }, [data])
 
+  useEffect(() => {
+    if (!chapterList || chapterList.length === 0) return
+    const url = chapterList[0]?.thumbnail_url
+    try {
+      if (url) {
+        const origin = new URL(url).origin
+        const link = document.createElement('link')
+        link.rel = 'preconnect'
+        link.href = origin
+        link.crossOrigin = 'anonymous'
+        document.head.appendChild(link)
+        // remove on cleanup
+        return () => { try { document.head.removeChild(link) } catch {} }
+      }
+    } catch {}
+  }, [chapterList])
+
+  useEffect(() => {
+    if (!chapterList || chapterList.length === 0) return
+    const controllers = []
+    chapterList.forEach((spec) => {
+      if (!spec?.thumbnail_url) return
+      const img = new Image()
+      img.decoding = 'async'
+      img.loading = 'eager'
+      img.src = `${spec.thumbnail_url}?width=320&height=180&quality=60&format=webp&resize=cover`
+      controllers.push(img)
+    })
+    return () => { controllers.length = 0 }
+  }, [chapterList])
+
   if (loading) {
     return (
       <div className="tb-page">
@@ -125,10 +168,11 @@ export default function Textbook() {
         <p className="tb-sub">Browse specialties as chapters. Click a chapter to view its topics.</p>
       </header>
       <div className="tb-grid">
-        {chapterList.map((spec) => (
+        {chapterList.map((spec, idx) => (
           <ChapterCard
             key={spec.specialty_id || spec.id}
             specialty={spec}
+            priority={idx < 6}
             onClick={() => navigate(`/dashboard/textbook/specialty/${spec.specialty_slug || spec.slug}`)}
           />
         ))}

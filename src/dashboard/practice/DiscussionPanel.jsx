@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import './Practice.css'
 import { LuThumbsUp } from 'react-icons/lu'
 
@@ -163,7 +163,7 @@ export default function DiscussionPanel({ questionId, API_BASE }) {
                   <div className="comment__body">
                     <div className="comment__meta">
                       <span className="comment__author">{c.user?.username || 'User'}</span>
-                      <span className="comment__time">{new Date(c.created_at).toLocaleString()}</span>
+                      <span className="comment__time">{new Date(c.created_at).toLocaleDateString()}, {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <div className="comment__content">{c.content}</div>
                     <div className="comment__actions">
@@ -200,7 +200,7 @@ export default function DiscussionPanel({ questionId, API_BASE }) {
                               <div className="comment__body">
                                 <div className="comment__meta">
                                   <span className="comment__author">{r.user?.username || 'User'}</span>
-                                  <span className="comment__time">{new Date(r.created_at).toLocaleString()}</span>
+                                  <span className="comment__time">{new Date(r.created_at).toLocaleDateString()}, {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                                 <div className="comment__content">{r.content}</div>
                                 <div className="comment__actions">

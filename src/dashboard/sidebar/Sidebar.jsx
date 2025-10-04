@@ -60,7 +60,7 @@ function Sidebar({ user, onLogout }) {
             </div>
           </div>
           <div className="sidebar__user-actions">
-            <button className="sidebar__settings">Settings</button>
+            {/* <button className="sidebar__settings">Settings</button> */}
             <button className="sidebar__logout" onClick={onLogout}>Logout</button>
           </div>
         </div>

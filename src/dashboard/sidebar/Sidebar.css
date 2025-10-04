@@ -6,8 +6,8 @@
   align-self: start;
   height: 100vh;
   width: 280px;
-  border-right: 1px solid #e5e7eb;
-  background: #fff;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, var(--syn-deep-navy), var(--syn-ink));
   display: flex;
   flex-direction: column;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -21,7 +21,9 @@
 
 .sidebar__brand {
   padding: 12px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, rgba(32,229,246,0.12), rgba(255,255,255,0.04));
+  backdrop-filter: saturate(120%) blur(6px);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -39,12 +41,14 @@
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.55);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
 }
 
 .sidebar__brand-text {
   font-weight: 700;
   font-size: 16px;
-  color: #0b1a56;
+  color: #e6edff;
   letter-spacing: 0.5px;
   white-space: nowrap;
   opacity: 1;
@@ -70,35 +74,37 @@
   gap: 12px;
   text-align: left;
   border-radius: 12px;
-  border: 1px solid transparent;
-  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
   padding: 0 12px;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   font-family: 'Urbanist', sans-serif;
-  color: #64748b;
+  color: #b8c2e0;
   position: relative;
   overflow: hidden;
 }
 
 .sidebar__item:hover {
-  background: #eef4ff;
-  border-color: #e0e7ff;
-  color: #1e40af;
+  background: rgba(32,229,246,0.08);
+  border-color: rgba(32,229,246,0.35);
+  color: #e9fbff;
 }
 
 .sidebar__item--active {
-  background: #e9f0ff;
-  border-color: #dbe6ff;
-  color: #1e40af;
+  background: rgba(255,189,89,0.24);
+  border-color: rgba(255,189,89,0.75);
+  color: #fff8ef;
+  box-shadow: inset 0 0 0 1px rgba(255,189,89,0.35);
 }
 
 .sidebar__icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  color: currentColor;
 }
 
 .sidebar__text {
@@ -119,7 +125,8 @@
 .sidebar__user {
   margin-top: auto;
   padding: 16px;
-  border-top: 1px solid #eef2f7;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
   opacity: 1;
   transition: opacity 0.2s ease-in-out;
 }
@@ -153,8 +160,8 @@
 .sidebar__avatar-placeholder {
   width: 100%;
   height: 100%;
-  background: #0b1a56;
-  color: #fff;
+  background: var(--syn-gold);
+  color: var(--syn-deep-navy);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,13 +177,13 @@
 .sidebar__user-name {
   font-weight: 600;
   font-size: 14px;
-  color: #1f2937;
+  color: #f4f6fc;
   margin-bottom: 2px;
 }
 
 .sidebar__user-role {
   font-size: 12px;
-  color: #64748b;
+  color: #97a1c2;
 }
 
 .sidebar__user-actions {
@@ -189,31 +196,32 @@
   flex: 1;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   font-family: 'Urbanist', sans-serif;
-  color: #64748b;
+  color: #dbe6ff;
 }
 
 .sidebar__settings:hover,
 .sidebar__logout:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: rgba(32,229,246,0.1);
+  border-color: rgba(32,229,246,0.45);
 }
 
 .sidebar__logout:hover {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #dc2626;
+  background: rgba(255,189,89,0.12);
+  border-color: rgba(255,189,89,0.45);
+  color: #ffe9c7;
 }
 
 .sidebar__footer {
   padding: 12px;
-  border-top: 1px solid #eef2f7;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
   display: flex;
   justify-content: flex-end;
 }
@@ -226,8 +234,8 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -236,14 +244,14 @@
 }
 
 .sidebar__collapse:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: rgba(32,229,246,0.1);
+  border-color: rgba(32,229,246,0.45);
 }
 
 .sidebar__collapse-icon {
   width: 18px;
   height: 18px;
-  color: #64748b;
+  color: #c8d4ff;
   transition: transform 0.3s ease-in-out;
 }
 

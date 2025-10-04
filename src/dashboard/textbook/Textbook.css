@@ -46,8 +46,8 @@
 /* Dashboard grid (chapters) */
 .tb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
 }
 
 .tb-card {
@@ -58,34 +58,41 @@
   cursor: pointer;
   background: transparent;
   text-align: left;
-  height: 212px; /* ensure consistent card height incl. cover + label */
+  height: 260px; /* larger card height to showcase thumbnail */
+  transition: transform .15s ease, box-shadow .2s ease;
 }
+.tb-card:hover { transform: translateY(-2px); }
+.tb-card:focus-visible { outline: 3px solid #bcd9ff; outline-offset: 2px; border-radius: 14px; }
 
 .tb-card__cover {
-  height: 160px;
-  border-radius: 12px;
+  height: auto;
+  border-radius: 14px;
   box-shadow: 0 10px 20px rgba(11,22,55,0.12);
-  overflow: hidden; /* keep spine inside */
+  overflow: hidden;
   position: relative;
+  aspect-ratio: 16 / 9; /* match 1366x768 */
 }
 
-.tb-card__spine {
+/* Thumbnail image overlayed on gradient cover */
+.tb-card__img {
   position: absolute;
-  left: 10px;
-  top: 8px;
-  bottom: 8px;
-  width: 10px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.35);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(1.05) contrast(1.03);
 }
+
+/* spine removed */
 
 .tb-card__label {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .tb-card__title {
-  font-weight: 700;
-  font-size: 16px;
+  font-weight: 800;
+  font-size: 17px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -95,6 +102,11 @@
   color: #7a83a2;
   font-size: 13px;
   margin-top: 4px;
+}
+
+/* Subtle lift and glow on hover */
+.tb-card:hover .tb-card__cover {
+  box-shadow: 0 14px 26px rgba(11,22,55,0.16);
 }
 
 /* Specialty topic list */

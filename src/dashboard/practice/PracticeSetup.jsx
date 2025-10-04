@@ -178,6 +178,7 @@ export default function PracticeSetup() {
                     onChange={() => toggleTopic(topic.id)}
                     className="setup__topic-checkbox"
                   />
+                  <span className="setup__checkbox" aria-hidden="true" />
                   <div className="setup__topic-content">
                     <div className="setup__topic-name">{topic.name}</div>
                     <div className="setup__topic-count">{topic.question_count} questions available</div>
@@ -191,79 +192,80 @@ export default function PracticeSetup() {
             <h2 className="setup__section-title">Question Settings</h2>
             <p className="setup__section-subtitle">Customize your question experience</p>
 
-            <div className="setup__setting">
-              <label className="setup__setting-label">
-                Number of Questions
-                <span className="setup__setting-info">{numQuestions} of {totalAvailable} available</span>
-              </label>
-              <div className="setup__qty">
-                <div className="qty__control">
-                  <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={()=> setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
-                  <input
-                    type="number"
-                    className="qty__input"
-                    value={numQuestions}
-                    min={stepperMin}
-                    max={maxQuestions}
-                    disabled={isDisabled}
-                    onChange={(e)=>{
-                      const v = parseInt(e.target.value || '0', 10)
-                      if (Number.isNaN(v)) return
-                      setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
-                    }}
-                  />
-                  <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={()=> setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
-                </div>
-                <div className="qty__chips">
-                  {[10,25,50,100,200].filter(n => n <= maxQuestions).map(n => (
-                    <button key={n} className={`chip ${numQuestions===n ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(n)}>{n}</button>
-                  ))}
-                  <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
-                </div>
-              </div>
-            </div>
-
-            <div className="setup__setting">
-              <div className="setup__toggle-row">
-                <div className="setup__toggle-container">
-                  <input
-                    type="checkbox"
-                    id="timer-toggle"
-                    checked={timerEnabled}
-                    onChange={(e) => setTimerEnabled(e.target.checked)}
-                    className="setup__toggle-input"
-                  />
-                  <label htmlFor="timer-toggle" className="setup__toggle-slider"></label>
-                </div>
-                <label htmlFor="timer-toggle" className="setup__toggle-label">
-                  Enable Timer
-                </label>
-              </div>
-              
-              {timerEnabled && (
-                <div className="setup__timer-setting">
+            <div className="qs-grid">
+              <div className="qs-col">
+                <div className="setup__setting">
                   <label className="setup__setting-label">
-                    Session Timer
-                    <span className="setup__setting-info">{timerMinutes} minutes</span>
+                    Number of Questions
                   </label>
-                  <div className="setup__slider-wrapper">
-                    <input
-                      type="range"
-                      min="10"
-                      max="120"
-                      step="5"
-                      value={timerMinutes}
-                      onChange={(e) => setTimerMinutes(parseInt(e.target.value))}
-                      className="setup__slider"
-                      style={{'--progress': `${updateSliderProgress(timerMinutes, 10, 120)}%`}}
-                    />
-                    <div className="setup__slider-labels-new">
-                      <span className="setup__slider-label-left">10 mins</span>
-                      <span className="setup__slider-label-right">120 mins</span>
+                  <div className="setup__qty">
+                    <div className="qty__control">
+                      <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={()=> setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
+                      <input
+                        type="number"
+                        className="qty__input"
+                        value={numQuestions}
+                        min={stepperMin}
+                        max={maxQuestions}
+                        disabled={isDisabled}
+                        onChange={(e)=>{
+                          const v = parseInt(e.target.value || '0', 10)
+                          if (Number.isNaN(v)) return
+                          setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
+                        }}
+                      />
+                      <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={()=> setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
+                    </div>
+                    <div className="qty__chips">
+                      {[10,25,50,100,200].filter(n => n <= maxQuestions).map(n => (
+                        <button key={n} className={`chip ${numQuestions===n ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(n)}>{n}</button>
+                      ))}
+                      <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+              <div className="qs-col">
+                <div className="setup__setting">
+                  <div className="setup__toggle-row">
+                    <label htmlFor="timer-toggle" className="setup__toggle-label">
+                      Enable Timer
+                    </label>
+                    <div className="setup__toggle-container">
+                      <input
+                        type="checkbox"
+                        id="timer-toggle"
+                        checked={timerEnabled}
+                        onChange={(e) => setTimerEnabled(e.target.checked)}
+                        className="setup__toggle-input"
+                      />
+                      <label htmlFor="timer-toggle" className="setup__toggle-slider"></label>
+                    </div>
+                    <span className={`setup__timer-inline ${!timerEnabled ? 'is-off' : ''}`}>
+                      {timerEnabled ? `${timerMinutes} minutes` : 'Off'}
+                    </span>
+                  </div>
+                  <div className={`setup__timer-setting ${!timerEnabled ? 'is-dim' : ''}`}>
+                    <div className="setup__slider-wrapper">
+                      <input
+                        type="range"
+                        min="10"
+                        max="120"
+                        step="5"
+                        value={timerMinutes}
+                        onChange={(e) => setTimerMinutes(parseInt(e.target.value))}
+                        className={`setup__slider ${!timerEnabled ? 'setup__slider--disabled' : ''}`}
+                        style={{'--progress': `${updateSliderProgress(timerMinutes, 10, 120)}%`}}
+                        disabled={!timerEnabled}
+                      />
+                      <div className="setup__slider-labels-new">
+                        <span className="setup__slider-label-left">10 mins</span>
+                        <span className="setup__slider-label-right">120 mins</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

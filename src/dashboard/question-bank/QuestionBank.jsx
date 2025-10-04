@@ -5,21 +5,7 @@ import * as Lu from 'react-icons/lu'
 import { LuTarget, LuListCheck, LuFlame, LuTimer } from 'react-icons/lu'
 import './QuestionBank.css'
 import LoadingScreen from '../../components/loading/LoadingScreen'
-
-function StatCard({ title, value, sub, Icon }) {
-  return (
-    <div style={{ background: '#fff', border: '1px solid #eef2f7', borderRadius: 16, padding: 20, position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ color: '#64748b', fontWeight: 700 }}>{title}</div>
-        <div style={{ background: '#fff7ed', border: '1px solid #ffe7cc', color: '#fb923c', width: 36, height: 36, borderRadius: 10, display: 'grid', placeItems: 'center' }}>
-          {Icon ? <Icon size={18} /> : null}
-        </div>
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: '#0b1637', marginTop: 12 }}>{value}</div>
-      {sub && <div style={{ marginTop: 6, color: '#8da2bf', fontSize: 13 }}>{sub}</div>}
-    </div>
-  )
-}
+import useStaleJson from '../../utils/useStaleJson'
 
 function SpecialtyCard({ item }) {
   const pct = item.total_questions > 0 ? Math.round((item.completed_questions / item.total_questions) * 100) : 0
@@ -66,29 +52,37 @@ function SpecialtyCard({ item }) {
 
 export default function QuestionBank() {
   const { user } = useOutletContext()
-  const [summary, setSummary] = useState(null)
-  const [specialties, setSpecialties] = useState([])
-  const [loading, setLoading] = useState(true)
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-  useEffect(() => {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-    ;(async () => {
-      try {
-        const sRes = await fetch(`${API_BASE}/qbank/summary`, { credentials: 'include', cache: 'no-store', headers: authHeaders() })
-        const tRes = await fetch(`${API_BASE}/qbank/specialties`, { credentials: 'include', cache: 'no-store', headers: authHeaders() })
-        const s = sRes.ok ? await sRes.json().catch(() => ({})) : {}
-        const t = tRes.ok ? await tRes.json().catch(() => ({})) : {}
-        setSummary(s.summary || { total_answered: 0, accuracy_pct: 0, avg_time_ms: 0 })
-        setSpecialties(Array.isArray(t.specialties) ? t.specialties : [])
-      } catch (e) {
-        console.warn('Failed to load question bank data', e)
-        setSummary({ total_answered: 0, accuracy_pct: 0, avg_time_ms: 0 })
-        setSpecialties([])
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [])
+  const summaryReq = useStaleJson(`${API_BASE}/qbank/summary`, {
+    headers: authHeaders(),
+    staleMs: 60_000,
+    persist: 'session',
+    key: 'qbank:summary',
+    transform: (s) => s && s.summary ? s.summary : { total_answered: 0, accuracy_pct: 0, avg_time_ms: 0 },
+  })
+  const dashReq = useStaleJson(`${API_BASE}/dashboard/summary`, {
+    headers: authHeaders(),
+    staleMs: 60_000,
+    persist: 'session',
+    key: 'dashboard:summary',
+  })
+  const specialtiesReq = useStaleJson(`${API_BASE}/qbank/specialties`, {
+    headers: authHeaders(),
+    staleMs: 5 * 60_000,
+    persist: 'session',
+    key: 'qbank:specialties',
+    transform: (t) => (Array.isArray(t.specialties) ? t.specialties : []),
+  })
+
+  const summary = {
+    total_answered: summaryReq.data?.total_answered || 0,
+    accuracy_pct: summaryReq.data?.accuracy_pct || 0,
+    avg_time_ms: summaryReq.data?.avg_time_ms || 0,
+    study_streak_days: dashReq.data?.study_streak_days || 0,
+  }
+  const specialties = specialtiesReq.data || []
+  const loading = (summaryReq.loading && !summaryReq.data) || (specialtiesReq.loading && !specialtiesReq.data)
 
   if (loading) {
     return (
@@ -116,7 +110,7 @@ export default function QuestionBank() {
         </div>
         <div className="qb-stat">
           <div className="qb-stat__top"><div className="qb-stat__title">Study Streak</div><div className="qb-stat__icon"><LuFlame size={20} /></div></div>
-          <div className="qb-stat__value">—</div>
+          <div className="qb-stat__value">{summary?.study_streak_days ?? 0} days</div>
           <div className="qb-stat__sub">Keep it going!</div>
         </div>
         <div className="qb-stat">

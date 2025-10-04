@@ -2,6 +2,31 @@
   font-family: 'Urbanist', ui-sans-serif, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   color: #0B1637;
+
+  /* Synapse theme palette */
+  --syn-deep-navy: #050a30;   /* base bg / headings */
+  --syn-ink: #0a1043;         /* darker accent */
+  --syn-off-white: #f4f6fc;   /* app background */
+  --syn-gold: #ffbd59;        /* highlight / call-to-action */
+  --syn-cyan: #20e5f6;        /* accent / info */
+
+  /* Derived shades */
+  --syn-navy-700: #0b1637;
+  --syn-navy-600: #111a3f;
+  --syn-muted: #64748b;
+  --syn-border: #e5e7eb;
+  --syn-card: #ffffff;
+
+  /* Surfaces */
+  --surface-app: var(--syn-off-white);
+  --surface-card: var(--syn-card);
+  --surface-tint-blue: #eef3ff;
+  --surface-tint-cyan: #e6fbfe;
+  --surface-tint-gold: #fff6e0;
+
+  /* Gradients */
+  --grad-primary: linear-gradient(180deg, #143db8, #061A86);
+  --grad-cta: linear-gradient(180deg, #ffd57f, #ffbd59);
 }
 
 * { box-sizing: border-box; }
