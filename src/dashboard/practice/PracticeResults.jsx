@@ -1,6 +1,7 @@
 import React from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './PracticeResults.css'
+import './PracticeSetup.css'
 import { LuChevronLeft, LuShare2 } from 'react-icons/lu'
 
 function useResultsData() {
@@ -20,12 +21,12 @@ export default function PracticeResults() {
   return (
     <div className="prr">
       <div className="prr__top">
-        <button className="btn btn--ghost btn--icon" onClick={() => navigate('/dashboard/question-bank')}>
+        <button className="setup__back" onClick={() => navigate('/dashboard/question-bank')}>
           <LuChevronLeft /> Back to Question Bank
         </button>
-        <div className="prr__actions">
+        {/* <div className="prr__actions">
           <button className="btn btn--ghost btn--icon"><LuShare2 /> Share Results</button>
-        </div>
+        </div> */}
       </div>
 
       <h1 className="prr__title">Session Complete!</h1>
