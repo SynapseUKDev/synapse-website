@@ -47,8 +47,96 @@ function TopicRow({ topic, onClick }) {
       <div className="tb-topic__name">
         {topic.topic_name || topic.name}
       </div>
-      <div className="tb-topic__status">{hasPage ? 'Published' : 'Coming soon'}</div>
     </button>
+  )
+}
+
+function Chevron({ open }) {
+  return (
+    <span className={`tb-chevron ${open ? 'tb-chevron--open' : ''}`} aria-hidden="true">⌄</span>
+  )
+}
+
+function SubtopicNode({ node, depth, onSubtopicClick, expandedSet, toggleExpanded }) {
+  const children = Array.isArray(node.children) ? node.children : []
+  const hasChildren = children.length > 0
+  const hasPage = !!node.has_page || !!(node.textbook_pages && node.textbook_pages[0])
+  const isOpen = expandedSet.has(node.slug)
+  return (
+    <div className="tb-subtopic-row" style={{ ['--depth']: depth }}>
+      <div className="tb-subtopic-row__head">
+        {hasChildren ? (
+          <button
+            type="button"
+            className="tb-topic tb-topic--parent tb-topic--toggle"
+            onClick={() => toggleExpanded(node.slug)}
+            aria-expanded={isOpen ? 'true' : 'false'}
+            aria-controls={`subs-${node.slug}`}
+          >
+            <div className="tb-topic__name">{node.name}</div>
+            <Chevron open={isOpen} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={`tb-topic ${hasPage ? 'tb-topic--has-page' : 'tb-topic--no-page'}`}
+            onClick={hasPage ? () => onSubtopicClick(node) : undefined}
+            disabled={!hasPage}
+            aria-disabled={!hasPage}
+          >
+            <div className="tb-topic__name">{node.name}</div>
+          </button>
+        )}
+      </div>
+      {hasChildren && isOpen && (
+        <div id={`subs-${node.slug}`} className="tb-subtopics">
+          {children.map((child) => (
+            <SubtopicNode
+              key={child.id}
+              node={child}
+              depth={(depth || 0) + 1}
+              onSubtopicClick={onSubtopicClick}
+              expandedSet={expandedSet}
+              toggleExpanded={toggleExpanded}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TopicWithSubtopics({ topic, expandedSet, toggleExpanded, onSubtopicClick }) {
+  const subtopics = Array.isArray(topic.subtopics) ? topic.subtopics : []
+  const isOpen = expandedSet.has(topic.slug)
+  return (
+    <div className="tb-topic-group">
+      <button
+        className="tb-topic tb-topic--parent"
+        onClick={() => toggleExpanded(topic.slug)}
+        aria-expanded={isOpen ? 'true' : 'false'}
+        aria-controls={`subs-${topic.slug}`}
+      >
+        <div className="tb-topic__name">
+          {topic.name}
+        </div>
+        <Chevron open={isOpen} />
+      </button>
+      {isOpen && (
+        <div id={`subs-${topic.slug}`} className="tb-subtopics">
+          {subtopics.map((st) => (
+            <SubtopicNode
+              key={st.id}
+              node={st}
+              depth={1}
+              onSubtopicClick={onSubtopicClick}
+              expandedSet={expandedSet}
+              toggleExpanded={toggleExpanded}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -58,8 +146,18 @@ export default function Textbook() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
+  const [expandedSet, setExpandedSet] = useState(new Set())
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+  // Toggle expand/collapse for topics/subtopics by slug
+  const toggleExpanded = (slugValue) => {
+    setExpandedSet((prev) => {
+      const next = new Set(prev)
+      if (next.has(slugValue)) next.delete(slugValue); else next.add(slugValue)
+      return next
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -94,6 +192,21 @@ export default function Textbook() {
     if (data.specialty) return [data.specialty]
     return []
   }, [data])
+
+  // Default-expand all topics and subtopics once when the specialty topic list is available
+  useEffect(() => {
+    if (!slug || !data?.topics) return
+    const next = new Set()
+    const addAllWithChildren = (nodes) => {
+      for (const n of nodes || []) {
+        if (n.slug) next.add(n.slug)
+        if (Array.isArray(n.subtopics) && n.subtopics.length > 0) addAllWithChildren(n.subtopics)
+        if (Array.isArray(n.children) && n.children.length > 0) addAllWithChildren(n.children)
+      }
+    }
+    addAllWithChildren(data.topics)
+    setExpandedSet(next)
+  }, [slug, data?.topics])
 
   useEffect(() => {
     if (!chapterList || chapterList.length === 0) return
@@ -149,9 +262,23 @@ export default function Textbook() {
           <p className="tb-sub">Select a topic to open the chapter.</p>
         </header>
         <div className="tb-topic-list">
-          {data.topics.map((t) => (
-            <TopicRow key={t.id} topic={t} onClick={() => navigate(`/dashboard/textbook/topic/${t.slug}`)} />
-          ))}
+          {data.topics.map((t) => {
+            if (t.has_subtopics && Array.isArray(t.subtopics) && t.subtopics.length > 0) {
+              return (
+                <TopicWithSubtopics
+                  key={t.id}
+                  topic={t}
+                  expandedSet={expandedSet}
+                  toggleExpanded={toggleExpanded}
+                  onSubtopicClick={(st) => navigate(`/dashboard/textbook/topic/${st.slug}`)}
+                />
+              )
+            }
+            const hasPage = !!t.has_page || !!(t.textbook_pages && t.textbook_pages[0]) || !!t.page
+            return (
+              <TopicRow key={t.id} topic={t} onClick={hasPage ? () => navigate(`/dashboard/textbook/topic/${t.slug}`) : undefined} />
+            )
+          })}
         </div>
       </div>
     )

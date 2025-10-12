@@ -55,6 +55,10 @@ export default function TextbookTopic() {
   const [data, setData] = useState(null)
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
+  // Navigation state across topics/subtopics within the same specialty
+  const [navItems, setNavItems] = useState([])
+  const [currentIdx, setCurrentIdx] = useState(-1)
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -74,6 +78,64 @@ export default function TextbookTopic() {
     load()
     return () => { cancelled = true }
   }, [topicSlug, API_BASE])
+
+  // Load specialty topics to build previous/next navigation
+  useEffect(() => {
+    if (!data?.topic?.specialties?.slug) return
+    let cancelled = false
+    async function loadNav() {
+      try {
+        const specSlug = data.topic.specialties.slug
+        const res = await fetch(`${API_BASE}/textbook/specialty/${specSlug}`, { credentials: 'include', headers: { 'Content-Type': 'application/json', ...authHeaders() } })
+        if (!res.ok) return
+        const json = await res.json()
+        const topics = Array.isArray(json?.topics) ? json.topics : []
+        // Flatten into linear list of items that have a page
+        const items = []
+        const pushIfHasPage = (label, slug, hasPage, pages) => {
+          const has = !!hasPage || (Array.isArray(pages) && pages.length > 0)
+          if (has) items.push({ name: label, slug })
+        }
+        const walkSubtopics = (nodes) => {
+          for (const n of nodes || []) {
+            pushIfHasPage(n.name, n.slug, n.has_page, n.textbook_pages)
+            if (Array.isArray(n.children) && n.children.length > 0) walkSubtopics(n.children)
+          }
+        }
+        for (const t of topics) {
+          if (t.has_subtopics && Array.isArray(t.subtopics) && t.subtopics.length > 0) {
+            walkSubtopics(t.subtopics)
+          } else {
+            pushIfHasPage(t.name, t.slug, t.has_page, t.textbook_pages)
+          }
+        }
+        if (!cancelled) {
+          setNavItems(items)
+          const curr = data?.subtopic?.slug || data?.topic?.slug
+          const idx = items.findIndex((it) => it.slug === curr)
+          setCurrentIdx(idx)
+        }
+      } catch {}
+    }
+    loadNav()
+    return () => { cancelled = true }
+  }, [data, API_BASE])
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'ArrowLeft' && currentIdx > 0) {
+        const prev = navItems[currentIdx - 1]
+        if (prev?.slug) navigate(`/dashboard/textbook/topic/${prev.slug}`)
+      }
+      if (e.key === 'ArrowRight' && currentIdx >= 0 && currentIdx < navItems.length - 1) {
+        const next = navItems[currentIdx + 1]
+        if (next?.slug) navigate(`/dashboard/textbook/topic/${next.slug}`)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [currentIdx, navItems])
 
   const blocksBySection = useMemo(() => {
     const map = {}
@@ -103,6 +165,12 @@ export default function TextbookTopic() {
   if (!data) return null
 
   const topSections = (data.sections || []).filter((s) => !s.parent_section_id)
+  const isSubtopic = !!data.subtopic
+  const specialty = (data.topic && data.topic.specialties) ? data.topic.specialties : data.topic?.specialties
+  const topicName = data.topic?.name
+  const currentName = isSubtopic ? data.subtopic?.name : data.topic?.name
+  const prevItem = currentIdx > 0 ? navItems[currentIdx - 1] : null
+  const nextItem = (currentIdx >= 0 && currentIdx < navItems.length - 1) ? navItems[currentIdx + 1] : null
 
   return (
     <div className="tb-page tb-page--chapter">
@@ -110,11 +178,17 @@ export default function TextbookTopic() {
         <div className="tb-breadcrumbs">
           <button className="tb-link" onClick={() => navigate('/dashboard/textbook')}>UKMLA Textbook</button>
           <span className="tb-sep">›</span>
-          <button className="tb-link" onClick={() => navigate(`/dashboard/textbook/specialty/${data.topic?.specialties?.slug}`)}>{data.topic?.specialties?.name}</button>
+          <button className="tb-link" onClick={() => navigate(`/dashboard/textbook/specialty/${specialty?.slug}`)}>{specialty?.name}</button>
+          {isSubtopic && (
+            <>
+              <span className="tb-sep">›</span>
+              <button className="tb-link" onClick={() => navigate(`/dashboard/textbook/specialty/${specialty?.slug}`)}>{topicName}</button>
+            </>
+          )}
           <span className="tb-sep">›</span>
-          <span className="tb-current">{data.topic?.name}</span>
+          <span className="tb-current">{currentName}</span>
         </div>
-        <h1 className="tb-title">{data.page?.title || data.topic?.name}</h1>
+        <h1 className="tb-title">{data.page?.title || currentName}</h1>
         {data.page?.summary && <p className="tb-sub">{data.page.summary}</p>}
       </header>
 
@@ -160,6 +234,36 @@ export default function TextbookTopic() {
 
         <aside className="tb-aside">
           <AnchorNav sections={data.sections || []} hasReferences={Array.isArray(data.citations) && data.citations.length > 0} />
+          {(prevItem || nextItem) && (
+            <div className="tb-nav tb-nav--aside">
+              {prevItem && (
+                <button
+                  className="tb-nav__btn tb-nav__btn--wide tb-nav__btn--left"
+                  onClick={() => navigate(`/dashboard/textbook/topic/${prevItem.slug}`)}
+                  aria-label={`Previous: ${prevItem.name}`}
+                  title={`Previous: ${prevItem.name}`}
+                >
+                  <span className="tb-nav__chev">‹</span>
+                  <div className="tb-nav__text">
+                    <div className="tb-nav__meta">Previous</div>
+                  </div>
+                </button>
+              )}
+              {nextItem && (
+                <button
+                  className="tb-nav__btn tb-nav__btn--wide tb-nav__btn--right"
+                  onClick={() => navigate(`/dashboard/textbook/topic/${nextItem.slug}`)}
+                  aria-label={`Next: ${nextItem.name}`}
+                  title={`Next: ${nextItem.name}`}
+                >
+                  <div className="tb-nav__text">
+                    <div className="tb-nav__meta">Next</div>
+                  </div>
+                  <span className="tb-nav__chev">›</span>
+                </button>
+              )}
+            </div>
+          )}
         </aside>
       </div>
     </div>

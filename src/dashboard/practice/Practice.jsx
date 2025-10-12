@@ -286,10 +286,9 @@ export default function Practice() {
         </div>
       </div>
 
-      {currentQuestion && (
+          {currentQuestion && (
         <div className="pr__grid">
           <div className="card question-card">
-            <div className="card__header">{currentQuestion.topic_name}</div>
             <div className="card__body">
               <div className="question-content">
                 <div style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>{currentQuestion.stem}</div>
