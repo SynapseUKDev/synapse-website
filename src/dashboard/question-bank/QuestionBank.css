@@ -19,8 +19,9 @@
 .qb-card__head { display: flex; justify-content: space-between; align-items: center; }
 .qb-card__meta { color: var(--syn-muted); font-size: 14px; }
 .qb-card__titlewrap { display: flex; align-items: center; gap: 12px; }
-.qb-card__icon { width: 46px; height: 46px; border-radius: 14px; background: var(--surface-tint-cyan); color: #0ea5b5; display: inline-flex; align-items: center; justify-content: center; line-height: 0; font-weight: 800; border: 1px solid #b6f6fc; }
+.qb-card__icon { width: 46px; height: 46px; display: inline-flex; align-items: center; justify-content: center; line-height: 0; }
 .qb-card__icon svg { display: block; flex-shrink: 0; }
+.qb-card__icon-img { width: 46px; height: 46px; object-fit: contain; display: block; border-radius: 8px; }
 .qb-card__title { font-weight: 800; color: var(--syn-navy-700); font-size: 20px; }
 .qb-card__badge { background: var(--syn-deep-navy); color: #fff; font-size: 14px; padding: 3px 10px; border-radius: 999px; }
 .qb-card__bar { height: 10px; border-radius: 999px; background: #e5e7eb; overflow: hidden; margin-top: 14px; }

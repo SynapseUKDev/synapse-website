@@ -9,26 +9,25 @@ import useStaleJson from '../../utils/useStaleJson'
 
 function SpecialtyCard({ item }) {
   const pct = item.total_questions > 0 ? Math.round((item.completed_questions / item.total_questions) * 100) : 0
-  const IconComp = item.icon_name && Lu[item.icon_name] ? Lu[item.icon_name] : null
   const navigate = useNavigate()
+  const initial = item.specialty_name?.charAt(0) || '•'
+  const showImage = typeof item.icon_url === 'string' && item.icon_url.trim().length > 0
   return (
     <div className="qb-card">
       <div className="qb-card__head">
         <div className="qb-card__titlewrap">
-          <div className="qb-card__icon" style={{
-            background: item.icon_bg_start && item.icon_bg_end
-              ? `linear-gradient(180deg, ${item.icon_bg_start}, ${item.icon_bg_end})`
-              : undefined,
-            color: item.icon_color || '#e11d48'
-          }}>
-            {IconComp ? <IconComp size={22} /> : (item.specialty_name?.charAt(0) || '•')}
+          <div className="qb-card__icon">
+            {showImage ? (
+              <img src={item.icon_url} alt={item.specialty_name} className="qb-card__icon-img" />
+            ) : (
+              initial
+            )}
           </div>
           <div>
             <div className="qb-card__title">{item.specialty_name}</div>
             <div className="qb-card__meta">{item.completed_questions}/{item.total_questions} completed</div>
           </div>
         </div>
-        <div className="qb-card__badge" style={{ background: 'black', color: '#fff' }}>{pct}%</div>
       </div>
       <div className="qb-card__bar"><div className="qb-card__fill" style={{ width: `${pct}%` }} /></div>
       <div className="qb-card__metrics">
