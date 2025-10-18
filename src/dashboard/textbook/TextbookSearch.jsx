@@ -20,6 +20,11 @@ export default function TextbookSearch() {
     return (sp.get('q') || '').trim()
   }, [location.search])
 
+  const currentSpecialtyId = useMemo(() => {
+    const sp = new URLSearchParams(location.search || '')
+    return (sp.get('specialty_id') || '').trim()
+  }, [location.search])
+
   useEffect(() => {
     setQ(currentQ)
   }, [currentQ])
@@ -34,14 +39,18 @@ export default function TextbookSearch() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch(`${API_BASE}/textbook/search?q=${encodeURIComponent(query)}&limit=${PAGE_SIZE}&offset=${pageOffset}`, {
+      {
+        const params = new URLSearchParams({ q: query, limit: String(PAGE_SIZE), offset: String(pageOffset) })
+        if (currentSpecialtyId) params.set('specialty_id', currentSpecialtyId)
+        const res = await fetch(`${API_BASE}/textbook/search?${params.toString()}`, {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      })
+        })
       if (!res.ok) throw new Error(`Search failed: ${res.status}`)
       const json = await res.json()
       setResults(Array.isArray(json?.results) ? json.results : [])
       setOffset(pageOffset)
+      }
     } catch (e) {
       setError(e?.message || 'Search failed')
       setResults([])
@@ -62,7 +71,9 @@ export default function TextbookSearch() {
   function submit(e) {
     if (e && e.preventDefault) e.preventDefault()
     const query = (q || '').trim()
-    navigate(`/dashboard/textbook/search?q=${encodeURIComponent(query)}`)
+    const sp = new URLSearchParams({ q: query })
+    if (currentSpecialtyId) sp.set('specialty_id', currentSpecialtyId)
+    navigate(`/dashboard/textbook/search?${sp.toString()}`)
   }
 
   return (

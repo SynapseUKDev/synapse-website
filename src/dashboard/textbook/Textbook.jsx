@@ -180,7 +180,10 @@ export default function Textbook() {
       setHasSearched(true)
       setSearching(true)
       setSearchErr(null)
-      const res = await fetch(`${API_BASE}/textbook/search?q=${encodeURIComponent(q)}&limit=${MAX_INLINE_RESULTS}`, {
+      const specialtyId = data?.specialty?.id || data?.specialty_id || null
+      const params = new URLSearchParams({ q, limit: String(MAX_INLINE_RESULTS) })
+      if (slug && specialtyId) params.set('specialty_id', String(specialtyId))
+      const res = await fetch(`${API_BASE}/textbook/search?${params.toString()}`, {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
       })
@@ -205,7 +208,10 @@ export default function Textbook() {
   function viewAll() {
     const q = (searchQ || '').trim()
     if (!q) return
-    navigate(`/dashboard/textbook/search?q=${encodeURIComponent(q)}`)
+    const specialtyId = data?.specialty?.id || data?.specialty_id || null
+    const sp = new URLSearchParams({ q })
+    if (slug && specialtyId) sp.set('specialty_id', String(specialtyId))
+    navigate(`/dashboard/textbook/search?${sp.toString()}`)
   }
 
   function openResult(r) {

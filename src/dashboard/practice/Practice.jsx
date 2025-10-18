@@ -41,6 +41,8 @@ export default function Practice() {
   const [refRanges, setRefRanges] = useState([])
   const [showRef, setShowRef] = useState(false)
   const [openGroupId, setOpenGroupId] = useState(null)
+  // Image carousel state for question assets
+  const [assetIdx, setAssetIdx] = useState(0)
   
   // Current question state
   const [selected, setSelected] = useState(null)
@@ -128,6 +130,8 @@ export default function Practice() {
     
     setTab('quick')
     setQuestionStartTime(Date.now())
+    // Reset carousel index when question changes
+    setAssetIdx(0)
   }
 
   const goToPrevious = () => {
@@ -153,6 +157,18 @@ export default function Practice() {
         state: { totalQuestions, correct, skipped, totalMs, perQuestionMs }
       })
     }
+  }
+
+  // Navigate to results with partial stats (for Exit or early finish)
+  const navigateToResults = () => {
+    const totalQuestions = questions.length
+    const correct = sessionCorrect
+    const skipped = Math.max(totalQuestions - sessionAnswered, 0)
+    const totalMs = sessionTotalMs
+    const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
+    navigate('/dashboard/question-bank/results', {
+      state: { totalQuestions, correct, skipped, totalMs, perQuestionMs }
+    })
   }
 
   const submit = async () => {
@@ -231,6 +247,51 @@ export default function Practice() {
     }
   }
 
+  // Keyboard shortcuts: 1-5 to select options, Enter to submit/next
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // ignore when typing in inputs/textareas/contentEditable or with modifiers
+      const tag = e.target?.tagName?.toLowerCase()
+      const isEditable = e.target?.isContentEditable
+      if (tag === 'input' || tag === 'textarea' || isEditable) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+
+      const cq = questions[currentIndex]
+      if (!cq) return
+
+      // number keys 1-5 -> select option if available and not submitted
+      if (e.key >= '1' && e.key <= '5') {
+        if (submittedAnswers.has(cq.id)) return
+        const idx = parseInt(e.key, 10) - 1
+        if (Array.isArray(cq.options) && cq.options[idx]) {
+          setSelected(cq.options[idx].id)
+          e.preventDefault()
+        }
+        return
+      }
+
+      // Enter -> submit if not submitted and answer present; otherwise go next
+      if (e.key === 'Enter') {
+        const alreadySubmitted = submittedAnswers.has(cq.id)
+        if (!alreadySubmitted) {
+          const hasAnswer = Array.isArray(cq.options) && cq.options.length > 0
+            ? (selected !== null && selected !== undefined)
+            : (saqText.trim() !== '')
+          if (hasAnswer && !submitting) {
+            e.preventDefault()
+            submit()
+          }
+        } else {
+          e.preventDefault()
+          goToNext()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [questions, currentIndex, selected, saqText, submittedAnswers, submitting])
+
   if (loading) return (
     <div className="pr">
       <LoadingScreen message="Loading practice session..." inline />
@@ -282,7 +343,7 @@ export default function Practice() {
               <button onClick={toggle} className="btn btn--ghost btn--icon">{running ? <LuPause /> : <LuPlay />}{running ? 'Pause' : 'Resume'}</button>
             </div>
           )}
-          <button onClick={() => navigate('/dashboard/question-bank')} className="btn btn--exit btn--icon" title="Exit to Question Bank"><LuX />Exit</button>
+          <button onClick={navigateToResults} className="btn btn--exit btn--icon" title="Exit and view results"><LuX />Exit</button>
         </div>
       </div>
 
@@ -292,6 +353,62 @@ export default function Practice() {
             <div className="card__body">
               <div className="question-content">
                 <div style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>{currentQuestion.stem}</div>
+                {Array.isArray(currentQuestion.assets) && currentQuestion.assets.length > 0 && (
+                  (() => {
+                    const assets = currentQuestion.assets.filter(a => a && a.url)
+                    const cur = assets[Math.min(assetIdx, Math.max(assets.length - 1, 0))]
+                    const prev = () => setAssetIdx((i) => assets.length > 0 ? (i - 1 + assets.length) % assets.length : 0)
+                    const next = () => setAssetIdx((i) => assets.length > 0 ? (i + 1) % assets.length : 0)
+                    if (!cur) return null
+                    return (
+                      <div className="q-carousel" role="region" aria-label="Question images">
+                        <button
+                          type="button"
+                          className="qc-nav qc-prev"
+                          onClick={prev}
+                          aria-label="Previous image"
+                          disabled={assets.length <= 1}
+                        >
+                          ‹
+                        </button>
+                        <figure key={cur.id} className="q-asset">
+                          {cur.type === 'image' ? (
+                            <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+                          ) : null}
+                          {(cur.caption || cur.credit) && (
+                            <figcaption className="q-asset__cap">
+                              {cur.caption && <div className="q-asset__caption">{cur.caption}</div>}
+                              {cur.credit && <div className="q-asset__credit">{cur.credit}</div>}
+                            </figcaption>
+                          )}
+                        </figure>
+                        <button
+                          type="button"
+                          className="qc-nav qc-next"
+                          onClick={next}
+                          aria-label="Next image"
+                          disabled={assets.length <= 1}
+                        >
+                          ›
+                        </button>
+                        {assets.length > 1 && (
+                          <div className="qc-dots" role="tablist" aria-label="Image selector">
+                            {assets.map((_, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                className={`qc-dot ${i === assetIdx ? 'is-active' : ''}`}
+                                aria-label={`Go to image ${i + 1}`}
+                                aria-selected={i === assetIdx ? 'true' : 'false'}
+                                onClick={() => setAssetIdx(i)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()
+                )}
                 {currentQuestion.options?.length > 0 ? (
                   <div style={{ display: 'grid', gap: 8 }}>
                     {currentQuestion.options.map((o) => {

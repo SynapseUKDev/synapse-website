@@ -8,6 +8,9 @@
 
 @media (max-width: 900px) { .prr__grid--top { grid-template-columns: 1fr; } }
 
+
+/* Equal heights for the two top cards */
+.prr__grid--top .prr-card { height: 100%; }
 .prr-card__body { display: flex; flex-direction: column; gap: 8px; height: 100%; }
 
 /* Ensure equal height cards by making card a flex container */

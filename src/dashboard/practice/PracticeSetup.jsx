@@ -42,7 +42,7 @@ export default function PracticeSetup() {
       const allTopicIds = new Set(data.topics?.map(t => t.id) || [])
       setSelectedTopics(allTopicIds)
       
-      const totalAvailable = (data.topics || []).reduce((sum, t) => sum + t.question_count, 0)
+      const totalAvailable = (data.topics || []).reduce((sum, t) => sum + (t.question_count || 0), 0)
       if (totalAvailable > 0) {
         setNumQuestions(totalAvailable)
       }
@@ -66,7 +66,7 @@ export default function PracticeSetup() {
     // Update question count when topics change
     const newTotalAvailable = topics
       .filter(t => newSelected.has(t.id))
-      .reduce((sum, t) => sum + t.question_count, 0)
+      .reduce((sum, t) => sum + (t.question_count || 0), 0)
     
     if (newTotalAvailable === 0) {
       setNumQuestions(0)
@@ -93,7 +93,7 @@ export default function PracticeSetup() {
   const getTotalQuestions = () => {
     return topics
       .filter(t => selectedTopics.has(t.id))
-      .reduce((sum, t) => sum + t.question_count, 0)
+      .reduce((sum, t) => sum + (t.question_count || 0), 0)
   }
 
   const getStepperMin = () => {
@@ -181,7 +181,15 @@ export default function PracticeSetup() {
                   <span className="setup__checkbox" aria-hidden="true" />
                   <div className="setup__topic-content">
                     <div className="setup__topic-name">{topic.name}</div>
-                    <div className="setup__topic-count">{topic.question_count} questions available</div>
+                    <div className="setup__topic-count">
+                      {typeof topic.attempted_count === 'number' ? (
+                        <>
+                          {topic.attempted_count}/{topic.question_count} done{topic.remaining_count !== undefined ? ` • ${topic.remaining_count} left` : ''}
+                        </>
+                      ) : (
+                        <>{topic.question_count} questions available</>
+                      )}
+                    </div>
                   </div>
                 </label>
               ))}

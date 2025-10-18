@@ -42,6 +42,37 @@
   margin-bottom: 16px;
 }
 
+/* Question assets (images, etc.) */
+/* Carousel container */
+.q-carousel { position: relative; display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; gap: 8px; margin: 8px 0 12px; }
+.q-assets { display: grid; gap: 12px; margin: 8px 0 12px; }
+.qc-nav { height: 36px; width: 36px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; font-weight: 800; color: #0b1637; cursor: pointer; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+.qc-nav:disabled { opacity: .5; cursor: not-allowed; }
+.qc-prev { grid-column: 1; }
+.qc-next { grid-column: 3; }
+.q-carousel .q-asset { grid-column: 2; margin: 0; }
+.qc-dots { grid-column: 1 / span 3; display: flex; justify-content: center; gap: 6px; margin-top: 6px; }
+.qc-dot { width: 8px; height: 8px; border-radius: 999px; border: 1px solid #cbd5e1; background: #e2e8f0; cursor: pointer; }
+.qc-dot.is-active { background: #6366f1; border-color: #6366f1; }
+.q-asset { margin: 0; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; }
+.q-asset img { 
+  display: block; 
+  max-width: 100%; 
+  width: auto; 
+  height: auto; 
+  max-height: 420px; /* keep images reasonable on desktop */
+  object-fit: contain; 
+  background: #f8fafc; 
+  margin: 0 auto; 
+}
+
+@media (max-width: 768px) {
+  .q-asset img { max-height: 300px; }
+}
+.q-asset__cap { padding: 8px 10px; border-top: 1px solid #eef2f7; background: #fff; }
+.q-asset__caption { color: #0b1637; font-size: 14px; }
+.q-asset__credit { color: #64748b; font-size: 12px; margin-top: 2px; }
+
 .explanation-card {
   grid-column: 1;
   grid-row: 2;
