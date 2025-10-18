@@ -8,6 +8,73 @@
   margin-bottom: 20px;
 }
 
+/* Search UI */
+.tb-search {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.tb-search__input {
+  flex: 1;
+  border: 1px solid #e1e6f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+}
+.tb-search__btn {
+  padding: 10px 12px;
+  border: 1px solid #2E2CC4;
+  background: #2E2CC4;
+  color: #fff;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+.tb-search__btn--secondary {
+  background: #eef3ff;
+  color: #2E2CC4;
+  border-color: #d9e4ff;
+}
+.tb-search__btn:disabled { opacity: 0.7; cursor: default; }
+.tb-search__status { color: #596381; margin-top: 8px; }
+
+.tb-search-results {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+.tb-search-item {
+  text-align: left;
+  background: #fff;
+  border: 1px solid #e7e9f2;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 14px rgba(11,22,55,0.06);
+  cursor: pointer;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+.tb-search-item:hover { background: #f8fafc; }
+.tb-search-item__titles { display: flex; gap: 8px; align-items: baseline; }
+.tb-search-item__page { font-weight: 700; color: #0B1637; }
+.tb-search-item__section { color: #596381; }
+.tb-search-item__snippet { color: #0f1a3c; margin-top: 6px; font-size: 14px; }
+
+/* Highlight */
+mark { background: #fff59d; padding: 0 2px; border-radius: 3px; }
+
+.tb-search__viewall {
+  align-self: start;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e1e6f0;
+  background: #fff;
+  color: #2E2CC4;
+  cursor: pointer;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
 .tb-breadcrumbs {
   display: flex;
   align-items: center;
@@ -152,22 +219,17 @@
 .tb-topic--toggle { justify-content: space-between; }
 .tb-topic__name { text-align: left; }
 .tb-chevron {
-  display: inline-flex;
+  display: inline-block;
   margin-left: 10px;
   margin-right: 0;
-  width: 20px; /* square box ensures vertical centering */
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  line-height: 0; /* prevent baseline offset */
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
   color: #7a83a2;
-  transform-origin: 50% 50%; /* spin on the spot */
 }
 .tb-topic, .tb-topic--toggle { gap: 8px; }
 .tb-topic--parent .tb-chevron { margin-left: auto; }
-.tb-chevron { transition: transform 0.2s ease; }
-.tb-chevron--open { transform: rotate(180deg); }
+/* Remove open/close animation; always centered */
 
 /* Chapter layout */
 .tb-layout {

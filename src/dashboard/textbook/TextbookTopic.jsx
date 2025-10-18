@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { authHeaders } from '../../auth/token'
@@ -26,7 +26,7 @@ function AnchorNav({ sections, hasReferences }) {
   )
 }
 
-function RenderBlock({ block }) {
+function RenderBlock({ block, query }) {
   if (block.block_type === 'image') {
     const meta = block.data || {}
     return (
@@ -41,15 +41,38 @@ function RenderBlock({ block }) {
       </figure>
     )
   }
-  const html = block.content || ''
-  const isHtml = /<[^>]+>/.test(html)
-  const rendered = isHtml ? html : html.replace(/\n/g, '<br/>')
+  const raw = block.content || ''
+  const isHtml = /<[^>]+>/.test(raw)
+  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const highlightPlain = (text, q) => {
+    if (!q) return text
+    const re = new RegExp(escapeRegExp(q), 'ig')
+    return text.replace(re, (m) => `
+<mark>${m}</mark>`)
+  }
+  const highlightHtml = (html, q) => {
+    if (!q) return html
+    const parts = html.split(/(<[^>]+>)/)
+    const re = new RegExp(escapeRegExp(q), 'ig')
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
+      if (part && !part.startsWith('<')) {
+        parts[i] = part.replace(re, (m) => `
+<mark>${m}</mark>`)
+      }
+    }
+    return parts.join('')
+  }
+  const rendered = isHtml
+    ? highlightHtml(raw, query)
+    : highlightPlain(raw, query).replace(/\n/g, '<br/>')
   return <div className="tb-md" dangerouslySetInnerHTML={{ __html: rendered }} />
 }
 
 export default function TextbookTopic() {
   const navigate = useNavigate()
   const { topicSlug } = useParams()
+  const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
@@ -58,6 +81,7 @@ export default function TextbookTopic() {
   // Navigation state across topics/subtopics within the same specialty
   const [navItems, setNavItems] = useState([])
   const [currentIdx, setCurrentIdx] = useState(-1)
+  const [topicQ, setTopicQ] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -78,6 +102,19 @@ export default function TextbookTopic() {
     load()
     return () => { cancelled = true }
   }, [topicSlug, API_BASE])
+
+  // Scroll to anchor if hash present
+  useEffect(() => {
+    if (!data) return
+    const hash = location.hash && location.hash.startsWith('#') ? location.hash.slice(1) : ''
+    if (!hash) return
+    const el = document.getElementById(hash)
+    if (el) {
+      setTimeout(() => {
+        try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }) } catch {}
+      }, 50)
+    }
+  }, [location.hash, data])
 
   // Load specialty topics to build previous/next navigation
   useEffect(() => {
@@ -190,6 +227,16 @@ export default function TextbookTopic() {
         </div>
         <h1 className="tb-title">{data.page?.title || currentName}</h1>
         {data.page?.summary && <p className="tb-sub">{data.page.summary}</p>}
+        <form className="tb-search" onSubmit={(e) => e.preventDefault()} role="search" aria-label="Search in chapter">
+          <input
+            className="tb-search__input"
+            type="search"
+            placeholder="Search within this chapter…"
+            value={topicQ}
+            onChange={(e) => setTopicQ(e.target.value)}
+            aria-label="Search query in chapter"
+          />
+        </form>
       </header>
 
       <div className="tb-layout">
@@ -199,7 +246,7 @@ export default function TextbookTopic() {
               <h2 className="tb-section__title">{s.title}</h2>
               <div className="tb-section__content">
                 {(blocksBySection[s.id] || []).map((b) => (
-                  <RenderBlock key={b.id} block={b} />
+                  <RenderBlock key={b.id} block={b} query={topicQ} />
                 ))}
               </div>
             </section>

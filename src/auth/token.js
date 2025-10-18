@@ -17,6 +17,14 @@ export function getAccessToken() {
   }
 }
 
+export function getRefreshToken() {
+  try {
+    return localStorage.getItem(REFRESH_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
 export function clearTokens() {
   try {
     localStorage.removeItem(ACCESS_TOKEN_KEY)

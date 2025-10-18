@@ -51,9 +51,11 @@ function TopicRow({ topic, onClick }) {
   )
 }
 
-function Chevron({ open }) {
+function Chevron() {
   return (
-    <span className={`tb-chevron ${open ? 'tb-chevron--open' : ''}`} aria-hidden="true">⌄</span>
+    <svg className="tb-chevron" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
 
@@ -74,7 +76,7 @@ function SubtopicNode({ node, depth, onSubtopicClick, expandedSet, toggleExpande
             aria-controls={`subs-${node.slug}`}
           >
             <div className="tb-topic__name">{node.name}</div>
-            <Chevron open={isOpen} />
+            <Chevron />
           </button>
         ) : (
           <button
@@ -120,7 +122,7 @@ function TopicWithSubtopics({ topic, expandedSet, toggleExpanded, onSubtopicClic
         <div className="tb-topic__name">
           {topic.name}
         </div>
-        <Chevron open={isOpen} />
+        <Chevron />
       </button>
       {isOpen && (
         <div id={`subs-${topic.slug}`} className="tb-subtopics">
@@ -147,6 +149,12 @@ export default function Textbook() {
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
   const [expandedSet, setExpandedSet] = useState(new Set())
+  const [searchQ, setSearchQ] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [searchErr, setSearchErr] = useState(null)
+  const [searchResults, setSearchResults] = useState([])
+  const MAX_INLINE_RESULTS = 12
+  const [hasSearched, setHasSearched] = useState(false)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -157,6 +165,56 @@ export default function Textbook() {
       if (next.has(slugValue)) next.delete(slugValue); else next.add(slugValue)
       return next
     })
+  }
+
+  async function runSearch(e) {
+    if (e && e.preventDefault) e.preventDefault()
+    const q = (searchQ || '').trim()
+    if (q.length < 2) {
+      setSearchResults([])
+      setSearchErr(null)
+      setHasSearched(false)
+      return
+    }
+    try {
+      setHasSearched(true)
+      setSearching(true)
+      setSearchErr(null)
+      const res = await fetch(`${API_BASE}/textbook/search?q=${encodeURIComponent(q)}&limit=${MAX_INLINE_RESULTS}`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      })
+      if (!res.ok) throw new Error(`Search failed: ${res.status}`)
+      const json = await res.json()
+      setSearchResults(Array.isArray(json?.results) ? json.results : [])
+    } catch (err) {
+      setSearchErr(err?.message || 'Search failed')
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  function clearSearch() {
+    setSearchQ('')
+    setSearchErr(null)
+    setSearchResults([])
+    setHasSearched(false)
+  }
+
+  function viewAll() {
+    const q = (searchQ || '').trim()
+    if (!q) return
+    navigate(`/dashboard/textbook/search?q=${encodeURIComponent(q)}`)
+  }
+
+  function openResult(r) {
+    if (!r) return
+    const slug = r.target_slug
+    const anchor = r.section_anchor
+    if (slug) {
+      navigate(`/dashboard/textbook/topic/${slug}#sec-${anchor}`)
+    }
   }
 
   useEffect(() => {
@@ -193,20 +251,7 @@ export default function Textbook() {
     return []
   }, [data])
 
-  // Default-expand all topics and subtopics once when the specialty topic list is available
-  useEffect(() => {
-    if (!slug || !data?.topics) return
-    const next = new Set()
-    const addAllWithChildren = (nodes) => {
-      for (const n of nodes || []) {
-        if (n.slug) next.add(n.slug)
-        if (Array.isArray(n.subtopics) && n.subtopics.length > 0) addAllWithChildren(n.subtopics)
-        if (Array.isArray(n.children) && n.children.length > 0) addAllWithChildren(n.children)
-      }
-    }
-    addAllWithChildren(data.topics)
-    setExpandedSet(next)
-  }, [slug, data?.topics])
+  // Keep topics collapsed by default; users can expand specific topics.
 
   useEffect(() => {
     if (!chapterList || chapterList.length === 0) return
@@ -260,6 +305,39 @@ export default function Textbook() {
           </div>
           <h1 className="tb-title">{data.specialty?.name}</h1>
           <p className="tb-sub">Select a topic to open the chapter.</p>
+          <form className="tb-search" onSubmit={runSearch} role="search" aria-label="Search textbook">
+            <input
+              className="tb-search__input"
+              type="search"
+              placeholder="Search textbook content…"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              aria-label="Search query"
+            />
+            <button className="tb-search__btn" type="submit" disabled={searching}>Search</button>
+            {!!searchQ && <button type="button" className="tb-search__btn tb-search__btn--secondary" onClick={clearSearch}>Clear</button>}
+          </form>
+          {hasSearched && (
+            <div className="tb-search-results" aria-live="polite">
+              {searching && <div className="tb-search__status">Searching…</div>}
+              {searchErr && <div className="tb-error">{searchErr}</div>}
+              {!searching && searchResults.length === 0 && !searchErr && (
+                <div className="tb-search__status">No results found</div>
+              )}
+              {searchResults.map((r, idx) => (
+                <button key={idx} className="tb-search-item" onClick={() => openResult(r)}>
+                  <div className="tb-search-item__titles">
+                    <div className="tb-search-item__page">{r.page_title}</div>
+                    {r.section_title && <div className="tb-search-item__section">{r.section_title}</div>}
+                  </div>
+                  <div className="tb-search-item__snippet" dangerouslySetInnerHTML={{ __html: r.snippet_html }} />
+                </button>
+              ))}
+              {searchResults.length === MAX_INLINE_RESULTS && (
+                <button className="tb-search__viewall" onClick={viewAll}>View all results</button>
+              )}
+            </div>
+          )}
         </header>
         <div className="tb-topic-list">
           {data.topics.map((t) => {
@@ -293,6 +371,39 @@ export default function Textbook() {
         </div>
         <h1 className="tb-title">Chapters</h1>
         <p className="tb-sub">Browse specialties as chapters. Click a chapter to view its topics.</p>
+        <form className="tb-search" onSubmit={runSearch} role="search" aria-label="Search textbook">
+          <input
+            className="tb-search__input"
+            type="search"
+            placeholder="Search textbook content…"
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            aria-label="Search query"
+          />
+          <button className="tb-search__btn" type="submit" disabled={searching}>Search</button>
+          {!!searchQ && <button type="button" className="tb-search__btn tb-search__btn--secondary" onClick={clearSearch}>Clear</button>}
+        </form>
+        {hasSearched && (
+          <div className="tb-search-results" aria-live="polite">
+            {searching && <div className="tb-search__status">Searching…</div>}
+            {searchErr && <div className="tb-error">{searchErr}</div>}
+            {!searching && searchResults.length === 0 && !searchErr && (
+              <div className="tb-search__status">No results found</div>
+            )}
+            {searchResults.map((r, idx) => (
+              <button key={idx} className="tb-search-item" onClick={() => openResult(r)}>
+                <div className="tb-search-item__titles">
+                  <div className="tb-search-item__page">{r.page_title}</div>
+                  {r.section_title && <div className="tb-search-item__section">{r.section_title}</div>}
+                </div>
+                <div className="tb-search-item__snippet" dangerouslySetInnerHTML={{ __html: r.snippet_html }} />
+              </button>
+            ))}
+            {searchResults.length === MAX_INLINE_RESULTS && (
+              <button className="tb-search__viewall" onClick={viewAll}>View all results</button>
+            )}
+          </div>
+        )}
       </header>
       <div className="tb-grid">
         {chapterList.map((spec, idx) => (
