@@ -20,7 +20,7 @@ function Testimonials() {
         name: 'Khadija B',
         meta: '4th Year Medical Student',
         avatar:
-          'https://images.icon-icons.com/2643/PNG/512/female_woman_user_people_avatar_white_tone_icon_159354.png',
+          'https://images.squarespace-cdn.com/content/v1/66a674c720afc43adfa96c98/3f435e4f-975c-4350-bcb3-e2154f17bf40/Screenshot+2025-08-19+011048.png?format=2500w',
       },
       {
         quote:
