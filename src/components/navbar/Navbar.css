@@ -2,8 +2,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap');
 
 .nav {
-  background-color: #4FAFD5;
+  background-color: #040A4C;
   font-family: 'Urbanist', sans-serif;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 2px solid #EEAE36;
 }
 
 .nav__container {

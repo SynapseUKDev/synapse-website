@@ -36,66 +36,66 @@ export default function Dashboard() {
   const [requestsLoading, setRequestsLoading] = useState(true)
   const [friendsTab, setFriendsTab] = useState('add') // add | requests
 
-  const loadFriendsData = async () => {
-    try {
-      setRequestsLoading(true)
-      const reqRes = await fetch(`${API_BASE}/friends/requests`, { headers: authHeaders() })
-      const reqJson = await reqRes.json().catch(() => ({}))
-      setRequests({ inbox: reqJson?.inbox || [], outbox: reqJson?.outbox || [] })
-    } catch (_e) {
-      setRequests({ inbox: [], outbox: [] })
-    } finally {
-      setRequestsLoading(false)
-    }
-    // Leaderboard removed for now
-  }
+  // const loadFriendsData = async () => {
+  //   try {
+  //     setRequestsLoading(true)
+  //     const reqRes = await fetch(`${API_BASE}/friends/requests`, { headers: authHeaders() })
+  //     const reqJson = await reqRes.json().catch(() => ({}))
+  //     setRequests({ inbox: reqJson?.inbox || [], outbox: reqJson?.outbox || [] })
+  //   } catch (_e) {
+  //     setRequests({ inbox: [], outbox: [] })
+  //   } finally {
+  //     setRequestsLoading(false)
+  //   }
+  //   // Leaderboard removed for now
+  // }
 
-  useEffect(() => {
-    loadFriendsData()
-  }, [])
+  // useEffect(() => {
+  //   loadFriendsData()
+  // }, [])
 
-  const sendFriendRequest = async (e) => {
-    e?.preventDefault?.()
-    const email = friendEmail.trim()
-    if (!email) return
-    setSendLoading(true)
-    try {
-      const res = await fetch(`${API_BASE}/friends/requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ email })
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(json?.error || 'Failed to send request')
-      } else {
-        setFriendEmail('')
-        await loadFriendsData()
-      }
-    } catch (_e) {
-      alert('Failed to send request')
-    } finally {
-      setSendLoading(false)
-    }
-  }
+  // const sendFriendRequest = async (e) => {
+  //   e?.preventDefault?.()
+  //   const email = friendEmail.trim()
+  //   if (!email) return
+  //   setSendLoading(true)
+  //   try {
+  //     const res = await fetch(`${API_BASE}/friends/requests`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json', ...authHeaders() },
+  //       body: JSON.stringify({ email })
+  //     })
+  //     const json = await res.json().catch(() => ({}))
+  //     if (!res.ok) {
+  //       alert(json?.error || 'Failed to send request')
+  //     } else {
+  //       setFriendEmail('')
+  //       await loadFriendsData()
+  //     }
+  //   } catch (_e) {
+  //     alert('Failed to send request')
+  //   } finally {
+  //     setSendLoading(false)
+  //   }
+  // }
 
-  const respondToRequest = async (requestId, action) => {
-    try {
-      const res = await fetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ action })
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(json?.error || 'Failed to update request')
-      }
-    } catch (_e) {
-      alert('Failed to update request')
-    } finally {
-      await loadFriendsData()
-    }
-  }
+  // const respondToRequest = async (requestId, action) => {
+  //   try {
+  //     const res = await fetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json', ...authHeaders() },
+  //       body: JSON.stringify({ action })
+  //     })
+  //     const json = await res.json().catch(() => ({}))
+  //     if (!res.ok) {
+  //       alert(json?.error || 'Failed to update request')
+  //     }
+  //   } catch (_e) {
+  //     alert('Failed to update request')
+  //   } finally {
+  //     await loadFriendsData()
+  //   }
+  // }
 
   const continueQuestions = () => {
     const spec = summary.last_specialty

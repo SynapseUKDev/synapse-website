@@ -46,13 +46,17 @@ function Subscribe() {
         // First, immediately call confirm-session to ensure subscription is recorded
         if (sessionId) {
           try {
+            console.log('Confirming session:', sessionId)
             const resp = await fetch(`${API_BASE}/billing/confirm-session`, {
               method: 'POST',
               credentials: 'include',
               headers: { 'Content-Type': 'application/json', ...authHeaders() },
               body: JSON.stringify({ session_id: sessionId })
             })
+            console.log('Confirm response status:', resp.status)
+            
             if (resp.ok) {
+              console.log('Session confirmed successfully')
               // Immediately check access after confirmation
               const res = await fetch(`${API_BASE}/me?ts=${Date.now()}`, { 
                 credentials: 'include', 
@@ -61,11 +65,18 @@ function Subscribe() {
               })
               if (res.ok) {
                 const data = await res.json()
+                console.log('User data after confirm:', data)
                 if (data?.access?.has_active_access) {
+                  console.log('Access granted, redirecting to dashboard')
                   navigate('/dashboard', { replace: true })
                   return
+                } else {
+                  console.warn('No active access after confirmation:', data.access)
                 }
               }
+            } else {
+              const errorData = await resp.json().catch(() => ({}))
+              console.error('Confirm session failed:', errorData)
             }
           } catch (e) {
             console.error('Confirm session error:', e)
@@ -320,7 +331,7 @@ function Subscribe() {
                   }
                   const data = await res.json()
                   if (data?.url) {
-                    window.location.href = data.url
+                    window.open(data.url, '_blank', 'noopener,noreferrer');
                     return
                   }
                   setBanner({ type: 'warning', text: 'Checkout URL not returned. Please try again.' })
