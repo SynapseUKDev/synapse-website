@@ -59,7 +59,7 @@ function Landing() {
 
               return (
                 <svg className="landing__pricing-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-                  <path fill="#5AB8DB" d={wave1Path || ''} />
+                  <path fill="#5AB8DB" d={wave1Path || ''} className="landing__pricing-wave1"/>
                   <path fill="#ffffff" d={wave2Path || ''} />
                 </svg>
               )

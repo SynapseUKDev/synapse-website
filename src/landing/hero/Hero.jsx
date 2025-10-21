@@ -23,7 +23,7 @@ function Hero() {
             }))
 
           const wave1 = make(28, 110, 2.2)
-          const wave2 = make(34, 180, 2.0, 0.6)
+          const wave2 = make(34, 150, 2.0, 0.6)
           const wave3 = make(38, 250, 1.8, 1.2)
 
           const aTop = d3Area()

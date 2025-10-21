@@ -134,7 +134,11 @@ export default function Settings() {
   // Stripe subscription with payment method (has period dates)
   const hasStripeSubscription = accessData?.subscription_status === 'trialing' && !!accessData?.current_period_end && !accessData?.cancel_at_period_end
   
-  const isFreeTrial = accessData?.trial_ends_at && !hasStripeSubscription && !isPaidSubscriber
+  // Canceled paid subscription (has period dates)
+  const isCanceledPaidSub = accessData?.subscription_status === 'canceled' && !!accessData?.current_period_end
+  
+  // Free trial: has trial_ends_at but NOT a paid subscriber and NOT a canceled paid sub
+  const isFreeTrial = accessData?.trial_ends_at && !hasStripeSubscription && !isPaidSubscriber && !isCanceledPaidSub
   
   const trialExpired = isFreeTrial && daysLeft === 0
   
@@ -210,16 +214,14 @@ export default function Settings() {
                 <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 999, background: '#dbeafe', color: '#1e40af', fontWeight: 800, fontSize: 13 }}>
                   Free Trial
                 </span>
-              ) : accessData?.cancel_at_period_end ? (
-                <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 999, background: '#ffddd6', color: '#fa320f', fontWeight: 800, fontSize: 13 }}>
+              ) : isCanceledPaidSub || accessData?.cancel_at_period_end ? (
+                <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 999, background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: 13 }}>
                   Cancelled
                 </span>
               ) : hasStripeSubscription ? (
                 statusBadge('trialing')
               ) : isPaidSubscriber ? (
                 statusBadge(accessData.subscription_status)
-              ) : accessData?.subscription_status === 'canceled' ? (
-                statusBadge('canceled')
               ) : (
                 <span style={{ color: 'var(--syn-muted)' }}>No subscription</span>
               )}
@@ -422,7 +424,7 @@ export default function Settings() {
                     Your subscription will end on this date
                   </div>
                 </div>
-                <div style={{ 
+                {/* <div style={{ 
                   padding: '12px 16px', 
                   background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
                   border: '2px solid #fcd34d', 
@@ -435,8 +437,19 @@ export default function Settings() {
                   <div style={{ fontSize: 13, color: '#b45309', lineHeight: 1.5 }}>
                     You cancelled your subscription. You'll have access until {formatDate(accessData.current_period_end)}, then it will end.
                   </div>
-                </div>
-                <button className="qb-btn qb-btn--sm" style={{ marginTop: 8, width: 'auto' }} onClick={openBillingPortal} disabled={portalLoading}>
+                </div> */}
+                <button 
+                  className="qb-btn qb-btn--sm" 
+                  style={{ 
+                    marginTop: 8, 
+                    width: 'auto',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }} 
+                  onClick={openBillingPortal} 
+                  disabled={portalLoading}
+                >
                   {portalLoading ? 'Opening...' : 'Reactivate Subscription'}
                 </button>
               </>
@@ -491,7 +504,18 @@ export default function Settings() {
                     Your subscription is cancelled and will not renew. You'll have access until {formatDate(accessData.current_period_end)}.
                   </div>
                 </div>
-                <button className="qb-btn qb-btn--sm" style={{ marginTop: 8, width: 'auto' }} onClick={openBillingPortal} disabled={portalLoading}>
+                <button 
+                  className="qb-btn qb-btn--sm" 
+                  style={{ 
+                    marginTop: 8, 
+                    width: 'auto',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }} 
+                  onClick={openBillingPortal} 
+                  disabled={portalLoading}
+                >
                   {portalLoading ? 'Opening...' : 'Reactivate Subscription'}
                 </button>
               </>
@@ -509,7 +533,7 @@ export default function Settings() {
                     </div>
                   </div>
                 )}
-                <div style={{ 
+                {/* <div style={{ 
                   padding: '12px 16px', 
                   background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
                   border: '2px solid #fcd34d', 
@@ -525,8 +549,19 @@ export default function Settings() {
                       : 'Your subscription has ended.'
                     }
                   </div>
-                </div>
-                <button className="qb-btn qb-btn--sm" style={{ marginTop: 8, width: 'auto' }} onClick={openBillingPortal} disabled={portalLoading}>
+                </div> */}
+                <button 
+                  className="qb-btn qb-btn--sm" 
+                  style={{ 
+                    marginTop: 8, 
+                    width: 'auto',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }} 
+                  onClick={openBillingPortal} 
+                  disabled={portalLoading}
+                >
                   {portalLoading ? 'Opening...' : 'Reactivate Subscription'}
                 </button>
               </>
