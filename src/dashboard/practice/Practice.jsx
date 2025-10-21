@@ -29,6 +29,7 @@ export default function Practice() {
   const topicIds = params.get('topic_ids')
   const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '25')
+  const includeAttempted = params.get('include_attempted') !== '0'
   
   // Session state
   const [loading, setLoading] = useState(true)
@@ -76,7 +77,7 @@ export default function Practice() {
   const loadSession = async () => {
     try {
       setLoading(true)
-      let url = `${API_BASE}/qbank/practice/session?specialty_id=${specialtyId}&num_questions=${numQuestions}`
+      let url = `${API_BASE}/qbank/practice/session?specialty_id=${specialtyId}&num_questions=${numQuestions}&include_attempted=${includeAttempted ? '1' : '0'}`
       if (topicIds) {
         url += `&topic_ids=${topicIds}`
       }

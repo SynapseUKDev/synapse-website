@@ -17,6 +17,7 @@ export default function PracticeSetup() {
   const [numQuestions, setNumQuestions] = useState(25)
   const [timerMinutes, setTimerMinutes] = useState(30)
   const [timerEnabled, setTimerEnabled] = useState(false)
+  const [includeAttempted, setIncludeAttempted] = useState(false)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -42,7 +43,7 @@ export default function PracticeSetup() {
       const allTopicIds = new Set(data.topics?.map(t => t.id) || [])
       setSelectedTopics(allTopicIds)
       
-      const totalAvailable = (data.topics || []).reduce((sum, t) => sum + (t.question_count || 0), 0)
+      const totalAvailable = (data.topics || []).reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
       if (totalAvailable > 0) {
         setNumQuestions(totalAvailable)
       }
@@ -66,7 +67,7 @@ export default function PracticeSetup() {
     // Update question count when topics change
     const newTotalAvailable = topics
       .filter(t => newSelected.has(t.id))
-      .reduce((sum, t) => sum + (t.question_count || 0), 0)
+      .reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
     
     if (newTotalAvailable === 0) {
       setNumQuestions(0)
@@ -93,7 +94,7 @@ export default function PracticeSetup() {
   const getTotalQuestions = () => {
     return topics
       .filter(t => selectedTopics.has(t.id))
-      .reduce((sum, t) => sum + (t.question_count || 0), 0)
+      .reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
   }
 
   const getStepperMin = () => {
@@ -118,7 +119,8 @@ export default function PracticeSetup() {
       specialty_id: specialtyId,
       topic_ids: Array.from(selectedTopics).join(','),
       num_questions: numQuestions.toString(),
-      timer_minutes: timerEnabled ? timerMinutes.toString() : '0'
+      timer_minutes: timerEnabled ? timerMinutes.toString() : '0',
+      include_attempted: includeAttempted ? '1' : '0'
     })
     
     navigate(`/dashboard/question-bank/practice?${params.toString()}`)
@@ -230,6 +232,31 @@ export default function PracticeSetup() {
                       ))}
                       <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
                     </div>
+                  </div>
+                  <div className="setup__toggle-row" style={{ marginTop: 20 }}>
+                    <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
+                    <div className="setup__toggle-container">
+                      <input
+                        type="checkbox"
+                        id="include-toggle"
+                        checked={includeAttempted}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                          setIncludeAttempted(next)
+                          const total = topics
+                            .filter(t => selectedTopics.has(t.id))
+                            .reduce((sum, t) => sum + (next ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
+                          if (total === 0) {
+                            setNumQuestions(0)
+                          } else if (numQuestions === 0 || numQuestions > total) {
+                            setNumQuestions(total)
+                          }
+                        }}
+                        className="setup__toggle-input"
+                      />
+                      <label htmlFor="include-toggle" className="setup__toggle-slider"></label>
+                    </div>
+                    <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
                   </div>
                 </div>
               </div>

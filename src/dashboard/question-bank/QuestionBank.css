@@ -35,7 +35,7 @@
 .qb-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .qb-chip { font-size: 12px; background: var(--surface-tint-cyan); color: var(--syn-navy-700); border: 1px solid #b6f6fc; padding: 6px 10px; border-radius: 999px; }
 .qb-card__actions { margin-top: auto; padding-top: 16px; }
-.qb-btn { width: 100%; height: 50px; border-radius: 12px; background: var(--grad-primary); color: #fff; font-weight: 800; border: 0; font-family: 'Urbanist', ui-sans-serif, system-ui; transition: all .15s ease; font-size: 16px; }
+.qb-btn { width: 100%; height: 50px; border-radius: 12px; background: var(--grad-primary); color: #fff; font-weight: 800; border: 0; font-family: 'Urbanist', ui-sans-serif, system-ui; transition: all .15s ease; font-size: 16px; box-shadow: 0 8px 20px rgba(2, 132, 199, 0.25); }
 .qb-btn:hover { filter: brightness(1.08); transform: translateY(-1px); cursor: pointer; }
 .qb-btn--sm { width: auto; height: 40px; padding: 0 16px; border-radius: 10px; font-size: 14px; }
 

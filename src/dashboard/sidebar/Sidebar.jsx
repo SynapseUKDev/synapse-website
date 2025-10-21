@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuPanelLeft } from 'react-icons/lu'
+import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuPanelLeft, LuSettings } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import './Sidebar.css'
 
@@ -60,7 +60,7 @@ function Sidebar({ user, onLogout }) {
             </div>
           </div>
           <div className="sidebar__user-actions">
-            {/* <button className="sidebar__settings">Settings</button> */}
+            <button className="sidebar__settings" onClick={() => navigate('/dashboard/settings')}>Settings</button>
             <button className="sidebar__logout" onClick={onLogout}>Logout</button>
           </div>
         </div>

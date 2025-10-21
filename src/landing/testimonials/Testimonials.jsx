@@ -8,25 +8,25 @@ function Testimonials() {
     () => [
       {
         quote:
-          'The question quality is phenomenal – every explanation helped me understand complex pathophysiology. The visual aids and memory techniques are game‑changers. My exam anxiety completely disappeared!',
-        name: 'John Doe',
-        meta: 'Final Year Medical Student · Imperial College London',
+          'The notes are very clear and I like how the clinical features are in tables making quick revision much more convenient. The overall website has a clean interface that’s easy to navigate.',
+        name: 'S Rahman',
+        meta: '4th Year Medical Student',
         avatar:
           'https://www.svgrepo.com/show/384670/account-avatar-profile-user.svg',
       },
       {
         quote:
-          'Synapse’s concise notes and smart practice flow helped me finally connect topics. I improved two deciles in 6 weeks and felt calm on exam day.',
-        name: 'Jane Doe',
-        meta: 'Year 3 · University of Manchester',
+          'The format of the website is easy to follow and I particularly like the question bank, whenever you answer a question there are clear explanations as to why each answer is appropriate or not and this has been useful for my learning.',
+        name: 'Khadija B',
+        meta: '4th Year Medical Student',
         avatar:
           'https://images.icon-icons.com/2643/PNG/512/female_woman_user_people_avatar_white_tone_icon_159354.png',
       },
       {
         quote:
-          'I loved the progress tracking and spaced revision. It kept me accountable and I retained so much more between rotations.',
-        name: 'Ben Smith',
-        meta: 'Year 4 · University of Glasgow',
+          'Great variety of questions covering high yield topics. The explanations are clear and concise, and I find the clinical tables really helpful.',
+        name: 'Mohammed D',
+        meta: '5th Year Medical Student',
         avatar:
           'https://cdn-icons-png.flaticon.com/512/6858/6858504.png',
       },

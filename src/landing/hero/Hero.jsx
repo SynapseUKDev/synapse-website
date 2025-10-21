@@ -67,7 +67,7 @@ function Hero() {
                 <path fill="#7BD0F1" d={wave2Path || ''} />
               </g>
               <path fill="#3CA2CA" d={wave3Path || ''} />
-              <path fill="#ffffff" d={overlapPath || ''} />
+              {/* <path fill="#ffffff" d={overlapPath || ''} /> */}
             </svg>
           )
         })()}
@@ -89,7 +89,7 @@ function Hero() {
             interactive textbooks with intelligent question banks to excel in your clinical years.
           </p>
           <div className="hero__actions">
-            <a href="/login" className="hero__cta-primary">
+            <a href="/login?mode=signup" className="hero__cta-primary">
               <span>Start Learning</span>
               <span className="hero__cta-arrow" aria-hidden>➜</span>
             </a>

@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import './AuthPanel.css'
 import { setTokens } from '../token'
 
 function AuthPanel() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [mode, setMode] = useState('signin')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -17,6 +18,14 @@ function AuthPanel() {
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
   const [step, setStep] = useState('form') // 'form' | 'check-email'
+
+  // Check URL parameters on component mount
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('mode') === 'signup') {
+      setMode('signup')
+    }
+  }, [location.search])
 
   return (
     <div className="auth-panel">
@@ -38,6 +47,22 @@ function AuthPanel() {
           </button>
         </div>
       </div>
+
+      {mode === 'signup' && (
+        <div className="auth-panel__trial-banner">
+          <div className="auth-panel__trial-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+          </div>
+          <div className="auth-panel__trial-content">
+            <div className="auth-panel__trial-title">3-Week Free Trial</div>
+            <div className="auth-panel__trial-text">
+              Get instant access to all features, no card required. Then just £15 for 6 months.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="auth-panel__header">
         <h2 className="auth-panel__title">

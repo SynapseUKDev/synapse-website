@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import { authHeaders } from '../auth/token'
-import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen } from 'react-icons/lu'
+import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuUserPlus, LuCheck, LuX } from 'react-icons/lu'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import useStaleJson from '../utils/useStaleJson'
 
@@ -28,6 +28,74 @@ export default function Dashboard() {
   const summary = summaryReq.data || { study_streak_days: 0, time_today_minutes: 0, questions_today: 0, last_specialty: null, targets: { time_minutes: 180, questions: 30 } }
   const trend = trendReq.data?.days || buildDemoTrend()
   const loading = summaryReq.loading && !summaryReq.data
+
+  // Friends state
+  const [friendEmail, setFriendEmail] = useState('')
+  const [sendLoading, setSendLoading] = useState(false)
+  const [requests, setRequests] = useState({ inbox: [], outbox: [] })
+  const [requestsLoading, setRequestsLoading] = useState(true)
+  const [friendsTab, setFriendsTab] = useState('add') // add | requests
+
+  const loadFriendsData = async () => {
+    try {
+      setRequestsLoading(true)
+      const reqRes = await fetch(`${API_BASE}/friends/requests`, { headers: authHeaders() })
+      const reqJson = await reqRes.json().catch(() => ({}))
+      setRequests({ inbox: reqJson?.inbox || [], outbox: reqJson?.outbox || [] })
+    } catch (_e) {
+      setRequests({ inbox: [], outbox: [] })
+    } finally {
+      setRequestsLoading(false)
+    }
+    // Leaderboard removed for now
+  }
+
+  useEffect(() => {
+    loadFriendsData()
+  }, [])
+
+  const sendFriendRequest = async (e) => {
+    e?.preventDefault?.()
+    const email = friendEmail.trim()
+    if (!email) return
+    setSendLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/friends/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ email })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(json?.error || 'Failed to send request')
+      } else {
+        setFriendEmail('')
+        await loadFriendsData()
+      }
+    } catch (_e) {
+      alert('Failed to send request')
+    } finally {
+      setSendLoading(false)
+    }
+  }
+
+  const respondToRequest = async (requestId, action) => {
+    try {
+      const res = await fetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ action })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(json?.error || 'Failed to update request')
+      }
+    } catch (_e) {
+      alert('Failed to update request')
+    } finally {
+      await loadFriendsData()
+    }
+  }
 
   const continueQuestions = () => {
     const spec = summary.last_specialty
@@ -110,6 +178,81 @@ export default function Dashboard() {
           </div>
         </div>
       )} */}
+
+      {/* <div className="db-right">
+        <div className="db-card">
+          <div className="db-card__top">
+            <div className="db-card__title">Friends</div>
+            <div className="db-tabs">
+              <button className={`db-tab ${friendsTab==='add'?'is-active':''}`} onClick={()=>setFriendsTab('add')}>Add</button>
+              <button className={`db-tab ${friendsTab==='requests'?'is-active':''}`} onClick={()=>setFriendsTab('requests')}>Requests</button>
+            </div>
+          </div>
+
+          {friendsTab === 'add' ? (
+            <div>
+              <form className="db-inputrow" onSubmit={sendFriendRequest}>
+                <input
+                  type="email"
+                  className="db-input"
+                  placeholder="friend@example.com"
+                  value={friendEmail}
+                  onChange={(e) => setFriendEmail(e.target.value)}
+                />
+                <button className="db-btn db-btn--small db-btn--primary" type="submit" disabled={sendLoading || !friendEmail.trim()}>
+                  {sendLoading ? 'Sending…' : 'Send'}
+                </button>
+              </form>
+              <div className="db-hint">Use their account email.</div>
+            </div>
+          ) : (
+            <div>
+              {requestsLoading ? (
+                <div className="db-empty">Loading…</div>
+              ) : (
+                <div className="db-twoCols">
+                  <div>
+                    <div className="db-subheading">Inbox</div>
+                    <div className="db-list">
+                      {(requests.inbox || []).length === 0 && <div className="db-empty">No pending</div>}
+                      {(requests.inbox || []).map((r) => (
+                        <div key={r.id} className="db-list__item">
+                          <div className="db-list__main">
+                            <div className="db-list__title">{r.requester?.username || r.requester?.email || r.requester?.id}</div>
+                            <div className="db-list__sub">{r.requester?.email}</div>
+                          </div>
+                          <div className="db-list__actions">
+                            <button className="db-chip db-chip--accept" onClick={() => respondToRequest(r.id, 'accept')} title="Accept"><LuCheck size={16} /></button>
+                            <button className="db-chip db-chip--decline" onClick={() => respondToRequest(r.id, 'decline')} title="Decline"><LuX size={16} /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="db-subheading">Sent</div>
+                    <div className="db-list">
+                      {(requests.outbox || []).length === 0 && <div className="db-empty">No pending</div>}
+                      {(requests.outbox || []).map((r) => (
+                        <div key={r.id} className="db-list__item">
+                          <div className="db-list__main">
+                            <div className="db-list__title">{r.target?.username || r.target?.email || r.target?.id}</div>
+                            <div className="db-list__sub">{r.target?.email}</div>
+                          </div>
+                          <div className="db-list__actions">
+                            <button className="db-chip" onClick={() => respondToRequest(r.id, 'cancel')}>Cancel</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div> */}
+
     </div>
   )
 }

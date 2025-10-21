@@ -21,7 +21,13 @@ function Auth() {
           headers: authHeaders(),
         })
         if (res.ok) {
-          navigate('/dashboard', { replace: true })
+          const data = await res.json()
+          const hasAccess = !!data?.access?.has_active_access
+          if (hasAccess) {
+            navigate('/dashboard', { replace: true })
+          } else {
+            navigate('/subscribe', { replace: true })
+          }
         } else if (res.status === 401) {
           // Try refreshing session using refresh token
           const refreshToken = getRefreshToken()
@@ -43,7 +49,13 @@ function Auth() {
                   headers: authHeaders(),
                 })
                 if (retry.ok) {
-                  navigate('/dashboard', { replace: true })
+                  const d2 = await retry.json()
+                  const ok2 = !!d2?.access?.has_active_access
+                  if (ok2) {
+                    navigate('/dashboard', { replace: true })
+                  } else {
+                    navigate('/subscribe', { replace: true })
+                  }
                 } else if (retry.status === 401) {
                   clearTokens()
                 }
@@ -89,6 +101,24 @@ function Auth() {
               Join thousands of medical students who trust Synapse UK for their learning journey. 
               Advanced practice questions, real-time analytics, and expert guidance.
             </p>
+            <div style={{ 
+              marginTop: 20, 
+              padding: '14px 18px', 
+              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', 
+              border: '2px solid #a7f3d0', 
+              borderRadius: 12,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#059669' }}>
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <div>
+                <div style={{ fontWeight: 800, color: '#0e8a4b', fontSize: 15 }}>3-Week Free Trial</div>
+                <div style={{ color: '#059669', fontSize: 13, fontWeight: 600 }}>Then just £15 for 6 months • No card required</div>
+              </div>
+            </div>
           </div>
 
           <div className="auth__stats">

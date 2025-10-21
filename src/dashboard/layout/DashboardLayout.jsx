@@ -41,6 +41,12 @@ function DashboardLayout() {
       
       const data = await res.json()
       console.log('User data received:', data.user?.id)
+      const hasAccess = !!data?.access?.has_active_access
+      if (!hasAccess) {
+        console.log('Access inactive, redirecting to subscribe')
+        navigate('/subscribe')
+        return
+      }
       setUser(data.user)
     } catch (error) {
       console.error('Error fetching user:', error)

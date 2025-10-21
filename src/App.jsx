@@ -4,6 +4,7 @@ import Landing from './landing/Landing.jsx'
 import Auth from './auth/Auth.jsx'
 import Dashboard from './dashboard/Dashboard.jsx'
 import Callback from './auth/Callback.jsx'
+import Subscribe from './auth/Subscribe.jsx'
 import './App.css'
 import './components/loading/LoadingScreen.css'
 import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
@@ -14,6 +15,7 @@ import PracticeResults from './dashboard/practice/PracticeResults.jsx'
 import Textbook from './dashboard/textbook/Textbook.jsx'
 import TextbookTopic from './dashboard/textbook/TextbookTopic.jsx'
 import TextbookSearch from './dashboard/textbook/TextbookSearch.jsx'
+import Settings from './dashboard/Settings.jsx'
 
 function HashRedirector() {
   const location = useLocation()
@@ -34,6 +36,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/auth/callback" element={<Callback />} />
+        <Route path="/subscribe" element={<Subscribe />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="question-bank" element={<QuestionBank />} />
@@ -44,6 +47,7 @@ function App() {
           <Route path="textbook/search" element={<TextbookSearch />} />
           <Route path="textbook/specialty/:slug" element={<Textbook />} />
           <Route path="textbook/topic/:topicSlug" element={<TextbookTopic />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

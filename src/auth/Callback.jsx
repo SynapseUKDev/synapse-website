@@ -44,7 +44,23 @@ function Callback() {
           accessToken: params.get('access_token') || '',
           refreshToken: params.get('refresh_token') || ''
         })
-        navigate('/dashboard')
+        // Check access via /me and route accordingly
+        try {
+          const me = await fetch(`${API_BASE}/me`, {
+            credentials: 'include',
+            cache: 'no-store',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          if (me.ok) {
+            const data = await me.json()
+            const hasAccess = !!data?.access?.has_active_access
+            navigate(hasAccess ? '/dashboard' : '/subscribe')
+          } else {
+            navigate('/')
+          }
+        } catch {
+          navigate('/')
+        }
       } catch (e) {
         setMessage('Could not complete sign-in. Please try signing in again.')
       }
