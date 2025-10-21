@@ -12,7 +12,7 @@ function Testimonials() {
         name: 'S Rahman',
         meta: '4th Year Medical Student',
         avatar:
-          'https://www.svgrepo.com/show/384670/account-avatar-profile-user.svg',
+          'https://images.squarespace-cdn.com/content/v1/66a674c720afc43adfa96c98/97815649-5427-4a82-8208-9a5f587ac8e2/Screenshot+2025-03-31+225902.png?format=1500w',
       },
       {
         quote:
