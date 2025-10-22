@@ -61,6 +61,9 @@ export default function Practice() {
   const [sessionTotalMs, setSessionTotalMs] = useState(0)
   const [questionStartTime, setQuestionStartTime] = useState(Date.now())
   
+  // Responsive tracker grid size
+  const [trackerChunkSize, setTrackerChunkSize] = useState(50)
+  
   const { display, running, toggle } = useCountdown(timerMinutes * 60)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -247,6 +250,23 @@ export default function Practice() {
       setSubmitting(false)
     }
   }
+
+  // Update tracker chunk size based on window width
+  useEffect(() => {
+    const updateChunkSize = () => {
+      if (window.innerWidth <= 768) {
+        setTrackerChunkSize(25)
+      } else if (window.innerWidth <= 1024) {
+        setTrackerChunkSize(35)
+      } else {
+        setTrackerChunkSize(50)
+      }
+    }
+    
+    updateChunkSize()
+    window.addEventListener('resize', updateChunkSize)
+    return () => window.removeEventListener('resize', updateChunkSize)
+  }, [])
 
   // Keyboard shortcuts: 1-5 to select options, Enter to submit/next
   useEffect(() => {
@@ -692,9 +712,9 @@ export default function Practice() {
                 </div>
 
                 <div className="trk-rows">
-                  {Array.from({ length: Math.ceil(questions.length / 50) }).map((_, rowIdx) => {
-                    const start = rowIdx * 50
-                    const end = Math.min(start + 50, questions.length)
+                  {Array.from({ length: Math.ceil(questions.length / trackerChunkSize) }).map((_, rowIdx) => {
+                    const start = rowIdx * trackerChunkSize
+                    const end = Math.min(start + trackerChunkSize, questions.length)
                     return (
                       <div key={rowIdx} className="trk-row">
                         <div className="trk-row__label">{start + 1}–{end}</div>
