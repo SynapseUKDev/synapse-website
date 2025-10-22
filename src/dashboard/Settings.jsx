@@ -152,7 +152,7 @@ export default function Settings() {
       <h1 className="qb__title">Settings</h1>
       <p className="qb__subtitle">Manage your account and subscription</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 16 }}>
+      <div className="settings__grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 16 }}>
         {/* Profile card */}
         <div className="qb-card">
           <div className="qb-card__head">

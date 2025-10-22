@@ -4,12 +4,15 @@ import Sidebar from '../sidebar/Sidebar'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import '../Dashboard.css'
 import { authHeaders, clearTokens } from '../../auth/token'
+import { LuMenu } from 'react-icons/lu'
+import logoImg from '../../assets/logo/logo.png'
 
 function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const fetchUser = useCallback(async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -75,7 +78,35 @@ function DashboardLayout() {
 
   return (
     <div className="dash">
-      <Sidebar user={user} onLogout={handleLogout} />
+      {/* Mobile Header */}
+      <div className="dash__mobile-header">
+        <div className="dash__mobile-header-content">
+          <img src={logoImg} alt="Synapse UK" className="dash__mobile-logo" />
+          <button 
+            className="dash__mobile-burger" 
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <LuMenu size={24} />
+          </button>
+        </div>
+      </div>
+
+      {/* Overlay for mobile menu */}
+      {mobileMenuOpen && (
+        <div 
+          className="dash__overlay" 
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <Sidebar 
+        user={user} 
+        onLogout={handleLogout} 
+        mobileMenuOpen={mobileMenuOpen}
+        onCloseMobileMenu={() => setMobileMenuOpen(false)}
+      />
       <main className="dash__content">
         <Outlet context={{ user, location }} />
       </main>

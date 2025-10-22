@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuPanelLeft, LuSettings } from 'react-icons/lu'
+import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuPanelLeft, LuSettings, LuX } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import './Sidebar.css'
 
-function Sidebar({ user, onLogout }) {
+function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -23,11 +23,28 @@ function Sidebar({ user, onLogout }) {
   const displayUsername = user?.username || user?.user_metadata?.username || null
   const initial = (displayUsername || user?.email || 'U').charAt(0).toUpperCase()
 
+  const handleNavigate = (to) => {
+    navigate(to)
+    // Close mobile menu after navigation
+    if (onCloseMobileMenu) {
+      onCloseMobileMenu()
+    }
+  }
+
   return (
-    <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}>
+    <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''} ${mobileMenuOpen ? 'sidebar--mobile-open' : ''}`}>
       <div className="sidebar__brand">
         <img src={logoImg} alt="Synapse UK" className="sidebar__logo" />
         {/* {!isCollapsed && <span className="sidebar__brand-text">SYNAPSE UK</span>} */}
+        
+        {/* Mobile close button */}
+        <button 
+          className="sidebar__mobile-close" 
+          onClick={onCloseMobileMenu}
+          aria-label="Close menu"
+        >
+          <LuX size={24} />
+        </button>
       </div>
       
       <nav className="sidebar__menu">
@@ -37,7 +54,7 @@ function Sidebar({ user, onLogout }) {
             <button
               key={item.id}
               className={`sidebar__item ${location.pathname === item.to ? 'sidebar__item--active' : ''}`}
-              onClick={() => navigate(item.to)}
+              onClick={() => handleNavigate(item.to)}
             >
               <IconComponent className="sidebar__icon" />
               {!isCollapsed && <span className="sidebar__text">{item.label}</span>}
@@ -60,8 +77,11 @@ function Sidebar({ user, onLogout }) {
             </div>
           </div>
           <div className="sidebar__user-actions">
-            <button className="sidebar__settings" onClick={() => navigate('/dashboard/settings')}>Settings</button>
-            <button className="sidebar__logout" onClick={onLogout}>Logout</button>
+            <button className="sidebar__settings" onClick={() => handleNavigate('/dashboard/settings')}>Settings</button>
+            <button className="sidebar__logout" onClick={() => {
+              onLogout()
+              if (onCloseMobileMenu) onCloseMobileMenu()
+            }}>Logout</button>
           </div>
         </div>
       )}

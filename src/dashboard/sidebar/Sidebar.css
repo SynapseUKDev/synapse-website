@@ -272,15 +272,66 @@
   transition-delay: 0s;
 }
 
+/* Mobile close button - hidden on desktop */
+.sidebar__mobile-close {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  color: #c8d4ff;
+  margin-left: auto;
+}
+
+.sidebar__mobile-close:hover {
+  background: rgba(32,229,246,0.1);
+  border-color: rgba(32,229,246,0.45);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
-    z-index: 1000;
+    z-index: 1001;
     transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 280px;
   }
   
-  .sidebar--open {
+  .sidebar--mobile-open {
     transform: translateX(0);
+  }
+
+  .sidebar--collapsed {
+    width: 280px;
+  }
+  
+  .sidebar__mobile-close {
+    display: flex;
+  }
+
+  /* Always show text and user section on mobile */
+  .sidebar--collapsed .sidebar__text {
+    opacity: 1;
+  }
+
+  .sidebar--collapsed .sidebar__user {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .sidebar--collapsed .sidebar__item {
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+
+  /* Hide desktop collapse button on mobile */
+  .sidebar__footer {
+    display: none;
   }
 }

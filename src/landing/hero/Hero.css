@@ -112,7 +112,7 @@
   }
   .hero__doctor {
     left: 50%; right: auto; bottom: 36px;
-    width: 58vw; max-width: 420px;
+    width: 65vw; max-width: 600px;
     transform: translateX(-50%);
   }
 }
