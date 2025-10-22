@@ -158,6 +158,10 @@ export default function Textbook() {
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, []);
+
   // Toggle expand/collapse for topics/subtopics by slug
   const toggleExpanded = (slugValue) => {
     setExpandedSet((prev) => {

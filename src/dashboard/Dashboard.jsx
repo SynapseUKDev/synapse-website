@@ -36,6 +36,10 @@ export default function Dashboard() {
   const [requestsLoading, setRequestsLoading] = useState(true)
   const [friendsTab, setFriendsTab] = useState('add') // add | requests
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, []);
+
   // const loadFriendsData = async () => {
   //   try {
   //     setRequestsLoading(true)

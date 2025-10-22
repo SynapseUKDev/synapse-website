@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './PracticeResults.css'
 import './PracticeSetup.css'
@@ -21,6 +21,10 @@ export default function PracticeResults() {
   const avgTimeSec = Math.round((avgTimeMs || 0) / 1000)
 
   const scoreTheme = accuracyPct >= 80 ? 'good' : accuracyPct >= 60 ? 'ok' : 'poor'
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, []);
 
   return (
     <div className="prr">

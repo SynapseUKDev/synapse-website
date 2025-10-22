@@ -91,6 +91,10 @@ export default function QuestionBank() {
     )
   }
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, []);
+
   return (
     <div className="qb">
       <h1 className="qb__title">Question Bank</h1>

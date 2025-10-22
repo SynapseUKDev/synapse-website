@@ -68,6 +68,11 @@ export default function Practice() {
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
+  // Scroll to top on component mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
   // Load all questions for the session
   useEffect(() => {
     if (!specialtyId) {
