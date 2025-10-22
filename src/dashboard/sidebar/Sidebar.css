@@ -301,6 +301,8 @@
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     width: 280px;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
   
   .sidebar--mobile-open {
@@ -313,6 +315,23 @@
   
   .sidebar__mobile-close {
     display: flex;
+  }
+
+  /* Make menu scrollable on mobile with flexible height */
+  .sidebar__menu {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Ensure brand and user sections don't shrink */
+  .sidebar__brand {
+    flex-shrink: 0;
+  }
+
+  .sidebar__user {
+    flex-shrink: 0;
   }
 
   /* Always show text and user section on mobile */
