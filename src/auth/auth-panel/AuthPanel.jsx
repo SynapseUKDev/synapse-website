@@ -234,7 +234,7 @@ function AuthPanel() {
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
               <span>Remember me</span>
             </label>
-            <a className="auth-panel__link" href="#">Forgot password?</a>
+            {/* <a className="auth-panel__link" href="#">Forgot password?</a> */}
           </div>
         )}
 
