@@ -83,6 +83,10 @@ export default function QuestionBank() {
   const specialties = specialtiesReq.data || []
   const loading = (summaryReq.loading && !summaryReq.data) || (specialtiesReq.loading && !specialtiesReq.data)
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, []);
+
   if (loading) {
     return (
       <div className="qb">
@@ -90,10 +94,6 @@ export default function QuestionBank() {
       </div>
     )
   }
-
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, []);
 
   return (
     <div className="qb">

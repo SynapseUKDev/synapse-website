@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import { authHeaders } from '../auth/token'
-import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuUserPlus, LuCheck, LuX } from 'react-icons/lu'
+import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuUserPlus, LuCheck, LuX, LuUsers, LuMail, LuTrash2, LuTrophy, LuAward } from 'react-icons/lu'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import useStaleJson from '../utils/useStaleJson'
 
@@ -33,73 +33,166 @@ export default function Dashboard() {
   const [friendEmail, setFriendEmail] = useState('')
   const [sendLoading, setSendLoading] = useState(false)
   const [requests, setRequests] = useState({ inbox: [], outbox: [] })
+  const [friends, setFriends] = useState([])
   const [requestsLoading, setRequestsLoading] = useState(true)
-  const [friendsTab, setFriendsTab] = useState('add') // add | requests
+  const [friendsLoading, setFriendsLoading] = useState(true)
+  const [friendsTab, setFriendsTab] = useState('friends') // friends | requests
+  const [friendsError, setFriendsError] = useState('')
+  const [friendsSuccess, setFriendsSuccess] = useState('')
+
+  // Leaderboard state
+  const [leaderboard, setLeaderboard] = useState([])
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true)
+  const [specialties, setSpecialties] = useState([])
+  const [selectedSpecialty, setSelectedSpecialty] = useState('all')
+  const [sortBy, setSortBy] = useState('total_answered') // total_answered | correct | accuracy_pct
 
   useEffect(() => {
     window.scrollTo(0, 0)
   }, []);
 
-  // const loadFriendsData = async () => {
-  //   try {
-  //     setRequestsLoading(true)
-  //     const reqRes = await fetch(`${API_BASE}/friends/requests`, { headers: authHeaders() })
-  //     const reqJson = await reqRes.json().catch(() => ({}))
-  //     setRequests({ inbox: reqJson?.inbox || [], outbox: reqJson?.outbox || [] })
-  //   } catch (_e) {
-  //     setRequests({ inbox: [], outbox: [] })
-  //   } finally {
-  //     setRequestsLoading(false)
-  //   }
-  //   // Leaderboard removed for now
-  // }
+  const loadFriendsData = async () => {
+    try {
+      setRequestsLoading(true)
+      const reqRes = await fetch(`${API_BASE}/friends/requests`, { headers: authHeaders() })
+      const reqJson = await reqRes.json().catch(() => ({}))
+      setRequests({ inbox: reqJson?.inbox || [], outbox: reqJson?.outbox || [] })
+    } catch (_e) {
+      setRequests({ inbox: [], outbox: [] })
+    } finally {
+      setRequestsLoading(false)
+    }
+  }
 
-  // useEffect(() => {
-  //   loadFriendsData()
-  // }, [])
+  const loadFriendsList = async () => {
+    try {
+      setFriendsLoading(true)
+      const res = await fetch(`${API_BASE}/friends`, { headers: authHeaders() })
+      const json = await res.json().catch(() => ({}))
+      setFriends(json?.friends || [])
+    } catch (_e) {
+      setFriends([])
+    } finally {
+      setFriendsLoading(false)
+    }
+  }
 
-  // const sendFriendRequest = async (e) => {
-  //   e?.preventDefault?.()
-  //   const email = friendEmail.trim()
-  //   if (!email) return
-  //   setSendLoading(true)
-  //   try {
-  //     const res = await fetch(`${API_BASE}/friends/requests`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-  //       body: JSON.stringify({ email })
-  //     })
-  //     const json = await res.json().catch(() => ({}))
-  //     if (!res.ok) {
-  //       alert(json?.error || 'Failed to send request')
-  //     } else {
-  //       setFriendEmail('')
-  //       await loadFriendsData()
-  //     }
-  //   } catch (_e) {
-  //     alert('Failed to send request')
-  //   } finally {
-  //     setSendLoading(false)
-  //   }
-  // }
+  const loadSpecialties = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/qbank/specialties`, { headers: authHeaders() })
+      const json = await res.json().catch(() => ({}))
+      setSpecialties(json?.specialties || [])
+    } catch (_e) {
+      setSpecialties([])
+    }
+  }
 
-  // const respondToRequest = async (requestId, action) => {
-  //   try {
-  //     const res = await fetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-  //       body: JSON.stringify({ action })
-  //     })
-  //     const json = await res.json().catch(() => ({}))
-  //     if (!res.ok) {
-  //       alert(json?.error || 'Failed to update request')
-  //     }
-  //   } catch (_e) {
-  //     alert('Failed to update request')
-  //   } finally {
-  //     await loadFriendsData()
-  //   }
-  // }
+  const loadLeaderboard = async () => {
+    try {
+      setLeaderboardLoading(true)
+      const url = selectedSpecialty === 'all' 
+        ? `${API_BASE}/friends/leaderboard`
+        : `${API_BASE}/friends/leaderboard?specialty_id=${selectedSpecialty}`
+      const res = await fetch(url, { headers: authHeaders() })
+      const json = await res.json().catch(() => ({}))
+      setLeaderboard(json?.leaderboard || [])
+    } catch (_e) {
+      setLeaderboard([])
+    } finally {
+      setLeaderboardLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadFriendsData()
+    loadFriendsList()
+    loadSpecialties()
+  }, [])
+
+  useEffect(() => {
+    loadLeaderboard()
+  }, [selectedSpecialty])
+
+  // Clear error/success messages when switching tabs
+  useEffect(() => {
+    setFriendsError('')
+    setFriendsSuccess('')
+  }, [friendsTab])
+
+  const sendFriendRequest = async (e) => {
+    e?.preventDefault?.()
+    setFriendsError('')
+    setFriendsSuccess('')
+    
+    const email = friendEmail.trim()
+    if (!email) return
+    
+    // Check if user is already a friend
+    const isAlreadyFriend = friends.some(f => 
+      f.friend_email?.toLowerCase() === email.toLowerCase()
+    )
+    if (isAlreadyFriend) {
+      setFriendsError('This user is already your friend')
+      return
+    }
+    
+    setSendLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/friends/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ email })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFriendsError(json?.error || 'Failed to send request')
+      } else {
+        setFriendEmail('')
+        await loadFriendsData()
+        setFriendsSuccess('Friend request sent successfully!')
+        // Clear success message after 3 seconds
+        setTimeout(() => setFriendsSuccess(''), 3000)
+      }
+    } catch (_e) {
+      setFriendsError('Failed to send request. Please try again.')
+    } finally {
+      setSendLoading(false)
+    }
+  }
+
+  const respondToRequest = async (requestId, action) => {
+    setFriendsError('')
+    setFriendsSuccess('')
+    
+    try {
+      const res = await fetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ action })
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFriendsError(json?.error || 'Failed to update request')
+      } else {
+        await loadFriendsData()
+        await loadFriendsList()
+        
+        // Show success message
+        if (action === 'accept') {
+          setFriendsSuccess('Friend request accepted!')
+        } else if (action === 'decline') {
+          setFriendsSuccess('Friend request declined')
+        } else if (action === 'cancel') {
+          setFriendsSuccess('Friend request cancelled')
+        }
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setFriendsSuccess(''), 3000)
+      }
+    } catch (_e) {
+      setFriendsError('Failed to update request. Please try again.')
+    }
+  }
 
   const continueQuestions = () => {
     const spec = summary.last_specialty
@@ -168,33 +261,142 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* {trend && trend.length > 0 && (
-        <div className="db-perf card">
-          <div className="db-perf__head">
-            <div>
-              <div className="db-perf__title">Performance Trend</div>
-              <div className="db-perf__sub">Your accuracy and response times over the past 30 days</div>
+      <div className="db-leaderboard-friends-grid">
+        <div className="db-leaderboard">
+          <div className="db-card">
+            <div className="db-card__top">
+              <div className="db-leaderboard__title">
+                <LuTrophy size={18} />
+                Leaderboard
+              </div>
             </div>
-            <div className="db-perf__badge">↗</div>
-          </div>
-          <div className="db-perf__chart">
-            {renderTrendChart(trend)}
+            <div className="db-leaderboard__content">
+              <div className="db-filters">
+                <div className="db-filter">
+                  <select 
+                    className="db-select" 
+                    value={selectedSpecialty} 
+                    onChange={(e) => setSelectedSpecialty(e.target.value)}
+                  >
+                    <option value="all">All Specialties</option>
+                    {specialties.map((spec) => (
+                      <option key={spec.specialty_id} value={spec.specialty_id}>
+                        {spec.specialty_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="db-filter">
+                  <select 
+                    className="db-select" 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                  >
+                    <option value="total_answered">Sort by Total Answered</option>
+                    <option value="correct">Sort by Correct Answers</option>
+                    <option value="accuracy_pct">Sort by Accuracy</option>
+                  </select>
+                </div>
+              </div>
+
+              {leaderboardLoading ? (
+                <div className="db-empty">Loading leaderboard…</div>
+              ) : leaderboard.length === 0 ? (
+                <div className="db-empty">No data available. Add friends to compete!</div>
+              ) : (
+                <div className="db-leaderboard__list">
+                  {(() => {
+                    // Sort leaderboard based on selected metric
+                    const sorted = [...leaderboard].sort((a, b) => {
+                      if (sortBy === 'accuracy_pct') {
+                        const aVal = a.accuracy_pct ?? -1
+                        const bVal = b.accuracy_pct ?? -1
+                        return bVal - aVal
+                      } else {
+                        return (b[sortBy] || 0) - (a[sortBy] || 0)
+                      }
+                    })
+                    
+                    return sorted.map((entry, index) => {
+                      const isCurrentUser = entry.user_id === user?.id
+                      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
+                      
+                      // Determine what to show on the right based on sort
+                      let scoreValue, scoreLabel
+                      if (sortBy === 'accuracy_pct') {
+                        scoreValue = entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'
+                        scoreLabel = 'accuracy'
+                      } else if (sortBy === 'correct') {
+                        scoreValue = entry.correct || 0
+                        scoreLabel = 'correct'
+                      } else {
+                        scoreValue = entry.total_answered || 0
+                        scoreLabel = 'total'
+                      }
+                      
+                      return (
+                        <div 
+                          key={entry.user_id} 
+                          className={`db-leaderboard__item ${isCurrentUser ? 'db-leaderboard__item--self' : ''}`}
+                        >
+                          <div className="db-leaderboard__rank">
+                            {medal || `#${index + 1}`}
+                          </div>
+                          <div className="db-leaderboard__user">
+                            <div className="db-leaderboard__username">
+                              {entry.username || entry.email?.split('@')[0] || 'User'}
+                              {isCurrentUser && <span className="db-leaderboard__you">(You)</span>}
+                            </div>
+                            <div className="db-leaderboard__stats">
+                              {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
+                            </div>
+                          </div>
+                          <div className="db-leaderboard__score">
+                            <div className="db-leaderboard__score-num">{scoreValue}</div>
+                            <div className="db-leaderboard__score-label">{scoreLabel}</div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  })()}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      )} */}
 
-      {/* <div className="db-right">
-        <div className="db-card">
-          <div className="db-card__top">
-            <div className="db-card__title">Friends</div>
-            <div className="db-tabs">
-              <button className={`db-tab ${friendsTab==='add'?'is-active':''}`} onClick={()=>setFriendsTab('add')}>Add</button>
-              <button className={`db-tab ${friendsTab==='requests'?'is-active':''}`} onClick={()=>setFriendsTab('requests')}>Requests</button>
+        <div className="db-friends">
+          <div className="db-card">
+            <div className="db-card__top">
+              <div className="db-friends__title">Friends</div>
+              <div className="db-tabs">
+              <button className={`db-tab ${friendsTab==='friends'?'is-active':''}`} onClick={()=>setFriendsTab('friends')}>
+                <LuUsers size={14} />
+                <span>Friends</span>
+              </button>
+              <button className={`db-tab ${friendsTab==='requests'?'is-active':''}`} onClick={()=>setFriendsTab('requests')}>
+                <LuMail size={14} />
+                <span>Requests</span>
+                {(requests.inbox.length > 0) && <span className="db-tab__badge">{requests.inbox.length}</span>}
+              </button>
             </div>
           </div>
 
-          {friendsTab === 'add' ? (
-            <div>
+          {friendsTab === 'friends' && (
+            <div className="db-friends__content">
+              {friendsError && (
+                <div className="db-friends__alert db-friends__alert--error">
+                  <LuX size={16} />
+                  {friendsError}
+                </div>
+              )}
+              {friendsSuccess && (
+                <div className="db-friends__alert db-friends__alert--success">
+                  <LuCheck size={16} />
+                  {friendsSuccess}
+                </div>
+              )}
+              <p className="db-friends__desc">Add friends by email to connect and compete with other users.</p>
               <form className="db-inputrow" onSubmit={sendFriendRequest}>
                 <input
                   type="email"
@@ -203,48 +405,99 @@ export default function Dashboard() {
                   value={friendEmail}
                   onChange={(e) => setFriendEmail(e.target.value)}
                 />
-                <button className="db-btn db-btn--small db-btn--primary" type="submit" disabled={sendLoading || !friendEmail.trim()}>
-                  {sendLoading ? 'Sending…' : 'Send'}
+                <button className="db-btn-primary" type="submit" disabled={sendLoading || !friendEmail.trim()}>
+                  {sendLoading ? 'Sending…' : 'Send Request'}
                 </button>
               </form>
-              <div className="db-hint">Use their account email.</div>
+
+              <div className="db-friends__divider" />
+
+              {friendsLoading ? (
+                <div className="db-empty">Loading friends…</div>
+              ) : (
+                <div>
+                  <div className="db-subheading">
+                    <LuUsers size={14} />
+                    Your Friends ({friends.length})
+                  </div>
+                  <div className="db-list">
+                    {friends.length === 0 && <div className="db-empty">No friends yet. Send some requests!</div>}
+                    {friends.map((f) => (
+                      <div key={f.id} className="db-list__item db-list__item--friend">
+                        <div className="db-list__main">
+                          <div className="db-list__title">{f.friend_username || f.friend_email?.split('@')[0] || 'User'}</div>
+                          <div className="db-list__sub">{f.friend_email}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          ) : (
-            <div>
+          )}
+
+          {friendsTab === 'requests' && (
+            <div className="db-friends__content">
+              {friendsError && (
+                <div className="db-friends__alert db-friends__alert--error">
+                  <LuX size={16} />
+                  {friendsError}
+                </div>
+              )}
+              {friendsSuccess && (
+                <div className="db-friends__alert db-friends__alert--success">
+                  <LuCheck size={16} />
+                  {friendsSuccess}
+                </div>
+              )}
               {requestsLoading ? (
-                <div className="db-empty">Loading…</div>
+                <div className="db-empty">Loading requests…</div>
               ) : (
                 <div className="db-twoCols">
                   <div>
-                    <div className="db-subheading">Inbox</div>
+                    <div className="db-subheading">
+                      <LuMail size={14} />
+                      Received ({requests.inbox.length})
+                    </div>
                     <div className="db-list">
-                      {(requests.inbox || []).length === 0 && <div className="db-empty">No pending</div>}
+                      {(requests.inbox || []).length === 0 && <div className="db-empty">No pending requests</div>}
                       {(requests.inbox || []).map((r) => (
-                        <div key={r.id} className="db-list__item">
+                        <div key={r.id} className="db-list__item db-list__item--request">
                           <div className="db-list__main">
-                            <div className="db-list__title">{r.requester?.username || r.requester?.email || r.requester?.id}</div>
+                            <div className="db-list__title">{r.requester?.username || r.requester?.email?.split('@')[0] || 'User'}</div>
                             <div className="db-list__sub">{r.requester?.email}</div>
                           </div>
                           <div className="db-list__actions">
-                            <button className="db-chip db-chip--accept" onClick={() => respondToRequest(r.id, 'accept')} title="Accept"><LuCheck size={16} /></button>
-                            <button className="db-chip db-chip--decline" onClick={() => respondToRequest(r.id, 'decline')} title="Decline"><LuX size={16} /></button>
+                            <button className="db-chip db-chip--accept" onClick={() => respondToRequest(r.id, 'accept')} title="Accept">
+                              <LuCheck size={16} />
+                            </button>
+                            <button className="db-chip db-chip--decline" onClick={() => respondToRequest(r.id, 'decline')} title="Decline">
+                              <LuX size={16} />
+                            </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
+                  <div className="db-requests-divider" />
                   <div>
-                    <div className="db-subheading">Sent</div>
+                    <div className="db-subheading">
+                      <LuMail size={14} />
+                      Sent ({requests.outbox.length})
+                    </div>
                     <div className="db-list">
-                      {(requests.outbox || []).length === 0 && <div className="db-empty">No pending</div>}
+                      {(requests.outbox || []).length === 0 && <div className="db-empty">No pending requests</div>}
                       {(requests.outbox || []).map((r) => (
-                        <div key={r.id} className="db-list__item">
+                        <div key={r.id} className="db-list__item db-list__item--request">
                           <div className="db-list__main">
-                            <div className="db-list__title">{r.target?.username || r.target?.email || r.target?.id}</div>
+                            <div className="db-list__title">{r.target?.username || r.target?.email?.split('@')[0] || 'User'}</div>
                             <div className="db-list__sub">{r.target?.email}</div>
                           </div>
                           <div className="db-list__actions">
-                            <button className="db-chip" onClick={() => respondToRequest(r.id, 'cancel')}>Cancel</button>
+                            <button className="db-chip db-chip--neutral" onClick={() => respondToRequest(r.id, 'cancel')}>
+                              <LuTrash2 size={14} />
+                              Cancel
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -255,7 +508,8 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </div> */}
+      </div>
+      </div>
 
     </div>
   )

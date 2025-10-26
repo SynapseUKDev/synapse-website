@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './Practice.css'
-import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX } from 'react-icons/lu'
+import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 
@@ -38,6 +38,11 @@ export default function Practice() {
   const [userAnswers, setUserAnswers] = useState({}) // Store user answers by question ID
   const [submittedAnswers, setSubmittedAnswers] = useState(new Set()) // Track submitted questions
   const [flagged, setFlagged] = useState(new Set())
+  const [struckOut, setStruckOut] = useState({}) // Track struck out options per question: { questionId: Set([optionId1, optionId2]) }
+  const [highlights, setHighlights] = useState({}) // Track highlighted text ranges per question: { questionId: [{ start, end, text }] }
+  const [showHighlightBtn, setShowHighlightBtn] = useState(false)
+  const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
+  const stemRef = useRef(null)
   // Reference ranges
   const [refRanges, setRefRanges] = useState([])
   const [showRef, setShowRef] = useState(false)
@@ -62,7 +67,7 @@ export default function Practice() {
   const [questionStartTime, setQuestionStartTime] = useState(Date.now())
   
   // Responsive tracker grid size
-  const [trackerChunkSize, setTrackerChunkSize] = useState(50)
+  const [trackerChunkSize, setTrackerChunkSize] = useState(35)
   
   const { display, running, toggle } = useCountdown(timerMinutes * 60)
 
@@ -168,6 +173,214 @@ export default function Practice() {
     }
   }
 
+  const toggleStrikeOut = (questionId, optionId) => {
+    setStruckOut(prev => {
+      const current = prev[questionId] || new Set()
+      const next = new Set(current)
+      if (next.has(optionId)) {
+        next.delete(optionId)
+      } else {
+        next.add(optionId)
+      }
+      return { ...prev, [questionId]: next }
+    })
+  }
+
+  // Text highlighting functionality
+  const handleTextSelection = () => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || !stemRef.current) {
+      setShowHighlightBtn(false)
+      return
+    }
+
+    const selectedText = selection.toString().trim()
+    if (!selectedText || selectedText.length === 0) {
+      setShowHighlightBtn(false)
+      return
+    }
+
+    // Check if selection is within the stem
+    const range = selection.getRangeAt(0)
+    if (!stemRef.current.contains(range.commonAncestorContainer)) {
+      setShowHighlightBtn(false)
+      return
+    }
+
+    // Get position for highlight button
+    const rect = range.getBoundingClientRect()
+    setHighlightBtnPos({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10
+    })
+    setShowHighlightBtn(true)
+  }
+
+  const applyHighlight = () => {
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed || !currentQuestion) return
+
+    const selectedText = selection.toString().trim()
+    if (!selectedText) return
+
+    const range = selection.getRangeAt(0)
+    const start = range.startOffset
+    const end = range.endOffset
+    const container = range.startContainer
+
+    // Get the text content and position relative to stem
+    let fullText = stemRef.current?.textContent || ''
+    let actualStart = 0
+    
+    // Find position in full text
+    const walker = document.createTreeWalker(
+      stemRef.current,
+      NodeFilter.SHOW_TEXT,
+      null
+    )
+    
+    let currentPos = 0
+    let node = walker.nextNode()
+    while (node) {
+      if (node === container) {
+        actualStart = currentPos + start
+        break
+      }
+      currentPos += node.textContent.length
+      node = walker.nextNode()
+    }
+
+    const actualEnd = actualStart + selectedText.length
+
+    const newHighlight = {
+      start: actualStart,
+      end: actualEnd,
+      text: selectedText,
+      id: Date.now()
+    }
+
+    setHighlights(prev => {
+      const current = prev[currentQuestion.id] || []
+      
+      // Add new highlight and merge overlapping ones
+      const allHighlights = [...current, newHighlight]
+      const merged = mergeOverlappingHighlights(allHighlights)
+      
+      return { ...prev, [currentQuestion.id]: merged }
+    })
+
+    setShowHighlightBtn(false)
+    selection.removeAllRanges()
+  }
+
+  // Merge overlapping or adjacent highlights
+  const mergeOverlappingHighlights = (highlights) => {
+    if (highlights.length <= 1) return highlights
+
+    // Sort by start position
+    const sorted = [...highlights].sort((a, b) => a.start - b.start)
+    const merged = []
+    let current = sorted[0]
+
+    for (let i = 1; i < sorted.length; i++) {
+      const next = sorted[i]
+      
+      // Check if current and next overlap or are adjacent
+      if (next.start <= current.end) {
+        // Merge them
+        current = {
+          start: current.start,
+          end: Math.max(current.end, next.end),
+          text: '', // Will be recalculated from stem
+          id: current.id // Keep the original ID
+        }
+      } else {
+        // No overlap, add current to merged and move to next
+        merged.push(current)
+        current = next
+      }
+    }
+    
+    // Add the last one
+    merged.push(current)
+    
+    return merged
+  }
+
+  const removeHighlight = (questionId, highlightId) => {
+    setHighlights(prev => {
+      const current = prev[questionId] || []
+      const filtered = current.filter(hl => hl.id !== highlightId)
+      if (filtered.length === 0) {
+        const next = { ...prev }
+        delete next[questionId]
+        return next
+      }
+      return { ...prev, [questionId]: filtered }
+    })
+  }
+
+  const clearHighlights = (questionId) => {
+    setHighlights(prev => {
+      const next = { ...prev }
+      delete next[questionId]
+      return next
+    })
+  }
+
+  const renderHighlightedText = (text, questionId) => {
+    const questionHighlights = highlights[questionId] || []
+    if (questionHighlights.length === 0) return text
+
+    // Sort highlights by start position
+    const sorted = [...questionHighlights].sort((a, b) => a.start - b.start)
+    
+    const parts = []
+    let lastIndex = 0
+    
+    sorted.forEach((hl, idx) => {
+      // Add text before highlight
+      if (hl.start > lastIndex) {
+        parts.push({ text: text.slice(lastIndex, hl.start), highlighted: false, key: `text-${idx}`, highlightId: null })
+      }
+      // Add highlighted text
+      parts.push({ text: text.slice(hl.start, hl.end), highlighted: true, key: `hl-${hl.id}`, highlightId: hl.id })
+      lastIndex = hl.end
+    })
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push({ text: text.slice(lastIndex), highlighted: false, key: 'text-end', highlightId: null })
+    }
+    
+    return parts.map(part => 
+      part.highlighted 
+        ? (
+          <span key={part.key} className="highlight-wrapper">
+            <mark className="highlight">{part.text}</mark>
+            <button
+              className="highlight-remove-btn"
+              onClick={(e) => {
+                e.preventDefault()
+                removeHighlight(questionId, part.highlightId)
+              }}
+              title="Remove this highlight"
+              aria-label="Remove highlight"
+            >
+              ×
+            </button>
+          </span>
+        )
+        : <span key={part.key}>{part.text}</span>
+    )
+  }
+
+  // Listen for text selection
+  useEffect(() => {
+    document.addEventListener('mouseup', handleTextSelection)
+    return () => document.removeEventListener('mouseup', handleTextSelection)
+  }, [])
+
   // Navigate to results with partial stats (for Exit or early finish)
   const navigateToResults = () => {
     const totalQuestions = questions.length
@@ -264,7 +477,7 @@ export default function Practice() {
       } else if (window.innerWidth <= 1024) {
         setTrackerChunkSize(35)
       } else {
-        setTrackerChunkSize(50)
+        setTrackerChunkSize(35)
       }
     }
     
@@ -378,7 +591,11 @@ export default function Practice() {
           <div className="card question-card">
             <div className="card__body">
               <div className="question-content">
-                <div style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>{currentQuestion.stem}</div>
+                <div className="question-stem-wrapper">
+                  <div ref={stemRef} className="question-stem" style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
+                    {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
+                  </div>
+                </div>
                 {Array.isArray(currentQuestion.assets) && currentQuestion.assets.length > 0 && (
                   (() => {
                     const assets = currentQuestion.assets.filter(a => a && a.url)
@@ -440,14 +657,35 @@ export default function Practice() {
                     {currentQuestion.options.map((o) => {
                       const isCorrect = result?.correct_option?.label === o.label;
                       const isSelectedIncorrect = selected === o.id && result && !result.is_correct;
-                      const className = `option ${selected === o.id ? 'option--selected' : ''} ${result ? (isCorrect ? 'option--correct' : isSelectedIncorrect ? 'option--incorrect' : '') : ''}`;
+                      const isStruckOut = (struckOut[questionId] || new Set()).has(o.id);
+                      const className = `option ${selected === o.id ? 'option--selected' : ''} ${result ? (isCorrect ? 'option--correct' : isSelectedIncorrect ? 'option--incorrect' : '') : ''} ${isStruckOut ? 'option--struck' : ''}`;
                       
                       return (
-                        <label key={o.id} className={className}>
-                          <input type="radio" name="opt" value={o.id} checked={selected === o.id} onChange={() => setSelected(o.id)} disabled={isSubmitted} />
-                          <div className="option__label">{o.label}.</div>
-                          <div>{o.body}</div>
-                        </label>
+                        <div key={o.id} className="option-wrapper">
+                          <label className={className}>
+                            <input 
+                              type="radio" 
+                              name="opt" 
+                              value={o.id} 
+                              checked={selected === o.id} 
+                              onChange={() => !isStruckOut && setSelected(o.id)} 
+                              disabled={isSubmitted || isStruckOut} 
+                            />
+                            <div className="option__label">{o.label}.</div>
+                            <div className="option__body">{o.body}</div>
+                          </label>
+                          {!isSubmitted && (
+                            <button
+                              type="button"
+                              className={`option-strike-btn ${isStruckOut ? 'is-active' : ''}`}
+                              onClick={() => toggleStrikeOut(questionId, o.id)}
+                              title={isStruckOut ? 'Remove elimination' : 'Eliminate option'}
+                              aria-label={isStruckOut ? 'Remove elimination' : 'Eliminate option'}
+                            >
+                              <LuSlash size={16} />
+                            </button>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -457,7 +695,7 @@ export default function Practice() {
               </div>
               <div className="controls">
                 <div className="controls__left">
-                  <button className="btn btn--ghost btn--icon"><LuSave />Save</button>
+                  {/* <button className="btn btn--ghost btn--icon"><LuSave />Save</button> */}
                   <button className={`btn btn--ghost btn--icon ${flagged.has(questionId) ? 'is-flagged' : ''}`} onClick={()=>{
                     setFlagged(prev => {
                       const next = new Set(prev)
@@ -465,6 +703,15 @@ export default function Practice() {
                       return next
                     })
                   }}><LuFlag />{flagged.has(questionId) ? 'Flagged' : 'Flag'}</button>
+                  {(highlights[currentQuestion.id]?.length > 0) && (
+                    <button 
+                      className="btn btn--ghost btn--icon"
+                      onClick={() => clearHighlights(currentQuestion.id)}
+                      title="Clear all highlights"
+                    >
+                      <LuEraser />Clear Highlights
+                    </button>
+                  )}
                 </div>
                 <div className="controls__right">
                   <button onClick={goToPrevious} disabled={currentIndex <= 0} className="btn btn--ghost btn--icon"><LuChevronLeft />Previous</button>
@@ -785,6 +1032,25 @@ export default function Practice() {
 
           </div>
         </div>
+      )}
+
+      {/* Floating highlight button */}
+      {showHighlightBtn && (
+        <button
+          className="highlight-btn-float"
+          style={{
+            position: 'fixed',
+            left: `${highlightBtnPos.x}px`,
+            top: `${highlightBtnPos.y}px`,
+            transform: 'translate(-50%, -100%)',
+            zIndex: 1000
+          }}
+          onClick={applyHighlight}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <LuHighlighter size={16} />
+          Highlight
+        </button>
       )}
     </div>
   )
