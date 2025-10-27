@@ -121,7 +121,7 @@ function Auth() {
             </div>
           </div>
 
-          <div className="auth__stats">
+          {/* <div className="auth__stats">
             <div className="auth__stat">
               <div className="auth__stat-icon auth__stat-icon--green">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -159,7 +159,7 @@ function Auth() {
                 <div className="auth__stat-label">Pass Rate</div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <div className="auth__features">
             <div className="auth__feature">
