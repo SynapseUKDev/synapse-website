@@ -99,10 +99,28 @@ export default function Practice() {
         fetch(url, { credentials: 'include', headers: authHeaders() }),
         fetch(`${API_BASE}/reference-ranges`, { credentials: 'include', headers: authHeaders() })
       ])
-      if (!qRes.ok) throw new Error('Failed to load session')
-      if (!rRes.ok) throw new Error('Failed to load reference ranges')
+      
+      if (!qRes.ok) {
+        let errorMessage = 'Failed to load session'
+        try {
+          const errorData = await qRes.json()
+          errorMessage = errorData.error || errorData.details || errorMessage
+          console.error('Session error details:', errorData)
+        } catch (_e) {
+          const errorText = await qRes.text()
+          console.error('Session error response:', errorText)
+        }
+        throw new Error(errorMessage)
+      }
+      
+      if (!rRes.ok) {
+        console.warn('Failed to load reference ranges, continuing without them')
+      }
 
-      const [data, rData] = await Promise.all([qRes.json(), rRes.json()])
+      const [data, rData] = await Promise.all([
+        qRes.json(),
+        rRes.ok ? rRes.json() : Promise.resolve({ groups: [] })
+      ])
       console.log('Loaded session with', data.questions?.length, 'questions')
       
       if (!data.questions || data.questions.length === 0) {
@@ -118,7 +136,7 @@ export default function Practice() {
       setRefRanges(Array.isArray(rData?.groups) ? rData.groups : [])
     } catch (error) {
       console.error('Error loading session:', error)
-      alert('Failed to load practice session')
+      alert(`Failed to load practice session: ${error.message || 'Unknown error'}`)
       navigate('/dashboard/question-bank')
     } finally {
       setLoading(false)

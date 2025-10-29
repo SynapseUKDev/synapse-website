@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../sidebar/Sidebar'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import '../Dashboard.css'
-import { authHeaders, clearTokens } from '../../auth/token'
+import { authHeaders, clearTokens, authenticatedFetch } from '../../auth/token'
 import { LuMenu } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 
@@ -18,13 +18,8 @@ function DashboardLayout() {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     try {
       console.log('Fetching user from:', `${API_BASE}/me`)
-      const res = await fetch(`${API_BASE}/me`, { 
-        credentials: 'include', 
+      const res = await authenticatedFetch(`${API_BASE}/me`, { 
         cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders(),
-        }
       })
       console.log('User fetch response status:', res.status)
       

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
-import { authHeaders } from '../auth/token'
+import { authHeaders, authenticatedFetch } from '../auth/token'
 import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuUserPlus, LuCheck, LuX, LuUsers, LuMail, LuTrash2, LuTrophy, LuAward } from 'react-icons/lu'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import useStaleJson from '../utils/useStaleJson'
@@ -54,9 +54,13 @@ export default function Dashboard() {
   const loadFriendsData = async () => {
     try {
       setRequestsLoading(true)
-      const reqRes = await fetch(`${API_BASE}/friends/requests`, { headers: authHeaders() })
-      const reqJson = await reqRes.json().catch(() => ({}))
-      setRequests({ inbox: reqJson?.inbox || [], outbox: reqJson?.outbox || [] })
+      const reqRes = await authenticatedFetch(`${API_BASE}/friends/requests`)
+      if (reqRes.ok) {
+        const reqJson = await reqRes.json().catch(() => ({}))
+        setRequests({ inbox: reqJson?.inbox || [], outbox: reqJson?.outbox || [] })
+      } else {
+        setRequests({ inbox: [], outbox: [] })
+      }
     } catch (_e) {
       setRequests({ inbox: [], outbox: [] })
     } finally {
@@ -67,9 +71,13 @@ export default function Dashboard() {
   const loadFriendsList = async () => {
     try {
       setFriendsLoading(true)
-      const res = await fetch(`${API_BASE}/friends`, { headers: authHeaders() })
-      const json = await res.json().catch(() => ({}))
-      setFriends(json?.friends || [])
+      const res = await authenticatedFetch(`${API_BASE}/friends`)
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setFriends(json?.friends || [])
+      } else {
+        setFriends([])
+      }
     } catch (_e) {
       setFriends([])
     } finally {
@@ -79,9 +87,13 @@ export default function Dashboard() {
 
   const loadSpecialties = async () => {
     try {
-      const res = await fetch(`${API_BASE}/qbank/specialties`, { headers: authHeaders() })
-      const json = await res.json().catch(() => ({}))
-      setSpecialties(json?.specialties || [])
+      const res = await authenticatedFetch(`${API_BASE}/qbank/specialties`)
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setSpecialties(json?.specialties || [])
+      } else {
+        setSpecialties([])
+      }
     } catch (_e) {
       setSpecialties([])
     }
@@ -93,9 +105,13 @@ export default function Dashboard() {
       const url = selectedSpecialty === 'all' 
         ? `${API_BASE}/friends/leaderboard`
         : `${API_BASE}/friends/leaderboard?specialty_id=${selectedSpecialty}`
-      const res = await fetch(url, { headers: authHeaders() })
-      const json = await res.json().catch(() => ({}))
-      setLeaderboard(json?.leaderboard || [])
+      const res = await authenticatedFetch(url)
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setLeaderboard(json?.leaderboard || [])
+      } else {
+        setLeaderboard([])
+      }
     } catch (_e) {
       setLeaderboard([])
     } finally {
@@ -138,9 +154,8 @@ export default function Dashboard() {
     
     setSendLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/friends/requests`, {
+      const res = await authenticatedFetch(`${API_BASE}/friends/requests`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ email })
       })
       const json = await res.json().catch(() => ({}))
@@ -165,9 +180,8 @@ export default function Dashboard() {
     setFriendsSuccess('')
     
     try {
-      const res = await fetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
+      const res = await authenticatedFetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ action })
       })
       const json = await res.json().catch(() => ({}))

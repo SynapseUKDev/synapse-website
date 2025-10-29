@@ -37,4 +37,71 @@ export function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+/**
+ * Wraps fetch to automatically handle token refresh on 401 errors
+ * @param {string} url - The URL to fetch
+ * @param {RequestInit} options - Fetch options
+ * @returns {Promise<Response>} - The fetch response
+ */
+export async function authenticatedFetch(url, options = {}) {
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+  
+  // Make initial request
+  let response = await fetch(url, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+      ...(options.headers || {}),
+    },
+  })
+
+  // If 401, try to refresh token and retry once
+  if (response.status === 401) {
+    const refreshToken = getRefreshToken()
+    if (refreshToken) {
+      try {
+        const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken, remember: true })
+        })
+        
+        if (refreshRes.ok) {
+          const data = await refreshRes.json()
+          setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
+          
+          // Retry the original request with new token
+          response = await fetch(url, {
+            ...options,
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders(),
+              ...(options.headers || {}),
+            },
+          })
+        } else if (refreshRes.status === 401) {
+          // Refresh token is also invalid, clear tokens
+          clearTokens()
+          // Dispatch event to notify app of auth failure
+          window.dispatchEvent(new Event('auth:changed'))
+        }
+      } catch (error) {
+        console.error('Token refresh failed:', error)
+        clearTokens()
+        window.dispatchEvent(new Event('auth:changed'))
+      }
+    } else {
+      // No refresh token available
+      clearTokens()
+      window.dispatchEvent(new Event('auth:changed'))
+    }
+  }
+
+  return response
+}
+
 
