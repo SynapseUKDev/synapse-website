@@ -18,6 +18,7 @@ function AuthPanel() {
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
   const [step, setStep] = useState('form') // 'form' | 'check-email'
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false)
 
   // Check URL parameters on component mount
   useEffect(() => {
@@ -29,24 +30,26 @@ function AuthPanel() {
 
   return (
     <div className="auth-panel">
-      <div className="auth-panel__tabs-container">
-        <div className="auth-panel__tabs" role="tablist">
-          <button
-            className={`auth-panel__tab ${mode === 'signin' ? 'is-active' : ''}`}
-            onClick={() => { setMode('signin'); setWarning(''); setError(''); setStep('form'); }}
-            aria-selected={mode === 'signin'}
-          >
-            Sign In
-          </button>
-          <button
-            className={`auth-panel__tab ${mode === 'signup' ? 'is-active' : ''}`}
-            onClick={() => { setMode('signup'); setWarning(''); setError(''); }}
-            aria-selected={mode === 'signup'}
-          >
-            Sign Up
-          </button>
+      {!forgotPasswordMode && (
+        <div className="auth-panel__tabs-container">
+          <div className="auth-panel__tabs" role="tablist">
+            <button
+              className={`auth-panel__tab ${mode === 'signin' ? 'is-active' : ''}`}
+              onClick={() => { setMode('signin'); setWarning(''); setError(''); setStep('form'); }}
+              aria-selected={mode === 'signin'}
+            >
+              Sign In
+            </button>
+            <button
+              className={`auth-panel__tab ${mode === 'signup' ? 'is-active' : ''}`}
+              onClick={() => { setMode('signup'); setWarning(''); setError(''); }}
+              aria-selected={mode === 'signup'}
+            >
+              Sign Up
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {mode === 'signup' && (
         <div className="auth-panel__trial-banner">
@@ -64,21 +67,24 @@ function AuthPanel() {
         </div>
       )}
 
-      <div className="auth-panel__header">
-        <h2 className="auth-panel__title">
-          {mode === 'signin' ? 'Welcome back!' : 'Create your account'}
-        </h2>
-        <p className="auth-panel__desc">
-          {mode === 'signin'
-            ? 'Enter your credentials to access your learning dashboard'
-            : 'Join Synapse and start your learning journey today'}
-        </p>
-      </div>
+      {!forgotPasswordMode && (
+        <div className="auth-panel__header">
+          <h2 className="auth-panel__title">
+            {mode === 'signin' ? 'Welcome back!' : 'Create your account'}
+          </h2>
+          <p className="auth-panel__desc">
+            {mode === 'signin'
+              ? 'Enter your credentials to access your learning dashboard'
+              : 'Join Synapse and start your learning journey today'}
+          </p>
+        </div>
+      )}
 
       <form
         className="auth-panel__form"
         onSubmit={async (e) => {
           e.preventDefault()
+          if (forgotPasswordMode) return 
           setError('')
           setWarning('')
           setStep('form')
@@ -140,7 +146,7 @@ function AuthPanel() {
         }}
       >
         
-        {mode === 'signup' && (
+        {!forgotPasswordMode && mode === 'signup' && (
           <>
             <label className="auth-panel__label">Username</label>
             <input 
@@ -154,18 +160,23 @@ function AuthPanel() {
           </>
         )}
 
-        <label className="auth-panel__label">Email address</label>
-        <input 
-          className="auth-panel__input" 
-          type="email" 
-          placeholder="Enter your email" 
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required 
-        />
+        {!forgotPasswordMode && (
+          <>
+            <label className="auth-panel__label">Email address</label>
+            <input 
+              className="auth-panel__input" 
+              type="email" 
+              placeholder="Enter your email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required 
+            />
 
-        <label className="auth-panel__label">Password</label>
-        <div className="auth-panel__input-wrapper">
+            <label className="auth-panel__label">Password</label>
+          </>
+        )}
+        {!forgotPasswordMode && (
+          <div className="auth-panel__input-wrapper">
           <input 
             className="auth-panel__input" 
             type={showPassword ? "text" : "password"}
@@ -193,8 +204,9 @@ function AuthPanel() {
             )}
           </button>
         </div>
+        )}
 
-        {mode === 'signup' && (
+        {!forgotPasswordMode && mode === 'signup' && (
           <>
             <label className="auth-panel__label">Confirm password</label>
             <div className="auth-panel__input-wrapper">
@@ -228,29 +240,117 @@ function AuthPanel() {
           </>
         )}
 
-        {mode === 'signin' && (
+        {mode === 'signin' && !forgotPasswordMode && (
           <div className="auth-panel__row">
             <label className="auth-panel__checkbox">
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
               <span>Remember me</span>
             </label>
-            {/* <a className="auth-panel__link" href="#">Forgot password?</a> */}
+            <button
+              type="button"
+              className="auth-panel__link"
+              onClick={() => {
+                setForgotPasswordMode(true)
+                setError('')
+                setWarning('')
+              }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              Forgot password?
+            </button>
           </div>
         )}
 
-        <button
-          className="auth-panel__cta"
-          type="submit"
-          disabled={loading || (mode === 'signup' && step === 'check-email')}
-        >
-          {loading
-            ? 'Please wait...'
-            : mode === 'signin'
-              ? 'Sign In'
-              : step === 'check-email'
-                ? 'Verification sent'
-                : 'Create account'}
-        </button>
+        {forgotPasswordMode && (
+          <>
+            <div className="auth-panel__header">
+              <h2 className="auth-panel__title">Reset your password</h2>
+              <p className="auth-panel__desc">
+                Enter your email address and we'll send you a link to reset your password.
+              </p>
+            </div>
+            <label className="auth-panel__label">Email address</label>
+            <input 
+              className="auth-panel__input" 
+              type="email" 
+              placeholder="Enter your email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required 
+            />
+            <button
+              className="auth-panel__cta"
+              type="button"
+              onClick={async () => {
+                setError('')
+                setWarning('')
+                if (!email) {
+                  setError('Please enter your email address')
+                  return
+                }
+                setLoading(true)
+                try {
+                  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+                  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ email })
+                  })
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}))
+                    throw new Error(data?.error || 'Failed to send reset email')
+                  }
+                  setStep('check-email')
+                } catch (err) {
+                  console.error('Forgot password error:', err)
+                  setError(err.message || 'Something went wrong')
+                } finally {
+                  setLoading(false)
+                }
+              }}
+              disabled={loading}
+            >
+              {loading ? 'Sending...' : 'Send reset link'}
+            </button>
+            <button
+              type="button"
+              className="auth-panel__link"
+              onClick={() => {
+                setForgotPasswordMode(false)
+                setError('')
+                setWarning('')
+                setStep('form')
+              }}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer', 
+                padding: '8px 0',
+                textAlign: 'center',
+                marginTop: '8px'
+              }}
+            >
+              ← Back to sign in
+            </button>
+          </>
+        )}
+
+        {!forgotPasswordMode && (
+          <button
+            className="auth-panel__cta"
+            type="submit"
+            disabled={loading || (mode === 'signup' && step === 'check-email')}
+          >
+            {loading
+              ? 'Please wait...'
+              : mode === 'signin'
+                ? 'Sign In'
+                : step === 'check-email'
+                  ? 'Verification sent'
+                  : 'Create account'}
+          </button>
+        )}
 
         {warning && (
           <div className="auth-panel__notice auth-panel__notice--warning" role="status" style={{ marginTop: 8 }}>
@@ -279,7 +379,9 @@ function AuthPanel() {
             <h3>Check your email</h3>
           </div>
           <p>
-            We’ve sent a verification link to <strong>{email}</strong>. Please verify your email to activate your account. Once verified, return here to sign in.
+            {forgotPasswordMode 
+              ? <>We've sent a password reset link to <strong>{email}</strong>. Please check your email and click the link to reset your password.</>
+              : <>We've sent a verification link to <strong>{email}</strong>. Please verify your email to activate your account. Once verified, return here to sign in.</>}
           </p>
         </div>
       )}

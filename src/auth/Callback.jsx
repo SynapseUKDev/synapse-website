@@ -13,6 +13,14 @@ function Callback() {
     const search = location.search && location.search.startsWith('?') ? location.search.slice(1) : ''
     const hash = location.hash && location.hash.startsWith('#') ? location.hash.slice(1) : ''
     const params = new URLSearchParams(hash || search)
+    
+    // Don't process recovery tokens - those are for password reset only
+    const type = params.get('type')
+    if (type === 'recovery') {
+      setMessage('Invalid callback type. Please use the password reset link.')
+      return
+    }
+    
     const access_token = params.get('access_token')
     const refresh_token = params.get('refresh_token')
     if (!access_token || !refresh_token) {

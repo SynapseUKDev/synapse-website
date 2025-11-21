@@ -12,6 +12,12 @@ function Auth() {
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
+    // Don't check auth if we're on reset password page
+    if (window.__isResettingPassword) {
+      setChecking(false)
+      return
+    }
+    
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     ;(async () => {
       try {

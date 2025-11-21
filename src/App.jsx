@@ -5,6 +5,7 @@ import Auth from './auth/Auth.jsx'
 import Dashboard from './dashboard/Dashboard.jsx'
 import Callback from './auth/Callback.jsx'
 import Subscribe from './auth/Subscribe.jsx'
+import ResetPassword from './auth/ResetPassword.jsx'
 import './App.css'
 import './components/loading/LoadingScreen.css'
 import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
@@ -21,8 +22,18 @@ function HashRedirector() {
   const location = useLocation()
   const navigate = useNavigate()
   useEffect(() => {
-    if (location.hash && location.hash.includes('access_token') && location.pathname !== '/auth/callback') {
-      navigate(`/auth/callback${location.hash}`, { replace: true })
+    if (location.hash && location.hash.includes('access_token')) {
+      const hashParams = new URLSearchParams(location.hash.slice(1))
+      const type = hashParams.get('type')
+      
+      // Handle password reset links
+      if (type === 'recovery' && location.pathname !== '/auth/reset-password') {
+        navigate(`/auth/reset-password${location.hash}`, { replace: true })
+      }
+      // Handle OAuth callbacks (but NOT recovery tokens)
+      else if (type !== 'recovery' && location.pathname !== '/auth/callback') {
+        navigate(`/auth/callback${location.hash}`, { replace: true })
+      }
     }
   }, [location, navigate])
   return null
@@ -36,6 +47,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/auth/callback" element={<Callback />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
         <Route path="/subscribe" element={<Subscribe />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />

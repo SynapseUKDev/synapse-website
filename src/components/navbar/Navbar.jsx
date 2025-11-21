@@ -9,6 +9,11 @@ function Navbar() {
   const [user, setUser] = useState(null)
 
   const checkAuth = useCallback(async () => {
+    // Don't check auth if we're on reset password page
+    if (window.__isResettingPassword) {
+      return
+    }
+    
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     try {
       const res = await fetch(`${API_BASE}/me`, { credentials: 'include', cache: 'no-store' })
