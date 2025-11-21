@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './Auth.css'
 import './auth-panel/AuthPanel.css'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
@@ -8,7 +8,6 @@ import logo from '../assets/logo/logo.png'
 
 function ResetPassword() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -18,8 +17,14 @@ function ResetPassword() {
   const [success, setSuccess] = useState(false)
   const [checkingToken, setCheckingToken] = useState(true)
   const [isResetting, setIsResetting] = useState(false)
+  // Store tokens in memory only - never in URL or localStorage
+  const [recoveryTokens, setRecoveryTokens] = useState({ accessToken: null, refreshToken: null })
+  const hasProcessedTokens = useRef(false)
 
   useEffect(() => {
+    if (hasProcessedTokens.current) {
+      return
+    }
     // Set a flag to prevent any auth checks while on reset page
     window.__isResettingPassword = true
     
@@ -36,31 +41,40 @@ function ResetPassword() {
       // Ignore errors - cookies might not exist
     })
     
-    // Check if we have the required tokens in URL (can be in query params or hash)
     const location = window.location
+    
     const hash = location.hash && location.hash.startsWith('#') ? location.hash.slice(1) : ''
     const search = location.search && location.search.startsWith('?') ? location.search.slice(1) : ''
     
     const hashParams = new URLSearchParams(hash)
     const searchParamsObj = new URLSearchParams(search)
     
-    const accessToken = searchParams.get('access_token') || hashParams.get('access_token') || searchParamsObj.get('access_token')
-    const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token') || searchParamsObj.get('refresh_token')
-    const type = searchParams.get('type') || hashParams.get('type') || searchParamsObj.get('type')
+    const accessToken = hashParams.get('access_token') || searchParamsObj.get('access_token')
+    const refreshToken = hashParams.get('refresh_token') || searchParamsObj.get('refresh_token')
+    const type = hashParams.get('type') || searchParamsObj.get('type')
+
 
     if (type === 'recovery' && accessToken && refreshToken) {
+      setRecoveryTokens({ accessToken, refreshToken })
+      
+      hasProcessedTokens.current = true
+      
+      const cleanUrl = window.location.origin + window.location.pathname
+      window.history.replaceState({}, '', cleanUrl)
+      
       setCheckingToken(false)
       setIsResetting(true)
     } else {
       setError('Invalid or missing reset link. Please request a new password reset.')
       setCheckingToken(false)
+      hasProcessedTokens.current = true
     }
     
     // Cleanup: remove flag when component unmounts
     return () => {
       window.__isResettingPassword = false
     }
-  }, [searchParams])
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -76,19 +90,16 @@ function ResetPassword() {
       return
     }
 
+    // SECURITY: Verify we still have tokens in memory
+    if (!recoveryTokens.accessToken || !recoveryTokens.refreshToken) {
+      setError('Reset link has expired. Please request a new password reset.')
+      return
+    }
+
     setLoading(true)
     setIsResetting(true) // Ensure we stay in reset mode
     try {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-      const location = window.location
-      const hash = location.hash && location.hash.startsWith('#') ? location.hash.slice(1) : ''
-      const search = location.search && location.search.startsWith('?') ? location.search.slice(1) : ''
-      
-      const hashParams = new URLSearchParams(hash)
-      const searchParamsObj = new URLSearchParams(search)
-      
-      const accessToken = searchParams.get('access_token') || hashParams.get('access_token') || searchParamsObj.get('access_token')
-      const refreshToken = searchParams.get('refresh_token') || hashParams.get('refresh_token') || searchParamsObj.get('refresh_token')
 
       const res = await fetch(`${API_BASE}/auth/reset-password`, {
         method: 'POST',
@@ -96,8 +107,8 @@ function ResetPassword() {
         credentials: 'include',
         body: JSON.stringify({
           password,
-          access_token: accessToken,
-          refresh_token: refreshToken,
+          access_token: recoveryTokens.accessToken,
+          refresh_token: recoveryTokens.refreshToken,
         })
       })
 
@@ -108,6 +119,8 @@ function ResetPassword() {
 
       setSuccess(true)
       clearTokens()
+      // SECURITY: Clear recovery tokens from memory after successful reset
+      setRecoveryTokens({ accessToken: null, refreshToken: null })
       // Clear the reset flag before redirecting
       window.__isResettingPassword = false
       // Redirect to login after 3 seconds
