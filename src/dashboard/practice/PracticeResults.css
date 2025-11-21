@@ -8,6 +8,8 @@
 /* Remove global adjacent-card top margin inside grids to keep rows aligned */
 .prr__grid--top > .card + .card { margin-top: 0; }
 .prr__grid > .card + .card { margin-top: 0; }
+/* Weak topics card spans full width when present */
+.prr__grid .prr-card { grid-column: 1 / -1; }
 
 @media (max-width: 900px) { 
   .prr__grid--top { grid-template-columns: 1fr; } 
@@ -249,6 +251,246 @@
 .time__label { color: #64748b; font-weight: 700; font-size: 12px; }
 
 .next-steps { display: flex; gap: 10px; align-items: center; }
+
+/* Weak Topics Section */
+.weak-topics__list {
+  display: grid;
+  gap: 12px;
+}
+
+.weak-topic-item {
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.weak-topic-item:hover {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+.weak-topic__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+
+.weak-topic__name {
+  font-weight: 700;
+  font-size: 16px;
+  color: #0b1637;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.weak-topic__accuracy {
+  font-weight: 800;
+  font-size: 16px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.weak-topic__accuracy--poor {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.weak-topic__accuracy--warning {
+  background: #fffbeb;
+  color: #d97706;
+  border-color: #fde68a;
+}
+
+.weak-topic__accuracy--ok {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.weak-topic__stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.weak-topic__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weak-topic__stat-value {
+  font-weight: 800;
+  font-size: 18px;
+  color: #0b1637;
+}
+
+.weak-topic__stat--incorrect .weak-topic__stat-value {
+  color: #dc2626;
+}
+
+.weak-topic__stat--correct .weak-topic__stat-value {
+  color: #16a34a;
+}
+
+.weak-topic__stat--attempted .weak-topic__stat-value {
+  color: #2563eb;
+}
+
+.weak-topic__stat-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.weak-topic__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.weak-topic__action {
+  flex: 1;
+  min-width: 140px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.weak-topic__action span {
+  flex: 0 1 auto;
+}
+
+/* Review Textbook button - subtle purple tint */
+.weak-topic__action.btn--ghost {
+  background: #f5f3ff;
+  border-color: #e9d5ff;
+  color: #7c3aed;
+}
+
+.weak-topic__action.btn--ghost:hover {
+  background: #ede9fe;
+  border-color: #ddd6fe;
+  color: #6d28d9;
+}
+
+@media (max-width: 768px) {
+  .weak-topic-item {
+    padding: 12px;
+  }
+  
+  .weak-topic__header {
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+  
+  .weak-topic__name {
+    font-size: 15px;
+    line-height: 1.3;
+  }
+  
+  .weak-topic__accuracy {
+    font-size: 14px;
+    padding: 3px 8px;
+    margin-top: 2px;
+  }
+  
+  .weak-topic__stats {
+    gap: 12px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  
+  .weak-topic__stat {
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .weak-topic__stat-value {
+    font-size: 16px;
+  }
+  
+  .weak-topic__stat-label {
+    font-size: 10px;
+  }
+  
+  .weak-topic__actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .weak-topic__action {
+    width: 100%;
+    min-width: unset;
+    padding: 0 16px;
+    height: 44px;
+  }
+  
+  .weak-topic__action.btn--icon {
+    gap: 8px;
+  }
+  
+  .weak-topic__action span {
+    flex: 0 1 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .weak-topic-item {
+    padding: 10px;
+  }
+  
+  .weak-topic__header {
+    margin-bottom: 8px;
+  }
+  
+  .weak-topic__name {
+    font-size: 14px;
+  }
+  
+  .weak-topic__accuracy {
+    font-size: 13px;
+    padding: 2px 6px;
+  }
+  
+  .weak-topic__stats {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  
+  .weak-topic__stat-value {
+    font-size: 15px;
+  }
+  
+  .weak-topic__stat-label {
+    font-size: 9px;
+  }
+  
+  .weak-topic__actions {
+    gap: 6px;
+  }
+  
+  .weak-topic__action {
+    height: 44px;
+    font-size: 14px;
+  }
+}
 
 /* Back button style to match Practice Setup */
 .prr__back { 

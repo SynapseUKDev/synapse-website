@@ -503,6 +503,94 @@ input:checked + .toggle-slider:before {
 .reply-composer textarea { width: 100%; min-height: 56px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 10px; font-family: inherit; font-size: 14px; }
 .reply-composer__actions { display: flex; gap: 8px; justify-content: flex-end; }
 
+/* Textbook Link Section */
+.textbook-link-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #eef2f7;
+}
+
+.textbook-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  color: #0369a1;
+  font-weight: 700;
+  font-size: 14px;
+  font-family: 'Urbanist', ui-sans-serif, system-ui;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.textbook-link-btn:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border-color: #7dd3fc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(3, 105, 161, 0.15);
+}
+
+.textbook-link-btn .external-icon {
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+.textbook-link-btn:hover .external-icon {
+  opacity: 1;
+}
+
+/* Discussion Panel - Locked State */
+.discussion-card--locked {
+  opacity: 0.85;
+  transition: opacity 0.3s ease;
+}
+
+.discussion-card__lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  font-weight: 700;
+  font-size: 12px;
+  font-family: 'Urbanist', ui-sans-serif, system-ui;
+}
+
+.discussion-card__placeholder {
+  padding: 32px 16px;
+}
+
+.discussion-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  min-height: 120px;
+}
+
+.discussion-placeholder__icon {
+  color: #cbd5e1;
+  opacity: 0.6;
+}
+
+.discussion-placeholder__text {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 320px;
+  margin: 0;
+  font-family: 'Urbanist', ui-sans-serif, system-ui;
+}
+
 @media (max-width: 1024px) { 
   .pr__grid { 
     grid-template-columns: 1fr; 
@@ -736,6 +824,14 @@ input:checked + .toggle-slider:before {
   .qc-nav {
     height: 32px;
     width: 32px;
+  }
+  
+  /* Textbook link */
+  .textbook-link-btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 13px;
+    padding: 9px 14px;
   }
 }
 

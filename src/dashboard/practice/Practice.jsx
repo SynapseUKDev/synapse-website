@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './Practice.css'
-import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser } from 'react-icons/lu'
+import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 
@@ -26,6 +26,7 @@ export default function Practice() {
   const navigate = useNavigate()
   const params = new URLSearchParams(location.search)
   const specialtyId = params.get('specialty_id')
+  const specialtyName = params.get('specialty_name') || null
   const topicIds = params.get('topic_ids')
   const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '25')
@@ -134,6 +135,16 @@ export default function Practice() {
       loadCurrentQuestion(0, data.questions)
       setQuestionStartTime(Date.now())
       setRefRanges(Array.isArray(rData?.groups) ? rData.groups : [])
+      
+      // Debug: Log first question to check textbook_slug
+      if (data.questions && data.questions[0]) {
+        console.log('First question data:', {
+          id: data.questions[0].id,
+          topic_name: data.questions[0].topic_name,
+          textbook_slug: data.questions[0].textbook_slug,
+          topic_slug: data.questions[0].topic_slug
+        })
+      }
     } catch (error) {
       console.error('Error loading session:', error)
       alert(`Failed to load practice session: ${error.message || 'Unknown error'}`)
@@ -185,8 +196,20 @@ export default function Practice() {
       const skipped = Math.max(totalQuestions - sessionAnswered, 0)
       const totalMs = sessionTotalMs
       const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
+      const { topicPerformance, weakTopics } = calculateTopicPerformance()
+      
       navigate('/dashboard/question-bank/results', {
-        state: { totalQuestions, correct, skipped, totalMs, perQuestionMs }
+        state: { 
+          totalQuestions, 
+          correct, 
+          skipped, 
+          totalMs, 
+          perQuestionMs,
+          topicPerformance,
+          weakTopics,
+          specialtyId,
+          specialtyName
+        }
       })
     }
   }
@@ -399,6 +422,74 @@ export default function Practice() {
     return () => document.removeEventListener('mouseup', handleTextSelection)
   }, [])
 
+  // Calculate topic-level performance
+  const calculateTopicPerformance = () => {
+    const topicStats = {}
+    
+    questions.forEach((q) => {
+      const topicId = q.topic_id
+      const topicName = q.topic_name || 'Unknown Topic'
+      const topicSlug = q.topic_slug || null
+      
+      if (!topicStats[topicId]) {
+        topicStats[topicId] = {
+          topic_id: topicId,
+          topic_name: topicName,
+          topic_slug: topicSlug,
+          total: 0,
+          correct: 0,
+          incorrect: 0,
+          skipped: 0
+        }
+      }
+      
+      const userAnswer = userAnswers[q.id]
+      topicStats[topicId].total += 1
+      
+      if (userAnswer?.submitted) {
+        if (userAnswer.isCorrect) {
+          topicStats[topicId].correct += 1
+        } else {
+          topicStats[topicId].incorrect += 1
+        }
+      } else {
+        topicStats[topicId].skipped += 1
+      }
+    })
+    
+    // Calculate accuracy and identify weak topics
+    const topicPerformance = Object.values(topicStats).map((stats) => {
+      const attempted = stats.correct + stats.incorrect
+      const accuracy = attempted > 0 ? Math.round((stats.correct / attempted) * 100) : null
+      
+      return {
+        ...stats,
+        attempted,
+        accuracy
+      }
+    })
+    
+    // Filter weak topics:
+    // - At least 2 questions attempted AND accuracy < 70%, OR
+    // - At least 3 incorrect answers (regardless of accuracy)
+    const weakTopics = topicPerformance
+      .filter(t => {
+        const hasLowAccuracy = t.attempted >= 2 && (t.accuracy === null || t.accuracy < 70)
+        const hasManyIncorrect = t.incorrect >= 3
+        return hasLowAccuracy || hasManyIncorrect
+      })
+      .sort((a, b) => {
+        // Sort by accuracy (null/0 first), then by incorrect count (highest first)
+        const aAcc = a.accuracy ?? 0
+        const bAcc = b.accuracy ?? 0
+        if (aAcc !== bAcc) return aAcc - bAcc
+        return b.incorrect - a.incorrect
+      })
+      .slice(0, 5) // Limit to top 5 weak topics
+    
+    return { topicPerformance, weakTopics }
+  }
+
   // Navigate to results with partial stats (for Exit or early finish)
   const navigateToResults = () => {
     const totalQuestions = questions.length
@@ -406,8 +497,20 @@ export default function Practice() {
     const skipped = Math.max(totalQuestions - sessionAnswered, 0)
     const totalMs = sessionTotalMs
     const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
+    const { topicPerformance, weakTopics } = calculateTopicPerformance()
+    
     navigate('/dashboard/question-bank/results', {
-      state: { totalQuestions, correct, skipped, totalMs, perQuestionMs }
+      state: { 
+        totalQuestions, 
+        correct, 
+        skipped, 
+        totalMs, 
+        perQuestionMs,
+        topicPerformance,
+        weakTopics,
+        specialtyId,
+        specialtyName
+      }
     })
   }
 
@@ -452,6 +555,13 @@ export default function Practice() {
       
       // Mark as submitted
       setSubmittedAnswers(prev => new Set([...prev, questionId]))
+      
+      // Clear strikethrough state for this question
+      setStruckOut(prev => {
+        const next = { ...prev }
+        delete next[questionId]
+        return next
+      })
       
       // Update session stats
       const newAnswered = sessionAnswered + 1
@@ -816,12 +926,48 @@ export default function Practice() {
                     </div>
                   </div>
                 )}
+                
+                {/* Textbook Link */}
+                {currentQuestion?.textbook_slug && (
+                  <div className="textbook-link-section">
+                    <a
+                      href={`/dashboard/textbook/topic/${currentQuestion.textbook_slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="textbook-link-btn"
+                    >
+                      <LuBookOpen size={18} />
+                      <span>View {currentQuestion.topic_name} in Textbook</span>
+                      <LuExternalLink size={14} className="external-icon" />
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
-            <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
+            {isSubmitted ? (
+              <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
+            ) : (
+              <div className="card discussion-card discussion-card--locked">
+                <div className="card__header discussion-card__header">
+                  <div className="discussion-card__title">Student Discussion</div>
+                  <div className="discussion-card__lock-badge">
+                    <LuCircleAlert size={16} />
+                    Locked
+                  </div>
+                </div>
+                <div className="card__body discussion-card__placeholder">
+                  <div className="discussion-placeholder">
+                    <LuBookOpen size={32} className="discussion-placeholder__icon" />
+                    <p className="discussion-placeholder__text">
+                      Answer this question to view and participate in student discussions
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="pr__aside">

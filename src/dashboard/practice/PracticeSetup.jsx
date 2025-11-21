@@ -117,6 +117,7 @@ export default function PracticeSetup() {
 
     const params = new URLSearchParams({
       specialty_id: specialtyId,
+      specialty_name: specialtyName,
       topic_ids: Array.from(selectedTopics).join(','),
       num_questions: numQuestions.toString(),
       timer_minutes: timerEnabled ? timerMinutes.toString() : '0',

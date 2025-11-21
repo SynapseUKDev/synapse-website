@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './PracticeResults.css'
 import './PracticeSetup.css'
-import { LuChevronLeft, LuArrowRight } from 'react-icons/lu'
+import { LuChevronLeft, LuArrowRight, LuBookOpen } from 'react-icons/lu'
 
 function useResultsData() {
   const location = useLocation()
@@ -12,10 +12,21 @@ function useResultsData() {
 
 export default function PracticeResults() {
   const navigate = useNavigate()
-  const { specialtyName, totalQuestions = 0, correct = 0, skipped = 0, totalMs = 0, perQuestionMs } = useResultsData()
+  const { 
+    specialtyName, 
+    specialtyId,
+    totalQuestions = 0, 
+    correct = 0, 
+    skipped = 0, 
+    totalMs = 0, 
+    perQuestionMs,
+    weakTopics = [],
+    topicPerformance = []
+  } = useResultsData()
 
   const incorrect = Math.max(totalQuestions - correct - (skipped || 0), 0)
-  const accuracyPct = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0
+  const attempted = totalQuestions - (skipped || 0)
+  const accuracyPct = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
   const totalTimeMin = Math.round((totalMs / 1000) / 60)
   const avgTimeMs = perQuestionMs || (totalQuestions ? totalMs / totalQuestions : 0)
   const avgTimeSec = Math.round((avgTimeMs || 0) / 1000)
@@ -103,6 +114,76 @@ export default function PracticeResults() {
       </div>
 
       <div className="prr__grid">
+        {weakTopics && weakTopics.length > 0 && (
+          <div className="card prr-card">
+            <div className="card__header">Areas for Improvement</div>
+            <div className="card__body prr-card__body">
+              <div className="weak-topics__list">
+                {weakTopics.map((topic) => {
+                  const attempted = topic.attempted || 0
+                  const accuracy = topic.accuracy ?? 0
+                  const incorrect = topic.incorrect || 0
+                  const hasTextbook = !!topic.topic_slug
+                  
+                  return (
+                    <div key={topic.topic_id} className="weak-topic-item">
+                      <div className="weak-topic__header">
+                        <div className="weak-topic__name">{topic.topic_name}</div>
+                        <div className={`weak-topic__accuracy ${accuracy < 50 ? 'weak-topic__accuracy--poor' : accuracy < 60 ? 'weak-topic__accuracy--warning' : 'weak-topic__accuracy--ok'}`}>
+                          {accuracy}%
+                        </div>
+                      </div>
+                      <div className="weak-topic__stats">
+                        <div className="weak-topic__stat weak-topic__stat--incorrect">
+                          <span className="weak-topic__stat-value">{incorrect}</span>
+                          <span className="weak-topic__stat-label">Incorrect</span>
+                        </div>
+                        <div className="weak-topic__stat weak-topic__stat--correct">
+                          <span className="weak-topic__stat-value">{topic.correct || 0}</span>
+                          <span className="weak-topic__stat-label">Correct</span>
+                        </div>
+                        <div className="weak-topic__stat weak-topic__stat--attempted">
+                          <span className="weak-topic__stat-value">{attempted}</span>
+                          <span className="weak-topic__stat-label">Attempted</span>
+                        </div>
+                      </div>
+                      <div className="weak-topic__actions">
+                        {hasTextbook && (
+                          <button 
+                            className="btn btn--ghost btn--icon weak-topic__action weak-topic__action--textbook"
+                            onClick={() => navigate(`/dashboard/textbook/topic/${topic.topic_slug}`)}
+                          >
+                            <LuBookOpen size={16} />
+                            <span>Review Textbook</span>
+                          </button>
+                        )}
+                        {specialtyId && (
+                          <button 
+                            className="btn btn--primary btn--icon weak-topic__action"
+                            onClick={() => {
+                              const params = new URLSearchParams({
+                                specialty_id: specialtyId,
+                                specialty_name: specialtyName || '',
+                                topic_ids: topic.topic_id,
+                                num_questions: '25',
+                                include_attempted: '0'
+                              })
+                              navigate(`/dashboard/question-bank/setup?${params.toString()}`)
+                            }}
+                          >
+                            <span>Practice Again</span>
+                            <LuArrowRight size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="card">
           <div className="card__header">Next Actions</div>
           <div className="card__body next-steps">
