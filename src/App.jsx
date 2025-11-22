@@ -10,6 +10,7 @@ import './App.css'
 import './components/loading/LoadingScreen.css'
 import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
 import QuestionBank from './dashboard/question-bank/QuestionBank.jsx'
+import CreateStudySet from './dashboard/question-bank/CreateStudySet.jsx'
 import Practice from './dashboard/practice/Practice.jsx'
 import PracticeSetup from './dashboard/practice/PracticeSetup.jsx'
 import PracticeResults from './dashboard/practice/PracticeResults.jsx'
@@ -52,6 +53,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="question-bank" element={<QuestionBank />} />
+          <Route path="question-bank/create-set" element={<CreateStudySet />} />
           <Route path="question-bank/setup" element={<PracticeSetup />} />
           <Route path="question-bank/practice" element={<Practice />} />
           <Route path="question-bank/results" element={<PracticeResults />} />

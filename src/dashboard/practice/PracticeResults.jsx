@@ -15,6 +15,8 @@ export default function PracticeResults() {
   const { 
     specialtyName, 
     specialtyId,
+    studySetId,
+    studySetName,
     totalQuestions = 0, 
     correct = 0, 
     skipped = 0, 
@@ -57,7 +59,7 @@ export default function PracticeResults() {
           </div>
           <div className="prr-hero__meta">
             <h1 className="prr__title">Session Complete</h1>
-            {specialtyName && <div className="prr__subtitle">{specialtyName} • Practice</div>}
+            {(studySetName || specialtyName) && <div className="prr__subtitle">{studySetName || specialtyName} • Practice</div>}
           </div>
         </div>
         <div className="prr-hero__right">
@@ -157,12 +159,12 @@ export default function PracticeResults() {
                             <span>Review Textbook</span>
                           </button>
                         )}
-                        {specialtyId && (
+                        {(specialtyId || topic.specialty_id) && (
                           <button 
                             className="btn btn--primary btn--icon weak-topic__action"
                             onClick={() => {
                               const params = new URLSearchParams({
-                                specialty_id: specialtyId,
+                                specialty_id: specialtyId || topic.specialty_id,
                                 specialty_name: specialtyName || '',
                                 topic_ids: topic.topic_id,
                                 num_questions: '25',

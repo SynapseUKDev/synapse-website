@@ -27,6 +27,8 @@ export default function Practice() {
   const params = new URLSearchParams(location.search)
   const specialtyId = params.get('specialty_id')
   const specialtyName = params.get('specialty_name') || null
+  const studySetId = params.get('study_set_id')
+  const studySetName = params.get('study_set_name') || null
   const topicIds = params.get('topic_ids')
   const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '25')
@@ -81,20 +83,27 @@ export default function Practice() {
 
   // Load all questions for the session
   useEffect(() => {
-    if (!specialtyId) {
+    if (!specialtyId && !studySetId) {
       navigate('/dashboard/question-bank')
       return
     }
     loadSession()
-  }, [specialtyId])
+  }, [specialtyId, studySetId])
 
   const loadSession = async () => {
     try {
       setLoading(true)
-      let url = `${API_BASE}/qbank/practice/session?specialty_id=${specialtyId}&num_questions=${numQuestions}&include_attempted=${includeAttempted ? '1' : '0'}`
-      if (topicIds) {
-        url += `&topic_ids=${topicIds}`
+      let url = `${API_BASE}/qbank/practice/session?num_questions=${numQuestions}&include_attempted=${includeAttempted ? '1' : '0'}`
+      
+      if (studySetId) {
+        url += `&study_set_id=${studySetId}`
+      } else {
+        url += `&specialty_id=${specialtyId}`
+        if (topicIds) {
+          url += `&topic_ids=${topicIds}`
+        }
       }
+
       // Load questions and reference ranges in parallel
       const [qRes, rRes] = await Promise.all([
         fetch(url, { credentials: 'include', headers: authHeaders() }),
@@ -208,7 +217,9 @@ export default function Practice() {
           topicPerformance,
           weakTopics,
           specialtyId,
-          specialtyName
+          specialtyName,
+          studySetId,
+          studySetName
         }
       })
     }
@@ -430,12 +441,14 @@ export default function Practice() {
       const topicId = q.topic_id
       const topicName = q.topic_name || 'Unknown Topic'
       const topicSlug = q.topic_slug || null
+      const specialtyId = q.specialty_id || null
       
       if (!topicStats[topicId]) {
         topicStats[topicId] = {
           topic_id: topicId,
           topic_name: topicName,
           topic_slug: topicSlug,
+          specialty_id: specialtyId,
           total: 0,
           correct: 0,
           incorrect: 0,
@@ -509,7 +522,9 @@ export default function Practice() {
         topicPerformance,
         weakTopics,
         specialtyId,
-        specialtyName
+        specialtyName,
+        studySetId,
+        studySetName
       }
     })
   }

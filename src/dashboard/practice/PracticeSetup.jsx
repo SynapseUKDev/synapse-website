@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { authHeaders } from '../../auth/token'
+import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft, LuPlay } from 'react-icons/lu'
 import './PracticeSetup.css'
@@ -10,6 +10,8 @@ export default function PracticeSetup() {
   const [searchParams] = useSearchParams()
   const specialtyId = searchParams.get('specialty_id')
   const specialtyName = searchParams.get('specialty_name') || 'Unknown Specialty'
+  const studySetId = searchParams.get('study_set_id')
+  const studySetName = searchParams.get('study_set_name') || 'Unknown Set'
   
   const [loading, setLoading] = useState(true)
   const [topics, setTopics] = useState([])
@@ -18,16 +20,42 @@ export default function PracticeSetup() {
   const [timerMinutes, setTimerMinutes] = useState(30)
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [includeAttempted, setIncludeAttempted] = useState(false)
+  const [studySetData, setStudySetData] = useState(null)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
   useEffect(() => {
-    if (!specialtyId) {
+    if (studySetId) {
+      loadStudySet()
+    } else if (specialtyId) {
+      loadTopics()
+    } else {
       navigate('/dashboard/question-bank')
-      return
     }
-    loadTopics()
-  }, [specialtyId])
+  }, [specialtyId, studySetId])
+
+  const loadStudySet = async () => {
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/qbank/sets/${studySetId}`, {
+        credentials: 'include',
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error('Failed to load study set')
+      const data = await res.json()
+      setStudySetData(data.set)
+      
+      const totalAvailable = data.set.total_questions || 0
+      if (totalAvailable > 0) {
+        setNumQuestions(Math.min(totalAvailable, 25))
+      } else {
+        setNumQuestions(0)
+      }
+    } catch (error) {
+      console.error('Error loading study set:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const loadTopics = async () => {
     try {
@@ -45,7 +73,9 @@ export default function PracticeSetup() {
       
       const totalAvailable = (data.topics || []).reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
       if (totalAvailable > 0) {
-        setNumQuestions(totalAvailable)
+        setNumQuestions(Math.min(totalAvailable, 25))
+      } else {
+        setNumQuestions(0)
       }
     } catch (error) {
       console.error('Error loading topics:', error)
@@ -92,6 +122,13 @@ export default function PracticeSetup() {
   }
 
   const getTotalQuestions = () => {
+    if (studySetId) {
+      // For study set, we use the total from DB. 
+      // TODO: Ideally fetch "remaining" vs "total" for set if includeAttempted logic is needed.
+      // Currently `total_questions` is static total.
+      // Let's assume for now we just use total available.
+      return studySetData?.total_questions || 0
+    }
     return topics
       .filter(t => selectedTopics.has(t.id))
       .reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
@@ -102,27 +139,26 @@ export default function PracticeSetup() {
     return total > 0 ? 1 : 0
   }
 
-  const getSelectedTopicNames = () => {
-    return topics
-      .filter(t => selectedTopics.has(t.id))
-      .map(t => t.name)
-      .join(', ')
-  }
-
   const startSession = () => {
-    if (selectedTopics.size === 0) {
+    if (!studySetId && selectedTopics.size === 0) {
       alert('Please select at least one topic')
       return
     }
 
     const params = new URLSearchParams({
-      specialty_id: specialtyId,
-      specialty_name: specialtyName,
-      topic_ids: Array.from(selectedTopics).join(','),
       num_questions: numQuestions.toString(),
       timer_minutes: timerEnabled ? timerMinutes.toString() : '0',
       include_attempted: includeAttempted ? '1' : '0'
     })
+
+    if (studySetId) {
+      params.append('study_set_id', studySetId)
+      params.append('study_set_name', studySetName)
+    } else {
+      params.append('specialty_id', specialtyId)
+      params.append('specialty_name', specialtyName)
+      params.append('topic_ids', Array.from(selectedTopics).join(','))
+    }
     
     navigate(`/dashboard/question-bank/practice?${params.toString()}`)
   }
@@ -148,7 +184,7 @@ export default function PracticeSetup() {
         </button>
         <div className="setup__title-section">
           <div>
-            <h1 className="setup__title">{specialtyName} Practice Setup</h1>
+            <h1 className="setup__title">{studySetId ? studySetName : specialtyName} Practice Setup</h1>
             <p className="setup__subtitle">Configure your study session</p>
           </div>
         </div>
@@ -156,48 +192,50 @@ export default function PracticeSetup() {
 
       <div className="setup__content">
         <div className="setup__main">
-          <div className="setup__section">
-            <div className="setup__section-header">
-              <div>
-                <h2 className="setup__section-title">Select Topics</h2>
-                <p className="setup__section-subtitle">Choose specific areas to focus on</p>
+          {!studySetId && (
+            <div className="setup__section">
+              <div className="setup__section-header">
+                <div>
+                  <h2 className="setup__section-title">Select Topics</h2>
+                  <p className="setup__section-subtitle">Choose specific areas to focus on</p>
+                </div>
+                <div className="setup__topic-actions">
+                  <button className="setup__topic-action" onClick={selectAllTopics}>
+                    Select All
+                  </button>
+                  <button className="setup__topic-action" onClick={clearAllTopics}>
+                    Clear All
+                  </button>
+                </div>
               </div>
-              <div className="setup__topic-actions">
-                <button className="setup__topic-action" onClick={selectAllTopics}>
-                  Select All
-                </button>
-                <button className="setup__topic-action" onClick={clearAllTopics}>
-                  Clear All
-                </button>
-              </div>
-            </div>
 
-            <div className="setup__topics">
-              {topics.map((topic) => (
-                <label key={topic.id} className="setup__topic">
-                  <input
-                    type="checkbox"
-                    checked={selectedTopics.has(topic.id)}
-                    onChange={() => toggleTopic(topic.id)}
-                    className="setup__topic-checkbox"
-                  />
-                  <span className="setup__checkbox" aria-hidden="true" />
-                  <div className="setup__topic-content">
-                    <div className="setup__topic-name">{topic.name}</div>
-                    <div className="setup__topic-count">
-                      {typeof topic.attempted_count === 'number' ? (
-                        <>
-                          {topic.attempted_count}/{topic.question_count} done{topic.remaining_count !== undefined ? ` • ${topic.remaining_count} left` : ''}
-                        </>
-                      ) : (
-                        <>{topic.question_count} questions available</>
-                      )}
+              <div className="setup__topics">
+                {topics.map((topic) => (
+                  <label key={topic.id} className="setup__topic">
+                    <input
+                      type="checkbox"
+                      checked={selectedTopics.has(topic.id)}
+                      onChange={() => toggleTopic(topic.id)}
+                      className="setup__topic-checkbox"
+                    />
+                    <span className="setup__checkbox" aria-hidden="true" />
+                    <div className="setup__topic-content">
+                      <div className="setup__topic-name">{topic.name}</div>
+                      <div className="setup__topic-count">
+                        {typeof topic.attempted_count === 'number' ? (
+                          <>
+                            {topic.attempted_count}/{topic.question_count} done{topic.remaining_count !== undefined ? ` • ${topic.remaining_count} left` : ''}
+                          </>
+                        ) : (
+                          <>{topic.question_count} questions available</>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </label>
-              ))}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="setup__section">
             <h2 className="setup__section-title">Question Settings</h2>
@@ -244,13 +282,15 @@ export default function PracticeSetup() {
                         onChange={(e) => {
                           const next = e.target.checked
                           setIncludeAttempted(next)
-                          const total = topics
-                            .filter(t => selectedTopics.has(t.id))
-                            .reduce((sum, t) => sum + (next ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
-                          if (total === 0) {
-                            setNumQuestions(0)
-                          } else if (numQuestions === 0 || numQuestions > total) {
-                            setNumQuestions(total)
+                          if (!studySetId) {
+                            const total = topics
+                              .filter(t => selectedTopics.has(t.id))
+                              .reduce((sum, t) => sum + (next ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
+                            if (total === 0) {
+                              setNumQuestions(0)
+                            } else if (numQuestions === 0 || numQuestions > total) {
+                              setNumQuestions(total)
+                            }
                           }
                         }}
                         className="setup__toggle-input"
@@ -311,16 +351,18 @@ export default function PracticeSetup() {
             <h3 className="setup__summary-title">Session Summary</h3>
             
             <div className="setup__summary-item">
-              <div className="setup__summary-label">Specialty:</div>
-              <div className="setup__summary-value">{specialtyName}</div>
+              <div className="setup__summary-label">Type:</div>
+              <div className="setup__summary-value">{studySetId ? 'Study Set' : 'Specialty Practice'}</div>
             </div>
             
-            <div className="setup__summary-item">
-              <div className="setup__summary-label">Topics:</div>
-              <div className="setup__summary-value">
-                {selectedTopics.size > 0 ? selectedTopics.size : 0}
+            {!studySetId && (
+              <div className="setup__summary-item">
+                <div className="setup__summary-label">Topics:</div>
+                <div className="setup__summary-value">
+                  {selectedTopics.size > 0 ? selectedTopics.size : 0}
+                </div>
               </div>
-            </div>
+            )}
             
             <div className="setup__summary-item">
               <div className="setup__summary-label">Questions:</div>
@@ -339,7 +381,7 @@ export default function PracticeSetup() {
             <button 
               className="setup__start-btn"
               onClick={startSession}
-              disabled={selectedTopics.size === 0}
+              disabled={!studySetId && selectedTopics.size === 0}
             >
               <LuPlay />
               Start Session
