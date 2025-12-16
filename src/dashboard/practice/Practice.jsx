@@ -5,6 +5,8 @@ import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
 
 function useCountdown(initialSec = 1800) {
   const [seconds, setSeconds] = useState(initialSec)
@@ -380,9 +382,134 @@ export default function Practice() {
     })
   }
 
-  const renderHighlightedText = (text, questionId) => {
+  const hasMarkdown = (text) => {
+    if (!text) return false
+    const markdownPatterns = [
+      /#{1,6}\s/,           // Headers
+      /\*\*.*?\*\*/,        // Bold
+      /\*.*?\*/,            // Italic
+      /\[.*?\]\(.*?\)/,     // Links
+      /!\[.*?\]\(.*?\)/,    // Images
+      /^\s*[-*+]\s/m,       // Lists
+      /^\s*\d+\.\s/m,       // Numbered lists
+      /```[\s\S]*?```/,     // Code blocks
+      /`[^`]+`/,            // Inline code
+      /\n\n/,               // Double line breaks (paragraphs)
+      /\|.*\|.*\|/,         // Tables
+      />\s/,                // Blockquotes
+    ]
+    return markdownPatterns.some(pattern => pattern.test(text))
+  }
+
+  const applyHighlightsToMarkdown = (text, questionId) => {
     const questionHighlights = highlights[questionId] || []
     if (questionHighlights.length === 0) return text
+
+    // Sort highlights by start position (reverse to insert from end to start)
+    const sorted = [...questionHighlights].sort((a, b) => b.start - a.start)
+    
+    let result = text
+    sorted.forEach((hl) => {
+      const before = result.slice(0, hl.start)
+      const highlighted = result.slice(hl.start, hl.end)
+      const after = result.slice(hl.end)
+      
+      // Insert HTML with wrapper span that has the highlight ID
+      result = before + 
+        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="highlight">${highlighted}</mark></span>` + 
+        after
+    })
+    
+    return result
+  }
+
+  const renderHighlightedText = (text, questionId) => {
+    const questionHighlights = highlights[questionId] || []
+    const isMarkdown = hasMarkdown(text)
+    
+    // If no highlights and no markdown, return plain text with preserved line breaks
+    if (questionHighlights.length === 0 && !isMarkdown) {
+      return <span style={{ whiteSpace: 'pre-wrap' }}>{text}</span>
+    }
+    
+    // If markdown, apply highlights and render with ReactMarkdown
+    if (isMarkdown) {
+      const textWithHighlights = questionHighlights.length > 0 
+        ? applyHighlightsToMarkdown(text, questionId)
+        : text
+      
+      return (
+        <ReactMarkdown
+          rehypePlugins={[rehypeRaw]}
+          components={{
+            // Custom renderer for span wrappers (highlights)
+            span: ({ node, children, ...props }) => {
+              // Check if this is a highlight wrapper by checking className
+              if (props.className === 'highlight-wrapper') {
+                const highlightId = props['data-highlight-id'] || node?.properties?.['data-highlight-id']
+                return (
+                  <span className="highlight-wrapper" data-highlight-id={highlightId} {...props}>
+                    {children}
+                    <button
+                      className="highlight-remove-btn"
+                      data-highlight-id={highlightId}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const id = e.currentTarget.getAttribute('data-highlight-id')
+                        if (id) {
+                          removeHighlight(questionId, parseInt(id))
+                        }
+                      }}
+                      title="Remove this highlight"
+                      aria-label="Remove highlight"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )
+              }
+              return <span {...props}>{children}</span>
+            },
+            // Style other markdown elements
+            p: ({ node, ...props }) => <p style={{ marginBottom: '12px', lineHeight: '1.6' }} {...props} />,
+            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.5em', fontWeight: 800, marginBottom: '12px', marginTop: '16px' }} {...props} />,
+            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.3em', fontWeight: 800, marginBottom: '10px', marginTop: '14px' }} {...props} />,
+            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', fontWeight: 700, marginBottom: '8px', marginTop: '12px' }} {...props} />,
+            ul: ({ node, ...props }) => <ul style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+            ol: ({ node, ...props }) => <ol style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+            li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
+            table: ({ node, ...props }) => (
+              <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid #e5e7eb' }} {...props} />
+              </div>
+            ),
+            th: ({ node, ...props }) => (
+              <th style={{ border: '1px solid #e5e7eb', padding: '8px', backgroundColor: '#f8fafc', fontWeight: 700 }} {...props} />
+            ),
+            td: ({ node, ...props }) => (
+              <td style={{ border: '1px solid #e5e7eb', padding: '8px' }} {...props} />
+            ),
+            blockquote: ({ node, ...props }) => (
+              <blockquote style={{ borderLeft: '4px solid #cbd5e1', paddingLeft: '12px', margin: '12px 0', color: '#64748b' }} {...props} />
+            ),
+            code: ({ node, inline, ...props }) => {
+              if (inline) {
+                return <code style={{ backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em' }} {...props} />
+              }
+              return <code style={{ display: 'block', backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '8px', overflowX: 'auto', marginBottom: '12px' }} {...props} />
+            },
+          }}
+        >
+          {textWithHighlights}
+        </ReactMarkdown>
+      )
+    }
+    
+    // Plain text with highlights (existing logic)
+    if (questionHighlights.length === 0) {
+      return <span>{text}</span>
+    }
 
     // Sort highlights by start position
     const sorted = [...questionHighlights].sort((a, b) => a.start - b.start)
@@ -735,7 +862,7 @@ export default function Practice() {
             <div className="card__body">
               <div className="question-content">
                 <div className="question-stem-wrapper">
-                  <div ref={stemRef} className="question-stem" style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
+                  <div ref={stemRef} className="question-stem" style={{ marginBottom: 12 }}>
                     {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
                   </div>
                 </div>
