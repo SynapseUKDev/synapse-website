@@ -329,6 +329,21 @@
   font-weight: 500;
 }
 
+.question-stem>*:first-child {
+  margin-top: 0 !important;
+}
+
+.question-stem p,
+.question-stem li,
+.question-stem td,
+.question-stem th,
+.question-stem div,
+.question-stem span,
+.question-stem strong,
+.question-stem em {
+  color: #000000;
+}
+
 /* Markdown styles within question stem */
 .question-stem p {
   margin-bottom: 12px;
