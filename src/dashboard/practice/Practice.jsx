@@ -42,28 +42,18 @@ const rehypeHighlightPlugin = (options) => {
             const start = currentIndex
             const end = start + text.length
 
-            // Find the *first* highlight that overlaps with this text node
-            // Note: landmarks (start/end) are based on the flattened text content
             const highlight = sortedHighlights.find(h => h.start < end && h.end > start)
 
             if (highlight) {
-              // We found an overlap. We need to split this text node.
-              // Calculate relative split points
               const relStart = Math.max(0, highlight.start - start)
               const relEnd = Math.min(text.length, highlight.end - start)
 
               const newNodes = []
 
-              // 1. Text before the highlight
               if (relStart > 0) {
                 newNodes.push({ type: 'text', value: text.slice(0, relStart) })
               }
 
-              // 2. The highlighted text wrapped in our structure
-              // <span class="highlight-wrapper" data-highlight-id="...">
-              //   <mark class="highlight">text</mark>
-              // </span>
-              // Note: The X button is injected via the custom component in ReactMarkdown prop
               const hlText = text.slice(relStart, relEnd)
               newNodes.push({
                 type: 'element',
@@ -80,43 +70,18 @@ const rehypeHighlightPlugin = (options) => {
                 }]
               })
 
-              // 3. Text after the highlight
               if (relEnd < text.length) {
                 newNodes.push({ type: 'text', value: text.slice(relEnd) })
               }
 
-              // Replace the original text node with the new nodes
               node.children.splice(i, 1, ...newNodes)
-
-              // We successfully handled one highlight overlap (or part of it).
-              // We do NOT increment i or currentIndex here because we want to re-evaluate the NEW nodes.
-              // - The 'before' text (if any) will be checked next, but won't match this highlight (since we passed it).
-              // - The 'highlight' wrapper will be skipped by the 'span' check in traverse.
-              // - The 'after' text (if any) will be checked for NEXT highlights.
-              // So, simply continue the loop from the same index (which now points to 'before' or 'wrapper').
-              // HOWEVER, we need to ensure we don't infinitely re-process the same text segment.
-              // Since we split the node and the `start` of remaining parts shifts? No, `start` is absolute `currentIndex`.
-
-              // Wait, if we don't increment `currentIndex`, the next check uses the OLD `currentIndex`?
-              // YES. `currentIndex` is a running counter.
-              // If we replace node C with [C1, C2, C3], we are still at the start of C1 (which is same absolute pos as C).
-              // So we should just `continue` the loop. The next iteration picks up `node.children[i]` (C1).
-              // `traverse(C1)` -> is text. `start` = `currentIndex`.
-              // `sortedHighlights` search will NOT find overlap for C1 if it ends before highlight start.
-              // Then `currentIndex` increases by C1.length.
-              // Then loop moves to C2 (wrapper). `traverse(C2)` -> skipped (special check). `currentIndex` increases.
-              // Then loop moves to C3. `traverse(C3)`. Checks for next highlight.
-
-              // Perfect.
               continue
             }
 
-            // No highlight overlap
             currentIndex += text.length
             i++
 
           } else {
-            // Not a text node, traverse down
             traverse(child)
             i++
           }
