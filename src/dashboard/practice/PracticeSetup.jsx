@@ -21,6 +21,7 @@ export default function PracticeSetup() {
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [includeAttempted, setIncludeAttempted] = useState(false)
   const [studySetData, setStudySetData] = useState(null)
+  
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -299,6 +300,7 @@ export default function PracticeSetup() {
                     </div>
                     <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
                   </div>
+                 
                 </div>
               </div>
               <div className="qs-col">
@@ -386,8 +388,11 @@ export default function PracticeSetup() {
               <LuPlay />
               Start Session
             </button>
+           
+
           </div>
         </div>
+       
       </div>
     </div>
   )

@@ -239,6 +239,13 @@
 
 .qb-card__actions {
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qb-card__actions .qb-btn:not(:first-child) {
+  margin-top: 0;
 }
 
 /* Buttons */
@@ -271,6 +278,19 @@
   font-size: 14px;
   padding: 0 20px;
   width: auto;
+}
+
+.qb-btn--secondary {
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  border: 1px solid var(--syn-border);
+}
+
+.qb-btn--secondary:hover {
+  background: var(--surface-tint-cyan);
+  border-color: #b6f6fc;
+  filter: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .qb-btn-text {

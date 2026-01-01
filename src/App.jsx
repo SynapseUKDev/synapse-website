@@ -13,6 +13,9 @@ import QuestionBank from './dashboard/question-bank/QuestionBank.jsx'
 import CreateStudySet from './dashboard/question-bank/CreateStudySet.jsx'
 import Practice from './dashboard/practice/Practice.jsx'
 import PracticeSetup from './dashboard/practice/PracticeSetup.jsx'
+import GroupStudySetup from './dashboard/practice/GroupStudySetup.jsx'
+import GroupPractice from './dashboard/practice/GroupPractice.jsx'
+import GroupLeaderboard from './dashboard/practice/GroupLeaderboard.jsx'
 import PracticeResults from './dashboard/practice/PracticeResults.jsx'
 import Textbook from './dashboard/textbook/Textbook.jsx'
 import TextbookTopic from './dashboard/textbook/TextbookTopic.jsx'
@@ -55,7 +58,10 @@ function App() {
           <Route path="question-bank" element={<QuestionBank />} />
           <Route path="question-bank/create-set" element={<CreateStudySet />} />
           <Route path="question-bank/setup" element={<PracticeSetup />} />
+          <Route path="question-bank/group_setup" element={<GroupStudySetup />} />
           <Route path="question-bank/practice" element={<Practice />} />
+          <Route path="question-bank/group-practice" element={<GroupPractice />} />
+          <Route path="question-bank/group-leaderboard" element={<GroupLeaderboard />} />
           <Route path="question-bank/results" element={<PracticeResults />} />
           <Route path="textbook" element={<Textbook />} />
           <Route path="textbook/search" element={<TextbookSearch />} />

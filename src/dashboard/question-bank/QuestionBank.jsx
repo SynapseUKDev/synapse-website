@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import * as Lu from 'react-icons/lu'
-import { LuTarget, LuListCheck, LuFlame, LuTimer, LuPlus, LuTrash2, LuLayers } from 'react-icons/lu'
+import { LuTarget, LuListCheck, LuFlame, LuTimer, LuPlus, LuTrash2, LuLayers, LuUsers } from 'react-icons/lu'
 import './QuestionBank.css'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import useStaleJson from '../../utils/useStaleJson'
@@ -35,6 +35,7 @@ function StudySetCard({ item, onDelete }) {
       </div>
       <div className="qb-card__actions">
         <button className="qb-btn" onClick={() => navigate(`/dashboard/question-bank/setup?study_set_id=${item.id}&study_set_name=${encodeURIComponent(item.name)}`)}>Start Set</button>
+        <button className="qb-btn qb-btn--secondary" onClick={() => navigate(`/dashboard/question-bank/group_setup?study_set_id=${item.id}&study_set_name=${encodeURIComponent(item.name)}`)}>Group Study</button>
       </div>
     </div>
   )
@@ -203,13 +204,22 @@ export default function QuestionBank() {
       {/* Study Sets Section */}
       <div className="qb__section-header" style={{ marginTop: 32, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 className="qb__section-title" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#1f2937' }}>My Study Sets</h2>
-        <button 
-          className="qb-btn qb-btn--sm" 
-          style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
-          onClick={() => navigate('/dashboard/question-bank/create-set')}
-        >
-          <LuPlus size={18} /> Create New Set
-        </button>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button 
+            className="qb-btn qb-btn--sm qb-btn--secondary" 
+            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
+            onClick={() => navigate('/dashboard/question-bank/group_setup?mode=join')}
+          >
+            <LuUsers size={18} /> Join Group Session
+          </button>
+          <button 
+            className="qb-btn qb-btn--sm" 
+            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
+            onClick={() => navigate('/dashboard/question-bank/create-set')}
+          >
+            <LuPlus size={18} /> Create New Set
+          </button>
+        </div>
       </div>
 
       {studySets.length > 0 ? (
