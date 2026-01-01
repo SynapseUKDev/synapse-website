@@ -1159,29 +1159,11 @@ export default function Practice() {
             </div>
           )}
 
-          <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
-            {isSubmitted ? (
+          {isSubmitted && (
+            <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
               <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
-            ) : (
-              <div className="card discussion-card discussion-card--locked">
-                <div className="card__header discussion-card__header">
-                  <div className="discussion-card__title">Student Discussion</div>
-                  <div className="discussion-card__lock-badge">
-                    <LuCircleAlert size={16} />
-                    Locked
-                  </div>
-                </div>
-                <div className="card__body discussion-card__placeholder">
-                  <div className="discussion-placeholder">
-                    <LuBookOpen size={32} className="discussion-placeholder__icon" />
-                    <p className="discussion-placeholder__text">
-                      Answer this question to view and participate in student discussions
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="pr__aside">
             <div className="card">

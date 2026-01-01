@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuPanelLeft, LuSettings, LuX } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
@@ -8,6 +8,15 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
+
+  // Auto-collapse sidebar when entering practice pages
+  useEffect(() => {
+    const isPracticePage = location.pathname.includes('/practice') ||
+      location.pathname.includes('/group-practice')
+    if (isPracticePage) {
+      setIsCollapsed(true)
+    }
+  }, [location.pathname])
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
@@ -36,17 +45,17 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
       <div className="sidebar__brand">
         <img src={logoImg} alt="Synapse UK" className="sidebar__logo" />
         {/* {!isCollapsed && <span className="sidebar__brand-text">SYNAPSE UK</span>} */}
-        
+
         {/* Mobile close button */}
-        <button 
-          className="sidebar__mobile-close" 
+        <button
+          className="sidebar__mobile-close"
           onClick={onCloseMobileMenu}
           aria-label="Close menu"
         >
           <LuX size={24} />
         </button>
       </div>
-      
+
       <nav className="sidebar__menu">
         {menuItems.map((item) => {
           const IconComponent = item.icon
