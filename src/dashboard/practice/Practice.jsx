@@ -5,6 +5,93 @@ import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
+import remarkGfm from 'remark-gfm'
+
+// Custom Rehype plugin to apply highlights to text nodes
+const rehypeHighlightPlugin = (options) => {
+  const { highlights } = options || {}
+
+  return (tree) => {
+    if (!highlights || highlights.length === 0) return
+
+    let currentIndex = 0
+    const sortedHighlights = [...highlights].sort((a, b) => a.start - b.start)
+
+    const getTextLength = (node) => {
+      if (node.type === 'text') return node.value.length
+      if (node.children) return node.children.reduce((acc, child) => acc + getTextLength(child), 0)
+      return 0
+    }
+
+    const traverse = (node) => {
+      // Skip our own highlight wrappers to avoid checking inside them
+      if (node.tagName === 'span' && node.properties?.className?.includes('highlight-wrapper')) {
+        currentIndex += getTextLength(node)
+        return
+      }
+
+      if (node.children) {
+        let i = 0
+        while (i < node.children.length) {
+          const child = node.children[i]
+
+          if (child.type === 'text') {
+            const text = child.value
+            const start = currentIndex
+            const end = start + text.length
+
+            const highlight = sortedHighlights.find(h => h.start < end && h.end > start)
+
+            if (highlight) {
+              const relStart = Math.max(0, highlight.start - start)
+              const relEnd = Math.min(text.length, highlight.end - start)
+
+              const newNodes = []
+
+              if (relStart > 0) {
+                newNodes.push({ type: 'text', value: text.slice(0, relStart) })
+              }
+
+              const hlText = text.slice(relStart, relEnd)
+              newNodes.push({
+                type: 'element',
+                tagName: 'span',
+                properties: {
+                  className: ['highlight-wrapper'],
+                  'data-highlight-id': highlight.id
+                },
+                children: [{
+                  type: 'element',
+                  tagName: 'mark',
+                  properties: { className: ['highlight'] },
+                  children: [{ type: 'text', value: hlText }]
+                }]
+              })
+
+              if (relEnd < text.length) {
+                newNodes.push({ type: 'text', value: text.slice(relEnd) })
+              }
+
+              node.children.splice(i, 1, ...newNodes)
+              continue
+            }
+
+            currentIndex += text.length
+            i++
+
+          } else {
+            traverse(child)
+            i++
+          }
+        }
+      }
+    }
+
+    traverse(tree)
+  }
+}
 
 function useCountdown(initialSec = 1800) {
   const [seconds, setSeconds] = useState(initialSec)
@@ -33,7 +120,7 @@ export default function Practice() {
   const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '25')
   const includeAttempted = params.get('include_attempted') !== '0'
-  
+
   // Session state
   const [loading, setLoading] = useState(true)
   const [questions, setQuestions] = useState([]) // All questions loaded at start
@@ -52,26 +139,26 @@ export default function Practice() {
   const [openGroupId, setOpenGroupId] = useState(null)
   // Image carousel state for question assets
   const [assetIdx, setAssetIdx] = useState(0)
-  
+
   // Current question state
   const [selected, setSelected] = useState(null)
   const [saqText, setSaqText] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  
+
   // UI state
   const [tab, setTab] = useState('quick')
   const [trkFilter, setTrkFilter] = useState('All') // All | Unanswered | Correct | Wrong | Flagged
   const [trkJump, setTrkJump] = useState('')
-  
+
   // Session stats
   const [sessionAnswered, setSessionAnswered] = useState(0)
   const [sessionCorrect, setSessionCorrect] = useState(0)
   const [sessionTotalMs, setSessionTotalMs] = useState(0)
   const [questionStartTime, setQuestionStartTime] = useState(Date.now())
-  
+
   // Responsive tracker grid size
   const [trackerChunkSize, setTrackerChunkSize] = useState(35)
-  
+
   const { display, running, toggle } = useCountdown(timerMinutes * 60)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -94,7 +181,7 @@ export default function Practice() {
     try {
       setLoading(true)
       let url = `${API_BASE}/qbank/practice/session?num_questions=${numQuestions}&include_attempted=${includeAttempted ? '1' : '0'}`
-      
+
       if (studySetId) {
         url += `&study_set_id=${studySetId}`
       } else {
@@ -109,7 +196,7 @@ export default function Practice() {
         fetch(url, { credentials: 'include', headers: authHeaders() }),
         fetch(`${API_BASE}/reference-ranges`, { credentials: 'include', headers: authHeaders() })
       ])
-      
+
       if (!qRes.ok) {
         let errorMessage = 'Failed to load session'
         try {
@@ -122,7 +209,7 @@ export default function Practice() {
         }
         throw new Error(errorMessage)
       }
-      
+
       if (!rRes.ok) {
         console.warn('Failed to load reference ranges, continuing without them')
       }
@@ -132,19 +219,19 @@ export default function Practice() {
         rRes.ok ? rRes.json() : Promise.resolve({ groups: [] })
       ])
       console.log('Loaded session with', data.questions?.length, 'questions')
-      
+
       if (!data.questions || data.questions.length === 0) {
         alert('No questions available for the selected criteria')
         navigate('/dashboard/question-bank')
         return
       }
-      
+
       setQuestions(data.questions)
       setCurrentIndex(0)
       loadCurrentQuestion(0, data.questions)
       setQuestionStartTime(Date.now())
       setRefRanges(Array.isArray(rData?.groups) ? rData.groups : [])
-      
+
       // Debug: Log first question to check textbook_slug
       if (data.questions && data.questions[0]) {
         console.log('First question data:', {
@@ -166,11 +253,11 @@ export default function Practice() {
   // Load the current question and restore user's previous answer if any
   const loadCurrentQuestion = (index, questionList = questions) => {
     if (!questionList || index < 0 || index >= questionList.length) return
-    
+
     const question = questionList[index]
     const questionId = question.id
     const userAnswer = userAnswers[questionId]
-    
+
     // Restore user's previous answer
     if (userAnswer) {
       setSelected(userAnswer.selected)
@@ -179,7 +266,7 @@ export default function Practice() {
       setSelected(null)
       setSaqText('')
     }
-    
+
     setTab('quick')
     setQuestionStartTime(Date.now())
     // Reset carousel index when question changes
@@ -206,13 +293,13 @@ export default function Practice() {
       const totalMs = sessionTotalMs
       const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
       const { topicPerformance, weakTopics } = calculateTopicPerformance()
-      
+
       navigate('/dashboard/question-bank/results', {
-        state: { 
-          totalQuestions, 
-          correct, 
-          skipped, 
-          totalMs, 
+        state: {
+          totalQuestions,
+          correct,
+          skipped,
+          totalMs,
           perQuestionMs,
           topicPerformance,
           weakTopics,
@@ -283,14 +370,14 @@ export default function Practice() {
     // Get the text content and position relative to stem
     let fullText = stemRef.current?.textContent || ''
     let actualStart = 0
-    
+
     // Find position in full text
     const walker = document.createTreeWalker(
       stemRef.current,
       NodeFilter.SHOW_TEXT,
       null
     )
-    
+
     let currentPos = 0
     let node = walker.nextNode()
     while (node) {
@@ -313,11 +400,11 @@ export default function Practice() {
 
     setHighlights(prev => {
       const current = prev[currentQuestion.id] || []
-      
+
       // Add new highlight and merge overlapping ones
       const allHighlights = [...current, newHighlight]
       const merged = mergeOverlappingHighlights(allHighlights)
-      
+
       return { ...prev, [currentQuestion.id]: merged }
     })
 
@@ -336,7 +423,7 @@ export default function Practice() {
 
     for (let i = 1; i < sorted.length; i++) {
       const next = sorted[i]
-      
+
       // Check if current and next overlap or are adjacent
       if (next.start <= current.end) {
         // Merge them
@@ -352,10 +439,10 @@ export default function Practice() {
         current = next
       }
     }
-    
+
     // Add the last one
     merged.push(current)
-    
+
     return merged
   }
 
@@ -380,16 +467,127 @@ export default function Practice() {
     })
   }
 
-  const renderHighlightedText = (text, questionId) => {
+  const hasMarkdown = (text) => {
+    return true
+  }
+
+  const applyHighlightsToMarkdown = (text, questionId) => {
     const questionHighlights = highlights[questionId] || []
     if (questionHighlights.length === 0) return text
 
+    // Sort highlights by start position (reverse to insert from end to start)
+    const sorted = [...questionHighlights].sort((a, b) => b.start - a.start)
+
+    let result = text
+    sorted.forEach((hl) => {
+      const before = result.slice(0, hl.start)
+      const highlighted = result.slice(hl.start, hl.end)
+      const after = result.slice(hl.end)
+
+      // Insert HTML with wrapper span that has the highlight ID
+      result = before +
+        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="highlight">${highlighted}</mark></span>` +
+        after
+    })
+
+    return result
+  }
+
+  const renderHighlightedText = (text, questionId) => {
+    const questionHighlights = highlights[questionId] || []
+    const isMarkdown = hasMarkdown(text)
+
+    // If no highlights and no markdown, return plain text with preserved line breaks
+    if (questionHighlights.length === 0 && !isMarkdown) {
+      return <span style={{ whiteSpace: 'pre-wrap' }}>{text}</span>
+    }
+
+    // If markdown, apply highlights and render with ReactMarkdown
+    if (isMarkdown) {
+      const textWithHighlights = questionHighlights.length > 0
+        ? applyHighlightsToMarkdown(text, questionId)
+        : text
+
+      return (
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={{
+            // Custom renderer for span wrappers (highlights)
+            span: ({ node, children, ...props }) => {
+              // Check if this is a highlight wrapper by checking className
+              if (props.className === 'highlight-wrapper') {
+                const highlightId = props['data-highlight-id'] || node?.properties?.['data-highlight-id']
+                return (
+                  <span className="highlight-wrapper" data-highlight-id={highlightId} {...props}>
+                    {children}
+                    <button
+                      className="highlight-remove-btn"
+                      data-highlight-id={highlightId}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const id = e.currentTarget.getAttribute('data-highlight-id')
+                        if (id) {
+                          removeHighlight(questionId, parseInt(id))
+                        }
+                      }}
+                      title="Remove this highlight"
+                      aria-label="Remove highlight"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )
+              }
+              return <span {...props}>{children}</span>
+            },
+            // Style other markdown elements
+            p: ({ node, ...props }) => <p style={{ marginBottom: '12px', lineHeight: '1.6' }} {...props} />,
+            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.5em', fontWeight: 800, marginBottom: '12px', marginTop: '16px' }} {...props} />,
+            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.3em', fontWeight: 800, marginBottom: '10px', marginTop: '14px' }} {...props} />,
+            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', fontWeight: 700, marginBottom: '8px', marginTop: '12px' }} {...props} />,
+            ul: ({ node, ...props }) => <ul style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+            ol: ({ node, ...props }) => <ol style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+            li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
+            table: ({ node, ...props }) => (
+              <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid #e5e7eb' }} {...props} />
+              </div>
+            ),
+            th: ({ node, ...props }) => (
+              <th style={{ border: '1px solid #e5e7eb', padding: '8px', backgroundColor: '#f8fafc', fontWeight: 700 }} {...props} />
+            ),
+            td: ({ node, ...props }) => (
+              <td style={{ border: '1px solid #e5e7eb', padding: '8px' }} {...props} />
+            ),
+            blockquote: ({ node, ...props }) => (
+              <blockquote style={{ borderLeft: '4px solid #cbd5e1', paddingLeft: '12px', margin: '12px 0', color: '#64748b' }} {...props} />
+            ),
+            code: ({ node, inline, ...props }) => {
+              if (inline) {
+                return <code style={{ backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em' }} {...props} />
+              }
+              return <code style={{ display: 'block', backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '8px', overflowX: 'auto', marginBottom: '12px' }} {...props} />
+            },
+          }}
+        >
+          {textWithHighlights}
+        </ReactMarkdown>
+      )
+    }
+
+    // Plain text with highlights (existing logic)
+    if (questionHighlights.length === 0) {
+      return <span>{text}</span>
+    }
+
     // Sort highlights by start position
     const sorted = [...questionHighlights].sort((a, b) => a.start - b.start)
-    
+
     const parts = []
     let lastIndex = 0
-    
+
     sorted.forEach((hl, idx) => {
       // Add text before highlight
       if (hl.start > lastIndex) {
@@ -399,14 +597,14 @@ export default function Practice() {
       parts.push({ text: text.slice(hl.start, hl.end), highlighted: true, key: `hl-${hl.id}`, highlightId: hl.id })
       lastIndex = hl.end
     })
-    
+
     // Add remaining text
     if (lastIndex < text.length) {
       parts.push({ text: text.slice(lastIndex), highlighted: false, key: 'text-end', highlightId: null })
     }
-    
-    return parts.map(part => 
-      part.highlighted 
+
+    return parts.map(part =>
+      part.highlighted
         ? (
           <span key={part.key} className="highlight-wrapper">
             <mark className="highlight">{part.text}</mark>
@@ -436,13 +634,13 @@ export default function Practice() {
   // Calculate topic-level performance
   const calculateTopicPerformance = () => {
     const topicStats = {}
-    
+
     questions.forEach((q) => {
       const topicId = q.topic_id
       const topicName = q.topic_name || 'Unknown Topic'
       const topicSlug = q.topic_slug || null
       const specialtyId = q.specialty_id || null
-      
+
       if (!topicStats[topicId]) {
         topicStats[topicId] = {
           topic_id: topicId,
@@ -455,10 +653,10 @@ export default function Practice() {
           skipped: 0
         }
       }
-      
+
       const userAnswer = userAnswers[q.id]
       topicStats[topicId].total += 1
-      
+
       if (userAnswer?.submitted) {
         if (userAnswer.isCorrect) {
           topicStats[topicId].correct += 1
@@ -469,19 +667,19 @@ export default function Practice() {
         topicStats[topicId].skipped += 1
       }
     })
-    
+
     // Calculate accuracy and identify weak topics
     const topicPerformance = Object.values(topicStats).map((stats) => {
       const attempted = stats.correct + stats.incorrect
       const accuracy = attempted > 0 ? Math.round((stats.correct / attempted) * 100) : null
-      
+
       return {
         ...stats,
         attempted,
         accuracy
       }
     })
-    
+
     // Filter weak topics:
     // - At least 2 questions attempted AND accuracy < 70%, OR
     // - At least 3 incorrect answers (regardless of accuracy)
@@ -499,7 +697,7 @@ export default function Practice() {
         return b.incorrect - a.incorrect
       })
       .slice(0, 5) // Limit to top 5 weak topics
-    
+
     return { topicPerformance, weakTopics }
   }
 
@@ -511,13 +709,13 @@ export default function Practice() {
     const totalMs = sessionTotalMs
     const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
     const { topicPerformance, weakTopics } = calculateTopicPerformance()
-    
+
     navigate('/dashboard/question-bank/results', {
-      state: { 
-        totalQuestions, 
-        correct, 
-        skipped, 
-        totalMs, 
+      state: {
+        totalQuestions,
+        correct,
+        skipped,
+        totalMs,
         perQuestionMs,
         topicPerformance,
         weakTopics,
@@ -531,19 +729,19 @@ export default function Practice() {
 
   const submit = async () => {
     if (!questions[currentIndex] || submitting) return
-    
+
     const currentQuestion = questions[currentIndex]
     const questionId = currentQuestion.id
-    
+
     // Don't submit if already submitted
     if (submittedAnswers.has(questionId)) return
-    
+
     setSubmitting(true)
-    
+
     try {
       console.log('=== FRONTEND SUBMIT ===')
       console.log('Selected:', selected, 'Question type:', currentQuestion.type)
-      
+
       // Calculate if answer is correct on frontend
       let isCorrect = false
       if (currentQuestion.type === 'MCQ') {
@@ -553,9 +751,9 @@ export default function Practice() {
         // For now, assume it's handled elsewhere or simplified
         isCorrect = false // Placeholder
       }
-      
+
       const timeTaken = Date.now() - questionStartTime
-      
+
       // Save user's answer locally
       setUserAnswers(prev => ({
         ...prev,
@@ -567,23 +765,23 @@ export default function Practice() {
           submitted: true
         }
       }))
-      
+
       // Mark as submitted
       setSubmittedAnswers(prev => new Set([...prev, questionId]))
-      
+
       // Clear strikethrough state for this question
       setStruckOut(prev => {
         const next = { ...prev }
         delete next[questionId]
         return next
       })
-      
+
       // Update session stats
       const newAnswered = sessionAnswered + 1
       setSessionAnswered(newAnswered)
       setSessionCorrect(prev => prev + (isCorrect ? 1 : 0))
       setSessionTotalMs(prev => prev + timeTaken)
-      
+
       // Submit to backend for tracking
       const payload = {
         question_id: questionId,
@@ -592,7 +790,7 @@ export default function Practice() {
         time_taken_ms: timeTaken,
         is_correct: isCorrect
       }
-      
+
       // Don't await this - let it happen in background
       fetch(`${API_BASE}/qbank/practice/submit`, {
         method: 'POST',
@@ -602,9 +800,9 @@ export default function Practice() {
       }).catch(error => {
         console.error('Error submitting to backend:', error)
       })
-      
+
       console.log('Answer submitted successfully')
-      
+
     } catch (error) {
       console.error('Error submitting answer:', error)
     } finally {
@@ -623,7 +821,7 @@ export default function Practice() {
         setTrackerChunkSize(35)
       }
     }
-    
+
     updateChunkSize()
     window.addEventListener('resize', updateChunkSize)
     return () => window.removeEventListener('resize', updateChunkSize)
@@ -688,7 +886,7 @@ export default function Practice() {
   const questionId = currentQuestion?.id
   const userAnswer = userAnswers[questionId]
   const isSubmitted = submittedAnswers.has(questionId)
-  
+
   // Get result data for explanation display
   const result = isSubmitted ? {
     is_correct: userAnswer?.isCorrect || false,
@@ -703,12 +901,12 @@ export default function Practice() {
   // Build list of all five per-option quick points (always show all)
   const pointsByOption = currentQuestion?.explanations?.points_by_option || null
   const allQuickPoints = pointsByOption
-    ? [0,1,2,3,4].map((idx)=>({
-        label: String.fromCharCode(65 + idx),
-        text: (pointsByOption[String(idx)]?.[0]) || null,
-        isCorrect: currentQuestion?.correct_answer === idx,
-      }))
-      .filter((p)=>p.text)
+    ? [0, 1, 2, 3, 4].map((idx) => ({
+      label: String.fromCharCode(65 + idx),
+      text: (pointsByOption[String(idx)]?.[0]) || null,
+      isCorrect: currentQuestion?.correct_answer === idx,
+    }))
+      .filter((p) => p.text)
     : []
 
   return (
@@ -729,13 +927,13 @@ export default function Practice() {
         </div>
       </div>
 
-          {currentQuestion && (
+      {currentQuestion && (
         <div className="pr__grid">
           <div className="card question-card">
             <div className="card__body">
               <div className="question-content">
                 <div className="question-stem-wrapper">
-                  <div ref={stemRef} className="question-stem" style={{ whiteSpace: 'pre-wrap', marginBottom: 12 }}>
+                  <div ref={stemRef} className="question-stem" style={{ marginBottom: 12 }}>
                     {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
                   </div>
                 </div>
@@ -802,17 +1000,17 @@ export default function Practice() {
                       const isSelectedIncorrect = selected === o.id && result && !result.is_correct;
                       const isStruckOut = (struckOut[questionId] || new Set()).has(o.id);
                       const className = `option ${selected === o.id ? 'option--selected' : ''} ${result ? (isCorrect ? 'option--correct' : isSelectedIncorrect ? 'option--incorrect' : '') : ''} ${isStruckOut ? 'option--struck' : ''}`;
-                      
+
                       return (
                         <div key={o.id} className="option-wrapper">
                           <label className={className}>
-                            <input 
-                              type="radio" 
-                              name="opt" 
-                              value={o.id} 
-                              checked={selected === o.id} 
-                              onChange={() => !isStruckOut && setSelected(o.id)} 
-                              disabled={isSubmitted || isStruckOut} 
+                            <input
+                              type="radio"
+                              name="opt"
+                              value={o.id}
+                              checked={selected === o.id}
+                              onChange={() => !isStruckOut && setSelected(o.id)}
+                              disabled={isSubmitted || isStruckOut}
                             />
                             <div className="option__label">{o.label}.</div>
                             <div className="option__body">{o.body}</div>
@@ -833,13 +1031,13 @@ export default function Practice() {
                     })}
                   </div>
                 ) : (
-                  <textarea className="saq-input" placeholder="Type your answer here..." value={saqText} onChange={(e)=>setSaqText(e.target.value)} disabled={isSubmitted} />
+                  <textarea className="saq-input" placeholder="Type your answer here..." value={saqText} onChange={(e) => setSaqText(e.target.value)} disabled={isSubmitted} />
                 )}
               </div>
               <div className="controls">
                 <div className="controls__left">
                   {/* <button className="btn btn--ghost btn--icon"><LuSave />Save</button> */}
-                  <button className={`btn btn--ghost btn--icon ${flagged.has(questionId) ? 'is-flagged' : ''}`} onClick={()=>{
+                  <button className={`btn btn--ghost btn--icon ${flagged.has(questionId) ? 'is-flagged' : ''}`} onClick={() => {
                     setFlagged(prev => {
                       const next = new Set(prev)
                       if (next.has(questionId)) next.delete(questionId); else next.add(questionId)
@@ -847,7 +1045,7 @@ export default function Practice() {
                     })
                   }}><LuFlag />{flagged.has(questionId) ? 'Flagged' : 'Flag'}</button>
                   {(highlights[currentQuestion.id]?.length > 0) && (
-                    <button 
+                    <button
                       className="btn btn--ghost btn--icon"
                       onClick={() => clearHighlights(currentQuestion.id)}
                       title="Clear all highlights"
@@ -885,9 +1083,9 @@ export default function Practice() {
                   {result.is_correct ? 'Correct' : 'Incorrect'}
                 </div>
                 <div className="tabs">
-                  <div className={`tab ${tab==='quick' ? 'tab--active' : ''}`} onClick={()=>setTab('quick')}>Quick</div>
-                  <div className={`tab ${tab==='detailed' ? 'tab--active' : ''}`} onClick={()=>setTab('detailed')}>Detailed</div>
-                  <div className={`tab ${tab==='eli5' ? 'tab--active' : ''}`} onClick={()=>setTab('eli5')}>ELI5</div>
+                  <div className={`tab ${tab === 'quick' ? 'tab--active' : ''}`} onClick={() => setTab('quick')}>Quick</div>
+                  <div className={`tab ${tab === 'detailed' ? 'tab--active' : ''}`} onClick={() => setTab('detailed')}>Detailed</div>
+                  <div className={`tab ${tab === 'eli5' ? 'tab--active' : ''}`} onClick={() => setTab('eli5')}>ELI5</div>
                 </div>
               </div>
               <div className="card__body explain">
@@ -900,7 +1098,7 @@ export default function Practice() {
                     </div>
                   </div>
                 )}
-                {tab==='quick' && (
+                {tab === 'quick' && (
                   <div>
                     {allQuickPoints && allQuickPoints.length > 0 ? (
                       <div className="explain__section">
@@ -922,7 +1120,7 @@ export default function Practice() {
                     )}
                   </div>
                 )}
-                {tab==='detailed' && (
+                {tab === 'detailed' && (
                   <div>
                     <div className="explain__section">
                       <div className="explain__label">Detailed Explanation:</div>
@@ -930,7 +1128,7 @@ export default function Practice() {
                     </div>
                   </div>
                 )}
-                {tab==='eli5' && (
+                {tab === 'eli5' && (
                   <div>
                     <div className="eli5-section">
                       <div className="eli5-header">
@@ -941,7 +1139,7 @@ export default function Practice() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Textbook Link */}
                 {currentQuestion?.textbook_slug && (
                   <div className="textbook-link-section">
@@ -996,11 +1194,11 @@ export default function Practice() {
                 <div className="progress__bar"><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
                 <div className="progress__stats" style={{ justifyContent: 'space-around' }}>
                   <div>
-                    <div className="stat--green">{sessionAnswered ? Math.round((sessionCorrect/sessionAnswered)*100) : 0}%</div>
+                    <div className="stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
                     <div className="stat-label">Accuracy</div>
                   </div>
                   <div>
-                    <div className="stat--blue">{sessionAnswered ? Math.round((sessionTotalMs/sessionAnswered)/1000) : 0}s</div>
+                    <div className="stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
                     <div className="stat-label">Avg Time</div>
                   </div>
                 </div>
@@ -1014,7 +1212,7 @@ export default function Practice() {
             <div className="card" style={{ marginTop: 16 }}>
               <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>Reference Ranges</div>
-                <button className="btn btn--ghost btn--icon" onClick={()=> setShowRef(s=>!s)}>{showRef ? 'Hide' : 'Show'}</button>
+                <button className="btn btn--ghost btn--icon" onClick={() => setShowRef(s => !s)}>{showRef ? 'Hide' : 'Show'}</button>
               </div>
               <div className={`refcard__content ${showRef ? 'is-open' : ''}`}>
                 <div className="refcard__inner">
@@ -1043,7 +1241,8 @@ export default function Practice() {
                                     groups[key].populations.push({
                                       label: label,
                                       isGeneral: label.toLowerCase() === 'general' || label === ''
-                                    , value: it.value_text });
+                                      , value: it.value_text
+                                    });
                                   }
                                   const rows = Object.values(groups);
                                   return rows.map((row, idx) => {
@@ -1058,10 +1257,10 @@ export default function Practice() {
                                     };
                                     const sortedToShow = Array.isArray(toShow)
                                       ? [...toShow].sort((a, b) => {
-                                          const dw = weight(a.label) - weight(b.label);
-                                          if (dw !== 0) return dw;
-                                          return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
-                                        })
+                                        const dw = weight(a.label) - weight(b.label);
+                                        if (dw !== 0) return dw;
+                                        return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
+                                      })
                                       : toShow;
                                     return (
                                       <div key={idx} className="refrow refrow--grouped">
@@ -1107,8 +1306,8 @@ export default function Practice() {
               <div className="card__body">
                 <div className="trk-controls">
                   <div className="trk-filters">
-                    {['All','Unanswered','Correct','Wrong','Flagged'].map((f)=> (
-                      <button key={f} className={`chip ${trkFilter===f ? 'is-active' : ''}`} onClick={()=>setTrkFilter(f)}>{f}</button>
+                    {['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((f) => (
+                      <button key={f} className={`chip ${trkFilter === f ? 'is-active' : ''}`} onClick={() => setTrkFilter(f)}>{f}</button>
                     ))}
                   </div>
                   <div className="trk-jump">
@@ -1119,24 +1318,24 @@ export default function Practice() {
                       placeholder="#"
                       className="trk-input"
                       value={trkJump}
-                      onChange={(e)=> setTrkJump(e.target.value)}
-                      onKeyDown={(e)=>{
+                      onChange={(e) => setTrkJump(e.target.value)}
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           const val = parseInt(trkJump || '0', 10)
                           if (val >= 1 && val <= questions.length) {
                             const idx = val - 1
                             setCurrentIndex(idx); loadCurrentQuestion(idx)
-                            setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                            setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
                           }
                         }
                       }}
                     />
-                    <button className="btn btn--ghost btn--icon" onClick={()=>{
+                    <button className="btn btn--ghost btn--icon" onClick={() => {
                       const val = parseInt(trkJump || '0', 10)
                       if (val >= 1 && val <= questions.length) {
                         const idx = val - 1
                         setCurrentIndex(idx); loadCurrentQuestion(idx)
-                        setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                        setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
                       }
                     }}>Go</button>
                   </div>
@@ -1158,17 +1357,17 @@ export default function Practice() {
                             const isFlag = flagged.has(qid)
                             let status = 'Unanswered'
                             if (ua?.submitted) status = ua.isCorrect ? 'Correct' : 'Wrong'
-                            const matchesFilter = trkFilter==='All' || (trkFilter==='Flagged' ? isFlag : trkFilter===status)
+                            const matchesFilter = trkFilter === 'All' || (trkFilter === 'Flagged' ? isFlag : trkFilter === status)
                             const classes = `seg seg--${status.toLowerCase()} ${isCurrent ? 'seg--current' : ''} ${isFlag ? 'seg--flagged' : ''} ${matchesFilter ? '' : 'seg--dim'}`
                             return (
                               <button
                                 key={qid}
                                 className={classes}
-                                aria-label={`Go to question ${idx+1}. Status: ${status}. ${isFlag ? 'Flagged.' : ''}`}
-                                title={`Q${idx+1} • ${status}${isFlag ? ' • flagged' : ''}`}
+                                aria-label={`Go to question ${idx + 1}. Status: ${status}. ${isFlag ? 'Flagged.' : ''}`}
+                                title={`Q${idx + 1} • ${status}${isFlag ? ' • flagged' : ''}`}
                                 onClick={() => {
                                   setCurrentIndex(idx); loadCurrentQuestion(idx)
-                                  setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                                  setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
                                 }}
                               />
                             )
@@ -1183,8 +1382,8 @@ export default function Practice() {
                   <div className="trk-flagged-rail">
                     <div className="trk-rail__label">Flagged</div>
                     <div className="trk-rail__list">
-                      {questions.map((q, idx)=> flagged.has(q.id) ? (
-                        <button key={q.id} className="pill" onClick={()=>{ setCurrentIndex(idx); loadCurrentQuestion(idx); setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0) }}>{idx+1}</button>
+                      {questions.map((q, idx) => flagged.has(q.id) ? (
+                        <button key={q.id} className="pill" onClick={() => { setCurrentIndex(idx); loadCurrentQuestion(idx); setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0) }}>{idx + 1}</button>
                       ) : null)}
                     </div>
                   </div>
