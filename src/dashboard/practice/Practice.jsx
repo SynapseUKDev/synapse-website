@@ -133,6 +133,27 @@ export default function Practice() {
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
+  const getOffsetWithinStem = (targetNode, nodeOffset) => {
+  if (!stemRef.current) return null
+
+  const walker = document.createTreeWalker(
+    stemRef.current,
+    NodeFilter.SHOW_TEXT,
+    null
+  )
+
+  let pos = 0
+  let node = walker.nextNode()
+
+  while (node) {
+    if (node === targetNode) return pos + nodeOffset
+    pos += node.textContent.length
+    node = walker.nextNode()
+  }
+
+  return null
+}
+
   // Reference ranges
   const [refRanges, setRefRanges] = useState([])
   const [showRef, setShowRef] = useState(false)
@@ -326,12 +347,10 @@ export default function Practice() {
   }
 
   // Text highlighting functionality
-  const handleTextSelection = () => {
-    const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !stemRef.current) {
-      setShowHighlightBtn(false)
-      return
-    }
+const handleTextSelection = () => {
+  addHighlightFromSelection()
+  setShowHighlightBtn(false)
+}
 
     const selectedText = selection.toString().trim()
     if (!selectedText || selectedText.length === 0) {
@@ -366,6 +385,47 @@ export default function Practice() {
     const start = range.startOffset
     const end = range.endOffset
     const container = range.startContainer
+
+    const addHighlightFromSelection = () => {
+  const selection = window.getSelection()
+  if (!selection || selection.isCollapsed || !currentQuestion || !stemRef.current) return
+
+  const selectedText = selection.toString()
+  if (!selectedText || /^\s*$/.test(selectedText)) return
+
+  const range = selection.getRangeAt(0)
+
+  // Only act if selection is inside the stem
+  if (!stemRef.current.contains(range.commonAncestorContainer)) return
+
+  // Optional safety: disable for markdown stems (prevents offset mismatch bugs)
+  if (currentQuestion?.stem && hasMarkdown(currentQuestion.stem)) return
+
+  const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
+  const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
+  if (startA == null || endA == null) return
+
+  const start = Math.min(startA, endA)
+  const end = Math.max(startA, endA)
+  if (start === end) return
+
+  const newHighlight = {
+    start,
+    end,
+    text: selectedText,
+    id: Date.now()
+  }
+
+  setHighlights(prev => {
+    const current = prev[currentQuestion.id] || []
+    const merged = mergeOverlappingHighlights([...current, newHighlight])
+    return { ...prev, [currentQuestion.id]: merged }
+  })
+
+  // Clear blue selection
+  selection.removeAllRanges()
+}
+
 
     // Get the text content and position relative to stem
     let fullText = stemRef.current?.textContent || ''
@@ -467,9 +527,9 @@ export default function Practice() {
     })
   }
 
-  const hasMarkdown = (text) => {
-    return true
-  }
+  const hasMarkdown = (text = '') => {
+  return /(^|\n)\s{0,3}#{1,6}\s+|(^|\n)\s*([-*+]\s+|\d+\.\s+)|\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|\[[^\]]+\]\([^)]+\)/m.test(text)
+}
 
   const applyHighlightsToMarkdown = (text, questionId) => {
     const questionHighlights = highlights[questionId] || []
@@ -630,6 +690,16 @@ export default function Practice() {
     document.addEventListener('mouseup', handleTextSelection)
     return () => document.removeEventListener('mouseup', handleTextSelection)
   }, [])
+
+useEffect(() => {
+  document.addEventListener('mouseup', handleTextSelection)
+  document.addEventListener('touchend', handleTextSelection)
+
+  return () => {
+    document.removeEventListener('mouseup', handleTextSelection)
+    document.removeEventListener('touchend', handleTextSelection)
+  }
+}, [currentQuestion?.id])
 
   // Calculate topic-level performance
   const calculateTopicPerformance = () => {
