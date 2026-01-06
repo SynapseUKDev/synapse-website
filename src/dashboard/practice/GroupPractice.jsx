@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
-import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuUsers } from 'react-icons/lu'
+import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuArrowLeft, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuUsers } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import { io } from 'socket.io-client'
@@ -75,7 +75,10 @@ export default function GroupPractice() {
   const [serverTimerEndTime, setServerTimerEndTime] = useState(null)
   const [participants, setParticipants] = useState([])
   const [isHost, setIsHost] = useState(false)
-  const [questionAnswers, setQuestionAnswers] = useState({})
+  const [questionAnswers, setQuestionAnswers] = useState({}) // Stores answers for each question
+  const [revealedQuestions, setRevealedQuestions] = useState(new Set()) // Tracks which questions have answers revealed
+  const [serverCurrentIndex, setServerCurrentIndex] = useState(0) // Server-controlled current question index
+  const [isReviewing, setIsReviewing] = useState(false) // Whether user is reviewing past questions
   const socketRef = useRef(null)
   // Reference ranges
   const [refRanges, setRefRanges] = useState([])
@@ -161,10 +164,10 @@ export default function GroupPractice() {
       })
     })
 
-    // Listen for peer answers (peer-to-peer updates)
+    // Listen for peer answers (everyone receives and stores locally)
     socketRef.current.on('peer-answered', (data) => {
       console.log('Peer answered:', data)
-      // Update local answer tracking
+      // Everyone stores answers locally
       const key = `${data.question_id}_${data.question_index}`
       setQuestionAnswers(prev => {
         const updated = { ...prev }
@@ -182,18 +185,31 @@ export default function GroupPractice() {
         return updated
       })
     })
+    
+    // Answers revealed to everyone (just marks as revealed, answers already stored)
+    socketRef.current.on('answers-revealed', (data) => {
+      console.log('Answers revealed:', data)
+      // Mark this question as revealed (answers are already stored locally)
+      setRevealedQuestions(prev => new Set([...prev, data.question_id]))
+    })
 
     socketRef.current.on('question-changed', (data) => {
       console.log('Question changed by host:', data)
       // Server controls question progression
-      setCurrentIndex(data.question_index)
-      loadCurrentQuestion(data.question_index, questions)
+      const newIndex = data.question_index
+      setServerCurrentIndex(newIndex)
+      
+      // If user is reviewing, they can stay on their current question
+      // Otherwise, move to the new server question
+      if (!isReviewing) {
+        setCurrentIndex(newIndex)
+        loadCurrentQuestion(newIndex, questions)
+      }
 
       // Clear local answer list for new question (all clients clear)
       setQuestionAnswers({})
-
-      // If host, we already saved answers before emitting next-question
-      // If participant, answers were cleared by this event
+      // Clear revealed status for new question
+      setRevealedQuestions(new Set())
     })
 
     socketRef.current.on('question-answers', (data) => {
@@ -205,6 +221,10 @@ export default function GroupPractice() {
         updated[key] = data.answers || []
         return updated
       })
+      // Mark as revealed if we got answers from database
+      if (data.answers && data.answers.length > 0) {
+        setRevealedQuestions(prev => new Set([...prev, data.question_id]))
+      }
     })
 
     socketRef.current.on('session-completed', () => {
@@ -213,7 +233,7 @@ export default function GroupPractice() {
 
     socketRef.current.on('session-scores', (data) => {
       console.log('Session scores received:', JSON.stringify(data, null, 2))
-      // Navigate to leaderboard with scores
+      // Navigate to leaderboard with scores (everyone including host)
       navigate('/dashboard/question-bank/group-leaderboard', {
         state: {
           room_code: data.room_code || roomCode,
@@ -230,9 +250,14 @@ export default function GroupPractice() {
     })
 
     socketRef.current.on('session-ended', (data) => {
-      console.log('Session ended by host:', data)
+      console.log('Session ended:', data)
       // Wait for scores - server will send session-scores event
-      console.log('Session ended, waiting for scores...')
+      // If host disconnected, scores are already calculated
+      if (data.ended_by === 'host_disconnect') {
+        console.log('Host disconnected - waiting for scores...')
+      } else {
+        console.log('Session ended, waiting for scores...')
+      }
     })
 
     socketRef.current.on('error', (error) => {
@@ -255,8 +280,9 @@ export default function GroupPractice() {
         })
       }
 
-      // Navigate to question bank
-      navigate('/dashboard/question-bank')
+      // Everyone (including host) waits for scores before navigating
+      // Scores will be sent via session-scores event, which triggers navigation
+      // Don't navigate here - wait for session-scores event
     }
   }
 
@@ -293,11 +319,12 @@ export default function GroupPractice() {
         return
       }
 
-      setQuestions(data.questions)
-      // Start at question 0 - server will control progression
-      setCurrentIndex(0)
-      loadCurrentQuestion(0, data.questions)
-      setQuestionStartTime(Date.now())
+        setQuestions(data.questions)
+        // Start at question 0 - server will control progression
+        setCurrentIndex(0)
+        setServerCurrentIndex(0)
+        loadCurrentQuestion(0, data.questions)
+        setQuestionStartTime(Date.now())
 
       // Load any existing answers for the current question from database
       if (socketRef.current && data.questions[0]) {
@@ -353,31 +380,90 @@ export default function GroupPractice() {
   }
 
   const goToPrevious = () => {
-    // Disabled in group mode - server controls progression
-    if (!isHost) return
-    // Host can't go back in group mode either - only forward
+    // Allow navigation to previous questions for review
+    if (currentIndex > 0) {
+      const prevIndex = currentIndex - 1
+      setCurrentIndex(prevIndex)
+      loadCurrentQuestion(prevIndex, questions)
+      setIsReviewing(true)
+      
+      // Load answers from database for this past question
+      const prevQuestion = questions[prevIndex]
+      if (prevQuestion && socketRef.current) {
+        socketRef.current.emit('get-question-answers', {
+          room_code: roomCode,
+          question_id: prevQuestion.id,
+          question_index: prevIndex
+        })
+      }
+    }
+  }
+  
+  const goToNextForReview = () => {
+    // Allow navigation to next questions for review
+    // Only allow going forward to questions that have been completed (submitted by everyone)
+    // i.e., questions that are at or before serverCurrentIndex
+    if (currentIndex < questions.length - 1) {
+      const nextIndex = currentIndex + 1
+      
+      // Only allow forward navigation to questions that have been completed
+      // (questions at or before serverCurrentIndex)
+      if (nextIndex > serverCurrentIndex) {
+        console.log('Cannot navigate forward - question not completed yet')
+        return
+      }
+      
+      setCurrentIndex(nextIndex)
+      loadCurrentQuestion(nextIndex, questions)
+      setIsReviewing(true)
+      
+      // Load answers from database for this past question
+      const nextQuestion = questions[nextIndex]
+      if (nextQuestion && socketRef.current) {
+        socketRef.current.emit('get-question-answers', {
+          room_code: roomCode,
+          question_id: nextQuestion.id,
+          question_index: nextIndex
+        })
+      }
+    }
+  }
+  
+  const goToCurrentQuestion = () => {
+    // Return to the server-controlled current question
+    setIsReviewing(false)
+    setCurrentIndex(serverCurrentIndex)
+    loadCurrentQuestion(serverCurrentIndex, questions)
+  }
+
+  const revealAnswers = () => {
+    // Host reveals answers to everyone
+    if (!isHost || !socketRef.current) return
+    
+    const currentQuestion = questions[currentIndex]
+    if (currentQuestion) {
+      // Get all collected answers from local state
+      const answerKey = `${currentQuestion.id}_${currentIndex}`
+      const collectedAnswers = questionAnswers[answerKey] || []
+      
+      // Send reveal event with collected answers (for database saving)
+      socketRef.current.emit('reveal-answers', {
+        room_code: roomCode,
+        user_id: user.id,
+        question_id: currentQuestion.id,
+        question_index: currentIndex,
+        answers: collectedAnswers
+      })
+    }
   }
 
   const goToNext = () => {
     // In group mode, only host can advance questions via server
     if (!isHost) return
 
-    // Before moving to next question, host collects all answers and saves to server
+    // Move to next question (answers should already be revealed)
     const currentQuestion = questions[currentIndex]
     if (currentQuestion && socketRef.current) {
-      const answerKey = `${currentQuestion.id}_${currentIndex}`
-      const answersForThisQuestion = questionAnswers[answerKey] || []
-
-      // Save answers to server
-      socketRef.current.emit('save-question-answers', {
-        room_code: roomCode,
-        user_id: user.id,
-        question_id: currentQuestion.id,
-        question_index: currentIndex,
-        answers: answersForThisQuestion
-      })
-
-      // Then move to next question
       socketRef.current.emit('next-question', {
         room_code: roomCode,
         user_id: user.id,
@@ -821,6 +907,9 @@ export default function GroupPractice() {
 
     // Don't submit if already submitted
     if (submittedAnswers.has(questionId)) return
+    
+    // Don't allow submitting when reviewing past questions
+    if (isReviewing && currentIndex !== serverCurrentIndex) return
 
     setSubmitting(true)
 
@@ -887,7 +976,7 @@ export default function GroupPractice() {
         console.error('Error submitting to backend:', error)
       })
 
-      // Emit socket event for group sessions (peer-to-peer)
+      // Emit socket event for group sessions (broadcasts to everyone)
       if (socketRef.current) {
         const username = user.username || user.email || 'Anonymous'
         socketRef.current.emit('group-answer', {
@@ -900,7 +989,7 @@ export default function GroupPractice() {
           is_correct: isCorrect,
           time_taken: timeTaken
         })
-        // Also update local state immediately (don't wait for peer broadcast)
+        // Also update local state immediately (don't wait for peer-answered event)
         const key = `${questionId}_${currentIndex}`
         setQuestionAnswers(prev => {
           const updated = { ...prev }
@@ -915,6 +1004,8 @@ export default function GroupPractice() {
           updated[key] = filtered
           return updated
         })
+        // Everyone else receives it via 'peer-answered' event and stores locally
+        // Answers are hidden until host reveals them
       }
 
       console.log('Answer submitted successfully')
@@ -1062,12 +1153,71 @@ export default function GroupPractice() {
               {currentIndex + 1}
             </div>
             <div>
-              <div>Round {currentIndex + 1} of {questions.length}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Round {currentIndex + 1} of {questions.length}</span>
+                {isReviewing && currentIndex !== serverCurrentIndex && (
+                  <span style={{
+                    padding: '2px 8px',
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700
+                  }}>
+                    Reviewing
+                  </span>
+                )}
+                {!isReviewing && currentIndex === serverCurrentIndex && (
+                  <span style={{
+                    padding: '2px 8px',
+                    background: '#dcfce7',
+                    color: '#166534',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700
+                  }}>
+                    Current
+                  </span>
+                )}
+              </div>
               {roomCode && <div style={{ fontSize: 12 }}>Room: {roomCode}</div>}
             </div>
           </div>
         </div>
-        <div className="pr__top-right">
+        <div className="pr__top-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Navigation buttons for reviewing past questions */}
+          {submittedAnswers.size > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={goToPrevious}
+                disabled={currentIndex === 0}
+                className="btn btn--ghost btn--icon"
+                title="Previous question"
+                style={{ opacity: currentIndex === 0 ? 0.5 : 1 }}
+              >
+                <LuArrowLeft size={18} />
+              </button>
+              <button
+                onClick={goToNextForReview}
+                disabled={currentIndex === questions.length - 1 || currentIndex >= serverCurrentIndex}
+                className="btn btn--ghost btn--icon"
+                title={currentIndex >= serverCurrentIndex ? "Cannot navigate forward - question not completed yet" : "Next question"}
+                style={{ opacity: (currentIndex === questions.length - 1 || currentIndex >= serverCurrentIndex) ? 0.5 : 1 }}
+              >
+                <LuArrowRight size={18} />
+              </button>
+              {isReviewing && currentIndex !== serverCurrentIndex && (
+                <button
+                  onClick={goToCurrentQuestion}
+                  className="btn btn--ghost"
+                  title="Return to current question"
+                  style={{ fontSize: 13 }}
+                >
+                  Current Question
+                </button>
+              )}
+            </div>
+          )}
           {timerMinutes > 0 && (
             <div className="pr__timer">
               <div className="pr__time" style={seconds <= 60 && seconds > 0 ? { color: '#ef4444' } : {}}>{display}</div>
@@ -1177,8 +1327,8 @@ export default function GroupPractice() {
                               <LuSlash size={16} />
                             </button>
                           )}
-                          {/* Show who answered this option */}
-                          {isSubmitted && (() => {
+                          {/* Show who answered this option - only if answers are revealed */}
+                          {isSubmitted && revealedQuestions.has(questionId) && (() => {
                             const answerKey = `${questionId}_${currentIndex}`
                             const answersForOption = (questionAnswers[answerKey] || []).filter(a => a.answer === o.id)
                             if (answersForOption.length === 0) return null
@@ -1248,14 +1398,35 @@ export default function GroupPractice() {
                     </button>
                   ) : (
                     <>
-                      {isHost && (
-                        <button onClick={goToNext} className="btn btn--primary btn--icon">
-                          {currentIndex === questions.length - 1 ? 'Finish Session' : 'Next Question'} <LuArrowRight />
-                        </button>
-                      )}
-                      {!isHost && (
-                        <div style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
-                          Waiting for host to move to next question...
+                      {/* Show controls only if on current question, not when reviewing */}
+                      {!isReviewing && currentIndex === serverCurrentIndex ? (
+                        <>
+                          {isHost && (
+                            <>
+                              {!revealedQuestions.has(questionId) && (
+                                <button onClick={revealAnswers} className="btn btn--primary">
+                                  End Question & Reveal Answers
+                                </button>
+                              )}
+                              {revealedQuestions.has(questionId) && (
+                                <button onClick={goToNext} className="btn btn--primary btn--icon">
+                                  {currentIndex === questions.length - 1 ? 'Finish Session' : 'Next Question'} <LuArrowRight />
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {!isHost && (
+                            <div style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
+                              {revealedQuestions.has(questionId) 
+                                ? 'Waiting for host to move to next question...'
+                                : 'Waiting for host to reveal answers...'}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        /* When reviewing past questions */
+                        <div style={{ padding: '8px 16px', background: '#e0f2fe', borderRadius: 8, fontSize: 14, color: '#0c4a6e' }}>
+                          Reviewing past question • <button onClick={goToCurrentQuestion} style={{ textDecoration: 'underline', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 700 }}>Return to current</button>
                         </div>
                       )}
                     </>
