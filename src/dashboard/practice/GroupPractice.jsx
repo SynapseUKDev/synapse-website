@@ -71,6 +71,27 @@ export default function GroupPractice() {
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
 
+  const getOffsetWithinStem = (targetNode, nodeOffset) => {
+  if (!stemRef.current) return null
+
+  const walker = document.createTreeWalker(
+    stemRef.current,
+    NodeFilter.SHOW_TEXT,
+    null
+  )
+
+  let pos = 0
+  let node = walker.nextNode()
+
+  while (node) {
+    if (node === targetNode) return pos + nodeOffset
+    pos += node.textContent.length
+    node = walker.nextNode()
+  }
+
+  return null
+}
+
   // Group session state
   const [serverTimerEndTime, setServerTimerEndTime] = useState(null)
   const [participants, setParticipants] = useState([])
@@ -401,11 +422,9 @@ export default function GroupPractice() {
 
   // Text highlighting functionality
   const handleTextSelection = () => {
-    const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !stemRef.current) {
-      setShowHighlightBtn(false)
-      return
-    }
+  addHighlightFromSelection()
+  setShowHighlightBtn(false)
+}
 
     const selectedText = selection.toString().trim()
     if (!selectedText || selectedText.length === 0) {
@@ -541,9 +560,9 @@ export default function GroupPractice() {
     })
   }
 
-  const hasMarkdown = (text) => {
-    return true
-  }
+  const hasMarkdown = (text = '') => {
+  return /(^|\n)\s{0,3}#{1,6}\s+|(^|\n)\s*([-*+]\s+|\d+\.\s+)|\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|\[[^\]]+\]\([^)]+\)/m.test(text)
+}
 
   const applyHighlightsToMarkdown = (text, questionId) => {
     const questionHighlights = highlights[questionId] || []
@@ -689,6 +708,47 @@ export default function GroupPractice() {
       parts.push({ text: text.slice(lastIndex), highlighted: false, key: 'text-end', highlightId: null })
     }
 
+    const addHighlightFromSelection = () => {
+  const selection = window.getSelection()
+  if (!selection || selection.isCollapsed || !currentQuestion || !stemRef.current) return
+
+  const selectedText = selection.toString()
+  if (!selectedText || /^\s*$/.test(selectedText)) return
+
+  const range = selection.getRangeAt(0)
+
+  // Only highlight text inside the stem
+  if (!stemRef.current.contains(range.commonAncestorContainer)) return
+
+  // Disable for markdown-rendered stems (prevents bugs)
+  if (currentQuestion?.stem && hasMarkdown(currentQuestion.stem)) return
+
+  const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
+  const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
+  if (startA == null || endA == null) return
+
+  const start = Math.min(startA, endA)
+  const end = Math.max(startA, endA)
+  if (start === end) return
+
+  const newHighlight = {
+    start,
+    end,
+    text: selectedText,
+    id: Date.now()
+  }
+
+  setHighlights(prev => {
+    const current = prev[currentQuestion.id] || []
+    const merged = mergeOverlappingHighlights([...current, newHighlight])
+    return { ...prev, [currentQuestion.id]: merged }
+  })
+
+  // Clear blue selection
+  selection.removeAllRanges()
+}
+
+
     return parts.map(part =>
       part.highlighted
         ? (
@@ -712,10 +772,16 @@ export default function GroupPractice() {
   }
 
   // Listen for text selection
-  useEffect(() => {
-    document.addEventListener('mouseup', handleTextSelection)
-    return () => document.removeEventListener('mouseup', handleTextSelection)
-  }, [])
+useEffect(() => {
+  document.addEventListener('mouseup', handleTextSelection)
+  document.addEventListener('touchend', handleTextSelection)
+
+  return () => {
+    document.removeEventListener('mouseup', handleTextSelection)
+    document.removeEventListener('touchend', handleTextSelection)
+  }
+}, [currentQuestion?.id])
+
 
   // Calculate topic-level performance
   const calculateTopicPerformance = () => {
