@@ -133,26 +133,28 @@ export default function Practice() {
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
+  const stemRef = useRef(null)
+
   const getOffsetWithinStem = (targetNode, nodeOffset) => {
-  if (!stemRef.current) return null
+    if (!stemRef.current) return null
 
-  const walker = document.createTreeWalker(
-    stemRef.current,
-    NodeFilter.SHOW_TEXT,
-    null
-  )
+    const walker = document.createTreeWalker(
+      stemRef.current,
+      NodeFilter.SHOW_TEXT,
+      null
+    )
 
-  let pos = 0
-  let node = walker.nextNode()
+    let pos = 0
+    let node = walker.nextNode()
 
-  while (node) {
-    if (node === targetNode) return pos + nodeOffset
-    pos += node.textContent.length
-    node = walker.nextNode()
+    while (node) {
+      if (node === targetNode) return pos + nodeOffset
+      pos += node.textContent.length
+      node = walker.nextNode()
+    }
+
+    return null
   }
-
-  return null
-}
 
   // Reference ranges
   const [refRanges, setRefRanges] = useState([])
@@ -1488,5 +1490,3 @@ const isSubmitted = submittedAnswers.has(currentQuestionId)
         </div>
   );
 }
-
-export default Practice;
