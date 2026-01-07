@@ -354,6 +354,8 @@
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+
+  white-space: pre-wrap;   /* ✅ add this */
   line-height: 1.6;
   color: #000000;
   font-weight: 500;
