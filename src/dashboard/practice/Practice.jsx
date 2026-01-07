@@ -128,11 +128,10 @@ export default function Practice() {
   const [userAnswers, setUserAnswers] = useState({}) // Store user answers by question ID
   const [submittedAnswers, setSubmittedAnswers] = useState(new Set()) // Track submitted questions
   const [flagged, setFlagged] = useState(new Set())
-  const [struckOut, setStruckOut] = useState({}) // Track struck out options per question: { questionId: Set([optionId1, optionId2]) }
-  const [highlights, setHighlights] = useState({}) // Track highlighted text ranges per question: { questionId: [{ start, end, text }] }
+  const [struckOut, setStruckOut] = useState({}) // Track struck out options per question: { currentQuestionId: Set([optionId1, optionId2]) }
+  const [highlights, setHighlights] = useState({}) // Track highlighted text ranges per question: { currentQuestionId: [{ start, end, text }] }
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
-  const stemRef = useRef(null)
   const stemRef = useRef(null)
 
   const getOffsetWithinStem = (targetNode, nodeOffset) => {
@@ -278,8 +277,8 @@ export default function Practice() {
     if (!questionList || index < 0 || index >= questionList.length) return
 
     const question = questionList[index]
-    const questionId = question.id
-    const userAnswer = userAnswers[questionId]
+    const currentQuestionId = question.id
+    const userAnswer = userAnswers[currentQuestionId]
 
     // Restore user's previous answer
     if (userAnswer) {
@@ -335,16 +334,16 @@ export default function Practice() {
     }
   }
 
-  const toggleStrikeOut = (questionId, optionId) => {
+  const toggleStrikeOut = (currentQuestionId, optionId) => {
     setStruckOut(prev => {
-      const current = prev[questionId] || new Set()
+      const current = prev[currentQuestionId] || new Set()
       const next = new Set(current)
       if (next.has(optionId)) {
         next.delete(optionId)
       } else {
         next.add(optionId)
       }
-      return { ...prev, [questionId]: next }
+      return { ...prev, [currentQuestionId]: next }
     })
   }
 
@@ -511,23 +510,23 @@ export default function Practice() {
     return merged
   }
 
-  const removeHighlight = (questionId, highlightId) => {
+  const removeHighlight = (currentQuestionId, highlightId) => {
     setHighlights(prev => {
-      const current = prev[questionId] || []
+      const current = prev[currentQuestionId] || []
       const filtered = current.filter(hl => hl.id !== highlightId)
       if (filtered.length === 0) {
         const next = { ...prev }
-        delete next[questionId]
+        delete next[currentQuestionId]
         return next
       }
-      return { ...prev, [questionId]: filtered }
+      return { ...prev, [currentQuestionId]: filtered }
     })
   }
 
-  const clearHighlights = (questionId) => {
+  const clearHighlights = (currentQuestionId) => {
     setHighlights(prev => {
       const next = { ...prev }
-      delete next[questionId]
+      delete next[currentQuestionId]
       return next
     })
   }
@@ -537,8 +536,8 @@ export default function Practice() {
     return /(^|\n)\s{0,3}#{1,6}\s+|(^|\n)\s*([-*+]\s+|\d+\.\s+)|\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|\[[^\]]+\]\([^)]+\)|\|[^|]+\|/m.test(text)
   }
 
-  const applyHighlightsToMarkdown = (text, questionId) => {
-    const questionHighlights = highlights[questionId] || []
+  const applyHighlightsToMarkdown = (text, currentQuestionId) => {
+    const questionHighlights = highlights[currentQuestionId] || []
     if (questionHighlights.length === 0) return text
 
     // Sort highlights by start position (reverse to insert from end to start)
@@ -559,8 +558,8 @@ export default function Practice() {
     return result
   }
 
-  const renderHighlightedText = (text, questionId) => {
-    const questionHighlights = highlights[questionId] || []
+  const renderHighlightedText = (text, currentQuestionId) => {
+    const questionHighlights = highlights[currentQuestionId] || []
     const isMarkdown = hasMarkdown(text)
 
     // If no highlights and no markdown, return plain text with preserved line breaks
@@ -571,7 +570,7 @@ export default function Practice() {
     // If markdown, apply highlights and render with ReactMarkdown
     if (isMarkdown) {
       const textWithHighlights = questionHighlights.length > 0
-        ? applyHighlightsToMarkdown(text, questionId)
+        ? applyHighlightsToMarkdown(text, currentQuestionId)
         : text
 
       return (
@@ -595,7 +594,7 @@ export default function Practice() {
                         e.stopPropagation()
                         const id = e.currentTarget.getAttribute('data-highlight-id')
                         if (id) {
-                          removeHighlight(questionId, parseInt(id))
+                          removeHighlight(currentQuestionId, parseInt(id))
                         }
                       }}
                       title="Remove this highlight"
@@ -679,7 +678,7 @@ export default function Practice() {
             className="highlight-remove-btn"
             onClick={(e) => {
               e.preventDefault()
-              removeHighlight(questionId, part.highlightId)
+              removeHighlight(currentQuestionId, part.highlightId)
             }}
             title="Remove this highlight"
             aria-label="Remove highlight"
@@ -806,10 +805,10 @@ export default function Practice() {
     if (!questions[currentIndex] || submitting) return
 
     const currentQuestion = questions[currentIndex]
-    const questionId = currentQuestion.id
+    const currentQuestionId = currentQuestion.id
 
     // Don't submit if already submitted
-    if (submittedAnswers.has(questionId)) return
+    if (submittedAnswers.has(currentQuestionId)) return
 
     setSubmitting(true)
 
@@ -832,7 +831,7 @@ export default function Practice() {
       // Save user's answer locally
       setUserAnswers(prev => ({
         ...prev,
-        [questionId]: {
+        [currentQuestionId]: {
           selected,
           saqText,
           isCorrect,
@@ -842,12 +841,12 @@ export default function Practice() {
       }))
 
       // Mark as submitted
-      setSubmittedAnswers(prev => new Set([...prev, questionId]))
+      setSubmittedAnswers(prev => new Set([...prev, currentQuestionId]))
 
       // Clear strikethrough state for this question
       setStruckOut(prev => {
         const next = { ...prev }
-        delete next[questionId]
+        delete next[currentQuestionId]
         return next
       })
 
@@ -859,7 +858,7 @@ export default function Practice() {
 
       // Submit to backend for tracking
       const payload = {
-        question_id: questionId,
+        question_id: currentQuestionId,
         selected_option_id: currentQuestion.type === 'MCQ' ? selected : undefined,
         text_answer: currentQuestion.type === 'SAQ' ? saqText : undefined,
         time_taken_ms: timeTaken,
@@ -958,9 +957,9 @@ export default function Practice() {
   }
 
 const currentQuestion = questions[currentIndex]
-const currentQuestionId = currentQuestion?.id
-const userAnswer = userAnswers[currentQuestionId]
-const isSubmitted = submittedAnswers.has(currentQuestionId)
+const currentcurrentQuestionId = currentQuestion?.id
+const userAnswer = userAnswers[currentcurrentQuestionId]
+const isSubmitted = submittedAnswers.has(currentcurrentQuestionId)
 
   // Get result data for explanation display
   const result = isSubmitted ? {
@@ -1073,7 +1072,7 @@ const isSubmitted = submittedAnswers.has(currentQuestionId)
                     {currentQuestion.options.map((o) => {
                       const isCorrect = result?.correct_option?.label === o.label;
                       const isSelectedIncorrect = selected === o.id && result && !result.is_correct;
-                      const isStruckOut = (struckOut[questionId] || new Set()).has(o.id);
+                      const isStruckOut = (struckOut[currentQuestionId] || new Set()).has(o.id);
                       const className = `option ${selected === o.id ? 'option--selected' : ''} ${result ? (isCorrect ? 'option--correct' : isSelectedIncorrect ? 'option--incorrect' : '') : ''} ${isStruckOut ? 'option--struck' : ''}`;
 
                       return (
@@ -1094,7 +1093,7 @@ const isSubmitted = submittedAnswers.has(currentQuestionId)
                             <button
                               type="button"
                               className={`option-strike-btn ${isStruckOut ? 'is-active' : ''}`}
-                              onClick={() => toggleStrikeOut(questionId, o.id)}
+                              onClick={() => toggleStrikeOut(currentQuestionId, o.id)}
                               title={isStruckOut ? 'Remove elimination' : 'Eliminate option'}
                               aria-label={isStruckOut ? 'Remove elimination' : 'Eliminate option'}
                             >
@@ -1112,13 +1111,13 @@ const isSubmitted = submittedAnswers.has(currentQuestionId)
               <div className="controls">
                 <div className="controls__left">
                   {/* <button className="btn btn--ghost btn--icon"><LuSave />Save</button> */}
-                  <button className={`btn btn--ghost btn--icon ${flagged.has(questionId) ? 'is-flagged' : ''}`} onClick={() => {
+                  <button className={`btn btn--ghost btn--icon ${flagged.has(currentQuestionId) ? 'is-flagged' : ''}`} onClick={() => {
                     setFlagged(prev => {
                       const next = new Set(prev)
-                      if (next.has(questionId)) next.delete(questionId); else next.add(questionId)
+                      if (next.has(currentQuestionId)) next.delete(currentQuestionId); else next.add(currentQuestionId)
                       return next
                     })
-                  }}><LuFlag />{flagged.has(questionId) ? 'Flagged' : 'Flag'}</button>
+                  }}><LuFlag />{flagged.has(currentQuestionId) ? 'Flagged' : 'Flag'}</button>
                   {(highlights[currentQuestion.id]?.length > 0) && (
                     <button
                       className="btn btn--ghost btn--icon"
@@ -1236,7 +1235,7 @@ const isSubmitted = submittedAnswers.has(currentQuestionId)
 
           {isSubmitted && (
             <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
-              <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
+              <DiscussionPanel currentQuestionId={currentQuestion.id} API_BASE={API_BASE} />
             </div>
           )}
 
