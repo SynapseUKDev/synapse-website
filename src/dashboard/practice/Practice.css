@@ -349,71 +349,57 @@
 }
 
 /* Question stem highlighting */
+/* ============================= */
+/* Question Stem – FINAL CLEAN */
+/* ============================= */
+
 .question-stem {
   user-select: text;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-
-  white-space: pre-wrap;   /* ✅ add this */
+  white-space: pre-line;
   line-height: 1.6;
-  color: #000000;
+  color: #000;
   font-weight: 500;
 }
 
-/* Preserve exact text layout when rendering highlights */
-.question-stem__text {
-  white-space: pre-wrap;
-  font: inherit;
-  color: inherit;
-  line-height: inherit;
+/* -------------------------------- */
+/* SINGLE SOURCE OF VERTICAL SPACING */
+/* -------------------------------- */
+
+.question-stem > * {
+  margin: 0 0 12px 0;
 }
 
-/* Highlight wrapper must not affect layout */
-.highlight-wrapper {
-  display: inline;
-  position: relative;
-  font: inherit;
-  line-height: inherit;
-  color: inherit;
+.question-stem > *:last-child {
+  margin-bottom: 0;
 }
 
-/* Highlight itself must not change line height */
-.question-stem mark.highlight {
-  background: #fef3c7;
-  box-shadow: inset 0 -2px 0 #f59e0b;
-  padding: 0;              /* THIS is the critical fix */
-  border-radius: 2px;
-  font: inherit;
-  line-height: inherit;
-  color: inherit;
-}
-
-
-.question-stem>*:first-child {
-  margin-top: 0 !important;
-}
-
+/* Never allow top margins inside question stem */
 .question-stem p,
-.question-stem li,
-.question-stem td,
-.question-stem th,
-.question-stem div,
-.question-stem span,
-.question-stem strong,
-.question-stem em {
-  color: #000000;
+.question-stem ul,
+.question-stem ol,
+.question-stem table,
+.question-stem blockquote,
+.question-stem pre,
+.question-stem h1,
+.question-stem h2,
+.question-stem h3,
+.question-stem h4,
+.question-stem h5,
+.question-stem h6 {
+  margin-top: 0;
 }
 
-/* Markdown styles within question stem */
+/* -------------------------------- */
+/* Paragraphs */
+/* -------------------------------- */
+
 .question-stem p {
-  margin-bottom: 12px;
   line-height: 1.6;
 }
 
-.question-stem p:last-child {
-  margin-bottom: 0;
-}
+/* -------------------------------- */
+/* Headings */
+/* -------------------------------- */
 
 .question-stem h1,
 .question-stem h2,
@@ -422,62 +408,70 @@
 .question-stem h5,
 .question-stem h6 {
   font-weight: 800;
-  margin-top: 16px;
-  margin-bottom: 12px;
   color: #0b1637;
 }
 
-.question-stem h1 {
-  font-size: 1.5em;
-}
+.question-stem h1 { font-size: 1.5em; }
+.question-stem h2 { font-size: 1.3em; }
+.question-stem h3 { font-size: 1.1em; }
 
-.question-stem h2 {
-  font-size: 1.3em;
-}
-
-.question-stem h3 {
-  font-size: 1.1em;
-}
+/* -------------------------------- */
+/* Lists */
+/* -------------------------------- */
 
 .question-stem ul,
 .question-stem ol {
-  margin-bottom: 12px;
   padding-left: 24px;
 }
 
 .question-stem li {
-  margin-bottom: 4px;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
 }
+
+.question-stem li + li {
+  margin-top: 4px;
+}
+
+/* -------------------------------- */
+/* Tables (NO EXTRA SPACE ABOVE) */
+/* -------------------------------- */
 
 .question-stem table {
   border-collapse: collapse;
   width: 100%;
-  margin-bottom: 12px;
   border: 1px solid #e5e7eb;
 }
 
-.question-stem th {
-  border: 1px solid #e5e7eb;
-  padding: 8px;
-  background-color: #f8fafc;
-  font-weight: 700;
-  text-align: left;
-}
-
+.question-stem th,
 .question-stem td {
   border: 1px solid #e5e7eb;
   padding: 8px;
+  text-align: left;
 }
+
+.question-stem th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+/* -------------------------------- */
+/* Blockquote */
+/* -------------------------------- */
 
 .question-stem blockquote {
   border-left: 4px solid #cbd5e1;
   padding-left: 12px;
-  margin: 12px 0;
   color: #64748b;
 }
 
+/* -------------------------------- */
+/* Code */
+/* -------------------------------- */
+
 .question-stem code {
-  background-color: #f1f5f9;
+  background: #f1f5f9;
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Courier New', monospace;
@@ -485,17 +479,20 @@
 }
 
 .question-stem pre {
-  background-color: #f1f5f9;
+  background: #f1f5f9;
   padding: 12px;
   border-radius: 8px;
   overflow-x: auto;
-  margin-bottom: 12px;
 }
 
 .question-stem pre code {
-  background-color: transparent;
+  background: transparent;
   padding: 0;
 }
+
+/* -------------------------------- */
+/* Inline emphasis */
+/* -------------------------------- */
 
 .question-stem strong {
   font-weight: 800;
@@ -506,6 +503,10 @@
   font-style: italic;
 }
 
+/* -------------------------------- */
+/* Links */
+/* -------------------------------- */
+
 .question-stem a {
   color: #2563eb;
   text-decoration: underline;
@@ -515,31 +516,26 @@
   color: #1d4ed8;
 }
 
-.highlight-wrapper {
-  position: relative;
-  display: inline;
-}
+/* -------------------------------- */
+/* Highlights (layout-neutral) */
+/* -------------------------------- */
 
-.highlight-wrapper:hover .highlight-remove-btn {
-  opacity: 1;
-  pointer-events: auto;
+.highlight-wrapper {
+  display: contents;
+  position: relative;
 }
 
 .question-stem mark.highlight {
-  background-color: #fef3c7;
-
-  /* make highlight layout-neutral */
+  background: #fef3c7;
   padding: 0;
   margin: 0;
   border: 0;
   border-radius: 0;
-
-  /* keep a subtle underline effect without affecting layout */
   box-shadow: inset 0 -2px 0 #f59e0b;
-
+  line-height: inherit;
   color: inherit;
-  position: relative;
 }
+
 
 .highlight-remove-btn {
   position: absolute;
@@ -600,6 +596,48 @@
   line-height: inherit;
   display: inline;
   vertical-align: baseline;
+}
+/* ================================================= */
+/* FINAL HARD FIX — eliminate phantom spacing */
+/* ================================================= */
+
+/* 1. Force-highlight wrapper to be layout-neutral */
+.question-stem .highlight-wrapper {
+  display: contents !important;
+}
+
+/* 2. Ensure no inline wrapper can affect block layout */
+.question-stem .highlight-wrapper > * {
+  display: inherit;
+}
+
+/* 3. Kill empty text blocks produced by highlighter */
+.question-stem p:empty {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Handles <p><br></p> */
+.question-stem p > br:only-child {
+  display: none !important;
+}
+.question-stem p:has(> br:only-child) {
+  margin: 0 !important;
+}
+
+/* 4. Remove whitespace-only text nodes effect */
+.question-stem {
+  font-size: 0;
+}
+.question-stem > * {
+  font-size: 16px; /* restore normal text */
+}
+
+/* 5. Ensure tables never inherit spacing from wrappers */
+.question-stem table {
+  display: table !important;
+  margin-top: 0 !important;
 }
 
 

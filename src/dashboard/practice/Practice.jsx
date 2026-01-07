@@ -1007,7 +1007,7 @@ const isSubmitted = submittedAnswers.has(currentQuestionId)
             <div className="card__body">
               <div className="question-content">
                 <div className="question-stem-wrapper">
-                  <div ref={stemRef} className="question-stem" style={{ marginBottom: 12 }}>
+                  <div ref={stemRef} className="question-stem" >
                     {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
                   </div>
                 </div>
