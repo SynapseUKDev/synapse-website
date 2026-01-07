@@ -691,6 +691,7 @@ export default function Practice() {
     )}
   </span>
 )
+  }
 
   // Listen for text selection
   useEffect(() => {
