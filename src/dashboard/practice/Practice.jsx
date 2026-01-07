@@ -1483,6 +1483,5 @@ export default function Practice() {
       )}
     </div>
   )
-}
 
 
