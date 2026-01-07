@@ -957,9 +957,9 @@ export default function Practice() {
   }
 
 const currentQuestion = questions[currentIndex]
-const currentcurrentQuestionId = currentQuestion?.id
-const userAnswer = userAnswers[currentcurrentQuestionId]
-const isSubmitted = submittedAnswers.has(currentcurrentQuestionId)
+const currentQuestionId = currentQuestion?.id
+const userAnswer = userAnswers[currentQuestionId]
+const isSubmitted = submittedAnswers.has(currentQuestionId)
 
   // Get result data for explanation display
   const result = isSubmitted ? {
