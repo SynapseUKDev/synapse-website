@@ -667,27 +667,30 @@ export default function Practice() {
       parts.push({ text: text.slice(lastIndex), highlighted: false, key: 'text-end', highlightId: null })
     }
 
-    return parts.map(part =>
-      part.highlighted
-        ? (
-          <span key={part.key} className="highlight-wrapper">
-            <mark className="highlight">{part.text}</mark>
-            <button
-              className="highlight-remove-btn"
-              onClick={(e) => {
-                e.preventDefault()
-                removeHighlight(questionId, part.highlightId)
-              }}
-              title="Remove this highlight"
-              aria-label="Remove highlight"
-            >
-              ×
-            </button>
-          </span>
-        )
-        : <span key={part.key}>{part.text}</span>
-    )
-  }
+    return (
+  <span style={{ whiteSpace: 'pre-wrap' }}>
+    {parts.map(part =>
+      part.highlighted ? (
+        <span key={part.key} className="highlight-wrapper">
+          <mark className="highlight">{part.text}</mark>
+          <button
+            className="highlight-remove-btn"
+            onClick={(e) => {
+              e.preventDefault()
+              removeHighlight(questionId, part.highlightId)
+            }}
+            title="Remove this highlight"
+            aria-label="Remove highlight"
+          >
+            ×
+          </button>
+        </span>
+      ) : (
+        <React.Fragment key={part.key}>{part.text}</React.Fragment>
+      )
+    )}
+  </span>
+)
 
   // Listen for text selection
   useEffect(() => {
