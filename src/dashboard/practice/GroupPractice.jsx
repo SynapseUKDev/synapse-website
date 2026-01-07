@@ -1843,8 +1843,7 @@ export default function GroupPractice() {
           Highlight
         </button>
       )}
+          )}
     </div>
-  )
+  );
 }
-
-

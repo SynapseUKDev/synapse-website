@@ -1481,7 +1481,6 @@ export default function Practice() {
           Highlight
         </button>
       )}
-    </div>
-  )
-
-
+        </div>
+  );
+}
