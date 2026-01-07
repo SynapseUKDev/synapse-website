@@ -668,7 +668,7 @@ export default function Practice() {
     }
 
     return (
-  <span style={{ whiteSpace: 'pre-wrap' }}>
+  <span className="question-stem__text">
     {parts.map(part =>
       part.highlighted ? (
         <span key={part.key} className="highlight-wrapper">
