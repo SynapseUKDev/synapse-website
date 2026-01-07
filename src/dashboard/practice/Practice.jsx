@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './Practice.css'
@@ -347,36 +347,80 @@ export default function Practice() {
   }
 
   // Text highlighting functionality
-const handleTextSelection = () => {
-  addHighlightFromSelection()
-  setShowHighlightBtn(false)
-}
+  const addHighlightFromSelection = useCallback(() => {
+    const selection = window.getSelection()
+    const currentQ = questions[currentIndex]
+    if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
 
-    const selectedText = selection.toString().trim()
-    if (!selectedText || selectedText.length === 0) {
-      setShowHighlightBtn(false)
-      return
-    }
+    const selectedText = selection.toString()
+    if (!selectedText || /^\s*$/.test(selectedText)) return
 
-    // Check if selection is within the stem
     const range = selection.getRangeAt(0)
-    if (!stemRef.current.contains(range.commonAncestorContainer)) {
-      setShowHighlightBtn(false)
+
+    // Only act if selection is inside the stem
+    if (!stemRef.current.contains(range.commonAncestorContainer)) return
+
+    const stemText = currentQ.stem || ''
+    const isMarkdownStem = hasMarkdown(stemText)
+    
+    if (isMarkdownStem) {
+      const selectedTextTrimmed = selectedText.trim()
+      if (!selectedTextTrimmed) return
+      
+      const startIndex = stemText.indexOf(selectedTextTrimmed)
+      if (startIndex === -1) return 
+      
+      const newHighlight = {
+        start: startIndex,
+        end: startIndex + selectedTextTrimmed.length,
+        text: selectedTextTrimmed,
+        id: Date.now()
+      }
+
+      setHighlights(prev => {
+        const current = prev[currentQ.id] || []
+        const merged = mergeOverlappingHighlights([...current, newHighlight])
+        return { ...prev, [currentQ.id]: merged }
+      })
+
+      selection.removeAllRanges()
       return
     }
 
-    // Get position for highlight button
-    const rect = range.getBoundingClientRect()
-    setHighlightBtnPos({
-      x: rect.left + rect.width / 2,
-      y: rect.top - 10
+    const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
+    const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
+    if (startA == null || endA == null) return
+
+    const start = Math.min(startA, endA)
+    const end = Math.max(startA, endA)
+    if (start === end) return
+
+    const newHighlight = {
+      start,
+      end,
+      text: selectedText,
+      id: Date.now()
+    }
+
+    setHighlights(prev => {
+      const current = prev[currentQ.id] || []
+      const merged = mergeOverlappingHighlights([...current, newHighlight])
+      return { ...prev, [currentQ.id]: merged }
     })
-    setShowHighlightBtn(true)
-  }
+
+    // Clear blue selection
+    selection.removeAllRanges()
+  }, [questions, currentIndex])
+
+  const handleTextSelection = useCallback(() => {
+    addHighlightFromSelection()
+    setShowHighlightBtn(false)
+  }, [addHighlightFromSelection])
 
   const applyHighlight = () => {
     const selection = window.getSelection()
-    if (!selection || selection.isCollapsed || !currentQuestion) return
+    const currentQ = questions[currentIndex]
+    if (!selection || selection.isCollapsed || !currentQ) return
 
     const selectedText = selection.toString().trim()
     if (!selectedText) return
@@ -385,47 +429,6 @@ const handleTextSelection = () => {
     const start = range.startOffset
     const end = range.endOffset
     const container = range.startContainer
-
-    const addHighlightFromSelection = () => {
-  const selection = window.getSelection()
-  if (!selection || selection.isCollapsed || !currentQuestion || !stemRef.current) return
-
-  const selectedText = selection.toString()
-  if (!selectedText || /^\s*$/.test(selectedText)) return
-
-  const range = selection.getRangeAt(0)
-
-  // Only act if selection is inside the stem
-  if (!stemRef.current.contains(range.commonAncestorContainer)) return
-
-  // Optional safety: disable for markdown stems (prevents offset mismatch bugs)
-  if (currentQuestion?.stem && hasMarkdown(currentQuestion.stem)) return
-
-  const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
-  const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
-  if (startA == null || endA == null) return
-
-  const start = Math.min(startA, endA)
-  const end = Math.max(startA, endA)
-  if (start === end) return
-
-  const newHighlight = {
-    start,
-    end,
-    text: selectedText,
-    id: Date.now()
-  }
-
-  setHighlights(prev => {
-    const current = prev[currentQuestion.id] || []
-    const merged = mergeOverlappingHighlights([...current, newHighlight])
-    return { ...prev, [currentQuestion.id]: merged }
-  })
-
-  // Clear blue selection
-  selection.removeAllRanges()
-}
-
 
     // Get the text content and position relative to stem
     let fullText = stemRef.current?.textContent || ''
@@ -459,13 +462,13 @@ const handleTextSelection = () => {
     }
 
     setHighlights(prev => {
-      const current = prev[currentQuestion.id] || []
+      const current = prev[currentQ.id] || []
 
       // Add new highlight and merge overlapping ones
       const allHighlights = [...current, newHighlight]
       const merged = mergeOverlappingHighlights(allHighlights)
 
-      return { ...prev, [currentQuestion.id]: merged }
+      return { ...prev, [currentQ.id]: merged }
     })
 
     setShowHighlightBtn(false)
@@ -528,8 +531,9 @@ const handleTextSelection = () => {
   }
 
   const hasMarkdown = (text = '') => {
-  return /(^|\n)\s{0,3}#{1,6}\s+|(^|\n)\s*([-*+]\s+|\d+\.\s+)|\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|\[[^\]]+\]\([^)]+\)/m.test(text)
-}
+    // Detect headers, lists, bold, italics, code, links, and tables (|---|)
+    return /(^|\n)\s{0,3}#{1,6}\s+|(^|\n)\s*([-*+]\s+|\d+\.\s+)|\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|\[[^\]]+\]\([^)]+\)|\|[^|]+\|/m.test(text)
+  }
 
   const applyHighlightsToMarkdown = (text, questionId) => {
     const questionHighlights = highlights[questionId] || []
@@ -688,18 +692,13 @@ const handleTextSelection = () => {
   // Listen for text selection
   useEffect(() => {
     document.addEventListener('mouseup', handleTextSelection)
-    return () => document.removeEventListener('mouseup', handleTextSelection)
-  }, [])
+    document.addEventListener('touchend', handleTextSelection)
 
-useEffect(() => {
-  document.addEventListener('mouseup', handleTextSelection)
-  document.addEventListener('touchend', handleTextSelection)
-
-  return () => {
-    document.removeEventListener('mouseup', handleTextSelection)
-    document.removeEventListener('touchend', handleTextSelection)
-  }
-}, [currentQuestion?.id])
+    return () => {
+      document.removeEventListener('mouseup', handleTextSelection)
+      document.removeEventListener('touchend', handleTextSelection)
+    }
+  }, [handleTextSelection])
 
   // Calculate topic-level performance
   const calculateTopicPerformance = () => {
