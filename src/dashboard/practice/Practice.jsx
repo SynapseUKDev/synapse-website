@@ -1488,3 +1488,5 @@ const isSubmitted = submittedAnswers.has(currentQuestionId)
         </div>
   );
 }
+
+export default Practice;
