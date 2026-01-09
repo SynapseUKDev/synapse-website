@@ -166,6 +166,36 @@ export default function GroupPractice() {
     loadGroupSession()
   }, [roomCode])
 
+  // Host: Auto-reveal answers when everyone has answered
+  useEffect(() => {
+    if (!isHost || !questions || questions.length === 0 || participants.length === 0) return
+    if (isReviewing) return // Don't auto-reveal when reviewing past questions
+    if (!socketRef.current) return
+    
+    const currentQuestion = questions[currentIndex]
+    if (!currentQuestion) return
+    
+    // Check if this question is already revealed
+    if (revealedQuestions.has(currentQuestion.id)) return
+    
+    // Get answers for current question
+    const answerKey = `${currentQuestion.id}_${currentIndex}`
+    const currentAnswers = questionAnswers[answerKey] || []
+    
+    // Count unique participants who have answered
+    const uniqueAnsweredUsers = new Set(currentAnswers.map(a => a.user_id))
+    
+    // Check if all participants (including host) have answered
+    if (uniqueAnsweredUsers.size === participants.length && currentAnswers.length > 0) {
+      console.log(`✅ All ${participants.length} participants have answered question ${currentIndex} - auto-revealing`)
+      // Small delay to ensure state is stable
+      const timeoutId = setTimeout(() => {
+        revealAnswers()
+      }, 50)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [questionAnswers, currentIndex, isHost, participants, questions, revealedQuestions, isReviewing])
+
   const connectSocket = () => {
     const userId = user.id
     const username = user.username || user.email || 'Anonymous'
@@ -320,6 +350,10 @@ export default function GroupPractice() {
       if (sessionRes.ok) {
         const sessionData = await sessionRes.json()
         setIsHost(sessionData.is_host || false)
+        // Set participants list (needed for host to track answer count)
+        if (sessionData.participants) {
+          setParticipants(sessionData.participants || [])
+        }
       }
 
       // Load questions
