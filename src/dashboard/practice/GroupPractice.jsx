@@ -1668,33 +1668,29 @@ export default function GroupPractice() {
           )}
 
           {/* Combined Session Progress & Track Questions - Below question card */}
-          <div className="card progress-tracker-card" style={{ gridColumn: '1', gridRow: result ? (isSubmitted ? '3' : '2') : '2' }}>
+          <div className="card progress-tracker-card" style={{ gridColumn: '1', gridRow: isSubmitted ? '4' : (result ? '3' : '2') }}>
             <div className="card__body">
-              {/* Session Progress Section */}
-              <div className="progress-section">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={{ fontWeight: 800, color: '#0b1637' }}>Session Progress</div>
-                  <div style={{ fontWeight: 700, color: '#1f2937' }}>{sessionAnswered}/{questions.length} completed</div>
-                </div>
-                <div className="progress__bar"><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
-                <div className="progress__stats" style={{ justifyContent: 'flex-start', gap: 32, marginTop: 12 }}>
-                  <div>
-                    <div className="stat--green" style={{ fontSize: 20 }}>{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
-                    <div className="stat-label">Accuracy</div>
+              {/* Session Progress Header */}
+              <div className="progress-tracker-header">
+                <div className="progress-stats-row">
+                  <div className="progress-stat">
+                    <div className="progress-stat__value">{sessionAnswered}/{questions.length}</div>
+                    <div className="progress-stat__label">Completed</div>
                   </div>
-                  <div>
-                    <div className="stat--blue" style={{ fontSize: 20 }}>{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
-                    <div className="stat-label">Avg Time</div>
+                  <div className="progress-stat">
+                    <div className="progress-stat__value stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
+                    <div className="progress-stat__label">Accuracy</div>
+                  </div>
+                  <div className="progress-stat">
+                    <div className="progress-stat__value stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
+                    <div className="progress-stat__label">Avg Time</div>
                   </div>
                 </div>
+                <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
               </div>
 
-              {/* Divider */}
-              <div style={{ height: 1, background: '#eef2f7', margin: '16px 0' }} />
-
               {/* Track Questions Section */}
-              <div className="track-section">
-                <div style={{ fontWeight: 800, color: '#0b1637', marginBottom: 12 }}>Track Questions</div>
+              <div className="track-section" style={{ marginTop: 16 }}>
                 <div className="trk-controls">
                   <div className="trk-filters">
                     {['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((f) => (

@@ -92,10 +92,45 @@
 @media (min-width: 1024px) {
   .progress-tracker-card {
     grid-column: 1;
-    grid-row: 2;
     order: unset;
   }
 }
+
+/* Progress Stats Row - horizontal layout */
+.progress-tracker-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.progress-stats-row {
+  display: flex;
+  justify-content: space-around;
+  gap: 16px;
+  text-align: center;
+}
+
+.progress-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress-stat__value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0b1637;
+}
+
+.progress-stat__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 
 .question-card {
   display: flex;
