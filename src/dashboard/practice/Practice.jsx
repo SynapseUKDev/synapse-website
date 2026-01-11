@@ -542,8 +542,40 @@ export default function Practice() {
     const questionHighlights = highlights[currentQuestionId] || []
     if (questionHighlights.length === 0) return text
 
+    // Split highlights at paragraph boundaries (\n\n) to prevent breaking markdown structure
+    const expandedHighlights = []
+    questionHighlights.forEach((hl) => {
+      const highlightedText = text.slice(hl.start, hl.end)
+
+      // Check if highlight contains paragraph breaks
+      if (highlightedText.includes('\n\n')) {
+        // Split into segments at paragraph breaks
+        let currentPos = hl.start
+        const parts = highlightedText.split(/(\n\n+)/)
+
+        parts.forEach((part) => {
+          if (part.match(/^\n\n+$/)) {
+            // This is a paragraph break, skip it (don't highlight)
+            currentPos += part.length
+          } else if (part.length > 0) {
+            // This is text content, create a highlight for it
+            expandedHighlights.push({
+              start: currentPos,
+              end: currentPos + part.length,
+              text: part,
+              id: hl.id
+            })
+            currentPos += part.length
+          }
+        })
+      } else {
+        // No paragraph breaks, keep highlight as-is
+        expandedHighlights.push(hl)
+      }
+    })
+
     // Sort highlights by start position (reverse to insert from end to start)
-    const sorted = [...questionHighlights].sort((a, b) => b.start - a.start)
+    const sorted = [...expandedHighlights].sort((a, b) => b.start - a.start)
 
     let result = text
     sorted.forEach((hl) => {
@@ -551,7 +583,8 @@ export default function Practice() {
       const highlighted = result.slice(hl.start, hl.end)
       const after = result.slice(hl.end)
 
-      const highlightedWithBr = highlighted.replace(/\n/g, '<br/>')
+      // Replace single newlines with <br/> within highlights (but not paragraph breaks)
+      const highlightedWithBr = highlighted.replace(/\n(?!\n)/g, '<br/>')
 
       // Insert HTML with wrapper span that has the highlight ID
       result = before +
@@ -673,7 +706,7 @@ export default function Practice() {
     }
 
     return (
-      <span className="question-stem__text">
+      <span style={{ whiteSpace: 'pre-line' }}>
         {parts.map(part =>
           part.highlighted ? (
             <span key={part.key} className="highlight-wrapper">

@@ -171,20 +171,20 @@ export default function GroupPractice() {
     if (!isHost || !questions || questions.length === 0 || participants.length === 0) return
     if (isReviewing) return // Don't auto-reveal when reviewing past questions
     if (!socketRef.current) return
-    
+
     const currentQuestion = questions[currentIndex]
     if (!currentQuestion) return
-    
+
     // Check if this question is already revealed
     if (revealedQuestions.has(currentQuestion.id)) return
-    
+
     // Get answers for current question
     const answerKey = `${currentQuestion.id}_${currentIndex}`
     const currentAnswers = questionAnswers[answerKey] || []
-    
+
     // Count unique participants who have answered
     const uniqueAnsweredUsers = new Set(currentAnswers.map(a => a.user_id))
-    
+
     // Check if all participants (including host) have answered
     if (uniqueAnsweredUsers.size === participants.length && currentAnswers.length > 0) {
       console.log(`✅ All ${participants.length} participants have answered question ${currentIndex} - auto-revealing`)
@@ -737,8 +737,40 @@ export default function GroupPractice() {
     const questionHighlights = highlights[questionId] || []
     if (questionHighlights.length === 0) return text
 
+    // Split highlights at paragraph boundaries (\n\n) to prevent breaking markdown structure
+    const expandedHighlights = []
+    questionHighlights.forEach((hl) => {
+      const highlightedText = text.slice(hl.start, hl.end)
+
+      // Check if highlight contains paragraph breaks
+      if (highlightedText.includes('\n\n')) {
+        // Split into segments at paragraph breaks
+        let currentPos = hl.start
+        const parts = highlightedText.split(/(\n\n+)/)
+
+        parts.forEach((part) => {
+          if (part.match(/^\n\n+$/)) {
+            // This is a paragraph break, skip it (don't highlight)
+            currentPos += part.length
+          } else if (part.length > 0) {
+            // This is text content, create a highlight for it
+            expandedHighlights.push({
+              start: currentPos,
+              end: currentPos + part.length,
+              text: part,
+              id: hl.id
+            })
+            currentPos += part.length
+          }
+        })
+      } else {
+        // No paragraph breaks, keep highlight as-is
+        expandedHighlights.push(hl)
+      }
+    })
+
     // Sort highlights by start position (reverse to insert from end to start)
-    const sorted = [...questionHighlights].sort((a, b) => b.start - a.start)
+    const sorted = [...expandedHighlights].sort((a, b) => b.start - a.start)
 
     let result = text
     sorted.forEach((hl) => {
@@ -746,7 +778,8 @@ export default function GroupPractice() {
       const highlighted = result.slice(hl.start, hl.end)
       const after = result.slice(hl.end)
 
-      const highlightedWithBr = highlighted.replace(/\n/g, '<br/>')
+      // Replace single newlines with <br/> within highlights (but not paragraph breaks)
+      const highlightedWithBr = highlighted.replace(/\n(?!\n)/g, '<br/>')
 
       // Insert HTML with wrapper span that has the highlight ID
       result = before +
@@ -880,7 +913,7 @@ export default function GroupPractice() {
     }
 
     return (
-      <span style={{ whiteSpace: 'pre-wrap' }}>
+      <span style={{ whiteSpace: 'pre-line' }}>
         {parts.map(part =>
           part.highlighted
             ? (
