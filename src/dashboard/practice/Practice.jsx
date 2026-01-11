@@ -1272,7 +1272,7 @@ export default function Practice() {
 
           {isSubmitted && (
             <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
-              <DiscussionPanel currentQuestionId={currentQuestion.id} API_BASE={API_BASE} />
+              <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
             </div>
           )}
 
@@ -1398,12 +1398,6 @@ export default function Practice() {
               </div>
             </div>
           </div>
-
-          {isSubmitted && (
-            <div style={{ gridColumn: '1', gridRow: result ? '4' : '3' }}>
-              <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
-            </div>
-          )}
 
           {/* Reference Ranges - Right Sidebar (only card) */}
           <div className="pr__aside">
