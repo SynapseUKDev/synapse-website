@@ -106,17 +106,6 @@ export default function PracticeResults() {
         </div>
       </div>
 
-      {/* Review Questions CTA */}
-      {questions.length > 0 && (
-        <div className="review-cta">
-          <button className="review-cta__btn" onClick={enterReviewMode}>
-            <LuEye size={18} />
-            <span className="review-cta__title">Review Your Answers</span>
-            <LuArrowRight size={16} />
-          </button>
-        </div>
-      )}
-
       <div className="prr__grid prr__grid--top">
         <div className="card prr-card">
           <div className="card__header">Performance Highlights</div>
@@ -127,6 +116,11 @@ export default function PracticeResults() {
               <li><span className="dot dot--amber" /> {skipped} skipped questions</li>
             </ul>
             <div className="prr-bar"><div className="prr-fill" style={{ width: `${accuracyPct}%` }} /></div>
+            {questions.length > 0 && (
+              <button className="btn btn--primary btn--icon" onClick={enterReviewMode}>
+                <LuEye size={16} /> Review Your Answers
+              </button>
+            )}
           </div>
         </div>
 
