@@ -103,7 +103,7 @@ export default function GroupPractice() {
   const socketRef = useRef(null)
   // Reference ranges
   const [refRanges, setRefRanges] = useState([])
-  const [showRef, setShowRef] = useState(true)
+  const [showRef, setShowRef] = useState(false)
   const [openGroupId, setOpenGroupId] = useState(null)
   // Image carousel state for question assets
   const [assetIdx, setAssetIdx] = useState(0)
@@ -124,8 +124,9 @@ export default function GroupPractice() {
   const [sessionTotalMs, setSessionTotalMs] = useState(0)
   const [questionStartTime, setQuestionStartTime] = useState(Date.now())
 
-  // Responsive tracker grid size
-  const [trackerChunkSize, setTrackerChunkSize] = useState(35)
+  // Responsive tracker grid size - 50 questions per page for pagination
+  const QUESTIONS_PER_PAGE = 50
+  const [selectedRangeIdx, setSelectedRangeIdx] = useState(0)
 
   const { display, running, toggle, seconds } = useCountdown(timerMinutes * 60, serverTimerEndTime)
 
@@ -430,6 +431,7 @@ export default function GroupPractice() {
 
     setTab('quick')
     setQuestionStartTime(Date.now())
+    setShowRef(false) // Reset reference ranges to collapsed on question change
     // Reset carousel index when question changes
     setAssetIdx(0)
   }
@@ -441,6 +443,11 @@ export default function GroupPractice() {
       setCurrentIndex(prevIndex)
       loadCurrentQuestion(prevIndex, questions)
       setIsReviewing(true)
+      // Auto-update range if navigating to a different range
+      const newRange = Math.floor(prevIndex / QUESTIONS_PER_PAGE)
+      if (newRange !== selectedRangeIdx) {
+        setSelectedRangeIdx(newRange)
+      }
 
       // Load answers from database for this past question
       const prevQuestion = questions[prevIndex]
@@ -471,6 +478,11 @@ export default function GroupPractice() {
       setCurrentIndex(nextIndex)
       loadCurrentQuestion(nextIndex, questions)
       setIsReviewing(true)
+      // Auto-update range if navigating to a different range
+      const newRange = Math.floor(nextIndex / QUESTIONS_PER_PAGE)
+      if (newRange !== selectedRangeIdx) {
+        setSelectedRangeIdx(newRange)
+      }
 
       // Load answers from database for this past question
       const nextQuestion = questions[nextIndex]
@@ -489,6 +501,11 @@ export default function GroupPractice() {
     setIsReviewing(false)
     setCurrentIndex(serverCurrentIndex)
     loadCurrentQuestion(serverCurrentIndex, questions)
+    // Auto-update range to match current server question
+    const newRange = Math.floor(serverCurrentIndex / QUESTIONS_PER_PAGE)
+    if (newRange !== selectedRangeIdx) {
+      setSelectedRangeIdx(newRange)
+    }
   }
 
   const revealAnswers = () => {
@@ -620,54 +637,73 @@ export default function GroupPractice() {
     if (!selectedText || !selectedText.trim()) return
 
     const originalText = currentQ.stem || ''
-    const normalizedSelected = selectedText.replace(/\s+/g, ' ').trim()
 
-    let startIndex = originalText.indexOf(selectedText)
+    let estimatedPosition = 0
 
-    if (startIndex === -1) {
-      const escapedText = normalizedSelected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const pattern = escapedText.split(' ').join('\\s+')
-      const regex = new RegExp(pattern, 'g')
-      const match = regex.exec(originalText)
-
-      if (match) {
-        startIndex = match.index
-        // Use the actual matched text from the original
-        const matchedText = match[0]
-        const endIndex = startIndex + matchedText.length
-
-        const newHighlight = {
-          start: startIndex,
-          end: endIndex,
-          text: matchedText,
-          id: Date.now()
-        }
-
-        setHighlights(prev => {
-          const current = prev[currentQ.id] || []
-          const allHighlights = [...current, newHighlight]
-          const merged = mergeOverlappingHighlights(allHighlights)
-          return { ...prev, [currentQ.id]: merged }
-        })
-      }
-    } else {
-      // Exact match found
-      const endIndex = startIndex + selectedText.length
-
-      const newHighlight = {
-        start: startIndex,
-        end: endIndex,
-        text: selectedText,
-        id: Date.now()
-      }
-
-      setHighlights(prev => {
-        const current = prev[currentQ.id] || []
-        const allHighlights = [...current, newHighlight]
-        const merged = mergeOverlappingHighlights(allHighlights)
-        return { ...prev, [currentQ.id]: merged }
-      })
+    if (stemRef.current && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const preRange = document.createRange()
+      preRange.selectNodeContents(stemRef.current)
+      preRange.setEnd(range.startContainer, range.startOffset)
+      const textBefore = preRange.toString()
+      estimatedPosition = textBefore.replace(/\s+/g, ' ').length
     }
+
+    const normalizedSelected = selectedText.replace(/\s+/g, ' ').trim()
+    const findAllOccurrences = (text, search) => {
+      const indices = []
+      let idx = text.indexOf(search)
+      while (idx !== -1) {
+        indices.push({ index: idx, length: search.length, exact: true })
+        idx = text.indexOf(search, idx + 1)
+      }
+
+      if (indices.length === 0) {
+        const escapedText = normalizedSelected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const pattern = escapedText.split(' ').join('\\s+')
+        const regex = new RegExp(pattern, 'g')
+        let match
+        while ((match = regex.exec(text)) !== null) {
+          indices.push({ index: match.index, length: match[0].length, exact: false })
+        }
+      }
+
+      return indices
+    }
+
+    const occurrences = findAllOccurrences(originalText, selectedText)
+
+    if (occurrences.length === 0) return
+
+    // Find the occurrence closest to the estimated position
+    let bestMatch = occurrences[0]
+    let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
+
+    for (let i = 1; i < occurrences.length; i++) {
+      const distance = Math.abs(occurrences[i].index - estimatedPosition)
+      if (distance < minDistance) {
+        minDistance = distance
+        bestMatch = occurrences[i]
+      }
+    }
+
+    const startIndex = bestMatch.index
+    const endIndex = startIndex + bestMatch.length
+    const matchedText = originalText.slice(startIndex, endIndex)
+
+    const newHighlight = {
+      start: startIndex,
+      end: endIndex,
+      text: matchedText,
+      id: Date.now()
+    }
+
+    setHighlights(prev => {
+      const current = prev[currentQ.id] || []
+      const allHighlights = [...current, newHighlight]
+      const merged = mergeOverlappingHighlights(allHighlights)
+      return { ...prev, [currentQ.id]: merged }
+    })
 
     setShowHighlightBtn(false)
     selection.removeAllRanges()
@@ -1164,22 +1200,7 @@ export default function GroupPractice() {
     }
   }
 
-  // Update tracker chunk size based on window width
-  useEffect(() => {
-    const updateChunkSize = () => {
-      if (window.innerWidth <= 768) {
-        setTrackerChunkSize(25)
-      } else if (window.innerWidth <= 1024) {
-        setTrackerChunkSize(35)
-      } else {
-        setTrackerChunkSize(35)
-      }
-    }
 
-    updateChunkSize()
-    window.addEventListener('resize', updateChunkSize)
-    return () => window.removeEventListener('resize', updateChunkSize)
-  }, [])
 
   // Keyboard shortcuts: 1-5 to select options, Enter to submit/next
   useEffect(() => {
@@ -1667,76 +1688,114 @@ export default function GroupPractice() {
             </div>
           )}
 
-          {/* Combined Session Progress & Track Questions - Below question card */}
-          <div className="card progress-tracker-card" style={{ gridColumn: '1', gridRow: isSubmitted ? '4' : (result ? '3' : '2') }}>
-            <div className="card__body">
-              {/* Session Progress Header */}
-              <div className="progress-tracker-header">
-                <div className="progress-stats-row">
-                  <div className="progress-stat">
-                    <div className="progress-stat__value">{sessionAnswered}/{questions.length}</div>
-                    <div className="progress-stat__label">Completed</div>
-                  </div>
-                  <div className="progress-stat">
-                    <div className="progress-stat__value stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
-                    <div className="progress-stat__label">Accuracy</div>
-                  </div>
-                  <div className="progress-stat">
-                    <div className="progress-stat__value stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
-                    <div className="progress-stat__label">Avg Time</div>
-                  </div>
-                </div>
-                <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
-              </div>
+          {isSubmitted && (
+            <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
+              <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
+            </div>
+          )}
 
-              {/* Track Questions Section */}
-              <div className="track-section" style={{ marginTop: 16 }}>
-                <div className="trk-controls">
+          {/* Right Sidebar - Session Progress, Track Questions & Reference Ranges */}
+          <div className="pr__aside">
+            {/* Combined Session Progress & Track Questions */}
+            <div className="card progress-tracker-card">
+              <div className="card__body">
+                {/* Session Progress Header */}
+                <div className="progress-tracker-header">
+                  <div className="progress-stats-row">
+                    <div className="progress-stat">
+                      <div className="progress-stat__value">{sessionAnswered}/{questions.length}</div>
+                      <div className="progress-stat__label">Completed</div>
+                    </div>
+                    <div className="progress-stat">
+                      <div className="progress-stat__value stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
+                      <div className="progress-stat__label">Accuracy</div>
+                    </div>
+                    <div className="progress-stat">
+                      <div className="progress-stat__value stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
+                      <div className="progress-stat__label">Avg Time</div>
+                    </div>
+                  </div>
+                  <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
+                </div>
+
+                {/* Track Questions Section - Paginated */}
+                <div className="track-section" style={{ marginTop: 16 }}>
+                  {/* Top row: Range selector + Filters */}
+                  <div className="trk-top-row">
+                    {/* Range dropdown */}
+                    {(() => {
+                      const totalRanges = Math.ceil(questions.length / QUESTIONS_PER_PAGE)
+                      const ranges = Array.from({ length: totalRanges }, (_, i) => {
+                        const start = i * QUESTIONS_PER_PAGE + 1
+                        const end = Math.min((i + 1) * QUESTIONS_PER_PAGE, questions.length)
+                        return { idx: i, label: `${start}-${end}` }
+                      })
+                      return (
+                        <select
+                          className="trk-range-select"
+                          value={selectedRangeIdx}
+                          onChange={(e) => setSelectedRangeIdx(parseInt(e.target.value, 10))}
+                        >
+                          {ranges.map((r) => (
+                            <option key={r.idx} value={r.idx}>
+                              Q {r.label}
+                            </option>
+                          ))}
+                        </select>
+                      )
+                    })()}
+
+                    {/* Jump input */}
+                    <div className="trk-jump">
+                      <input
+                        type="number"
+                        min="1"
+                        max={questions.length}
+                        placeholder="#"
+                        className="trk-input"
+                        value={trkJump}
+                        onChange={(e) => setTrkJump(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = parseInt(trkJump || '0', 10)
+                            if (val >= 1 && val <= questions.length) {
+                              const idx = val - 1
+                              setCurrentIndex(idx); loadCurrentQuestion(idx)
+                              setSelectedRangeIdx(Math.floor(idx / QUESTIONS_PER_PAGE))
+                              setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                            }
+                          }
+                        }}
+                      />
+                      <button className="btn btn--ghost btn--icon" onClick={() => {
+                        const val = parseInt(trkJump || '0', 10)
+                        if (val >= 1 && val <= questions.length) {
+                          const idx = val - 1
+                          setCurrentIndex(idx); loadCurrentQuestion(idx)
+                          setSelectedRangeIdx(Math.floor(idx / QUESTIONS_PER_PAGE))
+                          setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                        }
+                      }}>Go</button>
+                    </div>
+                  </div>
+
+                  {/* Filter chips */}
                   <div className="trk-filters">
                     {['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((f) => (
                       <button key={f} className={`chip ${trkFilter === f ? 'is-active' : ''}`} onClick={() => setTrkFilter(f)}>{f}</button>
                     ))}
                   </div>
-                  <div className="trk-jump">
-                    <input
-                      type="number"
-                      min="1"
-                      max={questions.length}
-                      placeholder="#"
-                      className="trk-input"
-                      value={trkJump}
-                      onChange={(e) => setTrkJump(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const val = parseInt(trkJump || '0', 10)
-                          if (val >= 1 && val <= questions.length) {
-                            const idx = val - 1
-                            setCurrentIndex(idx); loadCurrentQuestion(idx)
-                            setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
-                          }
-                        }
-                      }}
-                    />
-                    <button className="btn btn--ghost btn--icon" onClick={() => {
-                      const val = parseInt(trkJump || '0', 10)
-                      if (val >= 1 && val <= questions.length) {
-                        const idx = val - 1
-                        setCurrentIndex(idx); loadCurrentQuestion(idx)
-                        setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
-                      }
-                    }}>Go</button>
-                  </div>
-                </div>
 
-                <div className="trk-rows">
-                  {Array.from({ length: Math.ceil(questions.length / trackerChunkSize) }).map((_, rowIdx) => {
-                    const start = rowIdx * trackerChunkSize
-                    const end = Math.min(start + trackerChunkSize, questions.length)
-                    return (
-                      <div key={rowIdx} className="trk-row">
-                        <div className="trk-row__label">{start + 1}–{end}</div>
-                        <div className="trk-row__grid">
-                          {questions.slice(start, end).map((q, localIdx) => {
+                  {/* Question grid for selected range */}
+                  <div className="trk-grid-container">
+                    {(() => {
+                      const start = selectedRangeIdx * QUESTIONS_PER_PAGE
+                      const end = Math.min(start + QUESTIONS_PER_PAGE, questions.length)
+                      const rangeQuestions = questions.slice(start, end)
+
+                      return (
+                        <div className="trk-grid">
+                          {rangeQuestions.map((q, localIdx) => {
                             const idx = start + localIdx
                             const qid = q.id
                             const ua = userAnswers[qid]
@@ -1760,42 +1819,38 @@ export default function GroupPractice() {
                             )
                           })}
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {Array.from(flagged).length > 0 && (
-                  <div className="trk-flagged-rail">
-                    <div className="trk-rail__label">Flagged</div>
-                    <div className="trk-rail__list">
-                      {questions.map((q, idx) => flagged.has(q.id) ? (
-                        <button key={q.id} className="pill" onClick={() => { setCurrentIndex(idx); loadCurrentQuestion(idx); setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0) }}>{idx + 1}</button>
-                      ) : null)}
-                    </div>
+                      )
+                    })()}
                   </div>
-                )}
 
-                <div className="trk-legend">
-                  <span className="legend-item"><span className="legend-swatch swatch--correct" /> Correct</span>
-                  <span className="legend-item"><span className="legend-swatch swatch--wrong" /> Wrong</span>
-                  <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> Unanswered</span>
-                  <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
-                  <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>
+                  {Array.from(flagged).length > 0 && (
+                    <div className="trk-flagged-rail">
+                      <div className="trk-rail__label">Flagged</div>
+                      <div className="trk-rail__list">
+                        {questions.map((q, idx) => flagged.has(q.id) ? (
+                          <button key={q.id} className="pill" onClick={() => {
+                            setCurrentIndex(idx); loadCurrentQuestion(idx)
+                            setSelectedRangeIdx(Math.floor(idx / QUESTIONS_PER_PAGE))
+                            setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                          }}>{idx + 1}</button>
+                        ) : null)}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="trk-legend">
+                    <span className="legend-item"><span className="legend-swatch swatch--correct" /> Correct</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--wrong" /> Wrong</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> Unanswered</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {isSubmitted && (
-            <div style={{ gridColumn: '1', gridRow: result ? '4' : '3' }}>
-              <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
-            </div>
-          )}
-
-          {/* Reference Ranges - Right Sidebar (only card) */}
-          <div className="pr__aside">
-            <div className="card">
+            {/* Reference Ranges Card */}
+            <div className="card refcard">
               <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>Reference Ranges</div>
                 <button className="btn btn--ghost btn--icon" onClick={() => setShowRef(s => !s)}>{showRef ? 'Hide' : 'Show'}</button>
