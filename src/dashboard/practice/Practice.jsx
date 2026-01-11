@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './Practice.css'
-import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink } from 'react-icons/lu'
+import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuEye } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
@@ -113,27 +113,42 @@ export default function Practice() {
   const location = useLocation()
   const navigate = useNavigate()
   const params = new URLSearchParams(location.search)
-  const specialtyId = params.get('specialty_id')
-  const specialtyName = params.get('specialty_name') || null
-  const studySetId = params.get('study_set_id')
-  const studySetName = params.get('study_set_name') || null
+  
+  // Check if we're in review mode (navigated from results page)
+  const reviewModeData = location.state?.reviewMode ? location.state : null
+  const isReviewMode = !!reviewModeData
+  
+  const specialtyId = params.get('specialty_id') || reviewModeData?.sessionStats?.specialtyId
+  const specialtyName = params.get('specialty_name') || reviewModeData?.sessionStats?.specialtyName || null
+  const studySetId = params.get('study_set_id') || reviewModeData?.sessionStats?.studySetId
+  const studySetName = params.get('study_set_name') || reviewModeData?.sessionStats?.studySetName || null
   const topicIds = params.get('topic_ids')
   const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '25')
   const includeAttempted = params.get('include_attempted') !== '0'
 
   // Session state
-  const [loading, setLoading] = useState(true)
-  const [questions, setQuestions] = useState([]) // All questions loaded at start
+  const [loading, setLoading] = useState(!isReviewMode) // Don't show loading in review mode
+  const [questions, setQuestions] = useState(reviewModeData?.questions || []) // Pre-populate in review mode
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [userAnswers, setUserAnswers] = useState({}) // Store user answers by question ID
-  const [submittedAnswers, setSubmittedAnswers] = useState(new Set()) // Track submitted questions
+  const [userAnswers, setUserAnswers] = useState(reviewModeData?.userAnswers || {}) // Pre-populate in review mode
+  const [submittedAnswers, setSubmittedAnswers] = useState(() => {
+    // In review mode, mark all answered questions as submitted
+    if (reviewModeData?.userAnswers) {
+      return new Set(Object.keys(reviewModeData.userAnswers).filter(id => reviewModeData.userAnswers[id]?.submitted).map(id => parseInt(id) || id))
+    }
+    return new Set()
+  })
   const [flagged, setFlagged] = useState(new Set())
   const [struckOut, setStruckOut] = useState({}) // Track struck out options per question: { currentQuestionId: Set([optionId1, optionId2]) }
   const [highlights, setHighlights] = useState({}) // Track highlighted text ranges per question: { currentQuestionId: [{ start, end, text }] }
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
+  const hasLoadedRef = useRef(false) // Prevent double-loading of session
+  
+  // Review mode filter state
+  const [reviewFilter, setReviewFilter] = useState('All') // All | Correct | Incorrect | Skipped
 
   const getOffsetWithinStem = (targetNode, nodeOffset) => {
     if (!stemRef.current) return null
@@ -193,14 +208,35 @@ export default function Practice() {
     window.scrollTo(0, 0)
   }, [])
 
-  // Load all questions for the session
+  // Load all questions for the session (skip if in review mode)
   useEffect(() => {
+    if (isReviewMode) {
+      // In review mode, questions are already loaded from state
+      // Just load reference ranges
+      loadReferenceRanges()
+      return
+    }
     if (!specialtyId && !studySetId) {
       navigate('/dashboard/question-bank')
       return
     }
+    // Prevent double-loading (can happen in StrictMode or rapid re-renders)
+    if (hasLoadedRef.current) return
+    hasLoadedRef.current = true
     loadSession()
-  }, [specialtyId, studySetId])
+  }, [specialtyId, studySetId, isReviewMode])
+
+  const loadReferenceRanges = async () => {
+    try {
+      const rRes = await fetch(`${API_BASE}/reference-ranges`, { credentials: 'include', headers: authHeaders() })
+      if (rRes.ok) {
+        const rData = await rRes.json()
+        setRefRanges(Array.isArray(rData?.groups) ? rData.groups : [])
+      }
+    } catch (error) {
+      console.error('Error loading reference ranges:', error)
+    }
+  }
 
   const loadSession = async () => {
     try {
@@ -293,7 +329,9 @@ export default function Practice() {
     }
 
     setTab('quick')
-    setQuestionStartTime(Date.now())
+    if (!isReviewMode) {
+      setQuestionStartTime(Date.now())
+    }
     setShowRef(false) // Reset reference ranges to collapsed on question change
     // Reset carousel index when question changes
     setAssetIdx(0)
@@ -342,7 +380,9 @@ export default function Practice() {
           specialtyId,
           specialtyName,
           studySetId,
-          studySetName
+          studySetName,
+          questions,
+          userAnswers
         }
       })
     }
@@ -382,12 +422,45 @@ export default function Practice() {
       const selectedTextTrimmed = selectedText.trim()
       if (!selectedTextTrimmed) return
 
-      const startIndex = stemText.indexOf(selectedTextTrimmed)
-      if (startIndex === -1) return
+      // Calculate estimated position based on DOM selection
+      let estimatedPosition = 0
+      if (selection.rangeCount > 0) {
+        const preRange = document.createRange()
+        preRange.selectNodeContents(stemRef.current)
+        preRange.setEnd(range.startContainer, range.startOffset)
+        const textBefore = preRange.toString()
+        estimatedPosition = textBefore.length
+      }
+
+      // Find all occurrences of the selected text
+      const findAllOccurrences = (text, search) => {
+        const indices = []
+        let idx = text.indexOf(search)
+        while (idx !== -1) {
+          indices.push({ index: idx, length: search.length })
+          idx = text.indexOf(search, idx + 1)
+        }
+        return indices
+      }
+
+      const occurrences = findAllOccurrences(stemText, selectedTextTrimmed)
+      if (occurrences.length === 0) return
+
+      // Find the occurrence closest to the estimated position
+      let bestMatch = occurrences[0]
+      let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
+
+      for (let i = 1; i < occurrences.length; i++) {
+        const distance = Math.abs(occurrences[i].index - estimatedPosition)
+        if (distance < minDistance) {
+          minDistance = distance
+          bestMatch = occurrences[i]
+        }
+      }
 
       const newHighlight = {
-        start: startIndex,
-        end: startIndex + selectedTextTrimmed.length,
+        start: bestMatch.index,
+        end: bestMatch.index + bestMatch.length,
         text: selectedTextTrimmed,
         id: Date.now()
       }
@@ -868,7 +941,9 @@ export default function Practice() {
         specialtyId,
         specialtyName,
         studySetId,
-        studySetName
+        studySetName,
+        questions,
+        userAnswers
       }
     })
   }
@@ -1018,8 +1093,9 @@ export default function Practice() {
   const userAnswer = userAnswers[currentQuestionId]
   const isSubmitted = submittedAnswers.has(currentQuestionId)
 
-  // Get result data for explanation display
-  const result = isSubmitted ? {
+  // Get result data for explanation display (always show in review mode)
+  const showExplanation = isSubmitted || isReviewMode
+  const result = showExplanation ? {
     is_correct: userAnswer?.isCorrect || false,
     correct_option: currentQuestion.type === 'MCQ' ? {
       id: currentQuestion.correct_answer,
@@ -1040,21 +1116,64 @@ export default function Practice() {
       .filter((p) => p.text)
     : []
 
+  // Calculate review stats
+  const reviewStats = isReviewMode ? {
+    correct: reviewModeData?.sessionStats?.correct || 0,
+    totalQuestions: reviewModeData?.sessionStats?.totalQuestions || questions.length,
+    skipped: reviewModeData?.sessionStats?.skipped || 0,
+    accuracy: reviewModeData?.sessionStats?.totalQuestions 
+      ? Math.round((reviewModeData?.sessionStats?.correct / (reviewModeData?.sessionStats?.totalQuestions - reviewModeData?.sessionStats?.skipped)) * 100) || 0
+      : 0
+  } : null
+
+  // Filter questions for review mode navigation
+  const getFilteredQuestionIndices = () => {
+    if (!isReviewMode) return questions.map((_, idx) => idx)
+    return questions.map((q, idx) => {
+      const answer = userAnswers[q.id]
+      if (reviewFilter === 'All') return idx
+      if (reviewFilter === 'Correct' && answer?.submitted && answer?.isCorrect) return idx
+      if (reviewFilter === 'Incorrect' && answer?.submitted && !answer?.isCorrect) return idx
+      if (reviewFilter === 'Skipped' && !answer?.submitted) return idx
+      return -1
+    }).filter(idx => idx !== -1)
+  }
+
+  const filteredIndices = getFilteredQuestionIndices()
+  const currentFilteredPosition = filteredIndices.indexOf(currentIndex)
+
   return (
-    <div className="pr">
+    <div className={`pr ${isReviewMode ? 'pr--review-mode' : ''}`}>
       <div className="pr__top">
         <div>
-          <h2 style={{ margin: 0 }}>Question Bank</h2>
-          <div style={{ color: '#64748b' }}>Question {currentIndex + 1} of {questions.length}</div>
+          <h2 style={{ margin: 0 }}>{isReviewMode ? 'Review Session' : 'Question Bank'}</h2>
+          <div style={{ color: '#64748b' }}>
+            Question {currentIndex + 1} of {questions.length}
+            {isReviewMode && reviewFilter !== 'All' && ` (${currentFilteredPosition + 1} of ${filteredIndices.length} ${reviewFilter.toLowerCase()})`}
+          </div>
         </div>
         <div className="pr__top-right">
-          {timerMinutes > 0 && (
+          {!isReviewMode && timerMinutes > 0 && (
             <div className="pr__timer">
               <div className="pr__time">{display}</div>
               <button onClick={toggle} className="btn btn--ghost btn--icon">{running ? <LuPause /> : <LuPlay />}{running ? 'Pause' : 'Resume'}</button>
             </div>
           )}
-          <button onClick={navigateToResults} className="btn btn--exit btn--icon" title="Exit and view results"><LuX />Exit</button>
+          {isReviewMode ? (
+            <button onClick={() => navigate('/dashboard/question-bank/results', { 
+              state: { 
+                ...reviewModeData.sessionStats,
+                questions,
+                userAnswers,
+                weakTopics: [],
+                topicPerformance: []
+              } 
+            })} className="btn btn--ghost btn--icon" title="Back to results">
+              <LuChevronLeft />Back to Results
+            </button>
+          ) : (
+            <button onClick={navigateToResults} className="btn btn--exit btn--icon" title="Exit and view results"><LuX />Exit</button>
+          )}
         </div>
       </div>
 
@@ -1127,10 +1246,20 @@ export default function Practice() {
                 {currentQuestion.options?.length > 0 ? (
                   <div style={{ display: 'grid', gap: 8 }}>
                     {currentQuestion.options.map((o) => {
-                      const isCorrect = result?.correct_option?.label === o.label;
-                      const isSelectedIncorrect = selected === o.id && result && !result.is_correct;
-                      const isStruckOut = (struckOut[currentQuestionId] || new Set()).has(o.id);
-                      const className = `option ${selected === o.id ? 'option--selected' : ''} ${result ? (isCorrect ? 'option--correct' : isSelectedIncorrect ? 'option--incorrect' : '') : ''} ${isStruckOut ? 'option--struck' : ''}`;
+                      // In review mode, always show correct/incorrect styling
+                      const showResult = isReviewMode || result
+                      const isCorrectOption = currentQuestion.correct_answer === o.id
+                      const userSelected = userAnswers[currentQuestionId]?.selected === o.id
+                      const isSelectedIncorrect = userSelected && !isCorrectOption
+                      const isStruckOut = (struckOut[currentQuestionId] || new Set()).has(o.id)
+                      
+                      let className = 'option'
+                      if (userSelected) className += ' option--selected'
+                      if (showResult) {
+                        if (isCorrectOption) className += ' option--correct'
+                        else if (isSelectedIncorrect) className += ' option--incorrect'
+                      }
+                      if (isStruckOut) className += ' option--struck'
 
                       return (
                         <div key={o.id} className="option-wrapper">
@@ -1139,14 +1268,14 @@ export default function Practice() {
                               type="radio"
                               name="opt"
                               value={o.id}
-                              checked={selected === o.id}
-                              onChange={() => !isStruckOut && setSelected(o.id)}
-                              disabled={isSubmitted || isStruckOut}
+                              checked={userSelected || selected === o.id}
+                              onChange={() => !isStruckOut && !isReviewMode && setSelected(o.id)}
+                              disabled={isSubmitted || isStruckOut || isReviewMode}
                             />
                             <div className="option__label">{o.label}.</div>
                             <div className="option__body">{o.body}</div>
                           </label>
-                          {!isSubmitted && (
+                          {!isSubmitted && !isReviewMode && (
                             <button
                               type="button"
                               className={`option-strike-btn ${isStruckOut ? 'is-active' : ''}`}
@@ -1162,51 +1291,100 @@ export default function Practice() {
                     })}
                   </div>
                 ) : (
-                  <textarea className="saq-input" placeholder="Type your answer here..." value={saqText} onChange={(e) => setSaqText(e.target.value)} disabled={isSubmitted} />
+                  <textarea className="saq-input" placeholder="Type your answer here..." value={saqText} onChange={(e) => setSaqText(e.target.value)} disabled={isSubmitted || isReviewMode} />
                 )}
               </div>
               <div className="controls">
                 <div className="controls__left">
-                  {/* <button className="btn btn--ghost btn--icon"><LuSave />Save</button> */}
-                  <button className={`btn btn--ghost btn--icon ${flagged.has(currentQuestionId) ? 'is-flagged' : ''}`} onClick={() => {
-                    setFlagged(prev => {
-                      const next = new Set(prev)
-                      if (next.has(currentQuestionId)) next.delete(currentQuestionId); else next.add(currentQuestionId)
-                      return next
-                    })
-                  }}><LuFlag />{flagged.has(currentQuestionId) ? 'Flagged' : 'Flag'}</button>
-                  {(highlights[currentQuestion.id]?.length > 0) && (
-                    <button
-                      className="btn btn--ghost btn--icon"
-                      onClick={() => clearHighlights(currentQuestion.id)}
-                      title="Clear all highlights"
-                    >
-                      <LuEraser />Clear Highlights
-                    </button>
+                  {!isReviewMode && (
+                    <>
+                      <button className={`btn btn--ghost btn--icon ${flagged.has(currentQuestionId) ? 'is-flagged' : ''}`} onClick={() => {
+                        setFlagged(prev => {
+                          const next = new Set(prev)
+                          if (next.has(currentQuestionId)) next.delete(currentQuestionId); else next.add(currentQuestionId)
+                          return next
+                        })
+                      }}><LuFlag />{flagged.has(currentQuestionId) ? 'Flagged' : 'Flag'}</button>
+                      {(highlights[currentQuestion.id]?.length > 0) && (
+                        <button
+                          className="btn btn--ghost btn--icon"
+                          onClick={() => clearHighlights(currentQuestion.id)}
+                          title="Clear all highlights"
+                        >
+                          <LuEraser />Clear Highlights
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {isReviewMode && (
+                    <div className="review-status-badge">
+                      {userAnswers[currentQuestionId]?.submitted ? (
+                        userAnswers[currentQuestionId]?.isCorrect ? (
+                          <span className="review-status review-status--correct"><LuCircleCheck size={16} /> Correct</span>
+                        ) : (
+                          <span className="review-status review-status--incorrect"><LuCircleAlert size={16} /> Incorrect</span>
+                        )
+                      ) : (
+                        <span className="review-status review-status--skipped">Skipped</span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="controls__right">
-                  <button onClick={goToPrevious} disabled={currentIndex <= 0} className="btn btn--ghost btn--icon"><LuChevronLeft />Previous</button>
-                  {!isSubmitted ? (
+                  {isReviewMode ? (
                     <>
-                      <button onClick={submit} disabled={submitting || (currentQuestion.options?.length > 0 ? selected === null || selected === undefined : saqText.trim() === '')} className="btn btn--primary">
-                        {submitting ? 'Submitting...' : 'Submit'}
+                      <button 
+                        onClick={() => {
+                          const prevIdx = filteredIndices[currentFilteredPosition - 1]
+                          if (prevIdx !== undefined) {
+                            setCurrentIndex(prevIdx)
+                            loadCurrentQuestion(prevIdx)
+                          }
+                        }} 
+                        disabled={currentFilteredPosition <= 0} 
+                        className="btn btn--ghost btn--icon"
+                      >
+                        <LuChevronLeft />Previous
                       </button>
-                      <button onClick={goToNext} disabled={submitting} className="btn btn--ghost">
-                        {currentIndex === questions.length - 1 ? 'Finish' : 'Skip'}
+                      <button 
+                        onClick={() => {
+                          const nextIdx = filteredIndices[currentFilteredPosition + 1]
+                          if (nextIdx !== undefined) {
+                            setCurrentIndex(nextIdx)
+                            loadCurrentQuestion(nextIdx)
+                          }
+                        }} 
+                        disabled={currentFilteredPosition >= filteredIndices.length - 1} 
+                        className="btn btn--primary btn--icon"
+                      >
+                        Next <LuArrowRight />
                       </button>
                     </>
                   ) : (
-                    <button onClick={goToNext} className="btn btn--primary btn--icon">
-                      {currentIndex === questions.length - 1 ? 'Finish' : 'Next Question'} <LuArrowRight />
-                    </button>
+                    <>
+                      <button onClick={goToPrevious} disabled={currentIndex <= 0} className="btn btn--ghost btn--icon"><LuChevronLeft />Previous</button>
+                      {!isSubmitted ? (
+                        <>
+                          <button onClick={submit} disabled={submitting || (currentQuestion.options?.length > 0 ? selected === null || selected === undefined : saqText.trim() === '')} className="btn btn--primary">
+                            {submitting ? 'Submitting...' : 'Submit'}
+                          </button>
+                          <button onClick={goToNext} disabled={submitting} className="btn btn--ghost">
+                            {currentIndex === questions.length - 1 ? 'Finish' : 'Skip'}
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={goToNext} className="btn btn--primary btn--icon">
+                          {currentIndex === questions.length - 1 ? 'Finish' : 'Next Question'} <LuArrowRight />
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
             </div>
           </div>
 
-          {result && (
+          {(result || isReviewMode) && (
             <div className="card explanation-card">
               <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className={`ex-card__status ${result.is_correct ? 'ex-card__status--correct' : 'ex-card__status--incorrect'}`}>
@@ -1303,21 +1481,44 @@ export default function Practice() {
               <div className="card__body">
                 {/* Session Progress Header */}
                 <div className="progress-tracker-header">
-                  <div className="progress-stats-row">
-                    <div className="progress-stat">
-                      <div className="progress-stat__value">{sessionAnswered}/{questions.length}</div>
-                      <div className="progress-stat__label">Completed</div>
-                    </div>
-                    <div className="progress-stat">
-                      <div className="progress-stat__value stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
-                      <div className="progress-stat__label">Accuracy</div>
-                    </div>
-                    <div className="progress-stat">
-                      <div className="progress-stat__value stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
-                      <div className="progress-stat__label">Avg Time</div>
-                    </div>
-                  </div>
-                  <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
+                    {isReviewMode ? (
+                      <div className="progress-stats-row review-stats-row">
+                        <div className="progress-stat">
+                          <div className="progress-stat__value stat--green">{reviewStats?.correct || 0}</div>
+                          <div className="progress-stat__label">Correct</div>
+                        </div>
+                        <div className="progress-stat">
+                          <div className="progress-stat__value stat--red">{(reviewStats?.totalQuestions || 0) - (reviewStats?.correct || 0) - (reviewStats?.skipped || 0)}</div>
+                          <div className="progress-stat__label">Incorrect</div>
+                        </div>
+                        <div className="progress-stat">
+                          <div className="progress-stat__value">{reviewStats?.skipped || 0}</div>
+                          <div className="progress-stat__label">Skipped</div>
+                        </div>
+                        <div className="progress-stat">
+                          <div className="progress-stat__value stat--blue">{reviewStats?.accuracy || 0}%</div>
+                          <div className="progress-stat__label">Accuracy</div>
+                        </div>
+                      </div>
+                  ) : (
+                    <>
+                      <div className="progress-stats-row">
+                        <div className="progress-stat">
+                          <div className="progress-stat__value">{sessionAnswered}/{questions.length}</div>
+                          <div className="progress-stat__label">Completed</div>
+                        </div>
+                        <div className="progress-stat">
+                          <div className="progress-stat__value stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
+                          <div className="progress-stat__label">Accuracy</div>
+                        </div>
+                        <div className="progress-stat">
+                          <div className="progress-stat__value stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
+                          <div className="progress-stat__label">Avg Time</div>
+                        </div>
+                      </div>
+                      <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
+                    </>
+                  )}
                 </div>
 
                 {/* Track Questions Section - Paginated */}
@@ -1381,11 +1582,39 @@ export default function Practice() {
                     </div>
                   </div>
 
-                  {/* Filter chips */}
+                  {/* Filter chips - different for review mode */}
                   <div className="trk-filters">
-                    {['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((f) => (
-                      <button key={f} className={`chip ${trkFilter === f ? 'is-active' : ''}`} onClick={() => setTrkFilter(f)}>{f}</button>
-                    ))}
+                    {isReviewMode ? (
+                      ['All', 'Correct', 'Incorrect', 'Skipped'].map((f) => (
+                        <button 
+                          key={f} 
+                          className={`chip ${reviewFilter === f ? 'is-active' : ''}`} 
+                          onClick={() => {
+                            setReviewFilter(f)
+                            // Jump to first question matching filter
+                            const firstMatch = questions.findIndex((q) => {
+                              const answer = userAnswers[q.id]
+                              if (f === 'All') return true
+                              if (f === 'Correct') return answer?.submitted && answer?.isCorrect
+                              if (f === 'Incorrect') return answer?.submitted && !answer?.isCorrect
+                              if (f === 'Skipped') return !answer?.submitted
+                              return true
+                            })
+                            if (firstMatch !== -1) {
+                              setCurrentIndex(firstMatch)
+                              loadCurrentQuestion(firstMatch)
+                              setSelectedRangeIdx(Math.floor(firstMatch / QUESTIONS_PER_PAGE))
+                            }
+                          }}
+                        >
+                          {f}
+                        </button>
+                      ))
+                    ) : (
+                      ['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((f) => (
+                        <button key={f} className={`chip ${trkFilter === f ? 'is-active' : ''}`} onClick={() => setTrkFilter(f)}>{f}</button>
+                      ))
+                    )}
                   </div>
 
                   {/* Question grid for selected range */}
@@ -1405,8 +1634,17 @@ export default function Practice() {
                             const isFlag = flagged.has(qid)
                             let status = 'Unanswered'
                             if (ua?.submitted) status = ua.isCorrect ? 'Correct' : 'Wrong'
-                            const matchesFilter = trkFilter === 'All' || (trkFilter === 'Flagged' ? isFlag : trkFilter === status)
-                            const classes = `seg seg--${status.toLowerCase()} ${isCurrent ? 'seg--current' : ''} ${isFlag ? 'seg--flagged' : ''} ${matchesFilter ? '' : 'seg--dim'}`
+                            
+                            // Filter logic differs for review mode
+                            let matchesFilter
+                            if (isReviewMode) {
+                              const reviewStatus = ua?.submitted ? (ua.isCorrect ? 'Correct' : 'Incorrect') : 'Skipped'
+                              matchesFilter = reviewFilter === 'All' || reviewFilter === reviewStatus
+                            } else {
+                              matchesFilter = trkFilter === 'All' || (trkFilter === 'Flagged' ? isFlag : trkFilter === status)
+                            }
+                            
+                            const classes = `seg seg--${status.toLowerCase()} ${isCurrent ? 'seg--current' : ''} ${isFlag && !isReviewMode ? 'seg--flagged' : ''} ${matchesFilter ? '' : 'seg--dim'}`
                             return (
                               <button
                                 key={qid}
@@ -1425,7 +1663,7 @@ export default function Practice() {
                     })()}
                   </div>
 
-                  {Array.from(flagged).length > 0 && (
+                  {!isReviewMode && Array.from(flagged).length > 0 && (
                     <div className="trk-flagged-rail">
                       <div className="trk-rail__label">Flagged</div>
                       <div className="trk-rail__list">
@@ -1442,10 +1680,10 @@ export default function Practice() {
 
                   <div className="trk-legend">
                     <span className="legend-item"><span className="legend-swatch swatch--correct" /> Correct</span>
-                    <span className="legend-item"><span className="legend-swatch swatch--wrong" /> Wrong</span>
-                    <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> Unanswered</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--wrong" /> {isReviewMode ? 'Incorrect' : 'Wrong'}</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> {isReviewMode ? 'Skipped' : 'Unanswered'}</span>
                     <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
-                    <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>
+                    {!isReviewMode && <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>}
                   </div>
                 </div>
               </div>

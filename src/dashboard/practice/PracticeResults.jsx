@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './PracticeResults.css'
 import './PracticeSetup.css'
-import { LuChevronLeft, LuArrowRight, LuBookOpen } from 'react-icons/lu'
+import { LuChevronLeft, LuArrowRight, LuBookOpen, LuEye } from 'react-icons/lu'
 
 function useResultsData() {
   const location = useLocation()
@@ -23,8 +23,32 @@ export default function PracticeResults() {
     totalMs = 0, 
     perQuestionMs,
     weakTopics = [],
-    topicPerformance = []
+    topicPerformance = [],
+    questions = [],
+    userAnswers = {}
   } = useResultsData()
+
+  // Navigate to practice page in review mode
+  const enterReviewMode = () => {
+    navigate('/dashboard/question-bank/practice', {
+      state: {
+        reviewMode: true,
+        questions,
+        userAnswers,
+        sessionStats: {
+          totalQuestions,
+          correct,
+          skipped,
+          totalMs,
+          perQuestionMs,
+          specialtyName,
+          specialtyId,
+          studySetId,
+          studySetName
+        }
+      }
+    })
+  }
 
   const incorrect = Math.max(totalQuestions - correct - (skipped || 0), 0)
   const attempted = totalQuestions - (skipped || 0)
@@ -81,6 +105,17 @@ export default function PracticeResults() {
           </div>
         </div>
       </div>
+
+      {/* Review Questions CTA */}
+      {questions.length > 0 && (
+        <div className="review-cta">
+          <button className="review-cta__btn" onClick={enterReviewMode}>
+            <LuEye size={18} />
+            <span className="review-cta__title">Review Your Answers</span>
+            <LuArrowRight size={16} />
+          </button>
+        </div>
+      )}
 
       <div className="prr__grid prr__grid--top">
         <div className="card prr-card">

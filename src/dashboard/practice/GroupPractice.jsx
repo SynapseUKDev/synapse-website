@@ -71,6 +71,7 @@ export default function GroupPractice() {
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
+  const hasLoadedRef = useRef(false) // Prevent double-loading of session
 
   const getOffsetWithinStem = (targetNode, nodeOffset) => {
     if (!stemRef.current) return null
@@ -165,6 +166,9 @@ export default function GroupPractice() {
       navigate('/dashboard/question-bank')
       return
     }
+    // Prevent double-loading (can happen in StrictMode or rapid re-renders)
+    if (hasLoadedRef.current) return
+    hasLoadedRef.current = true
     loadGroupSession()
   }, [roomCode])
 
@@ -579,12 +583,45 @@ export default function GroupPractice() {
       const selectedTextTrimmed = selectedText.trim()
       if (!selectedTextTrimmed) return
 
-      const startIndex = stemText.indexOf(selectedTextTrimmed)
-      if (startIndex === -1) return
+      // Calculate estimated position based on DOM selection
+      let estimatedPosition = 0
+      if (selection.rangeCount > 0) {
+        const preRange = document.createRange()
+        preRange.selectNodeContents(stemRef.current)
+        preRange.setEnd(range.startContainer, range.startOffset)
+        const textBefore = preRange.toString()
+        estimatedPosition = textBefore.length
+      }
+
+      // Find all occurrences of the selected text
+      const findAllOccurrences = (text, search) => {
+        const indices = []
+        let idx = text.indexOf(search)
+        while (idx !== -1) {
+          indices.push({ index: idx, length: search.length })
+          idx = text.indexOf(search, idx + 1)
+        }
+        return indices
+      }
+
+      const occurrences = findAllOccurrences(stemText, selectedTextTrimmed)
+      if (occurrences.length === 0) return
+
+      // Find the occurrence closest to the estimated position
+      let bestMatch = occurrences[0]
+      let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
+
+      for (let i = 1; i < occurrences.length; i++) {
+        const distance = Math.abs(occurrences[i].index - estimatedPosition)
+        if (distance < minDistance) {
+          minDistance = distance
+          bestMatch = occurrences[i]
+        }
+      }
 
       const newHighlight = {
-        start: startIndex,
-        end: startIndex + selectedTextTrimmed.length,
+        start: bestMatch.index,
+        end: bestMatch.index + bestMatch.length,
         text: selectedTextTrimmed,
         id: Date.now()
       }
@@ -1078,7 +1115,9 @@ export default function GroupPractice() {
         specialtyId,
         specialtyName,
         studySetId,
-        studySetName
+        studySetName,
+        questions,
+        userAnswers
       }
     })
   }

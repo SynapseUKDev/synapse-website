@@ -645,7 +645,7 @@
 .question-stem mark.highlight,
 .highlight {
   background: #fef3c7;
-  padding: 0 2px;
+  padding: 0;
   margin: 0;
   border: 0;
   border-radius: 2px;
@@ -2068,4 +2068,128 @@ input:checked+.toggle-slider:before {
 .swatch--flagged {
   background: #227ae5;
   border-color: #3b82f6;
+}
+
+/* ============================== */
+/* Review Mode Styles */
+/* ============================== */
+
+.pr--review-mode {
+  background: linear-gradient(180deg, #f0f4ff 0%, var(--surface-app) 100px);
+}
+
+.pr--review-mode .pr__top {
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+/* Review mode badge in sidebar */
+.review-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.review-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Review status badges in controls */
+.review-status-badge {
+  display: flex;
+  align-items: center;
+}
+
+.review-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.review-status--correct {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #86efac;
+}
+
+.review-status--incorrect {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.review-status--skipped {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e5e7eb;
+}
+
+/* Stat value red color */
+.stat--red {
+  color: #dc2626;
+}
+
+/* Progress stats row for review mode - 4 columns horizontal */
+.review-stats-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.review-stats-row .progress-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 50px;
+}
+
+.review-stats-row .progress-stat__value {
+  font-size: 20px;
+}
+
+.review-stats-row .progress-stat__label {
+  font-size: 11px;
+}
+
+@media (max-width: 768px) {
+  .review-stats-row {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  
+  .review-stats-row .progress-stat {
+    min-height: 45px;
+  }
+  
+  .review-stats-row .progress-stat__value {
+    font-size: 18px;
+  }
+  
+  .review-stats-row .progress-stat__label {
+    font-size: 10px;
+  }
+  
+  .review-status {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
 }
