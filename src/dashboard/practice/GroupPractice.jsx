@@ -72,25 +72,25 @@ export default function GroupPractice() {
   const stemRef = useRef(null)
 
   const getOffsetWithinStem = (targetNode, nodeOffset) => {
-  if (!stemRef.current) return null
+    if (!stemRef.current) return null
 
-  const walker = document.createTreeWalker(
-    stemRef.current,
-    NodeFilter.SHOW_TEXT,
-    null
-  )
+    const walker = document.createTreeWalker(
+      stemRef.current,
+      NodeFilter.SHOW_TEXT,
+      null
+    )
 
-  let pos = 0
-  let node = walker.nextNode()
+    let pos = 0
+    let node = walker.nextNode()
 
-  while (node) {
-    if (node === targetNode) return pos + nodeOffset
-    pos += node.textContent.length
-    node = walker.nextNode()
+    while (node) {
+      if (node === targetNode) return pos + nodeOffset
+      pos += node.textContent.length
+      node = walker.nextNode()
+    }
+
+    return null
   }
-
-  return null
-}
 
   // Group session state
   const [serverTimerEndTime, setServerTimerEndTime] = useState(null)
@@ -103,7 +103,7 @@ export default function GroupPractice() {
   const socketRef = useRef(null)
   // Reference ranges
   const [refRanges, setRefRanges] = useState([])
-  const [showRef, setShowRef] = useState(false)
+  const [showRef, setShowRef] = useState(true)
   const [openGroupId, setOpenGroupId] = useState(null)
   // Image carousel state for question assets
   const [assetIdx, setAssetIdx] = useState(0)
@@ -206,7 +206,7 @@ export default function GroupPractice() {
         return updated
       })
     })
-    
+
     // Answers revealed to everyone (just marks as revealed, answers already stored)
     socketRef.current.on('answers-revealed', (data) => {
       console.log('Answers revealed:', data)
@@ -219,7 +219,7 @@ export default function GroupPractice() {
       // Server controls question progression
       const newIndex = data.question_index
       setServerCurrentIndex(newIndex)
-      
+
       // If user is reviewing, they can stay on their current question
       // Otherwise, move to the new server question
       if (!isReviewing) {
@@ -340,12 +340,12 @@ export default function GroupPractice() {
         return
       }
 
-        setQuestions(data.questions)
-        // Start at question 0 - server will control progression
-        setCurrentIndex(0)
-        setServerCurrentIndex(0)
-        loadCurrentQuestion(0, data.questions)
-        setQuestionStartTime(Date.now())
+      setQuestions(data.questions)
+      // Start at question 0 - server will control progression
+      setCurrentIndex(0)
+      setServerCurrentIndex(0)
+      loadCurrentQuestion(0, data.questions)
+      setQuestionStartTime(Date.now())
 
       // Load any existing answers for the current question from database
       if (socketRef.current && data.questions[0]) {
@@ -407,7 +407,7 @@ export default function GroupPractice() {
       setCurrentIndex(prevIndex)
       loadCurrentQuestion(prevIndex, questions)
       setIsReviewing(true)
-      
+
       // Load answers from database for this past question
       const prevQuestion = questions[prevIndex]
       if (prevQuestion && socketRef.current) {
@@ -419,25 +419,25 @@ export default function GroupPractice() {
       }
     }
   }
-  
+
   const goToNextForReview = () => {
     // Allow navigation to next questions for review
     // Only allow going forward to questions that have been completed (submitted by everyone)
     // i.e., questions that are at or before serverCurrentIndex
     if (currentIndex < questions.length - 1) {
       const nextIndex = currentIndex + 1
-      
+
       // Only allow forward navigation to questions that have been completed
       // (questions at or before serverCurrentIndex)
       if (nextIndex > serverCurrentIndex) {
         console.log('Cannot navigate forward - question not completed yet')
         return
       }
-      
+
       setCurrentIndex(nextIndex)
       loadCurrentQuestion(nextIndex, questions)
       setIsReviewing(true)
-      
+
       // Load answers from database for this past question
       const nextQuestion = questions[nextIndex]
       if (nextQuestion && socketRef.current) {
@@ -449,7 +449,7 @@ export default function GroupPractice() {
       }
     }
   }
-  
+
   const goToCurrentQuestion = () => {
     // Return to the server-controlled current question
     setIsReviewing(false)
@@ -460,13 +460,13 @@ export default function GroupPractice() {
   const revealAnswers = () => {
     // Host reveals answers to everyone
     if (!isHost || !socketRef.current) return
-    
+
     const currentQuestion = questions[currentIndex]
     if (currentQuestion) {
       // Get all collected answers from local state
       const answerKey = `${currentQuestion.id}_${currentIndex}`
       const collectedAnswers = questionAnswers[answerKey] || []
-      
+
       // Send reveal event with collected answers (for database saving)
       socketRef.current.emit('reveal-answers', {
         room_code: roomCode,
@@ -522,14 +522,14 @@ export default function GroupPractice() {
 
     const stemText = currentQ.stem || ''
     const isMarkdownStem = hasMarkdown(stemText)
-    
+
     if (isMarkdownStem) {
       const selectedTextTrimmed = selectedText.trim()
       if (!selectedTextTrimmed) return
-      
+
       const startIndex = stemText.indexOf(selectedTextTrimmed)
       if (startIndex === -1) return
-      
+
       const newHighlight = {
         start: startIndex,
         end: startIndex + selectedTextTrimmed.length,
@@ -582,54 +582,58 @@ export default function GroupPractice() {
     const currentQ = questions[currentIndex]
     if (!selection || selection.isCollapsed || !currentQ) return
 
-    const selectedText = selection.toString().trim()
-    if (!selectedText) return
+    const selectedText = selection.toString()
+    if (!selectedText || !selectedText.trim()) return
 
-    const range = selection.getRangeAt(0)
-    const start = range.startOffset
-    const end = range.endOffset
-    const container = range.startContainer
+    const originalText = currentQ.stem || ''
+    const normalizedSelected = selectedText.replace(/\s+/g, ' ').trim()
 
-    // Get the text content and position relative to stem
-    let fullText = stemRef.current?.textContent || ''
-    let actualStart = 0
+    let startIndex = originalText.indexOf(selectedText)
 
-    // Find position in full text
-    const walker = document.createTreeWalker(
-      stemRef.current,
-      NodeFilter.SHOW_TEXT,
-      null
-    )
+    if (startIndex === -1) {
+      const escapedText = normalizedSelected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const pattern = escapedText.split(' ').join('\\s+')
+      const regex = new RegExp(pattern, 'g')
+      const match = regex.exec(originalText)
 
-    let currentPos = 0
-    let node = walker.nextNode()
-    while (node) {
-      if (node === container) {
-        actualStart = currentPos + start
-        break
+      if (match) {
+        startIndex = match.index
+        // Use the actual matched text from the original
+        const matchedText = match[0]
+        const endIndex = startIndex + matchedText.length
+
+        const newHighlight = {
+          start: startIndex,
+          end: endIndex,
+          text: matchedText,
+          id: Date.now()
+        }
+
+        setHighlights(prev => {
+          const current = prev[currentQ.id] || []
+          const allHighlights = [...current, newHighlight]
+          const merged = mergeOverlappingHighlights(allHighlights)
+          return { ...prev, [currentQ.id]: merged }
+        })
       }
-      currentPos += node.textContent.length
-      node = walker.nextNode()
+    } else {
+      // Exact match found
+      const endIndex = startIndex + selectedText.length
+
+      const newHighlight = {
+        start: startIndex,
+        end: endIndex,
+        text: selectedText,
+        id: Date.now()
+      }
+
+      setHighlights(prev => {
+        const current = prev[currentQ.id] || []
+        const allHighlights = [...current, newHighlight]
+        const merged = mergeOverlappingHighlights(allHighlights)
+        return { ...prev, [currentQ.id]: merged }
+      })
     }
-
-    const actualEnd = actualStart + selectedText.length
-
-    const newHighlight = {
-      start: actualStart,
-      end: actualEnd,
-      text: selectedText,
-      id: Date.now()
-    }
-
-    setHighlights(prev => {
-      const current = prev[currentQ.id] || []
-
-      // Add new highlight and merge overlapping ones
-      const allHighlights = [...current, newHighlight]
-      const merged = mergeOverlappingHighlights(allHighlights)
-
-      return { ...prev, [currentQ.id]: merged }
-    })
 
     setShowHighlightBtn(false)
     selection.removeAllRanges()
@@ -708,9 +712,11 @@ export default function GroupPractice() {
       const highlighted = result.slice(hl.start, hl.end)
       const after = result.slice(hl.end)
 
+      const highlightedWithBr = highlighted.replace(/\n/g, '<br/>')
+
       // Insert HTML with wrapper span that has the highlight ID
       result = before +
-        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="highlight">${highlighted}</mark></span>` +
+        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="highlight">${highlightedWithBr}</mark></span>` +
         after
     })
 
@@ -839,25 +845,29 @@ export default function GroupPractice() {
       parts.push({ text: text.slice(lastIndex), highlighted: false, key: 'text-end', highlightId: null })
     }
 
-    return parts.map(part =>
-      part.highlighted
-        ? (
-          <span key={part.key} className="highlight-wrapper">
-            <mark className="highlight">{part.text}</mark>
-            <button
-              className="highlight-remove-btn"
-              onClick={(e) => {
-                e.preventDefault()
-                removeHighlight(questionId, part.highlightId)
-              }}
-              title="Remove this highlight"
-              aria-label="Remove highlight"
-            >
-              ×
-            </button>
-          </span>
-        )
-        : <span key={part.key}>{part.text}</span>
+    return (
+      <span style={{ whiteSpace: 'pre-wrap' }}>
+        {parts.map(part =>
+          part.highlighted
+            ? (
+              <span key={part.key} className="highlight-wrapper">
+                <mark className="highlight">{part.text}</mark>
+                <button
+                  className="highlight-remove-btn"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    removeHighlight(questionId, part.highlightId)
+                  }}
+                  title="Remove this highlight"
+                  aria-label="Remove highlight"
+                >
+                  ×
+                </button>
+              </span>
+            )
+            : <span key={part.key}>{part.text}</span>
+        )}
+      </span>
     )
   }
 
@@ -977,7 +987,7 @@ export default function GroupPractice() {
 
     // Don't submit if already submitted
     if (submittedAnswers.has(questionId)) return
-    
+
     // Don't allow submitting when reviewing past questions
     if (isReviewing && currentIndex !== serverCurrentIndex) return
 
@@ -1487,7 +1497,7 @@ export default function GroupPractice() {
                           )}
                           {!isHost && (
                             <div style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
-                              {revealedQuestions.has(questionId) 
+                              {revealedQuestions.has(questionId)
                                 ? 'Waiting for host to move to next question...'
                                 : 'Waiting for host to reveal answers...'}
                             </div>
@@ -1590,133 +1600,34 @@ export default function GroupPractice() {
             </div>
           )}
 
-          {isSubmitted && (
-            <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
-              <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
-            </div>
-          )}
-
-          <div className="pr__aside">
-            <div className="card">
-              <div className="card__header">Session Progress</div>
-              <div className="card__body progress">
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#1f2937' }}>
-                  <div>Questions Completed</div>
-                  <div>{sessionAnswered}/{questions.length}</div>
+          {/* Combined Session Progress & Track Questions - Below question card */}
+          <div className="card progress-tracker-card" style={{ gridColumn: '1', gridRow: result ? (isSubmitted ? '3' : '2') : '2' }}>
+            <div className="card__body">
+              {/* Session Progress Section */}
+              <div className="progress-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontWeight: 800, color: '#0b1637' }}>Session Progress</div>
+                  <div style={{ fontWeight: 700, color: '#1f2937' }}>{sessionAnswered}/{questions.length} completed</div>
                 </div>
                 <div className="progress__bar"><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
-                <div className="progress__stats" style={{ justifyContent: 'space-around' }}>
+                <div className="progress__stats" style={{ justifyContent: 'flex-start', gap: 32, marginTop: 12 }}>
                   <div>
-                    <div className="stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
+                    <div className="stat--green" style={{ fontSize: 20 }}>{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
                     <div className="stat-label">Accuracy</div>
                   </div>
                   <div>
-                    <div className="stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
+                    <div className="stat--blue" style={{ fontSize: 20 }}>{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
                     <div className="stat-label">Avg Time</div>
                   </div>
                 </div>
-                {/* <div style={{ height: 8, borderTop: '1px solid #eef2f7', marginTop: 10 }} />
-                <div style={{ color: '#1f2937', fontWeight: 700 }}>Weak Areas Detected</div>
-                <div style={{ height: 8 }} /> */}
               </div>
-            </div>
 
-            {/* Reference Ranges */}
-            <div className="card" style={{ marginTop: 16 }}>
-              <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>Reference Ranges</div>
-                <button className="btn btn--ghost btn--icon" onClick={() => setShowRef(s => !s)}>{showRef ? 'Hide' : 'Show'}</button>
-              </div>
-              <div className={`refcard__content ${showRef ? 'is-open' : ''}`}>
-                <div className="refcard__inner">
-                  {refRanges && refRanges.length > 0 ? (
-                    <div className="refacc">
-                      {refRanges.map((grp) => {
-                        const isOpen = openGroupId === grp.id
-                        return (
-                          <div key={grp.id} className={`refacc__section ${isOpen ? 'is-open' : ''}`}>
-                            <button className="refacc__btn" onClick={() => {
-                              setOpenGroupId(prev => (prev === grp.id ? null : grp.id))
-                            }}>
-                              <span className="refacc__title">{grp.title}</span>
-                              <span className="refacc__caret" aria-hidden>▾</span>
-                            </button>
-                            <div className="refacc__panel" style={{ maxHeight: isOpen ? 'none' : 0 }}>
-                              <div className="refcat__items">
-                                {(() => {
-                                  const groups = {};
-                                  for (const it of (grp.items || [])) {
-                                    const key = `${it.analyte}||${it.unit || ''}`;
-                                    if (!groups[key]) {
-                                      groups[key] = { analyte: it.analyte, unit: it.unit || null, populations: [] };
-                                    }
-                                    const label = (it.population || '').trim();
-                                    groups[key].populations.push({
-                                      label: label,
-                                      isGeneral: label.toLowerCase() === 'general' || label === ''
-                                      , value: it.value_text
-                                    });
-                                  }
-                                  const rows = Object.values(groups);
-                                  return rows.map((row, idx) => {
-                                    const specific = row.populations.filter(p => !p.isGeneral);
-                                    const general = row.populations.find(p => p.isGeneral) || null;
-                                    const toShow = specific.length > 0 ? specific : (general ? [general] : []);
-                                    const weight = (label) => {
-                                      const L = (label || '').toLowerCase().trim();
-                                      if (L === 'male') return 0;
-                                      if (L === 'female') return 1;
-                                      return 2;
-                                    };
-                                    const sortedToShow = Array.isArray(toShow)
-                                      ? [...toShow].sort((a, b) => {
-                                        const dw = weight(a.label) - weight(b.label);
-                                        if (dw !== 0) return dw;
-                                        return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
-                                      })
-                                      : toShow;
-                                    return (
-                                      <div key={idx} className="refrow refrow--grouped">
-                                        <div className="refrow__left">
-                                          <div className="refrow__analyte">{row.analyte}</div>
-                                        </div>
-                                        <div className="refrow__right refrow__right--groups">
-                                          {toShow.length === 1 && toShow[0].isGeneral ? (
-                                            <div className="refrow__valueblock">
-                                              <div className="refrow__value">{toShow[0].value}</div>
-                                              {row.unit && <div className="refrow__unit">{row.unit}</div>}
-                                            </div>
-                                          ) : (
-                                            sortedToShow.map((p, j) => (
-                                              <div key={j} className="refrow__valueblock">
-                                                <div className="refrow__poplabel">{p.label}</div>
-                                                <div className="refrow__value">{p.value}</div>
-                                                {row.unit && <div className="refrow__unit">{row.unit}</div>}
-                                              </div>
-                                            ))
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  });
-                                })()}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="refcard__empty">No reference ranges available</div>
-                  )}
-                </div>
-              </div>
-            </div>
+              {/* Divider */}
+              <div style={{ height: 1, background: '#eef2f7', margin: '16px 0' }} />
 
-            {/* Track Questions */}
-            <div className="card" style={{ marginTop: 16 }}>
-              <div className="card__header">Track Questions</div>
-              <div className="card__body">
+              {/* Track Questions Section */}
+              <div className="track-section">
+                <div style={{ fontWeight: 800, color: '#0b1637', marginBottom: 12 }}>Track Questions</div>
                 <div className="trk-controls">
                   <div className="trk-filters">
                     {['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((f) => (
@@ -1811,16 +1722,106 @@ export default function GroupPractice() {
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* <div className="card" style={{ marginTop: 16 }}>
-              <div className="card__header">Quick Actions</div>
-              <div className="card__body quick-actions">
-                <button className="qa-btn"><LuBookOpen /> View in Textbook</button>
-                <button className="qa-btn"><LuShare2 /> Share Question</button>
-                <button className="qa-btn"><LuPlus /> Add to Review Deck</button>
+          {isSubmitted && (
+            <div style={{ gridColumn: '1', gridRow: result ? '4' : '3' }}>
+              <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
+            </div>
+          )}
+
+          {/* Reference Ranges - Right Sidebar (only card) */}
+          <div className="pr__aside">
+            <div className="card">
+              <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>Reference Ranges</div>
+                <button className="btn btn--ghost btn--icon" onClick={() => setShowRef(s => !s)}>{showRef ? 'Hide' : 'Show'}</button>
               </div>
-            </div> */}
-
+              <div className={`refcard__content ${showRef ? 'is-open' : ''}`}>
+                <div className="refcard__inner">
+                  {refRanges && refRanges.length > 0 ? (
+                    <div className="refacc">
+                      {refRanges.map((grp) => {
+                        const isOpen = openGroupId === grp.id
+                        return (
+                          <div key={grp.id} className={`refacc__section ${isOpen ? 'is-open' : ''}`}>
+                            <button className="refacc__btn" onClick={() => {
+                              setOpenGroupId(prev => (prev === grp.id ? null : grp.id))
+                            }}>
+                              <span className="refacc__title">{grp.title}</span>
+                              <span className="refacc__caret" aria-hidden>▾</span>
+                            </button>
+                            <div className="refacc__panel" style={{ maxHeight: isOpen ? 'none' : 0 }}>
+                              <div className="refcat__items">
+                                {(() => {
+                                  const groups = {};
+                                  for (const it of (grp.items || [])) {
+                                    const key = `${it.analyte}||${it.unit || ''}`;
+                                    if (!groups[key]) {
+                                      groups[key] = { analyte: it.analyte, unit: it.unit || null, populations: [] };
+                                    }
+                                    const label = (it.population || '').trim();
+                                    groups[key].populations.push({
+                                      label: label,
+                                      isGeneral: label.toLowerCase() === 'general' || label === ''
+                                      , value: it.value_text
+                                    });
+                                  }
+                                  const rows = Object.values(groups);
+                                  return rows.map((row, idx) => {
+                                    const specific = row.populations.filter(p => !p.isGeneral);
+                                    const general = row.populations.find(p => p.isGeneral) || null;
+                                    const toShow = specific.length > 0 ? specific : (general ? [general] : []);
+                                    const weight = (label) => {
+                                      const L = (label || '').toLowerCase().trim();
+                                      if (L === 'male') return 0;
+                                      if (L === 'female') return 1;
+                                      return 2;
+                                    };
+                                    const sortedToShow = Array.isArray(toShow)
+                                      ? [...toShow].sort((a, b) => {
+                                        const dw = weight(a.label) - weight(b.label);
+                                        if (dw !== 0) return dw;
+                                        return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
+                                      })
+                                      : toShow;
+                                    return (
+                                      <div key={idx} className="refrow refrow--grouped">
+                                        <div className="refrow__left">
+                                          <div className="refrow__analyte">{row.analyte}</div>
+                                        </div>
+                                        <div className="refrow__right refrow__right--groups">
+                                          {toShow.length === 1 && toShow[0].isGeneral ? (
+                                            <div className="refrow__valueblock">
+                                              <div className="refrow__value">{toShow[0].value}</div>
+                                              {row.unit && <div className="refrow__unit">{row.unit}</div>}
+                                            </div>
+                                          ) : (
+                                            sortedToShow.map((p, j) => (
+                                              <div key={j} className="refrow__valueblock">
+                                                <div className="refrow__poplabel">{p.label}</div>
+                                                <div className="refrow__value">{p.value}</div>
+                                                {row.unit && <div className="refrow__unit">{row.unit}</div>}
+                                              </div>
+                                            ))
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  });
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="refcard__empty">No reference ranges available</div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
