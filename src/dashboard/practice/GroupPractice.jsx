@@ -5,6 +5,7 @@ import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuArrowLeft, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuUsers } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
+import ReferenceRangesPanel from './ReferenceRangesPanel'
 import { io } from 'socket.io-client'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
@@ -1850,96 +1851,13 @@ export default function GroupPractice() {
             </div>
 
             {/* Reference Ranges Card */}
-            <div className="card refcard">
-              <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>Reference Ranges</div>
-                <button className="btn btn--ghost btn--icon" onClick={() => setShowRef(s => !s)}>{showRef ? 'Hide' : 'Show'}</button>
-              </div>
-              <div className={`refcard__content ${showRef ? 'is-open' : ''}`}>
-                <div className="refcard__inner">
-                  {refRanges && refRanges.length > 0 ? (
-                    <div className="refacc">
-                      {refRanges.map((grp) => {
-                        const isOpen = openGroupId === grp.id
-                        return (
-                          <div key={grp.id} className={`refacc__section ${isOpen ? 'is-open' : ''}`}>
-                            <button className="refacc__btn" onClick={() => {
-                              setOpenGroupId(prev => (prev === grp.id ? null : grp.id))
-                            }}>
-                              <span className="refacc__title">{grp.title}</span>
-                              <span className="refacc__caret" aria-hidden>▾</span>
-                            </button>
-                            <div className="refacc__panel" style={{ maxHeight: isOpen ? 'none' : 0 }}>
-                              <div className="refcat__items">
-                                {(() => {
-                                  const groups = {};
-                                  for (const it of (grp.items || [])) {
-                                    const key = `${it.analyte}||${it.unit || ''}`;
-                                    if (!groups[key]) {
-                                      groups[key] = { analyte: it.analyte, unit: it.unit || null, populations: [] };
-                                    }
-                                    const label = (it.population || '').trim();
-                                    groups[key].populations.push({
-                                      label: label,
-                                      isGeneral: label.toLowerCase() === 'general' || label === ''
-                                      , value: it.value_text
-                                    });
-                                  }
-                                  const rows = Object.values(groups);
-                                  return rows.map((row, idx) => {
-                                    const specific = row.populations.filter(p => !p.isGeneral);
-                                    const general = row.populations.find(p => p.isGeneral) || null;
-                                    const toShow = specific.length > 0 ? specific : (general ? [general] : []);
-                                    const weight = (label) => {
-                                      const L = (label || '').toLowerCase().trim();
-                                      if (L === 'male') return 0;
-                                      if (L === 'female') return 1;
-                                      return 2;
-                                    };
-                                    const sortedToShow = Array.isArray(toShow)
-                                      ? [...toShow].sort((a, b) => {
-                                        const dw = weight(a.label) - weight(b.label);
-                                        if (dw !== 0) return dw;
-                                        return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
-                                      })
-                                      : toShow;
-                                    return (
-                                      <div key={idx} className="refrow refrow--grouped">
-                                        <div className="refrow__left">
-                                          <div className="refrow__analyte">{row.analyte}</div>
-                                        </div>
-                                        <div className="refrow__right refrow__right--groups">
-                                          {toShow.length === 1 && toShow[0].isGeneral ? (
-                                            <div className="refrow__valueblock">
-                                              <div className="refrow__value">{toShow[0].value}</div>
-                                              {row.unit && <div className="refrow__unit">{row.unit}</div>}
-                                            </div>
-                                          ) : (
-                                            sortedToShow.map((p, j) => (
-                                              <div key={j} className="refrow__valueblock">
-                                                <div className="refrow__poplabel">{p.label}</div>
-                                                <div className="refrow__value">{p.value}</div>
-                                                {row.unit && <div className="refrow__unit">{row.unit}</div>}
-                                              </div>
-                                            ))
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  });
-                                })()}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="refcard__empty">No reference ranges available</div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <ReferenceRangesPanel
+              refRanges={refRanges}
+              showRef={showRef}
+              setShowRef={setShowRef}
+              openGroupId={openGroupId}
+              setOpenGroupId={setOpenGroupId}
+            />
           </div>
         </div>
       )}
