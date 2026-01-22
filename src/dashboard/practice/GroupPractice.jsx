@@ -5,6 +5,7 @@ import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuArrowLeft, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuUsers } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
+import ReferenceRangesPanel from './ReferenceRangesPanel'
 import { io } from 'socket.io-client'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
@@ -70,27 +71,28 @@ export default function GroupPractice() {
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
+  const hasLoadedRef = useRef(false) // Prevent double-loading of session
 
   const getOffsetWithinStem = (targetNode, nodeOffset) => {
-  if (!stemRef.current) return null
+    if (!stemRef.current) return null
 
-  const walker = document.createTreeWalker(
-    stemRef.current,
-    NodeFilter.SHOW_TEXT,
-    null
-  )
+    const walker = document.createTreeWalker(
+      stemRef.current,
+      NodeFilter.SHOW_TEXT,
+      null
+    )
 
-  let pos = 0
-  let node = walker.nextNode()
+    let pos = 0
+    let node = walker.nextNode()
 
-  while (node) {
-    if (node === targetNode) return pos + nodeOffset
-    pos += node.textContent.length
-    node = walker.nextNode()
+    while (node) {
+      if (node === targetNode) return pos + nodeOffset
+      pos += node.textContent.length
+      node = walker.nextNode()
+    }
+
+    return null
   }
-
-  return null
-}
 
   // Group session state
   const [serverTimerEndTime, setServerTimerEndTime] = useState(null)
@@ -124,8 +126,9 @@ export default function GroupPractice() {
   const [sessionTotalMs, setSessionTotalMs] = useState(0)
   const [questionStartTime, setQuestionStartTime] = useState(Date.now())
 
-  // Responsive tracker grid size
-  const [trackerChunkSize, setTrackerChunkSize] = useState(35)
+  // Responsive tracker grid size - 50 questions per page for pagination
+  const QUESTIONS_PER_PAGE = 50
+  const [selectedRangeIdx, setSelectedRangeIdx] = useState(0)
 
   const { display, running, toggle, seconds } = useCountdown(timerMinutes * 60, serverTimerEndTime)
 
@@ -163,6 +166,9 @@ export default function GroupPractice() {
       navigate('/dashboard/question-bank')
       return
     }
+    // Prevent double-loading (can happen in StrictMode or rapid re-renders)
+    if (hasLoadedRef.current) return
+    hasLoadedRef.current = true
     loadGroupSession()
   }, [roomCode])
 
@@ -171,20 +177,20 @@ export default function GroupPractice() {
     if (!isHost || !questions || questions.length === 0 || participants.length === 0) return
     if (isReviewing) return // Don't auto-reveal when reviewing past questions
     if (!socketRef.current) return
-    
+
     const currentQuestion = questions[currentIndex]
     if (!currentQuestion) return
-    
+
     // Check if this question is already revealed
     if (revealedQuestions.has(currentQuestion.id)) return
-    
+
     // Get answers for current question
     const answerKey = `${currentQuestion.id}_${currentIndex}`
     const currentAnswers = questionAnswers[answerKey] || []
-    
+
     // Count unique participants who have answered
     const uniqueAnsweredUsers = new Set(currentAnswers.map(a => a.user_id))
-    
+
     // Check if all participants (including host) have answered
     if (uniqueAnsweredUsers.size === participants.length && currentAnswers.length > 0) {
       console.log(`✅ All ${participants.length} participants have answered question ${currentIndex} - auto-revealing`)
@@ -236,7 +242,7 @@ export default function GroupPractice() {
         return updated
       })
     })
-    
+
     // Answers revealed to everyone (just marks as revealed, answers already stored)
     socketRef.current.on('answers-revealed', (data) => {
       console.log('Answers revealed:', data)
@@ -249,7 +255,7 @@ export default function GroupPractice() {
       // Server controls question progression
       const newIndex = data.question_index
       setServerCurrentIndex(newIndex)
-      
+
       // If user is reviewing, they can stay on their current question
       // Otherwise, move to the new server question
       if (!isReviewing) {
@@ -374,12 +380,12 @@ export default function GroupPractice() {
         return
       }
 
-        setQuestions(data.questions)
-        // Start at question 0 - server will control progression
-        setCurrentIndex(0)
-        setServerCurrentIndex(0)
-        loadCurrentQuestion(0, data.questions)
-        setQuestionStartTime(Date.now())
+      setQuestions(data.questions)
+      // Start at question 0 - server will control progression
+      setCurrentIndex(0)
+      setServerCurrentIndex(0)
+      loadCurrentQuestion(0, data.questions)
+      setQuestionStartTime(Date.now())
 
       // Load any existing answers for the current question from database
       if (socketRef.current && data.questions[0]) {
@@ -430,6 +436,7 @@ export default function GroupPractice() {
 
     setTab('quick')
     setQuestionStartTime(Date.now())
+    setShowRef(false) // Reset reference ranges to collapsed on question change
     // Reset carousel index when question changes
     setAssetIdx(0)
   }
@@ -441,7 +448,12 @@ export default function GroupPractice() {
       setCurrentIndex(prevIndex)
       loadCurrentQuestion(prevIndex, questions)
       setIsReviewing(true)
-      
+      // Auto-update range if navigating to a different range
+      const newRange = Math.floor(prevIndex / QUESTIONS_PER_PAGE)
+      if (newRange !== selectedRangeIdx) {
+        setSelectedRangeIdx(newRange)
+      }
+
       // Load answers from database for this past question
       const prevQuestion = questions[prevIndex]
       if (prevQuestion && socketRef.current) {
@@ -453,25 +465,30 @@ export default function GroupPractice() {
       }
     }
   }
-  
+
   const goToNextForReview = () => {
     // Allow navigation to next questions for review
     // Only allow going forward to questions that have been completed (submitted by everyone)
     // i.e., questions that are at or before serverCurrentIndex
     if (currentIndex < questions.length - 1) {
       const nextIndex = currentIndex + 1
-      
+
       // Only allow forward navigation to questions that have been completed
       // (questions at or before serverCurrentIndex)
       if (nextIndex > serverCurrentIndex) {
         console.log('Cannot navigate forward - question not completed yet')
         return
       }
-      
+
       setCurrentIndex(nextIndex)
       loadCurrentQuestion(nextIndex, questions)
       setIsReviewing(true)
-      
+      // Auto-update range if navigating to a different range
+      const newRange = Math.floor(nextIndex / QUESTIONS_PER_PAGE)
+      if (newRange !== selectedRangeIdx) {
+        setSelectedRangeIdx(newRange)
+      }
+
       // Load answers from database for this past question
       const nextQuestion = questions[nextIndex]
       if (nextQuestion && socketRef.current) {
@@ -483,24 +500,29 @@ export default function GroupPractice() {
       }
     }
   }
-  
+
   const goToCurrentQuestion = () => {
     // Return to the server-controlled current question
     setIsReviewing(false)
     setCurrentIndex(serverCurrentIndex)
     loadCurrentQuestion(serverCurrentIndex, questions)
+    // Auto-update range to match current server question
+    const newRange = Math.floor(serverCurrentIndex / QUESTIONS_PER_PAGE)
+    if (newRange !== selectedRangeIdx) {
+      setSelectedRangeIdx(newRange)
+    }
   }
 
   const revealAnswers = () => {
     // Host reveals answers to everyone
     if (!isHost || !socketRef.current) return
-    
+
     const currentQuestion = questions[currentIndex]
     if (currentQuestion) {
       // Get all collected answers from local state
       const answerKey = `${currentQuestion.id}_${currentIndex}`
       const collectedAnswers = questionAnswers[answerKey] || []
-      
+
       // Send reveal event with collected answers (for database saving)
       socketRef.current.emit('reveal-answers', {
         room_code: roomCode,
@@ -556,17 +578,50 @@ export default function GroupPractice() {
 
     const stemText = currentQ.stem || ''
     const isMarkdownStem = hasMarkdown(stemText)
-    
+
     if (isMarkdownStem) {
       const selectedTextTrimmed = selectedText.trim()
       if (!selectedTextTrimmed) return
-      
-      const startIndex = stemText.indexOf(selectedTextTrimmed)
-      if (startIndex === -1) return
-      
+
+      // Calculate estimated position based on DOM selection
+      let estimatedPosition = 0
+      if (selection.rangeCount > 0) {
+        const preRange = document.createRange()
+        preRange.selectNodeContents(stemRef.current)
+        preRange.setEnd(range.startContainer, range.startOffset)
+        const textBefore = preRange.toString()
+        estimatedPosition = textBefore.length
+      }
+
+      // Find all occurrences of the selected text
+      const findAllOccurrences = (text, search) => {
+        const indices = []
+        let idx = text.indexOf(search)
+        while (idx !== -1) {
+          indices.push({ index: idx, length: search.length })
+          idx = text.indexOf(search, idx + 1)
+        }
+        return indices
+      }
+
+      const occurrences = findAllOccurrences(stemText, selectedTextTrimmed)
+      if (occurrences.length === 0) return
+
+      // Find the occurrence closest to the estimated position
+      let bestMatch = occurrences[0]
+      let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
+
+      for (let i = 1; i < occurrences.length; i++) {
+        const distance = Math.abs(occurrences[i].index - estimatedPosition)
+        if (distance < minDistance) {
+          minDistance = distance
+          bestMatch = occurrences[i]
+        }
+      }
+
       const newHighlight = {
-        start: startIndex,
-        end: startIndex + selectedTextTrimmed.length,
+        start: bestMatch.index,
+        end: bestMatch.index + bestMatch.length,
         text: selectedTextTrimmed,
         id: Date.now()
       }
@@ -616,52 +671,75 @@ export default function GroupPractice() {
     const currentQ = questions[currentIndex]
     if (!selection || selection.isCollapsed || !currentQ) return
 
-    const selectedText = selection.toString().trim()
-    if (!selectedText) return
+    const selectedText = selection.toString()
+    if (!selectedText || !selectedText.trim()) return
 
-    const range = selection.getRangeAt(0)
-    const start = range.startOffset
-    const end = range.endOffset
-    const container = range.startContainer
+    const originalText = currentQ.stem || ''
 
-    // Get the text content and position relative to stem
-    let fullText = stemRef.current?.textContent || ''
-    let actualStart = 0
+    let estimatedPosition = 0
 
-    // Find position in full text
-    const walker = document.createTreeWalker(
-      stemRef.current,
-      NodeFilter.SHOW_TEXT,
-      null
-    )
-
-    let currentPos = 0
-    let node = walker.nextNode()
-    while (node) {
-      if (node === container) {
-        actualStart = currentPos + start
-        break
-      }
-      currentPos += node.textContent.length
-      node = walker.nextNode()
+    if (stemRef.current && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const preRange = document.createRange()
+      preRange.selectNodeContents(stemRef.current)
+      preRange.setEnd(range.startContainer, range.startOffset)
+      const textBefore = preRange.toString()
+      estimatedPosition = textBefore.replace(/\s+/g, ' ').length
     }
 
-    const actualEnd = actualStart + selectedText.length
+    const normalizedSelected = selectedText.replace(/\s+/g, ' ').trim()
+    const findAllOccurrences = (text, search) => {
+      const indices = []
+      let idx = text.indexOf(search)
+      while (idx !== -1) {
+        indices.push({ index: idx, length: search.length, exact: true })
+        idx = text.indexOf(search, idx + 1)
+      }
+
+      if (indices.length === 0) {
+        const escapedText = normalizedSelected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const pattern = escapedText.split(' ').join('\\s+')
+        const regex = new RegExp(pattern, 'g')
+        let match
+        while ((match = regex.exec(text)) !== null) {
+          indices.push({ index: match.index, length: match[0].length, exact: false })
+        }
+      }
+
+      return indices
+    }
+
+    const occurrences = findAllOccurrences(originalText, selectedText)
+
+    if (occurrences.length === 0) return
+
+    // Find the occurrence closest to the estimated position
+    let bestMatch = occurrences[0]
+    let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
+
+    for (let i = 1; i < occurrences.length; i++) {
+      const distance = Math.abs(occurrences[i].index - estimatedPosition)
+      if (distance < minDistance) {
+        minDistance = distance
+        bestMatch = occurrences[i]
+      }
+    }
+
+    const startIndex = bestMatch.index
+    const endIndex = startIndex + bestMatch.length
+    const matchedText = originalText.slice(startIndex, endIndex)
 
     const newHighlight = {
-      start: actualStart,
-      end: actualEnd,
-      text: selectedText,
+      start: startIndex,
+      end: endIndex,
+      text: matchedText,
       id: Date.now()
     }
 
     setHighlights(prev => {
       const current = prev[currentQ.id] || []
-
-      // Add new highlight and merge overlapping ones
       const allHighlights = [...current, newHighlight]
       const merged = mergeOverlappingHighlights(allHighlights)
-
       return { ...prev, [currentQ.id]: merged }
     })
 
@@ -733,8 +811,40 @@ export default function GroupPractice() {
     const questionHighlights = highlights[questionId] || []
     if (questionHighlights.length === 0) return text
 
+    // Split highlights at paragraph boundaries (\n\n) to prevent breaking markdown structure
+    const expandedHighlights = []
+    questionHighlights.forEach((hl) => {
+      const highlightedText = text.slice(hl.start, hl.end)
+
+      // Check if highlight contains paragraph breaks
+      if (highlightedText.includes('\n\n')) {
+        // Split into segments at paragraph breaks
+        let currentPos = hl.start
+        const parts = highlightedText.split(/(\n\n+)/)
+
+        parts.forEach((part) => {
+          if (part.match(/^\n\n+$/)) {
+            // This is a paragraph break, skip it (don't highlight)
+            currentPos += part.length
+          } else if (part.length > 0) {
+            // This is text content, create a highlight for it
+            expandedHighlights.push({
+              start: currentPos,
+              end: currentPos + part.length,
+              text: part,
+              id: hl.id
+            })
+            currentPos += part.length
+          }
+        })
+      } else {
+        // No paragraph breaks, keep highlight as-is
+        expandedHighlights.push(hl)
+      }
+    })
+
     // Sort highlights by start position (reverse to insert from end to start)
-    const sorted = [...questionHighlights].sort((a, b) => b.start - a.start)
+    const sorted = [...expandedHighlights].sort((a, b) => b.start - a.start)
 
     let result = text
     sorted.forEach((hl) => {
@@ -742,9 +852,12 @@ export default function GroupPractice() {
       const highlighted = result.slice(hl.start, hl.end)
       const after = result.slice(hl.end)
 
+      // Replace single newlines with <br/> within highlights (but not paragraph breaks)
+      const highlightedWithBr = highlighted.replace(/\n(?!\n)/g, '<br/>')
+
       // Insert HTML with wrapper span that has the highlight ID
       result = before +
-        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="highlight">${highlighted}</mark></span>` +
+        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="highlight">${highlightedWithBr}</mark></span>` +
         after
     })
 
@@ -873,25 +986,29 @@ export default function GroupPractice() {
       parts.push({ text: text.slice(lastIndex), highlighted: false, key: 'text-end', highlightId: null })
     }
 
-    return parts.map(part =>
-      part.highlighted
-        ? (
-          <span key={part.key} className="highlight-wrapper">
-            <mark className="highlight">{part.text}</mark>
-            <button
-              className="highlight-remove-btn"
-              onClick={(e) => {
-                e.preventDefault()
-                removeHighlight(questionId, part.highlightId)
-              }}
-              title="Remove this highlight"
-              aria-label="Remove highlight"
-            >
-              ×
-            </button>
-          </span>
-        )
-        : <span key={part.key}>{part.text}</span>
+    return (
+      <span style={{ whiteSpace: 'pre-line' }}>
+        {parts.map(part =>
+          part.highlighted
+            ? (
+              <span key={part.key} className="highlight-wrapper">
+                <mark className="highlight">{part.text}</mark>
+                <button
+                  className="highlight-remove-btn"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    removeHighlight(questionId, part.highlightId)
+                  }}
+                  title="Remove this highlight"
+                  aria-label="Remove highlight"
+                >
+                  ×
+                </button>
+              </span>
+            )
+            : <span key={part.key}>{part.text}</span>
+        )}
+      </span>
     )
   }
 
@@ -998,7 +1115,9 @@ export default function GroupPractice() {
         specialtyId,
         specialtyName,
         studySetId,
-        studySetName
+        studySetName,
+        questions,
+        userAnswers
       }
     })
   }
@@ -1011,7 +1130,7 @@ export default function GroupPractice() {
 
     // Don't submit if already submitted
     if (submittedAnswers.has(questionId)) return
-    
+
     // Don't allow submitting when reviewing past questions
     if (isReviewing && currentIndex !== serverCurrentIndex) return
 
@@ -1121,22 +1240,7 @@ export default function GroupPractice() {
     }
   }
 
-  // Update tracker chunk size based on window width
-  useEffect(() => {
-    const updateChunkSize = () => {
-      if (window.innerWidth <= 768) {
-        setTrackerChunkSize(25)
-      } else if (window.innerWidth <= 1024) {
-        setTrackerChunkSize(35)
-      } else {
-        setTrackerChunkSize(35)
-      }
-    }
 
-    updateChunkSize()
-    window.addEventListener('resize', updateChunkSize)
-    return () => window.removeEventListener('resize', updateChunkSize)
-  }, [])
 
   // Keyboard shortcuts: 1-5 to select options, Enter to submit/next
   useEffect(() => {
@@ -1523,7 +1627,7 @@ export default function GroupPractice() {
                           )}
                           {!isHost && (
                             <div style={{ padding: '8px 16px', background: '#f1f5f9', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
-                              {revealedQuestions.has(questionId) 
+                              {revealedQuestions.has(questionId)
                                 ? 'Waiting for host to move to next question...'
                                 : 'Waiting for host to reveal answers...'}
                             </div>
@@ -1632,173 +1736,108 @@ export default function GroupPractice() {
             </div>
           )}
 
+          {/* Right Sidebar - Session Progress, Track Questions & Reference Ranges */}
           <div className="pr__aside">
-            <div className="card">
-              <div className="card__header">Session Progress</div>
-              <div className="card__body progress">
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#1f2937' }}>
-                  <div>Questions Completed</div>
-                  <div>{sessionAnswered}/{questions.length}</div>
-                </div>
-                <div className="progress__bar"><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
-                <div className="progress__stats" style={{ justifyContent: 'space-around' }}>
-                  <div>
-                    <div className="stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
-                    <div className="stat-label">Accuracy</div>
-                  </div>
-                  <div>
-                    <div className="stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
-                    <div className="stat-label">Avg Time</div>
-                  </div>
-                </div>
-                {/* <div style={{ height: 8, borderTop: '1px solid #eef2f7', marginTop: 10 }} />
-                <div style={{ color: '#1f2937', fontWeight: 700 }}>Weak Areas Detected</div>
-                <div style={{ height: 8 }} /> */}
-              </div>
-            </div>
-
-            {/* Reference Ranges */}
-            <div className="card" style={{ marginTop: 16 }}>
-              <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>Reference Ranges</div>
-                <button className="btn btn--ghost btn--icon" onClick={() => setShowRef(s => !s)}>{showRef ? 'Hide' : 'Show'}</button>
-              </div>
-              <div className={`refcard__content ${showRef ? 'is-open' : ''}`}>
-                <div className="refcard__inner">
-                  {refRanges && refRanges.length > 0 ? (
-                    <div className="refacc">
-                      {refRanges.map((grp) => {
-                        const isOpen = openGroupId === grp.id
-                        return (
-                          <div key={grp.id} className={`refacc__section ${isOpen ? 'is-open' : ''}`}>
-                            <button className="refacc__btn" onClick={() => {
-                              setOpenGroupId(prev => (prev === grp.id ? null : grp.id))
-                            }}>
-                              <span className="refacc__title">{grp.title}</span>
-                              <span className="refacc__caret" aria-hidden>▾</span>
-                            </button>
-                            <div className="refacc__panel" style={{ maxHeight: isOpen ? 'none' : 0 }}>
-                              <div className="refcat__items">
-                                {(() => {
-                                  const groups = {};
-                                  for (const it of (grp.items || [])) {
-                                    const key = `${it.analyte}||${it.unit || ''}`;
-                                    if (!groups[key]) {
-                                      groups[key] = { analyte: it.analyte, unit: it.unit || null, populations: [] };
-                                    }
-                                    const label = (it.population || '').trim();
-                                    groups[key].populations.push({
-                                      label: label,
-                                      isGeneral: label.toLowerCase() === 'general' || label === ''
-                                      , value: it.value_text
-                                    });
-                                  }
-                                  const rows = Object.values(groups);
-                                  return rows.map((row, idx) => {
-                                    const specific = row.populations.filter(p => !p.isGeneral);
-                                    const general = row.populations.find(p => p.isGeneral) || null;
-                                    const toShow = specific.length > 0 ? specific : (general ? [general] : []);
-                                    const weight = (label) => {
-                                      const L = (label || '').toLowerCase().trim();
-                                      if (L === 'male') return 0;
-                                      if (L === 'female') return 1;
-                                      return 2;
-                                    };
-                                    const sortedToShow = Array.isArray(toShow)
-                                      ? [...toShow].sort((a, b) => {
-                                        const dw = weight(a.label) - weight(b.label);
-                                        if (dw !== 0) return dw;
-                                        return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
-                                      })
-                                      : toShow;
-                                    return (
-                                      <div key={idx} className="refrow refrow--grouped">
-                                        <div className="refrow__left">
-                                          <div className="refrow__analyte">{row.analyte}</div>
-                                        </div>
-                                        <div className="refrow__right refrow__right--groups">
-                                          {toShow.length === 1 && toShow[0].isGeneral ? (
-                                            <div className="refrow__valueblock">
-                                              <div className="refrow__value">{toShow[0].value}</div>
-                                              {row.unit && <div className="refrow__unit">{row.unit}</div>}
-                                            </div>
-                                          ) : (
-                                            sortedToShow.map((p, j) => (
-                                              <div key={j} className="refrow__valueblock">
-                                                <div className="refrow__poplabel">{p.label}</div>
-                                                <div className="refrow__value">{p.value}</div>
-                                                {row.unit && <div className="refrow__unit">{row.unit}</div>}
-                                              </div>
-                                            ))
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  });
-                                })()}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="refcard__empty">No reference ranges available</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Track Questions */}
-            <div className="card" style={{ marginTop: 16 }}>
-              <div className="card__header">Track Questions</div>
+            {/* Combined Session Progress & Track Questions */}
+            <div className="card progress-tracker-card">
               <div className="card__body">
-                <div className="trk-controls">
+                {/* Session Progress Header */}
+                <div className="progress-tracker-header">
+                  <div className="progress-stats-row">
+                    <div className="progress-stat">
+                      <div className="progress-stat__value">{sessionAnswered}/{questions.length}</div>
+                      <div className="progress-stat__label">Completed</div>
+                    </div>
+                    <div className="progress-stat">
+                      <div className="progress-stat__value stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
+                      <div className="progress-stat__label">Accuracy</div>
+                    </div>
+                    <div className="progress-stat">
+                      <div className="progress-stat__value stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
+                      <div className="progress-stat__label">Avg Time</div>
+                    </div>
+                  </div>
+                  <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
+                </div>
+
+                {/* Track Questions Section - Paginated */}
+                <div className="track-section" style={{ marginTop: 16 }}>
+                  {/* Top row: Range selector + Filters */}
+                  <div className="trk-top-row">
+                    {/* Range dropdown */}
+                    {(() => {
+                      const totalRanges = Math.ceil(questions.length / QUESTIONS_PER_PAGE)
+                      const ranges = Array.from({ length: totalRanges }, (_, i) => {
+                        const start = i * QUESTIONS_PER_PAGE + 1
+                        const end = Math.min((i + 1) * QUESTIONS_PER_PAGE, questions.length)
+                        return { idx: i, label: `${start}-${end}` }
+                      })
+                      return (
+                        <select
+                          className="trk-range-select"
+                          value={selectedRangeIdx}
+                          onChange={(e) => setSelectedRangeIdx(parseInt(e.target.value, 10))}
+                        >
+                          {ranges.map((r) => (
+                            <option key={r.idx} value={r.idx}>
+                              Q {r.label}
+                            </option>
+                          ))}
+                        </select>
+                      )
+                    })()}
+
+                    {/* Jump input */}
+                    <div className="trk-jump">
+                      <input
+                        type="number"
+                        min="1"
+                        max={questions.length}
+                        placeholder="#"
+                        className="trk-input"
+                        value={trkJump}
+                        onChange={(e) => setTrkJump(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = parseInt(trkJump || '0', 10)
+                            if (val >= 1 && val <= questions.length) {
+                              const idx = val - 1
+                              setCurrentIndex(idx); loadCurrentQuestion(idx)
+                              setSelectedRangeIdx(Math.floor(idx / QUESTIONS_PER_PAGE))
+                              setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                            }
+                          }
+                        }}
+                      />
+                      <button className="btn btn--ghost btn--icon" onClick={() => {
+                        const val = parseInt(trkJump || '0', 10)
+                        if (val >= 1 && val <= questions.length) {
+                          const idx = val - 1
+                          setCurrentIndex(idx); loadCurrentQuestion(idx)
+                          setSelectedRangeIdx(Math.floor(idx / QUESTIONS_PER_PAGE))
+                          setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                        }
+                      }}>Go</button>
+                    </div>
+                  </div>
+
+                  {/* Filter chips */}
                   <div className="trk-filters">
                     {['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((f) => (
                       <button key={f} className={`chip ${trkFilter === f ? 'is-active' : ''}`} onClick={() => setTrkFilter(f)}>{f}</button>
                     ))}
                   </div>
-                  <div className="trk-jump">
-                    <input
-                      type="number"
-                      min="1"
-                      max={questions.length}
-                      placeholder="#"
-                      className="trk-input"
-                      value={trkJump}
-                      onChange={(e) => setTrkJump(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const val = parseInt(trkJump || '0', 10)
-                          if (val >= 1 && val <= questions.length) {
-                            const idx = val - 1
-                            setCurrentIndex(idx); loadCurrentQuestion(idx)
-                            setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
-                          }
-                        }
-                      }}
-                    />
-                    <button className="btn btn--ghost btn--icon" onClick={() => {
-                      const val = parseInt(trkJump || '0', 10)
-                      if (val >= 1 && val <= questions.length) {
-                        const idx = val - 1
-                        setCurrentIndex(idx); loadCurrentQuestion(idx)
-                        setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
-                      }
-                    }}>Go</button>
-                  </div>
-                </div>
 
-                <div className="trk-rows">
-                  {Array.from({ length: Math.ceil(questions.length / trackerChunkSize) }).map((_, rowIdx) => {
-                    const start = rowIdx * trackerChunkSize
-                    const end = Math.min(start + trackerChunkSize, questions.length)
-                    return (
-                      <div key={rowIdx} className="trk-row">
-                        <div className="trk-row__label">{start + 1}–{end}</div>
-                        <div className="trk-row__grid">
-                          {questions.slice(start, end).map((q, localIdx) => {
+                  {/* Question grid for selected range */}
+                  <div className="trk-grid-container">
+                    {(() => {
+                      const start = selectedRangeIdx * QUESTIONS_PER_PAGE
+                      const end = Math.min(start + QUESTIONS_PER_PAGE, questions.length)
+                      const rangeQuestions = questions.slice(start, end)
+
+                      return (
+                        <div className="trk-grid">
+                          {rangeQuestions.map((q, localIdx) => {
                             const idx = start + localIdx
                             const qid = q.id
                             const ua = userAnswers[qid]
@@ -1822,41 +1861,44 @@ export default function GroupPractice() {
                             )
                           })}
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {Array.from(flagged).length > 0 && (
-                  <div className="trk-flagged-rail">
-                    <div className="trk-rail__label">Flagged</div>
-                    <div className="trk-rail__list">
-                      {questions.map((q, idx) => flagged.has(q.id) ? (
-                        <button key={q.id} className="pill" onClick={() => { setCurrentIndex(idx); loadCurrentQuestion(idx); setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0) }}>{idx + 1}</button>
-                      ) : null)}
-                    </div>
+                      )
+                    })()}
                   </div>
-                )}
 
-                <div className="trk-legend">
-                  <span className="legend-item"><span className="legend-swatch swatch--correct" /> Correct</span>
-                  <span className="legend-item"><span className="legend-swatch swatch--wrong" /> Wrong</span>
-                  <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> Unanswered</span>
-                  <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
-                  <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>
+                  {Array.from(flagged).length > 0 && (
+                    <div className="trk-flagged-rail">
+                      <div className="trk-rail__label">Flagged</div>
+                      <div className="trk-rail__list">
+                        {questions.map((q, idx) => flagged.has(q.id) ? (
+                          <button key={q.id} className="pill" onClick={() => {
+                            setCurrentIndex(idx); loadCurrentQuestion(idx)
+                            setSelectedRangeIdx(Math.floor(idx / QUESTIONS_PER_PAGE))
+                            setTimeout(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, 0)
+                          }}>{idx + 1}</button>
+                        ) : null)}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="trk-legend">
+                    <span className="legend-item"><span className="legend-swatch swatch--correct" /> Correct</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--wrong" /> Wrong</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> Unanswered</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
+                    <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* <div className="card" style={{ marginTop: 16 }}>
-              <div className="card__header">Quick Actions</div>
-              <div className="card__body quick-actions">
-                <button className="qa-btn"><LuBookOpen /> View in Textbook</button>
-                <button className="qa-btn"><LuShare2 /> Share Question</button>
-                <button className="qa-btn"><LuPlus /> Add to Review Deck</button>
-              </div>
-            </div> */}
-
+            {/* Reference Ranges Card */}
+            <ReferenceRangesPanel
+              refRanges={refRanges}
+              showRef={showRef}
+              setShowRef={setShowRef}
+              openGroupId={openGroupId}
+              setOpenGroupId={setOpenGroupId}
+            />
           </div>
         </div>
       )}

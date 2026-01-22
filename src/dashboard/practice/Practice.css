@@ -74,7 +74,7 @@
   .pr__grid {
     display: grid;
     grid-template-columns: 1fr 380px;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
     gap: 16px;
     align-items: start;
   }
@@ -83,6 +83,56 @@
 .pr__grid>.card+.card {
   margin-top: 0;
 }
+
+/* Combined Progress + Tracker Card */
+.progress-tracker-card {
+  order: 3;
+}
+
+@media (min-width: 1024px) {
+  .progress-tracker-card {
+    grid-column: 1;
+    order: unset;
+  }
+}
+
+/* Progress Stats Row - horizontal layout */
+.progress-tracker-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.progress-stats-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: center;
+}
+
+.progress-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.progress-stat__value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0b1637;
+  white-space: nowrap;
+}
+
+.progress-stat__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 
 .question-card {
   display: flex;
@@ -238,17 +288,41 @@
 
 .pr__aside {
   order: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 @media (min-width: 1024px) {
   .pr__aside {
     grid-column: 2;
-    grid-row: 1 / span 3;
+    grid-row: 1 / span 4;
     position: sticky;
     top: 16px;
     align-self: start;
-    height: fit-content;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    overflow-x: hidden;
     order: unset;
+  }
+
+  /* Custom scrollbar for sidebar */
+  .pr__aside::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .pr__aside::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+
+  .pr__aside::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .pr__aside::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 }
 
@@ -257,6 +331,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Add spacing between stem and first option */
+.option-wrapper:first-of-type {
+  margin-top: 16px;
 }
 
 .option {
@@ -355,7 +434,7 @@
 
 .question-stem {
   user-select: text;
-  white-space: pre-line;
+  white-space: normal;
   line-height: 1.6;
   color: #000;
   font-weight: 500;
@@ -365,12 +444,26 @@
 /* SINGLE SOURCE OF VERTICAL SPACING */
 /* -------------------------------- */
 
-.question-stem > * {
-  margin: 0 0 12px 0;
+.question-stem>* {
+  margin: 0 0 8px 0;
 }
 
-.question-stem > *:last-child {
+.question-stem>*:last-child {
   margin-bottom: 0;
+}
+
+/* Hide empty paragraphs that create extra whitespace */
+.question-stem p:empty,
+.question-stem p:blank {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+}
+
+/* Collapse adjacent block margins */
+.question-stem>*+* {
+  margin-top: 0;
 }
 
 /* Never allow top margins inside question stem */
@@ -395,6 +488,16 @@
 
 .question-stem p {
   line-height: 1.6;
+  color: #000;
+  margin-bottom: 8px;
+}
+
+.question-stem p:last-child {
+  margin-bottom: 0;
+}
+
+.question-stem span {
+  color: inherit;
 }
 
 /* -------------------------------- */
@@ -411,9 +514,17 @@
   color: #0b1637;
 }
 
-.question-stem h1 { font-size: 1.5em; }
-.question-stem h2 { font-size: 1.3em; }
-.question-stem h3 { font-size: 1.1em; }
+.question-stem h1 {
+  font-size: 1.5em;
+}
+
+.question-stem h2 {
+  font-size: 1.3em;
+}
+
+.question-stem h3 {
+  font-size: 1.1em;
+}
 
 /* -------------------------------- */
 /* Lists */
@@ -430,7 +541,7 @@
   line-height: 1.6;
 }
 
-.question-stem li + li {
+.question-stem li+li {
   margin-top: 4px;
 }
 
@@ -521,36 +632,52 @@
 /* -------------------------------- */
 
 .highlight-wrapper {
-  display: contents;
+  display: inline;
   position: relative;
+  line-height: inherit;
 }
 
-.question-stem mark.highlight {
+.highlight-wrapper:hover .highlight-remove-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.question-stem mark.highlight,
+.highlight {
   background: #fef3c7;
   padding: 0;
   margin: 0;
   border: 0;
-  border-radius: 0;
+  border-radius: 2px;
   box-shadow: inset 0 -2px 0 #f59e0b;
   line-height: inherit;
-  color: inherit;
+  color: #000;
+  display: inline;
 }
-
 
 .highlight-remove-btn {
   position: absolute;
   top: -8px;
   right: -8px;
-
   width: 18px;
   height: 18px;
-
-  display: flex;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  border: 1px solid #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-
   opacity: 0;
   pointer-events: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  padding: 0;
+  z-index: 10;
 }
 
 .highlight-remove-btn:hover {
@@ -583,63 +710,33 @@
   box-shadow: 0 6px 16px rgba(251, 191, 36, 0.5);
 }
 
-.highlight-wrapper {
-  display: inline;
-  position: relative;
-  line-height: inherit;
-}
-
-.highlight {
-  background: #fff3a0;
-  padding: 0;
-  margin: 0;
-  line-height: inherit;
-  display: inline;
-  vertical-align: baseline;
-}
-/* ================================================= */
-/* FINAL HARD FIX — eliminate phantom spacing */
-/* ================================================= */
-
-/* 1. Force-highlight wrapper to be layout-neutral */
-.question-stem .highlight-wrapper {
-  display: contents !important;
-}
-
-/* 2. Ensure no inline wrapper can affect block layout */
-.question-stem .highlight-wrapper > * {
-  display: inherit;
-}
-
-/* 3. Kill empty text blocks produced by highlighter */
+/* Kill empty text blocks produced by highlighter */
 .question-stem p:empty {
   display: none !important;
   margin: 0 !important;
   padding: 0 !important;
+  height: 0 !important;
+  line-height: 0 !important;
 }
 
-/* Handles <p><br></p> */
-.question-stem p > br:only-child {
+/* Handles <p><br></p> - hide these completely */
+.question-stem p>br:only-child {
   display: none !important;
 }
+
 .question-stem p:has(> br:only-child) {
+  display: none !important;
   margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
 }
 
-/* 4. Remove whitespace-only text nodes effect */
-.question-stem {
-  font-size: 0;
-}
-.question-stem > * {
-  font-size: 16px; /* restore normal text */
-}
-
-/* 5. Ensure tables never inherit spacing from wrappers */
+/* Ensure tables never inherit spacing from wrappers */
 .question-stem table {
   display: table !important;
   margin-top: 0 !important;
+  margin-bottom: 8px !important;
 }
-
 
 @keyframes fadeInDown {
   from {
@@ -1344,9 +1441,9 @@ input:checked+.toggle-slider:before {
     grid-row: auto;
   }
 
-  /* Question tracker - 35 per row on tablets/small laptops */
+  /* Question tracker - dynamic grid on tablets/small laptops */
   .trk-row__grid {
-    grid-template-columns: repeat(35, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(10px, 1fr));
     width: 100%;
   }
 }
@@ -1450,16 +1547,14 @@ input:checked+.toggle-slider:before {
     gap: 8px;
   }
 
-  /* Track questions */
-  .trk-controls {
+  /* Track questions - paginated */
+  .trk-top-row {
     flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+    gap: 8px;
   }
 
-  .trk-filters {
+  .trk-range-select {
     width: 100%;
-    justify-content: flex-start;
   }
 
   .trk-jump {
@@ -1469,27 +1564,28 @@ input:checked+.toggle-slider:before {
 
   .trk-input {
     flex: 1;
-    max-width: 80px;
+    max-width: 70px;
   }
 
-  /* Question tracker - 25 per row on mobile */
-  .trk-row {
-    grid-template-columns: 45px 1fr;
-    gap: 6px;
+  .trk-filters {
+    margin-bottom: 10px;
   }
 
-  .trk-row__label {
+  .chip {
+    height: 24px;
     font-size: 11px;
+    padding: 0 8px;
   }
 
-  .trk-row__grid {
-    grid-template-columns: repeat(25, minmax(0, 1fr));
-    gap: 2px;
-    width: 100%;
+  /* Question grid on mobile */
+  .trk-grid {
+    grid-template-columns: repeat(auto-fill, minmax(14px, 1fr));
+    gap: 3px;
   }
 
   .seg {
-    height: 10px;
+    height: 12px;
+    min-width: 12px;
   }
 
   /* Progress stats - keep in row */
@@ -1578,7 +1674,8 @@ input:checked+.toggle-slider:before {
 }
 
 .refcard__content.is-open {
-  max-height: 1200px;
+  max-height: 5000px;
+  overflow-y: visible;
 }
 
 .refcard__inner {
@@ -1743,33 +1840,66 @@ input:checked+.toggle-slider:before {
   padding: 2px 8px;
 }
 
-/* Track Questions - Segmented Navigator */
-.trk-controls {
+/* Track Questions - Paginated Navigator */
+.trk-top-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 10px;
+}
+
+.trk-range-select {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  color: #0b1637;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23475569' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.trk-range-select:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.trk-range-select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .trk-filters {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+  margin-bottom: 12px;
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
 }
 
 .chip {
-  height: 28px;
+  height: 26px;
   padding: 0 10px;
   border-radius: 999px;
   border: 1px solid #e5e7eb;
   background: #fff;
   cursor: pointer;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   color: #334155;
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
+  white-space: nowrap;
 }
 
 .chip.is-active {
@@ -1786,46 +1916,46 @@ input:checked+.toggle-slider:before {
 }
 
 .trk-input {
-  width: 64px;
-  height: 32px;
+  width: 50px;
+  height: 34px;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
   padding: 0 8px;
   font-family: 'Urbanist', ui-sans-serif, system-ui;
+  font-size: 13px;
+  text-align: center;
 }
 
-.trk-rows {
+.trk-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Question grid container */
+.trk-grid-container {
+  margin-bottom: 12px;
+}
+
+.trk-grid {
   display: grid;
-  gap: 10px;
-}
-
-.trk-row {
-  display: grid;
-  grid-template-columns: 60px 1fr;
-  align-items: center;
-  gap: 8px;
-}
-
-.trk-row__label {
-  font-size: 12px;
-  color: #475569;
-  font-weight: 700;
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
-}
-
-.trk-row__grid {
-  display: grid;
-  grid-template-columns: repeat(35, minmax(0, 1fr));
-  gap: 3px;
+  grid-template-columns: repeat(auto-fill, minmax(18px, 1fr));
+  gap: 4px;
   width: 100%;
 }
 
 .seg {
-  height: 12px;
+  height: 14px;
+  min-width: 10px;
   border-radius: 3px;
   border: 1px solid #cbd5e1;
   background: #e2e8f0;
   cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.seg:hover {
+  transform: scale(1.1);
 }
 
 .seg--unanswered {
@@ -1893,11 +2023,11 @@ input:checked+.toggle-slider:before {
 
 .trk-legend {
   display: flex;
-  gap: 12px;
+  gap: 8px 12px;
   align-items: center;
   color: #0b1637;
-  font-size: 12px;
-  margin-top: 10px;
+  font-size: 11px;
+  margin-top: 12px;
   flex-wrap: wrap;
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
 }
@@ -1938,4 +2068,128 @@ input:checked+.toggle-slider:before {
 .swatch--flagged {
   background: #227ae5;
   border-color: #3b82f6;
+}
+
+/* ============================== */
+/* Review Mode Styles */
+/* ============================== */
+
+.pr--review-mode {
+  background: linear-gradient(180deg, #f0f4ff 0%, var(--surface-app) 100px);
+}
+
+.pr--review-mode .pr__top {
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+/* Review mode badge in sidebar */
+.review-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.review-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Review status badges in controls */
+.review-status-badge {
+  display: flex;
+  align-items: center;
+}
+
+.review-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.review-status--correct {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #86efac;
+}
+
+.review-status--incorrect {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.review-status--skipped {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e5e7eb;
+}
+
+/* Stat value red color */
+.stat--red {
+  color: #dc2626;
+}
+
+/* Progress stats row for review mode - 4 columns horizontal */
+.review-stats-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.review-stats-row .progress-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 50px;
+}
+
+.review-stats-row .progress-stat__value {
+  font-size: 20px;
+}
+
+.review-stats-row .progress-stat__label {
+  font-size: 11px;
+}
+
+@media (max-width: 768px) {
+  .review-stats-row {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  
+  .review-stats-row .progress-stat {
+    min-height: 45px;
+  }
+  
+  .review-stats-row .progress-stat__value {
+    font-size: 18px;
+  }
+  
+  .review-stats-row .progress-stat__label {
+    font-size: 10px;
+  }
+  
+  .review-status {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
 }

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './PracticeResults.css'
 import './PracticeSetup.css'
-import { LuChevronLeft, LuArrowRight, LuBookOpen } from 'react-icons/lu'
+import { LuChevronLeft, LuArrowRight, LuBookOpen, LuEye } from 'react-icons/lu'
 
 function useResultsData() {
   const location = useLocation()
@@ -23,8 +23,32 @@ export default function PracticeResults() {
     totalMs = 0, 
     perQuestionMs,
     weakTopics = [],
-    topicPerformance = []
+    topicPerformance = [],
+    questions = [],
+    userAnswers = {}
   } = useResultsData()
+
+  // Navigate to practice page in review mode
+  const enterReviewMode = () => {
+    navigate('/dashboard/question-bank/practice', {
+      state: {
+        reviewMode: true,
+        questions,
+        userAnswers,
+        sessionStats: {
+          totalQuestions,
+          correct,
+          skipped,
+          totalMs,
+          perQuestionMs,
+          specialtyName,
+          specialtyId,
+          studySetId,
+          studySetName
+        }
+      }
+    })
+  }
 
   const incorrect = Math.max(totalQuestions - correct - (skipped || 0), 0)
   const attempted = totalQuestions - (skipped || 0)
@@ -92,6 +116,11 @@ export default function PracticeResults() {
               <li><span className="dot dot--amber" /> {skipped} skipped questions</li>
             </ul>
             <div className="prr-bar"><div className="prr-fill" style={{ width: `${accuracyPct}%` }} /></div>
+            {questions.length > 0 && (
+              <button className="btn btn--primary btn--icon" onClick={enterReviewMode}>
+                <LuEye size={16} /> Review Your Answers
+              </button>
+            )}
           </div>
         </div>
 

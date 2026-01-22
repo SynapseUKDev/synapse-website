@@ -231,6 +231,7 @@
 /* Cards equalize height */
 .prr__grid--top .prr-card { height: 100%; }
 .prr-card__body { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+.prr-card__body > .btn { width: fit-content; }
 .prr-card { display: flex; flex-direction: column; }
 .prr-card .card__body { flex: 1 1 auto; }
 
@@ -500,3 +501,5 @@
   font-family: 'Urbanist', ui-sans-serif, system-ui; 
 }
 .prr__back:hover { background: var(--surface-tint-cyan); border-color: #b6f6fc; color: var(--syn-navy-700); }
+
+
