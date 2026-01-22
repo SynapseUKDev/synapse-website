@@ -1197,9 +1197,10 @@ export default function GroupPractice() {
   const questionId = currentQuestion?.id
   const userAnswer = userAnswers[questionId]
   const isSubmitted = submittedAnswers.has(questionId)
+  const isRevealed = revealedQuestions.has(questionId)
 
-  // Get result data for explanation display
-  const result = isSubmitted ? {
+  // Get result data for explanation display - only show when question is revealed
+  const result = (isSubmitted && isRevealed) ? {
     is_correct: userAnswer?.isCorrect || false,
     correct_option: currentQuestion.type === 'MCQ' ? {
       id: currentQuestion.correct_answer,
@@ -1432,7 +1433,7 @@ export default function GroupPractice() {
                             </button>
                           )}
                           {/* Show who answered this option - only if answers are revealed */}
-                          {isSubmitted && revealedQuestions.has(questionId) && (() => {
+                          {isSubmitted && isRevealed && (() => {
                             const answerKey = `${questionId}_${currentIndex}`
                             const answersForOption = (questionAnswers[answerKey] || []).filter(a => a.answer === o.id)
                             if (answersForOption.length === 0) return null
@@ -1453,7 +1454,8 @@ export default function GroupPractice() {
                                       key={a.user_id}
                                       style={{
                                         padding: '4px 8px',
-                                        background: a.is_correct ? '#22c55e' : '#f59e0b',
+                                        // Only show correctness badge when revealed
+                                        background: isRevealed ? (a.is_correct ? '#22c55e' : '#f59e0b') : '#64748b',
                                         color: '#fff',
                                         borderRadius: 4,
                                         fontSize: 12,
