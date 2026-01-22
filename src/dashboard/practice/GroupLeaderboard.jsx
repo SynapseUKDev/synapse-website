@@ -430,21 +430,22 @@ export default function GroupLeaderboard() {
           </div>
         </div>
 
-        <div className="card" style={{ marginTop: 24 }}>
-          <div className="card__header">
-            <h3>Review Session</h3>
-          </div>
-          <div className="card__body">
-            <p style={{ margin: '0 0 16px 0', color: '#64748b' }}>
-              Review all questions and see what everyone answered
-            </p>
-            <button
-              className="btn btn--primary"
-              onClick={loadReviewData}
-              disabled={loadingReview || !session_id}
-            >
-              Review Questions
-            </button>
+        <div className="card" style={{ marginTop: 0 }}>
+          <div className="card__body" style={{ padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Review Session</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Review all questions and answers</div>
+              </div>
+              <button
+                className="btn btn--primary"
+                onClick={loadReviewData}
+                disabled={loadingReview || !session_id}
+                style={{ flexShrink: 0 }}
+              >
+                Review Questions
+              </button>
+            </div>
           </div>
         </div>
       </div>
