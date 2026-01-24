@@ -559,7 +559,7 @@
 .question-stem td {
   border: 1px solid #e5e7eb;
   padding: 8px;
-  text-align: left;
+  text-align: left !important;
 }
 
 .question-stem th {
