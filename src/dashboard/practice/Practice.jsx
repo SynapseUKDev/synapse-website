@@ -766,10 +766,10 @@ export default function Practice() {
               </div>
             ),
             th: ({ node, ...props }) => (
-              <th style={{ border: '1px solid #e5e7eb', padding: '8px', backgroundColor: '#f8fafc', fontWeight: 700 }} {...props} />
+              <th style={{ border: '1px solid #e5e7eb', padding: '8px', backgroundColor: '#f8fafc', fontWeight: 700, textAlign: 'left' }} {...props} />
             ),
             td: ({ node, ...props }) => (
-              <td style={{ border: '1px solid #e5e7eb', padding: '8px' }} {...props} />
+              <td style={{ border: '1px solid #e5e7eb', padding: '8px', textAlign: 'left' }} {...props} />
             ),
             blockquote: ({ node, ...props }) => (
               <blockquote style={{ borderLeft: '4px solid #cbd5e1', paddingLeft: '12px', margin: '12px 0', color: '#64748b' }} {...props} />
