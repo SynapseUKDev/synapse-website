@@ -28,12 +28,13 @@
   align-items: center;
   gap: 12px;
   min-height: 80px;
+  position: relative;
 }
 
-/* .sidebar--collapsed .sidebar__brand {
+.sidebar--collapsed .sidebar__brand {
   justify-content: center;
   gap: 0;
-} */
+}
 
 .sidebar__logo {
   width: 45px;
@@ -43,6 +44,40 @@
   flex-shrink: 0;
   border: 2px solid rgba(255,255,255,0.55);
   box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  transition: opacity 0.2s ease-in-out;
+}
+
+.sidebar--collapsed .sidebar__logo {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.sidebar__burger {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  color: #c8d4ff;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.sidebar__burger:hover {
+  background: rgba(32,229,246,0.1);
+  border-color: rgba(32,229,246,0.45);
+  color: #e9fbff;
+}
+
+.sidebar--collapsed .sidebar__burger {
+  margin-left: 0;
 }
 
 .sidebar__brand-text {
@@ -120,6 +155,8 @@
 .sidebar--collapsed .sidebar__item {
   justify-content: center;
   padding: 0;
+  width: 48px;
+  margin: 0 auto;
 }
 
 .sidebar__user {
@@ -286,6 +323,7 @@
   transition: all 0.2s ease-in-out;
   color: #c8d4ff;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .sidebar__mobile-close:hover {
@@ -315,6 +353,10 @@
   
   .sidebar__mobile-close {
     display: flex;
+  }
+
+  .sidebar__burger {
+    display: none;
   }
 
   /* Make menu scrollable on mobile with flexible height */

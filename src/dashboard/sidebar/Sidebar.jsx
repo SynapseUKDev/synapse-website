@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuPanelLeft, LuSettings, LuX } from 'react-icons/lu'
+import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import './Sidebar.css'
 
 function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   // Auto-collapse sidebar when entering practice pages
   useEffect(() => {
@@ -43,8 +43,16 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
   return (
     <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''} ${mobileMenuOpen ? 'sidebar--mobile-open' : ''}`}>
       <div className="sidebar__brand">
-        <img src={logoImg} alt="Synapse UK" className="sidebar__logo" />
-        {/* {!isCollapsed && <span className="sidebar__brand-text">SYNAPSE UK</span>} */}
+        {!isCollapsed && <img src={logoImg} alt="Synapse UK" className="sidebar__logo" />}
+        
+        {/* Burger menu button for desktop */}
+        <button
+          className="sidebar__burger"
+          onClick={toggleSidebar}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <LuMenu size={24} />
+        </button>
 
         {/* Mobile close button */}
         <button
@@ -95,15 +103,6 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
         </div>
       )}
 
-      <div className="sidebar__footer">
-        <button
-          className="sidebar__collapse"
-          onClick={toggleSidebar}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <LuPanelLeft className="sidebar__collapse-icon" />
-        </button>
-      </div>
     </aside>
   )
 }

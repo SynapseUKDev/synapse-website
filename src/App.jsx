@@ -11,6 +11,7 @@ import './components/loading/LoadingScreen.css'
 import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
 import QuestionBank from './dashboard/question-bank/QuestionBank.jsx'
 import CreateStudySet from './dashboard/question-bank/CreateStudySet.jsx'
+import StudySets from './dashboard/question-bank/StudySets.jsx'
 import Practice from './dashboard/practice/Practice.jsx'
 import PracticeSetup from './dashboard/practice/PracticeSetup.jsx'
 import GroupStudySetup from './dashboard/practice/GroupStudySetup.jsx'
@@ -57,6 +58,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="question-bank" element={<QuestionBank />} />
           <Route path="question-bank/create-set" element={<CreateStudySet />} />
+          <Route path="study-sets" element={<StudySets />} />
           <Route path="question-bank/setup" element={<PracticeSetup />} />
           <Route path="question-bank/group_setup" element={<GroupStudySetup />} />
           <Route path="question-bank/practice" element={<Practice />} />

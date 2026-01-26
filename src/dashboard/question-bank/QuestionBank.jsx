@@ -2,44 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import * as Lu from 'react-icons/lu'
-import { LuTarget, LuListCheck, LuFlame, LuTimer, LuPlus, LuTrash2, LuLayers, LuUsers } from 'react-icons/lu'
+import { LuTarget, LuListCheck, LuTimer, LuUsers, LuBookOpen, LuSearch } from 'react-icons/lu'
 import './QuestionBank.css'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import useStaleJson from '../../utils/useStaleJson'
-
-function StudySetCard({ item, onDelete }) {
-  const navigate = useNavigate()
-  
-  return (
-    <div className="qb-card qb-card--set">
-      <div className="qb-card__head">
-        <div className="qb-card__titlewrap">
-          <div className="qb-card__icon" style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe' }}>
-            <LuLayers size={24} />
-          </div>
-          <div style={{ overflow: 'hidden' }}>
-            <div className="qb-card__title" style={{ fontSize: 18, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
-            <div className="qb-card__meta">{item.item_count} items included</div>
-          </div>
-        </div>
-        <button 
-          className="qb-card__del-btn" 
-          onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-          title="Delete Study Set"
-        >
-          <LuTrash2 size={16} />
-        </button>
-      </div>
-      <div style={{ marginTop: 16, flex: 1 }}>
-        {/* Can add more metadata here later like last studied or accuracy */}
-      </div>
-      <div className="qb-card__actions">
-        <button className="qb-btn" onClick={() => navigate(`/dashboard/question-bank/setup?study_set_id=${item.id}&study_set_name=${encodeURIComponent(item.name)}`)}>Start Set</button>
-        <button className="qb-btn qb-btn--secondary" onClick={() => navigate(`/dashboard/question-bank/group_setup?study_set_id=${item.id}&study_set_name=${encodeURIComponent(item.name)}`)}>Group Study</button>
-      </div>
-    </div>
-  )
-}
+import ActivityHeatmap from '../../components/heatmap/ActivityHeatmap'
 
 function SpecialtyCard({ item }) {
   const pct = item.total_questions > 0 ? Math.round((item.completed_questions / item.total_questions) * 100) : 0
@@ -95,12 +62,6 @@ export default function QuestionBank() {
     key: 'qbank:summary',
     transform: (s) => s && s.summary ? s.summary : { total_answered: 0, accuracy_pct: 0, avg_time_ms: 0 },
   })
-  const dashReq = useStaleJson(`${API_BASE}/dashboard/summary`, {
-    headers: authHeaders(),
-    staleMs: 60_000,
-    persist: 'session',
-    key: 'dashboard:summary',
-  })
   const specialtiesReq = useStaleJson(`${API_BASE}/qbank/specialties`, {
     headers: authHeaders(),
     staleMs: 5 * 60_000,
@@ -109,57 +70,26 @@ export default function QuestionBank() {
     transform: (t) => (Array.isArray(t.specialties) ? t.specialties : []),
   })
 
-  // Fetch study sets
-  const [studySets, setStudySets] = useState([])
-  const [loadingSets, setLoadingSets] = useState(true)
-
-  useEffect(() => {
-    loadStudySets()
-  }, [])
-
-  const loadStudySets = async () => {
-    try {
-      setLoadingSets(true)
-      const res = await authenticatedFetch(`${API_BASE}/qbank/sets`, {
-        credentials: 'include',
-        headers: authHeaders(),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setStudySets(data.sets || [])
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoadingSets(false)
-    }
-  }
-
-  const handleDeleteSet = async (setId) => {
-    if (!window.confirm('Are you sure you want to delete this study set?')) return
-    try {
-      const res = await authenticatedFetch(`${API_BASE}/qbank/sets/${setId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: authHeaders()
-      })
-      if (res.ok) {
-        setStudySets(prev => prev.filter(s => s.id !== setId))
-      }
-    } catch (e) {
-      console.error(e)
-      alert('Failed to delete set')
-    }
-  }
-
   const summary = {
     total_answered: summaryReq.data?.total_answered || 0,
     accuracy_pct: summaryReq.data?.accuracy_pct || 0,
     avg_time_ms: summaryReq.data?.avg_time_ms || 0,
-    study_streak_days: dashReq.data?.study_streak_days || 0,
   }
-  const specialties = specialtiesReq.data || []
+  const allSpecialties = specialtiesReq.data || []
+  const [searchQuery, setSearchQuery] = useState('')
   const loading = (summaryReq.loading && !summaryReq.data) || (specialtiesReq.loading && !specialtiesReq.data)
+  
+  // Filter specialties using regex
+  const specialties = allSpecialties.filter(specialty => {
+    if (!searchQuery.trim()) return true
+    try {
+      const regex = new RegExp(searchQuery, 'i')
+      return regex.test(specialty.specialty_name || '')
+    } catch (e) {
+      // If regex is invalid, fall back to simple string matching
+      return (specialty.specialty_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    }
+  })
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -189,54 +119,84 @@ export default function QuestionBank() {
           <div className="qb-stat__value">{summary?.total_answered ?? 0}</div>
           <div className="qb-stat__sub">Across all specialties</div>
         </div>
-        <div className="qb-stat">
-          <div className="qb-stat__top"><div className="qb-stat__title">Study Streak</div><div className="qb-stat__icon"><LuFlame size={20} /></div></div>
-          <div className="qb-stat__value">{summary?.study_streak_days ?? 0} days</div>
-          <div className="qb-stat__sub">Keep it going!</div>
-        </div>
-        <div className="qb-stat">
+        <div className="qb-stat qb-stat--large">
           <div className="qb-stat__top"><div className="qb-stat__title">Avg Time per Question</div><div className="qb-stat__icon"><LuTimer size={20} /></div></div>
           <div className="qb-stat__value">{`${summary?.avg_time_ms ? Math.round(summary.avg_time_ms / 1000) : 0}s`}</div>
           <div className="qb-stat__sub">Optimal range: 30–60s</div>
         </div>
       </div>
 
-      {/* Study Sets Section */}
-      <div className="qb__section-header" style={{ marginTop: 32, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 className="qb__section-title" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#1f2937' }}>My Study Sets</h2>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <button 
-            className="qb-btn qb-btn--sm qb-btn--secondary" 
-            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
-            onClick={() => navigate('/dashboard/question-bank/group_setup?mode=join')}
-          >
-            <LuUsers size={18} /> Join Group Session
-          </button>
-          <button 
-            className="qb-btn qb-btn--sm" 
-            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
-            onClick={() => navigate('/dashboard/question-bank/create-set')}
-          >
-            <LuPlus size={18} /> Create New Set
-          </button>
+      {/* Three Feature Cards */}
+      <div className="qb__grid qb__grid--features" style={{ marginTop: 32, marginBottom: 40 }}>
+        {/* Custom Revision Sets Card */}
+        <div className="qb-card qb-card--feature">
+          <div className="qb-card__head">
+            <div className="qb-card__titlewrap">
+              <div className="qb-card__icon" style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe' }}>
+                <LuBookOpen size={24} />
+              </div>
+              <div>
+                <div className="qb-card__title">Custom Revision Sets</div>
+                <div className="qb-card__meta">Create and manage your study sets</div>
+              </div>
+            </div>
+          </div>
+          <div className="qb-card__actions">
+            <button className="qb-btn" onClick={() => navigate('/dashboard/study-sets')}>Go to Custom Sets</button>
+          </div>
+        </div>
+
+        {/* Group Sessions Card */}
+        <div className="qb-card qb-card--feature">
+          <div className="qb-card__head">
+            <div className="qb-card__titlewrap">
+              <div className="qb-card__icon" style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' }}>
+                <LuUsers size={24} />
+              </div>
+              <div>
+                <div className="qb-card__title">Group Sessions</div>
+                <div className="qb-card__meta">Study together with others</div>
+              </div>
+            </div>
+          </div>
+          <div className="qb-card__actions" style={{ display: 'flex', gap: 8 }}>
+            <button className="qb-btn qb-btn--secondary" onClick={() => navigate('/dashboard/question-bank/group_setup?mode=join')}>Join Session</button>
+            <button className="qb-btn" onClick={() => navigate('/dashboard/study-sets')}>Create Session</button>
+          </div>
+        </div>
+
+        {/* Heatmap Card */}
+        <div className="qb-card qb-card--feature qb-card--heatmap">
+          <div className="qb-heatmap-container">
+            <div className="qb-heatmap-text">
+              <div className="qb-card__title">Study Activity</div>
+              <div className="qb-card__meta">Track your daily study progress over the past month. Each square represents a day, with colors indicating your activity level.</div>
+            </div>
+            <div className="qb-heatmap-visualization">
+              <ActivityHeatmap />
+            </div>
+          </div>
+          <div className="qb-card__actions">
+            <button className="qb-btn qb-btn--secondary" onClick={() => {}}>View Analytics</button>
+          </div>
         </div>
       </div>
 
-      {studySets.length > 0 ? (
-        <div className="qb__grid">
-          {studySets.map(set => (
-            <StudySetCard key={set.id} item={set} onDelete={handleDeleteSet} />
-          ))}
-        </div>
-      ) : (
-        <div className="qb-empty-sets">
-          <div className="qb-empty-sets__icon"><LuLayers size={32} /></div>
-          <p>You haven't created any personal study sets yet.</p>
-          <button className="qb-btn-text" onClick={() => navigate('/dashboard/question-bank/create-set')}>Create your first set</button>
-        </div>
-      )}
-
       <h2 className="qb__section-title" style={{ fontSize: 20, fontWeight: 700, marginTop: 32, marginBottom: 16, color: '#1f2937' }}>Browse by Specialty</h2>
+
+      {/* Search bar */}
+      <div className="qb-search">
+        <div className="qb-search__icon">
+          <LuSearch size={20} />
+        </div>
+        <input
+          type="text"
+          className="qb-search__input"
+          placeholder="Search specialties..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
 
       {/* Specialty cards grid */}
       <div className="qb__grid">
