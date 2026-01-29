@@ -93,6 +93,14 @@ export default function TextbookTopic() {
         if (!res.ok) throw new Error(`Failed to load chapter: ${res.status}`)
         const json = await res.json()
         if (!cancelled) setData(json)
+        if (!cancelled && topicSlug) {
+          fetch(`${API_BASE}/textbook/record-read`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ topic_slug: topicSlug }),
+          }).catch((err) => console.error('Record read failed:', err))
+        }
       } catch (e) {
         if (!cancelled) setError(e?.message || 'Failed to load')
       } finally {

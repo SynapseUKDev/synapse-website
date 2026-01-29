@@ -1,14 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { LuCircleCheck } from 'react-icons/lu'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { authHeaders } from '../../auth/token'
 
-function ChapterCard({ specialty, onClick, priority = false }) {
+function ChapterCard({ specialty, onClick, priority = false, topicsRead = 0 }) {
   const bgStyle = {
     background: `linear-gradient(135deg, ${specialty.icon_bg_start || '#2E2CC4'} 0%, ${specialty.icon_bg_end || '#3C92C1'} 100%)`
   }
   const img = specialty.thumbnail_url
+  const topicCount = Array.isArray(specialty.topics) ? specialty.topics.length : 0
+  const isCompleted = topicCount > 0 && topicsRead >= 0 && topicsRead === topicCount
+  const metaText = topicCount > 0
+    ? (isCompleted ? 'Completed' : topicsRead >= 0 ? `${topicCount} topics / ${topicsRead} read` : `${topicCount} topics`)
+    : null
   return (
     <button className="tb-card" onClick={onClick} aria-label={`Open ${specialty.specialty_name || specialty.name}`}>
       <div className="tb-card__cover" style={bgStyle}>
@@ -17,7 +23,7 @@ function ChapterCard({ specialty, onClick, priority = false }) {
             className="tb-card__img"
             src={`${img}?width=640&height=360&quality=65&format=webp&resize=cover`}
             srcSet={`${img}?width=320&height=180&quality=60&format=webp&resize=cover 320w, ${img}?width=640&height=360&quality=65&format=webp&resize=cover 640w, ${img}?width=960&height=540&quality=65&format=webp&resize=cover 960w`}
-            sizes="(max-width: 640px) 90vw, (max-width: 1100px) 45vw, 320px"
+            sizes="(max-width: 640px) 90vw, (max-width: 900px) 45vw, 220px"
             alt=""
             loading={priority ? 'eager' : 'lazy'}
             fetchpriority={priority ? 'high' : 'auto'}
@@ -27,8 +33,11 @@ function ChapterCard({ specialty, onClick, priority = false }) {
       </div>
       <div className="tb-card__label">
         <div className="tb-card__title">{specialty.specialty_name || specialty.name}</div>
-        {Array.isArray(specialty.topics) && (
-          <div className="tb-card__meta">{specialty.topics.length} topics</div>
+        {metaText && (
+          <div className={`tb-card__meta ${isCompleted ? 'tb-card__meta--completed' : ''}`}>
+            {isCompleted && <LuCircleCheck className="tb-card__meta-icon" aria-hidden />}
+            {metaText}
+          </div>
         )}
       </div>
     </button>
@@ -155,12 +164,52 @@ export default function Textbook() {
   const [searchResults, setSearchResults] = useState([])
   const MAX_INLINE_RESULTS = 12
   const [hasSearched, setHasSearched] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyItems, setHistoryItems] = useState([])
+  const [historyError, setHistoryError] = useState(null)
+  const [topicsReadCount, setTopicsReadCount] = useState(0)
+  const [topicsReadBySpecialty, setTopicsReadBySpecialty] = useState({})
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
   useEffect(() => {
     window.scrollTo(0, 0)
   }, []);
+
+  // Fetch topic history only on main dashboard (no slug)
+  useEffect(() => {
+    if (slug) return
+    let cancelled = false
+    setHistoryLoading(true)
+    setHistoryError(null)
+    fetch(`${API_BASE}/textbook/topic-history`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(res.status === 401 ? 'Not authenticated' : `Failed to load: ${res.status}`)
+        return res.json()
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setHistoryItems(Array.isArray(data?.items) ? data.items : [])
+          setTopicsReadCount(typeof data?.topics_read_count === 'number' ? data.topics_read_count : 0)
+          setTopicsReadBySpecialty(data?.topics_read_by_specialty && typeof data.topics_read_by_specialty === 'object' ? data.topics_read_by_specialty : {})
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setHistoryError(err?.message || 'Failed to load history')
+          setHistoryItems([])
+          setTopicsReadCount(0)
+          setTopicsReadBySpecialty({})
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [slug, API_BASE]);
 
   // Toggle expand/collapse for topics/subtopics by slug
   const toggleExpanded = (slugValue) => {
@@ -225,6 +274,22 @@ export default function Textbook() {
     if (slug) {
       navigate(`/dashboard/textbook/topic/${slug}#sec-${anchor}`)
     }
+  }
+
+  function formatLastViewed(isoOrTimestamp) {
+    if (!isoOrTimestamp) return ''
+    const d = new Date(isoOrTimestamp)
+    if (Number.isNaN(d.getTime())) return ''
+    const now = new Date()
+    const diffMs = now - d
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} min ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined })
   }
 
   useEffect(() => {
@@ -381,6 +446,11 @@ export default function Textbook() {
         </div>
         <h1 className="tb-title">Chapters</h1>
         <p className="tb-sub">Browse specialties as chapters. Click a chapter to view its topics.</p>
+        {!historyLoading && (
+          <p className="tb-topics-read" aria-live="polite">
+            {topicsReadCount === 0 ? 'No topics read yet' : `${topicsReadCount} topic${topicsReadCount !== 1 ? 's' : ''} read`}
+          </p>
+        )}
         <form className="tb-search" onSubmit={runSearch} role="search" aria-label="Search textbook">
           <input
             className="tb-search__input"
@@ -415,12 +485,48 @@ export default function Textbook() {
           </div>
         )}
       </header>
+      <section className="tb-continue" aria-label="Continue reading">
+        <h2 className="tb-continue__title">Continue reading</h2>
+        {historyLoading && (
+          <div className="tb-continue__status">Loading…</div>
+        )}
+        {!historyLoading && historyError && (
+          <div className="tb-continue__status tb-continue__status--muted">{historyError}</div>
+        )}
+        {!historyLoading && !historyError && (!historyItems || historyItems.length === 0) && (
+          <div className="tb-continue-empty">
+            <p className="tb-continue-empty__main">No history</p>
+            <p className="tb-continue-empty__sub">Start reading to get history</p>
+          </div>
+        )}
+        {!historyLoading && !historyError && historyItems.length > 0 && (
+          <div className="tb-continue-cards">
+            {historyItems.slice(0, 2).map((item, idx) => (
+              <div key={item.topic_slug + String(idx)} className="tb-continue-card">
+                <div className="tb-continue__specialty">{item.specialty_name || 'Specialty'}</div>
+                <div className="tb-continue__topic">{item.topic_name || 'Topic'}</div>
+                <div className="tb-continue__date">
+                  {item.last_read_date ? `Last viewed ${formatLastViewed(item.last_read_date)}` : ''}
+                </div>
+                <button
+                  type="button"
+                  className="tb-continue__btn"
+                  onClick={() => navigate(`/dashboard/textbook/topic/${item.topic_slug}`)}
+                >
+                  Continue
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
       <div className="tb-grid">
         {chapterList.map((spec, idx) => (
           <ChapterCard
             key={spec.specialty_id || spec.id}
             specialty={spec}
             priority={idx < 6}
+            topicsRead={topicsReadBySpecialty[spec.specialty_id] ?? 0}
             onClick={() => navigate(`/dashboard/textbook/specialty/${spec.specialty_slug || spec.slug}`)}
           />
         ))}

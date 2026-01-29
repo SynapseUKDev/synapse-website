@@ -5,6 +5,7 @@ import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuArrowLeft, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuUsers } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
+import ReportIssueButton from './ReportIssueButton'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import { io } from 'socket.io-client'
 import ReactMarkdown from 'react-markdown'
@@ -1730,11 +1731,12 @@ export default function GroupPractice() {
             </div>
           )}
 
-          {isSubmitted && (
-            <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
+          <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
+            <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
+            {isSubmitted && (
               <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Right Sidebar - Session Progress, Track Questions & Reference Ranges */}
           <div className="pr__aside">
