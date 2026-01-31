@@ -12,7 +12,7 @@ function Landing() {
       <Navbar />
       <main className="landing__main">
         <Hero />
-        
+
         {/* Pricing Section */}
         <section className="landing__pricing">
           <div className="landing__pricing-bg" aria-hidden="true">
@@ -59,7 +59,7 @@ function Landing() {
 
               return (
                 <svg className="landing__pricing-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-                  <path fill="#5AB8DB" d={wave1Path || ''} className="landing__pricing-wave1"/>
+                  <path fill="#5AB8DB" d={wave1Path || ''} className="landing__pricing-wave1" />
                   <path fill="#ffffff" d={wave2Path || ''} />
                 </svg>
               )
@@ -71,7 +71,7 @@ function Landing() {
               <div className="landing__pricing-header-card">
                 <h2 className="landing__pricing-title">Simple, Transparent Pricing</h2>
                 <p className="landing__pricing-subtitle">
-                  Start learning today with our risk-free trial, then continue for just £15 per 6 months
+                  Start learning today for just £15 per 6 months
                 </p>
               </div>
             </div>
@@ -98,69 +98,69 @@ function Landing() {
                     </p>
                   </div>
 
-                  <div className="landing__pricing-trial-box">
+                  {/* <div className="landing__pricing-trial-box">
                     <div className="landing__pricing-trial-icon">
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 6v6l4 2"/>
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v6l4 2" />
                       </svg>
                     </div>
                     <div className="landing__pricing-trial-text">
                       <div className="landing__pricing-trial-title">3-Week Free Trial</div>
                       <div className="landing__pricing-trial-subtitle">Full access, no card required</div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="landing__pricing-features">
                   <div className="landing__pricing-feature">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
+                      <path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" />
                     </svg>
                     <span>5,000+ UKMLA-focused practice questions</span>
                   </div>
                   <div className="landing__pricing-feature">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
+                      <path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" />
                     </svg>
                     <span>Detailed multi-level explanations</span>
                   </div>
                   <div className="landing__pricing-feature">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
+                      <path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" />
                     </svg>
                     <span>Comprehensive textbook and study materials</span>
                   </div>
                   <div className="landing__pricing-feature">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
+                      <path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" />
                     </svg>
                     <span>Advanced analytics and progress tracking</span>
                   </div>
                   <div className="landing__pricing-feature">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/>
+                      <path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" />
                     </svg>
                     <span>Cancel anytime, no commitment</span>
                   </div>
                 </div>
 
                 <a href="/login?mode=signup" className="landing__pricing-cta">
-                  Start Your Free Trial
+                  Get Started
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 12h14m-7-7l7 7-7 7"/>
+                    <path d="M5 12h14m-7-7l7 7-7 7" />
                   </svg>
                 </a>
 
                 <p className="landing__pricing-footer">
-                  No card required for trial • Cancel anytime • Secure payments by Stripe
+                  Cancel anytime • Secure payments by Stripe
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        <Testimonials/>
+        <Testimonials />
       </main>
       <Footer />
     </div>

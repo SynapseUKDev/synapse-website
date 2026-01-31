@@ -29,7 +29,7 @@ function Subscribe() {
           navigate('/dashboard', { replace: true })
         }
       }
-    } catch {}
+    } catch { }
   }, [API_BASE, navigate])
 
   useEffect(() => { fetchMe() }, [fetchMe])
@@ -39,82 +39,82 @@ function Subscribe() {
     const params = new URLSearchParams(location.search || '')
     if (params.get('success') === '1') {
       setBanner({ type: 'success', text: 'Payment complete. Finalizing your subscription…' })
-      ;(async () => {
-        setProcessing(true)
-        const sessionId = params.get('session_id')
-        
-        // First, immediately call confirm-session to ensure subscription is recorded
-        if (sessionId) {
-          try {
-            console.log('Confirming session:', sessionId)
-            const resp = await fetch(`${API_BASE}/billing/confirm-session`, {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json', ...authHeaders() },
-              body: JSON.stringify({ session_id: sessionId })
-            })
-            console.log('Confirm response status:', resp.status)
-            
-            if (resp.ok) {
-              console.log('Session confirmed successfully')
-              // Immediately check access after confirmation
-              const res = await fetch(`${API_BASE}/me?ts=${Date.now()}`, { 
-                credentials: 'include', 
-                cache: 'no-store', 
-                headers: { 'Content-Type': 'application/json', ...authHeaders() } 
+        ; (async () => {
+          setProcessing(true)
+          const sessionId = params.get('session_id')
+
+          // First, immediately call confirm-session to ensure subscription is recorded
+          if (sessionId) {
+            try {
+              console.log('Confirming session:', sessionId)
+              const resp = await fetch(`${API_BASE}/billing/confirm-session`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                body: JSON.stringify({ session_id: sessionId })
+              })
+              console.log('Confirm response status:', resp.status)
+
+              if (resp.ok) {
+                console.log('Session confirmed successfully')
+                // Immediately check access after confirmation
+                const res = await fetch(`${API_BASE}/me?ts=${Date.now()}`, {
+                  credentials: 'include',
+                  cache: 'no-store',
+                  headers: { 'Content-Type': 'application/json', ...authHeaders() }
+                })
+                if (res.ok) {
+                  const data = await res.json()
+                  console.log('User data after confirm:', data)
+                  if (data?.access?.has_active_access) {
+                    console.log('Access granted, redirecting to dashboard')
+                    navigate('/dashboard', { replace: true })
+                    return
+                  } else {
+                    console.warn('No active access after confirmation:', data.access)
+                  }
+                }
+              } else {
+                const errorData = await resp.json().catch(() => ({}))
+                console.error('Confirm session failed:', errorData)
+              }
+            } catch (e) {
+              console.error('Confirm session error:', e)
+            }
+          }
+
+          // Poll for subscription status (faster polling)
+          const tries = 15
+          for (let i = 0; i < tries; i++) {
+            try {
+              const res = await fetch(`${API_BASE}/me?ts=${Date.now()}`, {
+                credentials: 'include',
+                cache: 'no-store',
+                headers: { 'Content-Type': 'application/json', ...authHeaders() }
               })
               if (res.ok) {
                 const data = await res.json()
-                console.log('User data after confirm:', data)
+                setUser(data.user || null)
+                setAccess(data.access || null)
                 if (data?.access?.has_active_access) {
-                  console.log('Access granted, redirecting to dashboard')
                   navigate('/dashboard', { replace: true })
                   return
-                } else {
-                  console.warn('No active access after confirmation:', data.access)
                 }
               }
-            } else {
-              const errorData = await resp.json().catch(() => ({}))
-              console.error('Confirm session failed:', errorData)
+            } catch (e) {
+              console.error('Poll error:', e)
             }
-          } catch (e) {
-            console.error('Confirm session error:', e)
+            await new Promise(r => setTimeout(r, 500))
           }
-        }
-        
-        // Poll for subscription status (faster polling)
-        const tries = 15
-        for (let i = 0; i < tries; i++) {
-          try {
-            const res = await fetch(`${API_BASE}/me?ts=${Date.now()}`, { 
-              credentials: 'include', 
-              cache: 'no-store', 
-              headers: { 'Content-Type': 'application/json', ...authHeaders() } 
-            })
-            if (res.ok) {
-              const data = await res.json()
-              setUser(data.user || null)
-              setAccess(data.access || null)
-              if (data?.access?.has_active_access) {
-                navigate('/dashboard', { replace: true })
-                return
-              }
-            }
-          } catch (e) {
-            console.error('Poll error:', e)
-          }
-          await new Promise(r => setTimeout(r, 500))
-        }
-        
-        setProcessing(false)
-        setBanner({ 
-          type: 'info', 
-          text: 'Your payment succeeded. We are finalizing your subscription. If you are not redirected automatically, please refresh this page in a few seconds.' 
-        })
-      })()
+
+          setProcessing(false)
+          setBanner({
+            type: 'info',
+            text: 'Your payment succeeded. We are finalizing your subscription. If you are not redirected automatically, please refresh this page in a few seconds.'
+          })
+        })()
     } else if (params.get('canceled') === '1') {
-      setBanner({ type: 'warning', text: 'Checkout canceled. You can restart your free trial anytime.' })
+      setBanner({ type: 'warning', text: 'Checkout canceled. You can subscribe anytime to get access.' })
     } else {
       setBanner({ type: '', text: '' })
     }
@@ -133,36 +133,36 @@ function Subscribe() {
       case 'book':
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M2 4h7a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H2z"/>
-            <path d="M22 4h-7a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h7z"/>
+            <path d="M2 4h7a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H2z" />
+            <path d="M22 4h-7a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h7z" />
           </svg>
         )
       case 'activity':
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 12h4l3 8 4-16 3 8h4"/>
+            <path d="M3 12h4l3 8 4-16 3 8h4" />
           </svg>
         )
       case 'file':
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <path d="M14 2v6h6"/>
-            <path d="M16 13H8"/>
-            <path d="M16 17H8"/>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+            <path d="M16 13H8" />
+            <path d="M16 17H8" />
           </svg>
         )
       case 'image':
         return (
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <path d="M21 15l-5-5L5 21"/>
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <path d="M21 15l-5-5L5 21" />
           </svg>
         )
       default:
         return (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4" /></svg>
         )
     }
   }
@@ -180,7 +180,7 @@ function Subscribe() {
   const handleLogout = async () => {
     try {
       await fetch(`${API_BASE}/auth/signout`, { method: 'POST', credentials: 'include', headers: authHeaders() })
-    } catch {}
+    } catch { }
     clearTokens()
     window.location.href = '/'
   }
@@ -215,10 +215,10 @@ function Subscribe() {
               }
               const th = theme(banner.type)
               const icon = banner.type === 'success'
-                ? (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>)
+                ? (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>)
                 : banner.type === 'warning'
-                ? (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>)
-                : (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>)
+                  ? (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>)
+                  : (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>)
               return (
                 <div style={{
                   display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -256,8 +256,8 @@ function Subscribe() {
               }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: '#e6fffb', border: '1px solid #b6f6fc', color: '#0ea5b5', display: 'grid', placeItems: 'center' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 16v-4m0-4h.01"/>
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4m0-4h.01" />
                   </svg>
                 </div>
                 <div style={{ flex: 1 }}>
@@ -265,7 +265,7 @@ function Subscribe() {
                     {daysLeft > 0 ? 'Your free trial is ending soon' : 'Your free trial has ended'}
                   </div>
                   <div style={{ color: 'var(--syn-navy-700)', lineHeight: 1.5, fontSize: 14 }}>
-                    {daysLeft > 0 
+                    {daysLeft > 0
                       ? `Subscribe now to continue learning after your trial ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`
                       : 'Subscribe now to regain access to all features and continue your learning journey.'
                     }
@@ -277,7 +277,7 @@ function Subscribe() {
             <div className="auth__stats" style={{ marginBottom: 16 }}>
               <div className="auth__stat">
                 <div className="auth__stat-icon auth__stat-icon--green">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
                 </div>
                 <div className="auth__stat-content">
                   <div className="auth__stat-number">£15</div>
@@ -286,7 +286,7 @@ function Subscribe() {
               </div>
               <div className="auth__stat">
                 <div className="auth__stat-icon auth__stat-icon--purple">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="7" r="4" /><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /></svg>
                 </div>
                 <div className="auth__stat-content">
                   <div className="auth__stat-number">1,000+</div>
@@ -295,7 +295,7 @@ function Subscribe() {
               </div>
               <div className="auth__stat">
                 <div className="auth__stat-icon auth__stat-icon--orange">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3l8-8"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9s4.03-9 9-9c1.51 0 2.93.37 4.18 1.02"/></svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3l8-8" /><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9s4.03-9 9-9c1.51 0 2.93.37 4.18 1.02" /></svg>
                 </div>
                 <div className="auth__stat-content">
                   <div className="auth__stat-number">Cancel</div>
@@ -317,7 +317,7 @@ function Subscribe() {
                 try {
 
                   const trialDays = daysLeft && daysLeft > 0 ? daysLeft : 0
-                  
+
                   const res = await fetch(`${API_BASE}/billing/create-checkout-session`, {
                     method: 'POST',
                     credentials: 'include',
