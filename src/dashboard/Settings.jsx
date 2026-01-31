@@ -230,7 +230,7 @@ export default function Settings() {
                     Thanks for being a beta tester!
                   </div>
                   <div style={{ fontSize: 13, color: '#b45309', lineHeight: 1.5 }}>
-                    You have free access until your beta period ends. Subscribe anytime to continue after.
+                    You have free access until your testing period ends. Subscribe anytime to continue after.
                   </div>
                 </div>
               </>

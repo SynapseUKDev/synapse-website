@@ -122,7 +122,7 @@ function Subscribe() {
   }, [location.search])
 
   const benefits = useMemo(() => ([
-    { title: 'Full Question Bank', desc: '5,000+ exam-style questions with detailed explanations', icon: 'book', bg: 'var(--surface-tint-cyan)', border: '#b6f6fc', color: 'var(--syn-navy-700)' },
+    { title: 'Full Question Bank', desc: '10,000+ exam-style questions with detailed explanations', icon: 'book', bg: 'var(--surface-tint-cyan)', border: '#b6f6fc', color: 'var(--syn-navy-700)' },
     { title: 'Smart Analytics', desc: 'Track progress, identify weak areas, and improve faster', icon: 'activity', bg: 'var(--surface-tint-gold)', border: '#ffe7cc', color: '#a15d00' },
     { title: 'Textbook Access', desc: 'Curated high-yield content aligned to UKMLA topics', icon: 'file', bg: 'var(--surface-tint-purple)', border: '#e6d6ff', color: '#5b23a6' },
     { title: 'Visual Learning', desc: 'Diagrams, tables, and illustrations to solidify concepts', icon: 'image', bg: 'var(--surface-tint-green)', border: '#cbf6da', color: '#0e8a4b' },
@@ -289,8 +289,8 @@ function Subscribe() {
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="7" r="4" /><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /></svg>
                 </div>
                 <div className="auth__stat-content">
-                  <div className="auth__stat-number">1,000+</div>
-                  <div className="auth__stat-label">Active students</div>
+                  <div className="auth__stat-number">10,000+</div>
+                  <div className="auth__stat-label">Questions</div>
                 </div>
               </div>
               <div className="auth__stat">
@@ -355,7 +355,6 @@ function Subscribe() {
                 <li>Unlimited access to the full Question Bank and explanations</li>
                 <li>Personalised analytics dashboard and study streak tracking</li>
                 <li>Complete textbook with sections, visuals and citations</li>
-                <li>Email support and continual new content updates</li>
               </ul>
             </div>
           </div>
