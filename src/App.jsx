@@ -6,6 +6,7 @@ import Dashboard from './dashboard/Dashboard.jsx'
 import Callback from './auth/Callback.jsx'
 import Subscribe from './auth/Subscribe.jsx'
 import ResetPassword from './auth/ResetPassword.jsx'
+import SetupAccount from './auth/SetupAccount.jsx'
 import './App.css'
 import './components/loading/LoadingScreen.css'
 import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
@@ -30,13 +31,16 @@ function HashRedirector() {
     if (location.hash && location.hash.includes('access_token')) {
       const hashParams = new URLSearchParams(location.hash.slice(1))
       const type = hashParams.get('type')
-      
+
       // Handle password reset links
       if (type === 'recovery' && location.pathname !== '/auth/reset-password') {
         navigate(`/auth/reset-password${location.hash}`, { replace: true })
       }
-      // Handle OAuth callbacks (but NOT recovery tokens)
-      else if (type !== 'recovery' && location.pathname !== '/auth/callback') {
+      // Handle invite links - redirect to setup account page
+      else if (type === 'invite' && location.pathname !== '/auth/setup-account') {
+        navigate(`/auth/setup-account${location.hash}`, { replace: true })
+      }
+      else if (type !== 'recovery' && type !== 'invite' && location.pathname !== '/auth/callback') {
         navigate(`/auth/callback${location.hash}`, { replace: true })
       }
     }
@@ -53,6 +57,7 @@ function App() {
         <Route path="/login" element={<Auth />} />
         <Route path="/auth/callback" element={<Callback />} />
         <Route path="/auth/reset-password" element={<ResetPassword />} />
+        <Route path="/auth/setup-account" element={<SetupAccount />} />
         <Route path="/subscribe" element={<Subscribe />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />

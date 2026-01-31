@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX } from 'react-icons/lu'
+import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX, LuLogOut } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import './Sidebar.css'
 
@@ -44,7 +44,7 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
     <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''} ${mobileMenuOpen ? 'sidebar--mobile-open' : ''}`}>
       <div className="sidebar__brand">
         {!isCollapsed && <img src={logoImg} alt="Synapse UK" className="sidebar__logo" />}
-        
+
         {/* Burger menu button for desktop */}
         <button
           className="sidebar__burger"
@@ -80,28 +80,57 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
         })}
       </nav>
 
-      {!isCollapsed && (
-        <div className="sidebar__user">
-          <div className="sidebar__user-info">
-            <div className="sidebar__avatar">
+      <div className={`sidebar__user ${isCollapsed ? 'sidebar__user--collapsed' : ''}`}>
+        {isCollapsed ? (
+          <div className="sidebar__user-compact">
+            <div className="sidebar__avatar sidebar__avatar--compact">
               <div className="sidebar__avatar-placeholder">
                 {initial}
               </div>
             </div>
-            <div className="sidebar__user-details">
-              <div className="sidebar__user-name">{displayUsername || user?.email || 'User'}</div>
-              <div className="sidebar__user-role">{user?.email || 'No email'}</div>
+            <div className="sidebar__user-actions-compact">
+              <button
+                className="sidebar__action-btn"
+                onClick={() => handleNavigate('/dashboard/settings')}
+                title="Settings"
+              >
+                <LuSettings size={18} />
+              </button>
+              <button
+                className="sidebar__action-btn sidebar__action-btn--logout"
+                onClick={() => {
+                  onLogout()
+                  if (onCloseMobileMenu) onCloseMobileMenu()
+                }}
+                title="Logout"
+              >
+                <LuLogOut size={18} />
+              </button>
             </div>
           </div>
-          <div className="sidebar__user-actions">
-            <button className="sidebar__settings" onClick={() => handleNavigate('/dashboard/settings')}>Settings</button>
-            <button className="sidebar__logout" onClick={() => {
-              onLogout()
-              if (onCloseMobileMenu) onCloseMobileMenu()
-            }}>Logout</button>
-          </div>
-        </div>
-      )}
+        ) : (
+          <>
+            <div className="sidebar__user-info">
+              <div className="sidebar__avatar">
+                <div className="sidebar__avatar-placeholder">
+                  {initial}
+                </div>
+              </div>
+              <div className="sidebar__user-details">
+                <div className="sidebar__user-name">{displayUsername || user?.email || 'User'}</div>
+                <div className="sidebar__user-role">{user?.email || 'No email'}</div>
+              </div>
+            </div>
+            <div className="sidebar__user-actions">
+              <button className="sidebar__settings" onClick={() => handleNavigate('/dashboard/settings')}>Settings</button>
+              <button className="sidebar__logout" onClick={() => {
+                onLogout()
+                if (onCloseMobileMenu) onCloseMobileMenu()
+              }}>Logout</button>
+            </div>
+          </>
+        )}
+      </div>
 
     </aside>
   )
