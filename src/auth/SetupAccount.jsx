@@ -33,20 +33,32 @@ function SetupAccount() {
 
         const accessToken = hashParams.get('access_token') || searchParams.get('access_token')
         const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token')
-        const userEmail = hashParams.get('email') || searchParams.get('email') || ''
 
         if (accessToken && refreshToken) {
             setInviteTokens({ accessToken, refreshToken })
-            setEmail(decodeURIComponent(userEmail))
-            // Generate default username from email
-            if (userEmail) {
-                setUsername(userEmail.split('@')[0])
-            }
             hasProcessedTokens.current = true
             // Clean URL
             const cleanUrl = window.location.origin + window.location.pathname
             window.history.replaceState({}, '', cleanUrl)
-            setCheckingToken(false)
+
+            // Fetch user info from API to get email
+            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+            fetch(`${API_BASE}/auth/get-user-from-token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ access_token: accessToken })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.email) {
+                        setEmail(data.email)
+                        setUsername(data.email.split('@')[0])
+                    }
+                    setCheckingToken(false)
+                })
+                .catch(() => {
+                    setCheckingToken(false)
+                })
         } else {
             setError('Invalid or missing setup link. Please use the link from your invite email.')
             setCheckingToken(false)
