@@ -54,6 +54,28 @@
   overflow: hidden;
 }
 
+/* Expanded user section - shown by default */
+.sidebar__user-expanded {
+  display: block;
+}
+
+/* When sidebar is collapsed on desktop, hide expanded and show compact */
+.sidebar__user--collapsed .sidebar__user-expanded {
+  display: none;
+}
+
+/* Compact user section - hidden by default */
+.sidebar__user-compact {
+  display: none;
+}
+
+.sidebar__user--collapsed .sidebar__user-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
 .sidebar__burger {
   width: 40px;
   height: 40px;
@@ -145,11 +167,14 @@
 .sidebar__text {
   white-space: nowrap;
   opacity: 1;
-  transition: opacity 0.2s ease-in-out;
+  transition: opacity 0.2s ease-in-out, width 0.2s ease-in-out;
 }
 
 .sidebar--collapsed .sidebar__text {
   opacity: 0;
+  width: 0;
+  overflow: hidden;
+  display: none;
 }
 
 .sidebar--collapsed .sidebar__item {
@@ -168,18 +193,16 @@
   transition: all 0.2s ease-in-out;
 }
 
-/* Collapsed user section - now visible and compact */
 .sidebar__user--collapsed {
   padding: 12px;
   display: flex;
   justify-content: center;
 }
 
-.sidebar__user-compact {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
+/* Compact user section styling */
+.sidebar__avatar--compact {
+  width: 36px;
+  height: 36px;
 }
 
 .sidebar__avatar--compact {
@@ -434,20 +457,41 @@
     opacity: 1;
   }
 
+  /* On mobile, always show logo even when collapsed */
+  .sidebar--collapsed .sidebar__logo {
+    opacity: 1;
+    width: 45px;
+    height: 45px;
+  }
+
+  /* On mobile, always show text labels even when collapsed */
+  .sidebar--collapsed .sidebar__text {
+    display: inline;
+    opacity: 1;
+    width: auto;
+    overflow: visible;
+  }
+
   /* On mobile, always show expanded layout even when technically "collapsed" */
   .sidebar__user--collapsed {
     padding: 16px;
     display: block;
   }
 
-  /* Hide compact version on mobile - we'll always show expanded */
   .sidebar__user-compact {
-    display: none;
+    display: none !important;
   }
 
+  .sidebar__user--collapsed .sidebar__user-expanded {
+    display: block;
+  }
+
+  /* Full width nav items on mobile */
   .sidebar--collapsed .sidebar__item {
     justify-content: flex-start;
     padding: 0 12px;
+    width: 100%;
+    margin: 0;
   }
 
   /* Hide desktop collapse button on mobile */
