@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
 import { LuChevronDown, LuChevronRight, LuX, LuSave, LuRefreshCw } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import './CreateStudySet.css'
+import '../practice/Practice.css'
 
 export default function CreateStudySet() {
   const navigate = useNavigate()
@@ -20,6 +21,12 @@ export default function CreateStudySet() {
 
   const [wholeSpecialties, setWholeSpecialties] = useState(new Set())
   const [selectedTopics, setSelectedTopics] = useState(new Set())
+
+  // Validation state
+  const [nameError, setNameError] = useState(false)
+  const [contentError, setContentError] = useState(false)
+  const nameInputRef = useRef(null)
+  const contentAreaRef = useRef(null)
 
   useEffect(() => {
     loadSpecialties()
@@ -41,7 +48,7 @@ export default function CreateStudySet() {
 
   const loadTopicsFor = async (specId) => {
     if (topicsBySpec[specId] || loadingTopics.has(specId)) return
-    
+
     setLoadingTopics(prev => new Set(prev).add(specId))
     try {
       const res = await authenticatedFetch(`${API_BASE}/qbank/specialty/${specId}/topics`)
@@ -75,7 +82,7 @@ export default function CreateStudySet() {
 
   const toggleWholeSpecialty = async (specId) => {
     const isWhole = wholeSpecialties.has(specId)
-    
+
     if (isWhole) {
       // Unselect whole -> Deselect everything for this specialty
       setWholeSpecialties(prev => {
@@ -120,14 +127,14 @@ export default function CreateStudySet() {
         loadTopicsFor(specId).then(() => toggleTopic(specId, topicId)) // Retry after load?
         return
       }
-      
+
       // Uncheck "Whole"
       setWholeSpecialties(prev => {
         const next = new Set(prev)
         next.delete(specId)
         return next
       })
-      
+
       // Add ALL topics except the one clicked
       const allT = topicsBySpec[specId] || []
       const newSelected = new Set(selectedTopics)
@@ -146,7 +153,7 @@ export default function CreateStudySet() {
       } else {
         next.add(topicId)
       }
-      
+
       // Check if we selected all -> promote to Whole?
       // Optional optimization. Let's keep it simple for now.
       return next
@@ -154,17 +161,33 @@ export default function CreateStudySet() {
   }
 
   const handleCreate = async () => {
+    // Clear previous errors
+    setNameError(false)
+    setContentError(false)
+
+    let hasError = false
+
+    // Validate name
     if (!setName.trim()) {
-      alert('Please enter a name for your study set')
-      return
-    }
-    if (wholeSpecialties.size === 0 && selectedTopics.size === 0) {
-      alert('Please select at least one specialty or topic')
-      return
+      setNameError(true)
+      nameInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      nameInputRef.current?.focus()
+      hasError = true
     }
 
+    // Validate content selection
+    if (wholeSpecialties.size === 0 && selectedTopics.size === 0) {
+      setContentError(true)
+      if (!hasError) {
+        contentAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      hasError = true
+    }
+
+    if (hasError) return
+
     setSubmitting(true)
-    
+
     const items = []
     // Add whole specialties
     for (const sId of wholeSpecialties) {
@@ -184,10 +207,10 @@ export default function CreateStudySet() {
           color: '#3b82f6' // default blue for now
         })
       })
-      
+
       if (!res.ok) throw new Error('Failed to create set')
-      
-      navigate('/dashboard/question-bank')
+
+      navigate('/dashboard/question-bank/study-sets')
     } catch (e) {
       console.error(e)
       alert('Failed to create study set')
@@ -203,33 +226,37 @@ export default function CreateStudySet() {
       <div className="create-set__header">
         <div className="create-set__title-row">
           <h1>Create New Study Set</h1>
-          <button className="btn btn--ghost" onClick={() => navigate(-1)}><LuX /> Cancel</button>
+          <button className="btn btn--exit btn--icon" onClick={() => navigate(-1)}><LuX /> Cancel</button>
         </div>
         <p className="create-set__subtitle">Combine topics from multiple specialties into a single personal study set.</p>
       </div>
 
       <div className="create-set__form">
-        <div className="form-group">
-          <label>Set Name</label>
-          <input 
-            type="text" 
-            className="form-input" 
+        <div className={`form-group ${nameError ? 'form-group--error' : ''}`}>
+          <label>Set Name {nameError && <span className="form-error-text">— Required</span>}</label>
+          <input
+            ref={nameInputRef}
+            type="text"
+            className={`form-input ${nameError ? 'form-input--error' : ''}`}
             placeholder="e.g., Finals Revision, Weak Areas, Cardio + Resp"
             value={setName}
-            onChange={(e) => setSetName(e.target.value)}
+            onChange={(e) => {
+              setSetName(e.target.value)
+              if (e.target.value.trim()) setNameError(false)
+            }}
             autoFocus
           />
         </div>
 
-        <div className="selection-area">
-          <h3>Select Content</h3>
+        <div ref={contentAreaRef} className={`selection-area ${contentError ? 'selection-area--error' : ''}`}>
+          <h3>Select Content {contentError && <span className="form-error-text">— Select at least one specialty or topic</span>}</h3>
           <div className="specs-list">
             {specialties.map(spec => {
               const isWhole = wholeSpecialties.has(spec.specialty_id)
               const isExpanded = expandedSpecs.has(spec.specialty_id)
               const topics = topicsBySpec[spec.specialty_id] || []
               const topicsLoaded = !!topicsBySpec[spec.specialty_id]
-              
+
               // Count selected topics if not whole
               let selectedCount = 0
               if (!isWhole && topicsLoaded) {
@@ -251,8 +278,8 @@ export default function CreateStudySet() {
                     </div>
                     <div className="spec-actions">
                       <label className="checkbox-label">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={isWhole}
                           onChange={() => toggleWholeSpecialty(spec.specialty_id)}
                         />
@@ -272,7 +299,7 @@ export default function CreateStudySet() {
                             const isSelected = isWhole || selectedTopics.has(topic.id)
                             return (
                               <label key={topic.id} className={`topic-item ${isSelected ? 'is-selected' : ''}`}>
-                                <input 
+                                <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => toggleTopic(spec.specialty_id, topic.id)}
@@ -297,10 +324,10 @@ export default function CreateStudySet() {
         <div className="summary-text">
           {wholeSpecialties.size} specialties, {selectedTopics.size} individual topics selected
         </div>
-        <button 
-          className="btn btn--primary" 
+        <button
+          className="btn btn--primary btn--icon"
           onClick={handleCreate}
-          disabled={submitting || (!setName.trim()) || (wholeSpecialties.size === 0 && selectedTopics.size === 0)}
+          disabled={submitting}
         >
           {submitting ? 'Creating...' : 'Create Study Set'} <LuSave />
         </button>
