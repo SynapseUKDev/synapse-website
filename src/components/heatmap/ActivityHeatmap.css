@@ -32,6 +32,7 @@
 .activity-heatmap__wrapper {
   display: flex;
   gap: 8px;
+  width: 100%;
 }
 
 /* Day labels column */
@@ -39,8 +40,9 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding-top: 20px;
-  /* Space for month labels row */
+  padding-top: 19px;
+  flex-shrink: 0;
+  /* Space for month labels row (16px height + 3px gap) */
 }
 
 .activity-heatmap__day-label {
@@ -51,19 +53,14 @@
   display: flex;
   align-items: center;
   line-height: 1;
+  min-width: 12px;
 }
 
-/* Content area with scrolling */
+/* Content area - no scrolling, fills width */
 .activity-heatmap__content {
   flex: 1;
-  overflow-x: auto;
-  overflow-y: visible;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.activity-heatmap__content::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
+  min-width: 0;
 }
 
 /* Month labels row */
@@ -107,9 +104,15 @@
   cursor: pointer;
 }
 
-.activity-heatmap__day--empty,
+.activity-heatmap__day--empty {
+  background: transparent;
+  cursor: default;
+}
+
+/* Future days - subtle dashed outline to show they exist but are inactive */
 .activity-heatmap__day--future {
   background: transparent;
+  border: 1px dashed #d1d5db;
   cursor: default;
 }
 
@@ -223,7 +226,7 @@
   font-weight: 600;
 }
 
-/* Responsive */
+/* Responsive - smaller screens */
 @media (max-width: 768px) {
   .activity-heatmap__day {
     width: 10px;
@@ -233,6 +236,7 @@
   .activity-heatmap__day-label {
     height: 10px;
     font-size: 9px;
+    min-width: 10px;
   }
 
   .activity-heatmap__month-label {
@@ -249,5 +253,14 @@
   .activity-heatmap__grid,
   .activity-heatmap__row {
     gap: 3px;
+  }
+
+  .activity-heatmap__legend {
+    margin-top: 8px;
+  }
+
+  .activity-heatmap__legend-square {
+    width: 10px;
+    height: 10px;
   }
 }

@@ -30,34 +30,22 @@
   background: var(--surface-card);
   border: 1px solid var(--syn-border);
   border-radius: 16px;
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-}
-
-.qb-stat--large {
-  padding: 32px;
-}
-
-.qb-stat--large .qb-stat__value {
-  font-size: 32px;
-}
-
-.qb-stat--large .qb-stat__title {
-  font-size: 14px;
 }
 
 .qb-stat__top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .qb-stat__title {
   font-weight: 700;
   color: var(--syn-muted);
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -75,17 +63,20 @@
 }
 
 .qb-stat__value {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 800;
   color: var(--syn-navy-700);
   line-height: 1;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
 }
 
 .qb-stat__sub {
   font-size: 13px;
   color: var(--syn-muted);
   font-weight: 500;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
 }
 
 /* Interactive Stats */
@@ -115,16 +106,13 @@
 }
 
 /* Progress Ring Indicator */
-.qb-stat__indicator {
-  margin-top: 12px;
-}
-
 .qb-stat__progress-ring {
-  height: 4px;
+  height: 6px;
   background: #e5e7eb;
   border-radius: 99px;
   overflow: hidden;
   position: relative;
+  width: 100%;
 }
 
 .qb-stat__progress-ring::after {
@@ -254,6 +242,8 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  min-width: 0;
+  /* Prevent grid blowout */
 }
 
 .qb-card__head {
@@ -503,11 +493,19 @@
   }
 
   .qb__grid--features {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .qb-card--heatmap {
+    grid-column: span 2;
   }
 }
 
 /* Feature Cards */
+.qb-card--feature {
+  min-width: 0;
+}
+
 .qb-card--feature:not(.qb-card--heatmap) {
   background: #f0f9ff;
   min-height: 110px;
@@ -515,7 +513,8 @@
 
 .qb-card--heatmap {
   background: #f0f9ff;
-  grid-column: span 1;
+  overflow: visible;
+  padding: 24px 24px 12px 24px;
 }
 
 .qb-card--heatmap .qb-card__head {
@@ -526,7 +525,9 @@
   flex: 1;
   width: 100%;
   overflow: visible;
-  margin-bottom: 16px;
+  min-width: 0;
+  padding: 8px 4px;
+  margin: -8px -4px;
 }
 
 @media (max-width: 768px) {
@@ -549,6 +550,20 @@
 
   .qb__grid {
     grid-template-columns: 1fr;
+  }
+
+  .qb__grid--features {
+    grid-template-columns: 1fr;
+  }
+
+  .qb-card--heatmap {
+    grid-column: span 1;
+    padding: 16px;
+  }
+
+  .qb-heatmap-visualization {
+    padding: 4px 2px;
+    margin: -4px -2px;
   }
 
   .qb-card {

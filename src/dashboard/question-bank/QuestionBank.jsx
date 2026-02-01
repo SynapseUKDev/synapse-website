@@ -164,7 +164,7 @@ export default function QuestionBank() {
           <div className="qb-stat__value">
             <AnimatedCounter value={summary?.accuracy_pct ?? 0} suffix="%" duration={1200} />
           </div>
-          <div className="qb-stat__indicator">
+          <div className="qb-stat__sub">
             <div
               className="qb-stat__progress-ring"
               style={{ '--progress': `${summary?.accuracy_pct ?? 0}%` }}
@@ -183,7 +183,7 @@ export default function QuestionBank() {
           </div>
           <div className="qb-stat__sub">Across all specialties</div>
         </div>
-        <div className="qb-stat qb-stat--large qb-stat--interactive">
+        <div className="qb-stat qb-stat--interactive">
           <div className="qb-stat__top">
             <div className="qb-stat__title">Avg Time per Question</div>
             <div className="qb-stat__icon qb-stat__icon--timer">
