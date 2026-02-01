@@ -1,9 +1,160 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuCircleCheck } from 'react-icons/lu'
+import { LuCircleCheck, LuCheck, LuMinus } from 'react-icons/lu'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { authHeaders } from '../../auth/token'
+
+const STATUS_LABELS = {
+  not_read: 'Not read',
+  in_progress: 'In progress',
+  completed: 'Completed',
+}
+
+const CONFIDENCE_LABELS = {
+  low: 'Low',
+  moderate: 'Moderate',
+  high: 'High',
+}
+
+function TopicCard({ topic, progress, onStatusChange, onConfidenceChange, onTopicClick }) {
+  const hasPage = !!topic.has_page || !!(topic.textbook_pages && topic.textbook_pages[0]) || !!topic.page
+  const readingStatus = progress?.reading_status || 'not_read'
+  const confidence = progress?.confidence || 'low'
+  const lastReviewedAt = progress?.last_reviewed_at
+
+  const formatRelativeTime = (isoDate) => {
+    if (!isoDate) return null
+    const d = new Date(isoDate)
+    if (Number.isNaN(d.getTime())) return null
+    const now = new Date()
+    const diffMs = now - d
+    const diffDays = Math.floor(diffMs / 86400000)
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays} days ago`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
+
+  const cycleStatus = () => {
+    const order = ['not_read', 'in_progress', 'completed']
+    const currentIdx = order.indexOf(readingStatus)
+    const nextStatus = order[(currentIdx + 1) % 3]
+    onStatusChange(topic.id, nextStatus)
+  }
+
+  const checkboxClass = `tb-topic-card__check ${readingStatus === 'completed' ? 'tb-topic-card__check--completed' : readingStatus === 'in_progress' ? 'tb-topic-card__check--in-progress' : ''}`
+
+  return (
+    <div className="tb-topic-card">
+      {/* Left checkbox */}
+      <button className={checkboxClass} onClick={cycleStatus} aria-label="Toggle reading status">
+        {readingStatus === 'completed' && <LuCheck className="tb-topic-card__check-icon" />}
+        {readingStatus === 'in_progress' && <LuMinus className="tb-topic-card__check-icon" />}
+      </button>
+
+      {/* Topic info */}
+      <div className="tb-topic-card__info">
+        <span
+          className="tb-topic-card__name"
+          onClick={hasPage ? () => onTopicClick(topic) : undefined}
+          style={!hasPage ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+        >
+          {topic.name}
+        </span>
+        <span className="tb-topic-card__meta">
+          {lastReviewedAt ? `Last reviewed: ${formatRelativeTime(lastReviewedAt)}` : ''}
+        </span>
+      </div>
+
+      {/* Reading status badge */}
+      <div className="tb-topic-card__status">
+        <button
+          className={`tb-status-badge tb-status-badge--${readingStatus}`}
+          onClick={cycleStatus}
+        >
+          {readingStatus === 'completed' && <LuCheck className="tb-status-badge__check" />}
+          {STATUS_LABELS[readingStatus]}
+        </button>
+      </div>
+
+      {/* Confidence toggle */}
+      <div className="tb-topic-card__confidence">
+        <div className="tb-confidence-toggle">
+          {['low', 'moderate', 'high'].map((level) => (
+            <button
+              key={level}
+              className={`tb-confidence-option tb-confidence-option--${level} ${confidence === level ? 'tb-confidence-option--active' : ''}`}
+              onClick={() => onConfidenceChange(topic.id, level)}
+            >
+              <span className="tb-confidence-option__dot" />
+              {CONFIDENCE_LABELS[level]}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProgressHeader({ summary, sortBy, filterBy, onSortChange, onFilterChange }) {
+  const completedPercent = summary.total > 0 ? Math.round((summary.completed / summary.total) * 100) : 0
+
+  return (
+    <div className="tb-progress-header">
+      {/* Reading Progress */}
+      <div className="tb-progress-section">
+        <div className="tb-progress-section__title">Reading Progress</div>
+        <div className="tb-progress-bar">
+          <div className="tb-progress-bar__fill" style={{ width: `${completedPercent}%` }} />
+        </div>
+        <div className="tb-progress-bar__text">{summary.completed} / {summary.total} completed</div>
+      </div>
+
+      {/* Confidence Levels */}
+      <div className="tb-progress-section">
+        <div className="tb-progress-section__title">Confidence Levels</div>
+        <div className="tb-confidence-legend">
+          <div className="tb-confidence-legend__item">
+            <span className="tb-confidence-legend__dot tb-confidence-legend__dot--low" />
+            {summary.low} Low
+          </div>
+          <div className="tb-confidence-legend__item">
+            <span className="tb-confidence-legend__dot tb-confidence-legend__dot--moderate" />
+            {summary.moderate} Moderate
+          </div>
+          <div className="tb-confidence-legend__item">
+            <span className="tb-confidence-legend__dot tb-confidence-legend__dot--high" />
+            {summary.high} High
+          </div>
+        </div>
+      </div>
+
+      {/* Sort & Filter */}
+      <div className="tb-controls">
+        <div className="tb-control-group">
+          <label className="tb-control-label">Sort by:</label>
+          <select className="tb-select" value={sortBy} onChange={(e) => onSortChange(e.target.value)}>
+            <option value="default">Default</option>
+            <option value="confidence">Lowest confidence</option>
+            <option value="in_progress">In progress</option>
+            <option value="last_reviewed">Last reviewed</option>
+          </select>
+        </div>
+        <div className="tb-control-group">
+          <label className="tb-control-label">Filters:</label>
+          <select className="tb-select" value={filterBy} onChange={(e) => onFilterChange(e.target.value)}>
+            <option value="all">Show all</option>
+            <option value="low">Low confidence</option>
+            <option value="not_read">Not read</option>
+            <option value="in_progress">In progress</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function ChapterCard({ specialty, onClick, priority = false, topicsRead = 0 }) {
   const bgStyle = {
@@ -170,6 +321,13 @@ export default function Textbook() {
   const [topicsReadCount, setTopicsReadCount] = useState(0)
   const [topicsReadBySpecialty, setTopicsReadBySpecialty] = useState({})
 
+  // Progress tracking state (for specialty view)
+  const [progressData, setProgressData] = useState({})
+  const [progressSummary, setProgressSummary] = useState({ total: 0, not_read: 0, in_progress: 0, completed: 0, low: 0, moderate: 0, high: 0 })
+  const [progressLoading, setProgressLoading] = useState(false)
+  const [sortBy, setSortBy] = useState('default')
+  const [filterBy, setFilterBy] = useState('all')
+
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
   useEffect(() => {
@@ -319,6 +477,138 @@ export default function Textbook() {
     return () => { cancelled = true }
   }, [slug, API_BASE])
 
+  // Fetch progress data when viewing a specialty
+  useEffect(() => {
+    if (!slug) return
+    let cancelled = false
+    setProgressLoading(true)
+    fetch(`${API_BASE}/textbook/specialty/${slug}/progress`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject(new Error('Failed to load progress')))
+      .then((json) => {
+        if (!cancelled) {
+          setProgressData(json.progress || {})
+          setProgressSummary(json.summary || { total: 0, not_read: 0, in_progress: 0, completed: 0, low: 0, moderate: 0, high: 0 })
+        }
+      })
+      .catch((err) => {
+        console.error('Error loading progress:', err)
+        if (!cancelled) {
+          setProgressData({})
+          setProgressSummary({ total: 0, not_read: 0, in_progress: 0, completed: 0, low: 0, moderate: 0, high: 0 })
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setProgressLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [slug, API_BASE])
+
+  // Update progress handlers with optimistic UI
+  const handleStatusChange = useCallback(async (topicId, newStatus) => {
+    const oldProgress = progressData[topicId] || { reading_status: 'not_read', confidence: 'low' }
+    // Optimistic update
+    setProgressData((prev) => ({
+      ...prev,
+      [topicId]: { ...oldProgress, reading_status: newStatus, last_reviewed_at: new Date().toISOString() },
+    }))
+    // Recalculate summary
+    setProgressSummary((prev) => {
+      const s = { ...prev }
+      if (oldProgress.reading_status === 'not_read') s.not_read = Math.max(0, s.not_read - 1)
+      else if (oldProgress.reading_status === 'in_progress') s.in_progress = Math.max(0, s.in_progress - 1)
+      else if (oldProgress.reading_status === 'completed') s.completed = Math.max(0, s.completed - 1)
+      if (newStatus === 'not_read') s.not_read++
+      else if (newStatus === 'in_progress') s.in_progress++
+      else if (newStatus === 'completed') s.completed++
+      return s
+    })
+    try {
+      await fetch(`${API_BASE}/textbook/topic/${topicId}/progress`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ reading_status: newStatus }),
+      })
+    } catch (err) {
+      console.error('Failed to update status:', err)
+    }
+  }, [progressData, API_BASE])
+
+  const handleConfidenceChange = useCallback(async (topicId, newConfidence) => {
+    const oldProgress = progressData[topicId] || { reading_status: 'not_read', confidence: 'low' }
+    // Optimistic update
+    setProgressData((prev) => ({
+      ...prev,
+      [topicId]: { ...oldProgress, confidence: newConfidence },
+    }))
+    // Recalculate summary
+    setProgressSummary((prev) => {
+      const s = { ...prev }
+      if (oldProgress.confidence === 'low') s.low = Math.max(0, s.low - 1)
+      else if (oldProgress.confidence === 'moderate') s.moderate = Math.max(0, s.moderate - 1)
+      else if (oldProgress.confidence === 'high') s.high = Math.max(0, s.high - 1)
+      if (newConfidence === 'low') s.low++
+      else if (newConfidence === 'moderate') s.moderate++
+      else if (newConfidence === 'high') s.high++
+      return s
+    })
+    try {
+      await fetch(`${API_BASE}/textbook/topic/${topicId}/progress`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ confidence: newConfidence }),
+      })
+    } catch (err) {
+      console.error('Failed to update confidence:', err)
+    }
+  }, [progressData, API_BASE])
+
+  // Filter and sort topics for specialty view
+  const filteredAndSortedTopics = useMemo(() => {
+    if (!data?.topics) return []
+    let topics = [...data.topics]
+
+    // Filter
+    if (filterBy !== 'all') {
+      topics = topics.filter((t) => {
+        const p = progressData[t.id]
+        if (filterBy === 'low') return !p || p.confidence === 'low'
+        if (filterBy === 'not_read') return !p || p.reading_status === 'not_read'
+        if (filterBy === 'in_progress') return p?.reading_status === 'in_progress'
+        return true
+      })
+    }
+
+    // Sort
+    if (sortBy !== 'default') {
+      topics.sort((a, b) => {
+        const pA = progressData[a.id] || { reading_status: 'not_read', confidence: 'low' }
+        const pB = progressData[b.id] || { reading_status: 'not_read', confidence: 'low' }
+        if (sortBy === 'confidence') {
+          const order = { low: 0, moderate: 1, high: 2 }
+          return order[pA.confidence] - order[pB.confidence]
+        }
+        if (sortBy === 'in_progress') {
+          if (pA.reading_status === 'in_progress' && pB.reading_status !== 'in_progress') return -1
+          if (pB.reading_status === 'in_progress' && pA.reading_status !== 'in_progress') return 1
+          return 0
+        }
+        if (sortBy === 'last_reviewed') {
+          const dateA = pA.last_reviewed_at ? new Date(pA.last_reviewed_at).getTime() : 0
+          const dateB = pB.last_reviewed_at ? new Date(pB.last_reviewed_at).getTime() : 0
+          return dateB - dateA
+        }
+        return 0
+      })
+    }
+
+    return topics
+  }, [data?.topics, progressData, sortBy, filterBy])
+
   const chapterList = useMemo(() => {
     if (!data) return []
     if (data.specialties) return data.specialties
@@ -340,9 +630,9 @@ export default function Textbook() {
         link.crossOrigin = 'anonymous'
         document.head.appendChild(link)
         // remove on cleanup
-        return () => { try { document.head.removeChild(link) } catch {} }
+        return () => { try { document.head.removeChild(link) } catch { } }
       }
-    } catch {}
+    } catch { }
   }, [chapterList])
 
   useEffect(() => {
@@ -368,8 +658,15 @@ export default function Textbook() {
   }
   if (error) return <div className="tb-error">{error}</div>
 
-  // Specialty topics view
+  // Specialty topics view - Learning Dashboard
   if (slug && data?.topics) {
+    const handleTopicClick = (topic) => {
+      const hasPage = !!topic.has_page || !!(topic.textbook_pages && topic.textbook_pages[0]) || !!topic.page
+      if (hasPage) {
+        navigate(`/dashboard/textbook/topic/${topic.slug}`)
+      }
+    }
+
     return (
       <div className="tb-page">
         <header className="tb-header">
@@ -379,7 +676,7 @@ export default function Textbook() {
             <span className="tb-current">{data.specialty?.name}</span>
           </div>
           <h1 className="tb-title">{data.specialty?.name}</h1>
-          <p className="tb-sub">Select a topic to open the chapter.</p>
+          <p className="tb-sub">Track your progress and confidence in key {data.specialty?.name?.toLowerCase()} topics.</p>
           <form className="tb-search" onSubmit={runSearch} role="search" aria-label="Search textbook">
             <input
               className="tb-search__input"
@@ -414,24 +711,53 @@ export default function Textbook() {
             </div>
           )}
         </header>
-        <div className="tb-topic-list">
-          {data.topics.map((t) => {
+
+        {/* Progress Header */}
+        {!progressLoading && (
+          <ProgressHeader
+            summary={progressSummary}
+            sortBy={sortBy}
+            filterBy={filterBy}
+            onSortChange={setSortBy}
+            onFilterChange={setFilterBy}
+          />
+        )}
+        {progressLoading && <div className="tb-progress-header" style={{ opacity: 0.5 }}>Loading progress...</div>}
+
+        {/* Topic Cards */}
+        <div className="tb-topic-list--dashboard">
+          {filteredAndSortedTopics.map((t) => {
+            // Skip subtopics view for now - show flat topic list
             if (t.has_subtopics && Array.isArray(t.subtopics) && t.subtopics.length > 0) {
+              // For topics with subtopics, show as parent topic card
               return (
-                <TopicWithSubtopics
+                <TopicCard
                   key={t.id}
                   topic={t}
-                  expandedSet={expandedSet}
-                  toggleExpanded={toggleExpanded}
-                  onSubtopicClick={(st) => navigate(`/dashboard/textbook/topic/${st.slug}`)}
+                  progress={progressData[t.id]}
+                  onStatusChange={handleStatusChange}
+                  onConfidenceChange={handleConfidenceChange}
+                  onTopicClick={handleTopicClick}
                 />
               )
             }
-            const hasPage = !!t.has_page || !!(t.textbook_pages && t.textbook_pages[0]) || !!t.page
             return (
-              <TopicRow key={t.id} topic={t} onClick={hasPage ? () => navigate(`/dashboard/textbook/topic/${t.slug}`) : undefined} />
+              <TopicCard
+                key={t.id}
+                topic={t}
+                progress={progressData[t.id]}
+                onStatusChange={handleStatusChange}
+                onConfidenceChange={handleConfidenceChange}
+                onTopicClick={handleTopicClick}
+              />
             )
           })}
+          {filteredAndSortedTopics.length === 0 && (
+            <div className="tb-continue-empty">
+              <p className="tb-continue-empty__main">No topics match your filters</p>
+              <p className="tb-continue-empty__sub">Try adjusting your filters to see more topics.</p>
+            </div>
+          )}
         </div>
       </div>
     )
