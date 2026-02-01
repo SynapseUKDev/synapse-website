@@ -130,6 +130,9 @@ export default function Settings() {
   // Beta tester access
   const isBetaTester = accessData?.is_beta_tester && accessData?.beta_access_ends_at
 
+  // Canceled during trial (no billing occurred)
+  const canceledDuringTrial = accessData?.subscription_status === 'canceled' && !accessData?.last_payment_at
+
   return (
     <div className="qb">
       <h1 className="qb__title">Settings</h1>

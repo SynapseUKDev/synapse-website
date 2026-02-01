@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import * as Lu from 'react-icons/lu'
@@ -7,6 +7,50 @@ import './QuestionBank.css'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import useStaleJson from '../../utils/useStaleJson'
 import ActivityHeatmap from '../../components/heatmap/ActivityHeatmap'
+
+// Animated counter component for engaging stat display
+function AnimatedCounter({ value, suffix = '', duration = 1000 }) {
+  const [displayValue, setDisplayValue] = useState(0)
+  const startTime = useRef(null)
+  const animationFrame = useRef(null)
+
+  useEffect(() => {
+    const targetValue = typeof value === 'number' ? value : parseFloat(value) || 0
+
+    if (targetValue === 0) {
+      setDisplayValue(0)
+      return
+    }
+
+    const animate = (timestamp) => {
+      if (!startTime.current) startTime.current = timestamp
+      const progress = Math.min((timestamp - startTime.current) / duration, 1)
+
+      // Easing function for smooth animation
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4)
+      const currentValue = Math.floor(targetValue * easeOutQuart)
+
+      setDisplayValue(currentValue)
+
+      if (progress < 1) {
+        animationFrame.current = requestAnimationFrame(animate)
+      } else {
+        setDisplayValue(targetValue)
+      }
+    }
+
+    startTime.current = null
+    animationFrame.current = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationFrame.current) {
+        cancelAnimationFrame(animationFrame.current)
+      }
+    }
+  }, [value, duration])
+
+  return <>{displayValue}{suffix}</>
+}
 
 function SpecialtyCard({ item }) {
   const pct = item.total_questions > 0 ? Math.round((item.completed_questions / item.total_questions) * 100) : 0
@@ -45,7 +89,7 @@ function SpecialtyCard({ item }) {
           {(item.key_topics || []).map((slug) => (<span key={slug} className="qb-chip">{slug.replace(/-/g,' ')}</span>))}
         </div>
       </div> */}
-      
+
     </div>
   )
 }
@@ -78,7 +122,7 @@ export default function QuestionBank() {
   const allSpecialties = specialtiesReq.data || []
   const [searchQuery, setSearchQuery] = useState('')
   const loading = (summaryReq.loading && !summaryReq.data) || (specialtiesReq.loading && !specialtiesReq.data)
-  
+
   // Filter specialties using regex
   const specialties = allSpecialties.filter(specialty => {
     if (!searchQuery.trim()) return true
@@ -108,21 +152,56 @@ export default function QuestionBank() {
       <h1 className="qb__title">Question Bank</h1>
       <p className="qb__subtitle">Choose your specialty and study mode to begin practicing</p>
 
-      {/* Stat cards */}
+      {/* Stat cards with animated counters */}
       <div className="qb__stats">
-        <div className="qb-stat">
-          <div className="qb-stat__top"><div className="qb-stat__title">Overall Accuracy</div><div className="qb-stat__icon"><LuTarget size={20} /></div></div>
-          <div className="qb-stat__value">{`${summary?.accuracy_pct ?? 0}%`}</div>
+        <div className="qb-stat qb-stat--interactive">
+          <div className="qb-stat__top">
+            <div className="qb-stat__title">Overall Accuracy</div>
+            <div className="qb-stat__icon qb-stat__icon--target">
+              <LuTarget size={20} />
+            </div>
+          </div>
+          <div className="qb-stat__value">
+            <AnimatedCounter value={summary?.accuracy_pct ?? 0} suffix="%" duration={1200} />
+          </div>
+          <div className="qb-stat__indicator">
+            <div
+              className="qb-stat__progress-ring"
+              style={{ '--progress': `${summary?.accuracy_pct ?? 0}%` }}
+            />
+          </div>
         </div>
-        <div className="qb-stat">
-          <div className="qb-stat__top"><div className="qb-stat__title">Questions Answered</div><div className="qb-stat__icon"><LuListCheck size={20} /></div></div>
-          <div className="qb-stat__value">{summary?.total_answered ?? 0}</div>
+        <div className="qb-stat qb-stat--interactive">
+          <div className="qb-stat__top">
+            <div className="qb-stat__title">Questions Answered</div>
+            <div className="qb-stat__icon qb-stat__icon--questions">
+              <LuListCheck size={20} />
+            </div>
+          </div>
+          <div className="qb-stat__value">
+            <AnimatedCounter value={summary?.total_answered ?? 0} duration={1500} />
+          </div>
           <div className="qb-stat__sub">Across all specialties</div>
         </div>
-        <div className="qb-stat qb-stat--large">
-          <div className="qb-stat__top"><div className="qb-stat__title">Avg Time per Question</div><div className="qb-stat__icon"><LuTimer size={20} /></div></div>
-          <div className="qb-stat__value">{`${summary?.avg_time_ms ? Math.round(summary.avg_time_ms / 1000) : 0}s`}</div>
-          <div className="qb-stat__sub">Optimal range: 30–60s</div>
+        <div className="qb-stat qb-stat--large qb-stat--interactive">
+          <div className="qb-stat__top">
+            <div className="qb-stat__title">Avg Time per Question</div>
+            <div className="qb-stat__icon qb-stat__icon--timer">
+              <LuTimer size={20} />
+            </div>
+          </div>
+          <div className="qb-stat__value">
+            <AnimatedCounter value={summary?.avg_time_ms ? Math.round(summary.avg_time_ms / 1000) : 0} suffix="s" duration={1000} />
+          </div>
+          <div className="qb-stat__sub">
+            {summary?.avg_time_ms ? (
+              Math.round(summary.avg_time_ms / 1000) >= 30 && Math.round(summary.avg_time_ms / 1000) <= 60
+                ? <span className="qb-stat__badge qb-stat__badge--good">✓ Optimal pace</span>
+                : Math.round(summary.avg_time_ms / 1000) < 30
+                  ? <span className="qb-stat__badge qb-stat__badge--fast">⚡ Quick pace</span>
+                  : <span className="qb-stat__badge qb-stat__badge--slow">🐢 Take your time</span>
+            ) : 'Optimal range: 30–60s'}
+          </div>
         </div>
       </div>
 
@@ -167,17 +246,11 @@ export default function QuestionBank() {
 
         {/* Heatmap Card */}
         <div className="qb-card qb-card--feature qb-card--heatmap">
-          <div className="qb-heatmap-container">
-            <div className="qb-heatmap-text">
-              <div className="qb-card__title">Study Activity</div>
-              <div className="qb-card__meta">Track your daily study progress over the past month. Each square represents a day, with colors indicating your activity level.</div>
-            </div>
-            <div className="qb-heatmap-visualization">
-              <ActivityHeatmap />
-            </div>
+          <div className="qb-card__head" style={{ marginBottom: 8 }}>
+            <div className="qb-card__title">Study Activity</div>
           </div>
-          <div className="qb-card__actions">
-            <button className="qb-btn qb-btn--secondary" onClick={() => {}}>View Analytics</button>
+          <div className="qb-heatmap-visualization">
+            <ActivityHeatmap />
           </div>
         </div>
       </div>
