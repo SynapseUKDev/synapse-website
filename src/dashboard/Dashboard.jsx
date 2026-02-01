@@ -47,9 +47,28 @@ export default function Dashboard() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('all')
   const [sortBy, setSortBy] = useState('total_answered') // total_answered | correct | accuracy_pct
 
+  const [recentTopic, setRecentTopic] = useState(null)
+
   useEffect(() => {
     window.scrollTo(0, 0)
   }, []);
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${API_BASE}/textbook/topic-history`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.items) && data.items.length > 0) {
+          setRecentTopic(data.items[0])
+        }
+      })
+      .catch(() => {
+      })
+    return () => { cancelled = true }
+  }, [API_BASE])
 
   const loadFriendsData = async () => {
     try {
@@ -102,7 +121,7 @@ export default function Dashboard() {
   const loadLeaderboard = async () => {
     try {
       setLeaderboardLoading(true)
-      const url = selectedSpecialty === 'all' 
+      const url = selectedSpecialty === 'all'
         ? `${API_BASE}/friends/leaderboard`
         : `${API_BASE}/friends/leaderboard?specialty_id=${selectedSpecialty}`
       const res = await authenticatedFetch(url)
@@ -139,19 +158,19 @@ export default function Dashboard() {
     e?.preventDefault?.()
     setFriendsError('')
     setFriendsSuccess('')
-    
+
     const email = friendEmail.trim()
     if (!email) return
-    
+
     // Check if user is already a friend
-    const isAlreadyFriend = friends.some(f => 
+    const isAlreadyFriend = friends.some(f =>
       f.friend_email?.toLowerCase() === email.toLowerCase()
     )
     if (isAlreadyFriend) {
       setFriendsError('This user is already your friend')
       return
     }
-    
+
     setSendLoading(true)
     try {
       const res = await authenticatedFetch(`${API_BASE}/friends/requests`, {
@@ -178,7 +197,7 @@ export default function Dashboard() {
   const respondToRequest = async (requestId, action) => {
     setFriendsError('')
     setFriendsSuccess('')
-    
+
     try {
       const res = await authenticatedFetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
         method: 'POST',
@@ -190,7 +209,7 @@ export default function Dashboard() {
       } else {
         await loadFriendsData()
         await loadFriendsList()
-        
+
         // Show success message
         if (action === 'accept') {
           setFriendsSuccess('Friend request accepted!')
@@ -199,7 +218,7 @@ export default function Dashboard() {
         } else if (action === 'cancel') {
           setFriendsSuccess('Friend request cancelled')
         }
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => setFriendsSuccess(''), 3000)
       }
@@ -244,7 +263,7 @@ export default function Dashboard() {
         <div className="qb-stat">
           <div className="qb-stat__top"><div className="qb-stat__title">Questions Today</div><div className="qb-stat__icon"><LuTarget size={20} /></div></div>
           <div className="qb-stat__value">{summary?.questions_today ?? 0}/{summary?.targets?.questions || 30}</div>
-          <div className="db-progress"><div className="db-progress__fill" style={{ width: `${Math.min(100, Math.round((((summary?.questions_today || 0) / (summary?.targets?.questions || 30)) * 100))) }%` }} /></div>
+          <div className="db-progress"><div className="db-progress__fill" style={{ width: `${Math.min(100, Math.round((((summary?.questions_today || 0) / (summary?.targets?.questions || 30)) * 100)))}%` }} /></div>
         </div>
       </div>
 
@@ -262,12 +281,22 @@ export default function Dashboard() {
             </div>
             <span>›</span>
           </button>
-          <button className="db-btn" onClick={() => navigate('/dashboard/textbook')}>
+          <button className="db-btn" onClick={() => {
+            if (recentTopic?.topic_slug) {
+              navigate(`/dashboard/textbook/topic/${recentTopic.topic_slug}`)
+            } else {
+              navigate('/dashboard/textbook')
+            }
+          }}>
             <div className="db-btn__left">
               <div className="db-btn__icon db-btn__icon--blue"><LuBookOpen size={18} /></div>
               <div>
-                <div>Read Textbook</div>
-                <div className="db-btn__meta">Revise content and view chapters</div>
+                <div>{recentTopic ? 'Continue Reading' : 'Read Textbook'}</div>
+                <div className="db-btn__meta">
+                  {recentTopic?.topic_name
+                    ? recentTopic.topic_name
+                    : 'Browse chapters and topics'}
+                </div>
               </div>
             </div>
             <span>›</span>
@@ -287,9 +316,9 @@ export default function Dashboard() {
             <div className="db-leaderboard__content">
               <div className="db-filters">
                 <div className="db-filter">
-                  <select 
-                    className="db-select" 
-                    value={selectedSpecialty} 
+                  <select
+                    className="db-select"
+                    value={selectedSpecialty}
                     onChange={(e) => setSelectedSpecialty(e.target.value)}
                   >
                     <option value="all">All Specialties</option>
@@ -301,9 +330,9 @@ export default function Dashboard() {
                   </select>
                 </div>
                 <div className="db-filter">
-                  <select 
-                    className="db-select" 
-                    value={sortBy} 
+                  <select
+                    className="db-select"
+                    value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                   >
                     <option value="total_answered">Sort by Total Answered</option>
@@ -330,11 +359,11 @@ export default function Dashboard() {
                         return (b[sortBy] || 0) - (a[sortBy] || 0)
                       }
                     })
-                    
+
                     return sorted.map((entry, index) => {
                       const isCurrentUser = entry.user_id === user?.id
                       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
-                      
+
                       // Determine what to show on the right based on sort
                       let scoreValue, scoreLabel
                       if (sortBy === 'accuracy_pct') {
@@ -347,10 +376,10 @@ export default function Dashboard() {
                         scoreValue = entry.total_answered || 0
                         scoreLabel = 'total'
                       }
-                      
+
                       return (
-                        <div 
-                          key={entry.user_id} 
+                        <div
+                          key={entry.user_id}
                           className={`db-leaderboard__item ${isCurrentUser ? 'db-leaderboard__item--self' : ''}`}
                         >
                           <div className="db-leaderboard__rank">
@@ -384,145 +413,145 @@ export default function Dashboard() {
             <div className="db-card__top">
               <div className="db-friends__title">Friends</div>
               <div className="db-tabs">
-              <button className={`db-tab ${friendsTab==='friends'?'is-active':''}`} onClick={()=>setFriendsTab('friends')}>
-                <LuUsers size={14} />
-                <span>Friends</span>
-              </button>
-              <button className={`db-tab ${friendsTab==='requests'?'is-active':''}`} onClick={()=>setFriendsTab('requests')}>
-                <LuMail size={14} />
-                <span>Requests</span>
-                {(requests.inbox.length > 0) && <span className="db-tab__badge">{requests.inbox.length}</span>}
-              </button>
-            </div>
-          </div>
-
-          {friendsTab === 'friends' && (
-            <div className="db-friends__content">
-              {friendsError && (
-                <div className="db-friends__alert db-friends__alert--error">
-                  <LuX size={16} />
-                  {friendsError}
-                </div>
-              )}
-              {friendsSuccess && (
-                <div className="db-friends__alert db-friends__alert--success">
-                  <LuCheck size={16} />
-                  {friendsSuccess}
-                </div>
-              )}
-              <p className="db-friends__desc">Add friends by email to connect and compete with other users.</p>
-              <form className="db-inputrow" onSubmit={sendFriendRequest}>
-                <input
-                  type="email"
-                  className="db-input"
-                  placeholder="friend@example.com"
-                  value={friendEmail}
-                  onChange={(e) => setFriendEmail(e.target.value)}
-                />
-                <button className="db-btn-primary" type="submit" disabled={sendLoading || !friendEmail.trim()}>
-                  {sendLoading ? 'Sending…' : 'Send Request'}
+                <button className={`db-tab ${friendsTab === 'friends' ? 'is-active' : ''}`} onClick={() => setFriendsTab('friends')}>
+                  <LuUsers size={14} />
+                  <span>Friends</span>
                 </button>
-              </form>
+                <button className={`db-tab ${friendsTab === 'requests' ? 'is-active' : ''}`} onClick={() => setFriendsTab('requests')}>
+                  <LuMail size={14} />
+                  <span>Requests</span>
+                  {(requests.inbox.length > 0) && <span className="db-tab__badge">{requests.inbox.length}</span>}
+                </button>
+              </div>
+            </div>
 
-              <div className="db-friends__divider" />
-
-              {friendsLoading ? (
-                <div className="db-empty">Loading friends…</div>
-              ) : (
-                <div>
-                  <div className="db-subheading">
-                    <LuUsers size={14} />
-                    Your Friends ({friends.length})
+            {friendsTab === 'friends' && (
+              <div className="db-friends__content">
+                {friendsError && (
+                  <div className="db-friends__alert db-friends__alert--error">
+                    <LuX size={16} />
+                    {friendsError}
                   </div>
-                  <div className="db-list">
-                    {friends.length === 0 && <div className="db-empty">No friends yet. Send some requests!</div>}
-                    {friends.map((f) => (
-                      <div key={f.id} className="db-list__item db-list__item--friend">
-                        <div className="db-list__main">
-                          <div className="db-list__title">{f.friend_username || f.friend_email?.split('@')[0] || 'User'}</div>
-                          <div className="db-list__sub">{f.friend_email}</div>
+                )}
+                {friendsSuccess && (
+                  <div className="db-friends__alert db-friends__alert--success">
+                    <LuCheck size={16} />
+                    {friendsSuccess}
+                  </div>
+                )}
+                <p className="db-friends__desc">Add friends by email to connect and compete with other users.</p>
+                <form className="db-inputrow" onSubmit={sendFriendRequest}>
+                  <input
+                    type="email"
+                    className="db-input"
+                    placeholder="friend@example.com"
+                    value={friendEmail}
+                    onChange={(e) => setFriendEmail(e.target.value)}
+                  />
+                  <button className="db-btn-primary" type="submit" disabled={sendLoading || !friendEmail.trim()}>
+                    {sendLoading ? 'Sending…' : 'Send Request'}
+                  </button>
+                </form>
+
+                <div className="db-friends__divider" />
+
+                {friendsLoading ? (
+                  <div className="db-empty">Loading friends…</div>
+                ) : (
+                  <div>
+                    <div className="db-subheading">
+                      <LuUsers size={14} />
+                      Your Friends ({friends.length})
+                    </div>
+                    <div className="db-list">
+                      {friends.length === 0 && <div className="db-empty">No friends yet. Send some requests!</div>}
+                      {friends.map((f) => (
+                        <div key={f.id} className="db-list__item db-list__item--friend">
+                          <div className="db-list__main">
+                            <div className="db-list__title">{f.friend_username || f.friend_email?.split('@')[0] || 'User'}</div>
+                            <div className="db-list__sub">{f.friend_email}</div>
+                          </div>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {friendsTab === 'requests' && (
+              <div className="db-friends__content">
+                {friendsError && (
+                  <div className="db-friends__alert db-friends__alert--error">
+                    <LuX size={16} />
+                    {friendsError}
+                  </div>
+                )}
+                {friendsSuccess && (
+                  <div className="db-friends__alert db-friends__alert--success">
+                    <LuCheck size={16} />
+                    {friendsSuccess}
+                  </div>
+                )}
+                {requestsLoading ? (
+                  <div className="db-empty">Loading requests…</div>
+                ) : (
+                  <div className="db-twoCols">
+                    <div>
+                      <div className="db-subheading">
+                        <LuMail size={14} />
+                        Received ({requests.inbox.length})
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {friendsTab === 'requests' && (
-            <div className="db-friends__content">
-              {friendsError && (
-                <div className="db-friends__alert db-friends__alert--error">
-                  <LuX size={16} />
-                  {friendsError}
-                </div>
-              )}
-              {friendsSuccess && (
-                <div className="db-friends__alert db-friends__alert--success">
-                  <LuCheck size={16} />
-                  {friendsSuccess}
-                </div>
-              )}
-              {requestsLoading ? (
-                <div className="db-empty">Loading requests…</div>
-              ) : (
-                <div className="db-twoCols">
-                  <div>
-                    <div className="db-subheading">
-                      <LuMail size={14} />
-                      Received ({requests.inbox.length})
+                      <div className="db-list">
+                        {(requests.inbox || []).length === 0 && <div className="db-empty">No pending requests</div>}
+                        {(requests.inbox || []).map((r) => (
+                          <div key={r.id} className="db-list__item db-list__item--request">
+                            <div className="db-list__main">
+                              <div className="db-list__title">{r.requester?.username || r.requester?.email?.split('@')[0] || 'User'}</div>
+                              <div className="db-list__sub">{r.requester?.email}</div>
+                            </div>
+                            <div className="db-list__actions">
+                              <button className="db-chip db-chip--accept" onClick={() => respondToRequest(r.id, 'accept')} title="Accept">
+                                <LuCheck size={16} />
+                              </button>
+                              <button className="db-chip db-chip--decline" onClick={() => respondToRequest(r.id, 'decline')} title="Decline">
+                                <LuX size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="db-list">
-                      {(requests.inbox || []).length === 0 && <div className="db-empty">No pending requests</div>}
-                      {(requests.inbox || []).map((r) => (
-                        <div key={r.id} className="db-list__item db-list__item--request">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{r.requester?.username || r.requester?.email?.split('@')[0] || 'User'}</div>
-                            <div className="db-list__sub">{r.requester?.email}</div>
+                    <div className="db-requests-divider" />
+                    <div>
+                      <div className="db-subheading">
+                        <LuMail size={14} />
+                        Sent ({requests.outbox.length})
+                      </div>
+                      <div className="db-list">
+                        {(requests.outbox || []).length === 0 && <div className="db-empty">No pending requests</div>}
+                        {(requests.outbox || []).map((r) => (
+                          <div key={r.id} className="db-list__item db-list__item--request">
+                            <div className="db-list__main">
+                              <div className="db-list__title">{r.target?.username || r.target?.email?.split('@')[0] || 'User'}</div>
+                              <div className="db-list__sub">{r.target?.email}</div>
+                            </div>
+                            <div className="db-list__actions">
+                              <button className="db-chip db-chip--neutral" onClick={() => respondToRequest(r.id, 'cancel')}>
+                                <LuTrash2 size={14} />
+                                Cancel
+                              </button>
+                            </div>
                           </div>
-                          <div className="db-list__actions">
-                            <button className="db-chip db-chip--accept" onClick={() => respondToRequest(r.id, 'accept')} title="Accept">
-                              <LuCheck size={16} />
-                            </button>
-                            <button className="db-chip db-chip--decline" onClick={() => respondToRequest(r.id, 'decline')} title="Decline">
-                              <LuX size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <div className="db-requests-divider" />
-                  <div>
-                    <div className="db-subheading">
-                      <LuMail size={14} />
-                      Sent ({requests.outbox.length})
-                    </div>
-                    <div className="db-list">
-                      {(requests.outbox || []).length === 0 && <div className="db-empty">No pending requests</div>}
-                      {(requests.outbox || []).map((r) => (
-                        <div key={r.id} className="db-list__item db-list__item--request">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{r.target?.username || r.target?.email?.split('@')[0] || 'User'}</div>
-                            <div className="db-list__sub">{r.target?.email}</div>
-                          </div>
-                          <div className="db-list__actions">
-                            <button className="db-chip db-chip--neutral" onClick={() => respondToRequest(r.id, 'cancel')}>
-                              <LuTrash2 size={14} />
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </div>
 
     </div>
@@ -565,36 +594,36 @@ function renderTrendChart(days) {
   const accPath = buildPath(accVals, accMax)
   const timePath = buildPath(timeVals, timeMax)
 
-  const xTicks = [0, Math.floor(days.length/2), days.length-1].filter(v=>v>=0)
-  const accTicks = [0,25,50,75,100]
-  const timeTicks = [0, Math.round(timeMax*0.33), Math.round(timeMax*0.66), timeMax]
+  const xTicks = [0, Math.floor(days.length / 2), days.length - 1].filter(v => v >= 0)
+  const accTicks = [0, 25, 50, 75, 100]
+  const timeTicks = [0, Math.round(timeMax * 0.33), Math.round(timeMax * 0.66), timeMax]
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" role="img" aria-label="Performance trend chart">
       <rect x="0" y="0" width={width} height={height} fill="#fff" rx="12" />
       {/* grid */}
-      {accTicks.map((t,i)=>{
-        const y = padding.top + (1 - (t/accMax)) * innerH
-        return <line key={`g-${i}`} x1={padding.left} y1={y} x2={width-padding.right} y2={y} stroke="#eef2f7" />
+      {accTicks.map((t, i) => {
+        const y = padding.top + (1 - (t / accMax)) * innerH
+        return <line key={`g-${i}`} x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#eef2f7" />
       })}
       {/* axes labels */}
-      {xTicks.map((i)=>{
+      {xTicks.map((i) => {
         const x = padding.left + i * xStep
-        return <text key={`xt-${i}`} x={x} y={height-6} textAnchor="middle" fontSize="11" fill="#64748b">{i===0?'Day 1':i===days.length-1?`Day ${days.length}`:`Day ${i+1}`}</text>
+        return <text key={`xt-${i}`} x={x} y={height - 6} textAnchor="middle" fontSize="11" fill="#64748b">{i === 0 ? 'Day 1' : i === days.length - 1 ? `Day ${days.length}` : `Day ${i + 1}`}</text>
       })}
-      {accTicks.map((t)=>{
-        const y = padding.top + (1 - (t/accMax)) * innerH
-        return <text key={`yt-a-${t}`} x={6} y={y+3} fontSize="11" fill="#64748b">{t}</text>
+      {accTicks.map((t) => {
+        const y = padding.top + (1 - (t / accMax)) * innerH
+        return <text key={`yt-a-${t}`} x={6} y={y + 3} fontSize="11" fill="#64748b">{t}</text>
       })}
       {/* paths */}
       {timePath && <path d={timePath} fill="none" stroke="#16a34a" strokeWidth="2.25" />}
       {accPath && <path d={accPath} fill="none" stroke="#3b82f6" strokeWidth="2.25" />}
       {/* legends */}
-      <g transform={`translate(${width-padding.right-160}, ${padding.top+4})`}>
+      <g transform={`translate(${width - padding.right - 160}, ${padding.top + 4})`}>
         <circle cx="6" cy="6" r="4" fill="#3b82f6" />
         <text x="16" y="9" fontSize="12" fill="#0b1637">Accuracy (%)</text>
       </g>
-      <g transform={`translate(${width-padding.right-160}, ${padding.top+22})`}>
+      <g transform={`translate(${width - padding.right - 160}, ${padding.top + 22})`}>
         <circle cx="6" cy="6" r="4" fill="#16a34a" />
         <text x="16" y="9" fontSize="12" fill="#0b1637">Avg Time (s)</text>
       </g>

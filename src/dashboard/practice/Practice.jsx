@@ -114,11 +114,11 @@ export default function Practice() {
   const location = useLocation()
   const navigate = useNavigate()
   const params = new URLSearchParams(location.search)
-  
+
   // Check if we're in review mode (navigated from results page)
   const reviewModeData = location.state?.reviewMode ? location.state : null
   const isReviewMode = !!reviewModeData
-  
+
   const specialtyId = params.get('specialty_id') || reviewModeData?.sessionStats?.specialtyId
   const specialtyName = params.get('specialty_name') || reviewModeData?.sessionStats?.specialtyName || null
   const studySetId = params.get('study_set_id') || reviewModeData?.sessionStats?.studySetId
@@ -147,7 +147,7 @@ export default function Practice() {
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
   const hasLoadedRef = useRef(false) // Prevent double-loading of session
-  
+
   // Review mode filter state
   const [reviewFilter, setReviewFilter] = useState('All') // All | Correct | Incorrect | Skipped
 
@@ -1122,7 +1122,7 @@ export default function Practice() {
     correct: reviewModeData?.sessionStats?.correct || 0,
     totalQuestions: reviewModeData?.sessionStats?.totalQuestions || questions.length,
     skipped: reviewModeData?.sessionStats?.skipped || 0,
-    accuracy: reviewModeData?.sessionStats?.totalQuestions 
+    accuracy: reviewModeData?.sessionStats?.totalQuestions
       ? Math.round((reviewModeData?.sessionStats?.correct / (reviewModeData?.sessionStats?.totalQuestions - reviewModeData?.sessionStats?.skipped)) * 100) || 0
       : 0
   } : null
@@ -1161,14 +1161,14 @@ export default function Practice() {
             </div>
           )}
           {isReviewMode ? (
-            <button onClick={() => navigate('/dashboard/question-bank/results', { 
-              state: { 
+            <button onClick={() => navigate('/dashboard/question-bank/results', {
+              state: {
                 ...reviewModeData.sessionStats,
                 questions,
                 userAnswers,
                 weakTopics: [],
                 topicPerformance: []
-              } 
+              }
             })} className="btn btn--ghost btn--icon" title="Back to results">
               <LuChevronLeft />Back to Results
             </button>
@@ -1253,7 +1253,7 @@ export default function Practice() {
                       const userSelected = userAnswers[currentQuestionId]?.selected === o.id
                       const isSelectedIncorrect = userSelected && !isCorrectOption
                       const isStruckOut = (struckOut[currentQuestionId] || new Set()).has(o.id)
-                      
+
                       let className = 'option'
                       if (userSelected) className += ' option--selected'
                       if (showResult) {
@@ -1306,6 +1306,7 @@ export default function Practice() {
                           return next
                         })
                       }}><LuFlag />{flagged.has(currentQuestionId) ? 'Flagged' : 'Flag'}</button>
+                      <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
                       {(highlights[currentQuestion.id]?.length > 0) && (
                         <button
                           className="btn btn--ghost btn--icon"
@@ -1334,28 +1335,28 @@ export default function Practice() {
                 <div className="controls__right">
                   {isReviewMode ? (
                     <>
-                      <button 
+                      <button
                         onClick={() => {
                           const prevIdx = filteredIndices[currentFilteredPosition - 1]
                           if (prevIdx !== undefined) {
                             setCurrentIndex(prevIdx)
                             loadCurrentQuestion(prevIdx)
                           }
-                        }} 
-                        disabled={currentFilteredPosition <= 0} 
+                        }}
+                        disabled={currentFilteredPosition <= 0}
                         className="btn btn--ghost btn--icon"
                       >
                         <LuChevronLeft />Previous
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           const nextIdx = filteredIndices[currentFilteredPosition + 1]
                           if (nextIdx !== undefined) {
                             setCurrentIndex(nextIdx)
                             loadCurrentQuestion(nextIdx)
                           }
-                        }} 
-                        disabled={currentFilteredPosition >= filteredIndices.length - 1} 
+                        }}
+                        disabled={currentFilteredPosition >= filteredIndices.length - 1}
                         className="btn btn--primary btn--icon"
                       >
                         Next <LuArrowRight />
@@ -1469,12 +1470,11 @@ export default function Practice() {
             </div>
           )}
 
-          <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
-            <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
-            {isSubmitted && (
+          {isSubmitted && (
+            <div className="discussion-panel-wrapper" style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
               <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Right Sidebar - Session Progress, Track Questions & Reference Ranges */}
           <div className="pr__aside">
@@ -1483,25 +1483,25 @@ export default function Practice() {
               <div className="card__body">
                 {/* Session Progress Header */}
                 <div className="progress-tracker-header">
-                    {isReviewMode ? (
-                      <div className="progress-stats-row review-stats-row">
-                        <div className="progress-stat">
-                          <div className="progress-stat__value stat--green">{reviewStats?.correct || 0}</div>
-                          <div className="progress-stat__label">Correct</div>
-                        </div>
-                        <div className="progress-stat">
-                          <div className="progress-stat__value stat--red">{(reviewStats?.totalQuestions || 0) - (reviewStats?.correct || 0) - (reviewStats?.skipped || 0)}</div>
-                          <div className="progress-stat__label">Incorrect</div>
-                        </div>
-                        <div className="progress-stat">
-                          <div className="progress-stat__value">{reviewStats?.skipped || 0}</div>
-                          <div className="progress-stat__label">Skipped</div>
-                        </div>
-                        <div className="progress-stat">
-                          <div className="progress-stat__value stat--blue">{reviewStats?.accuracy || 0}%</div>
-                          <div className="progress-stat__label">Accuracy</div>
-                        </div>
+                  {isReviewMode ? (
+                    <div className="progress-stats-row review-stats-row">
+                      <div className="progress-stat">
+                        <div className="progress-stat__value stat--green">{reviewStats?.correct || 0}</div>
+                        <div className="progress-stat__label">Correct</div>
                       </div>
+                      <div className="progress-stat">
+                        <div className="progress-stat__value stat--red">{(reviewStats?.totalQuestions || 0) - (reviewStats?.correct || 0) - (reviewStats?.skipped || 0)}</div>
+                        <div className="progress-stat__label">Incorrect</div>
+                      </div>
+                      <div className="progress-stat">
+                        <div className="progress-stat__value">{reviewStats?.skipped || 0}</div>
+                        <div className="progress-stat__label">Skipped</div>
+                      </div>
+                      <div className="progress-stat">
+                        <div className="progress-stat__value stat--blue">{reviewStats?.accuracy || 0}%</div>
+                        <div className="progress-stat__label">Accuracy</div>
+                      </div>
+                    </div>
                   ) : (
                     <>
                       <div className="progress-stats-row">
@@ -1588,9 +1588,9 @@ export default function Practice() {
                   <div className="trk-filters">
                     {isReviewMode ? (
                       ['All', 'Correct', 'Incorrect', 'Skipped'].map((f) => (
-                        <button 
-                          key={f} 
-                          className={`chip ${reviewFilter === f ? 'is-active' : ''}`} 
+                        <button
+                          key={f}
+                          className={`chip ${reviewFilter === f ? 'is-active' : ''}`}
                           onClick={() => {
                             setReviewFilter(f)
                             // Jump to first question matching filter
@@ -1636,7 +1636,7 @@ export default function Practice() {
                             const isFlag = flagged.has(qid)
                             let status = 'Unanswered'
                             if (ua?.submitted) status = ua.isCorrect ? 'Correct' : 'Wrong'
-                            
+
                             // Filter logic differs for review mode
                             let matchesFilter
                             if (isReviewMode) {
@@ -1645,7 +1645,7 @@ export default function Practice() {
                             } else {
                               matchesFilter = trkFilter === 'All' || (trkFilter === 'Flagged' ? isFlag : trkFilter === status)
                             }
-                            
+
                             const classes = `seg seg--${status.toLowerCase()} ${isCurrent ? 'seg--current' : ''} ${isFlag && !isReviewMode ? 'seg--flagged' : ''} ${matchesFilter ? '' : 'seg--dim'}`
                             return (
                               <button

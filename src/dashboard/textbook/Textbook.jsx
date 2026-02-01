@@ -37,17 +37,35 @@ function TopicCard({ topic, progress, onStatusChange, onConfidenceChange, onTopi
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   }
 
-  const cycleStatus = () => {
+  const cycleStatus = (e) => {
+    e.stopPropagation()
     const order = ['not_read', 'in_progress', 'completed']
     const currentIdx = order.indexOf(readingStatus)
     const nextStatus = order[(currentIdx + 1) % 3]
     onStatusChange(topic.id, nextStatus)
   }
 
+  const handleConfidenceClick = (e, level) => {
+    e.stopPropagation()
+    onConfidenceChange(topic.id, level)
+  }
+
+  const handleCardClick = () => {
+    if (hasPage) {
+      onTopicClick(topic)
+    }
+  }
+
   const checkboxClass = `tb-topic-card__check ${readingStatus === 'completed' ? 'tb-topic-card__check--completed' : readingStatus === 'in_progress' ? 'tb-topic-card__check--in-progress' : ''}`
 
   return (
-    <div className="tb-topic-card">
+    <div
+      className={`tb-topic-card ${hasPage ? 'tb-topic-card--clickable' : 'tb-topic-card--disabled'}`}
+      onClick={handleCardClick}
+      role={hasPage ? 'button' : undefined}
+      tabIndex={hasPage ? 0 : undefined}
+      onKeyDown={hasPage ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleCardClick() } : undefined}
+    >
       {/* Left checkbox */}
       <button className={checkboxClass} onClick={cycleStatus} aria-label="Toggle reading status">
         {readingStatus === 'completed' && <LuCheck className="tb-topic-card__check-icon" />}
@@ -56,11 +74,7 @@ function TopicCard({ topic, progress, onStatusChange, onConfidenceChange, onTopi
 
       {/* Topic info */}
       <div className="tb-topic-card__info">
-        <span
-          className="tb-topic-card__name"
-          onClick={hasPage ? () => onTopicClick(topic) : undefined}
-          style={!hasPage ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-        >
+        <span className="tb-topic-card__name">
           {topic.name}
         </span>
         <span className="tb-topic-card__meta">
@@ -86,7 +100,7 @@ function TopicCard({ topic, progress, onStatusChange, onConfidenceChange, onTopi
             <button
               key={level}
               className={`tb-confidence-option tb-confidence-option--${level} ${confidence === level ? 'tb-confidence-option--active' : ''}`}
-              onClick={() => onConfidenceChange(topic.id, level)}
+              onClick={(e) => handleConfidenceClick(e, level)}
             >
               <span className="tb-confidence-option__dot" />
               {CONFIDENCE_LABELS[level]}

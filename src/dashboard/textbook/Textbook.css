@@ -955,12 +955,30 @@ mark {
   border-radius: 14px;
   padding: 14px 18px;
   box-shadow: 0 4px 12px rgba(11, 22, 55, 0.06);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
-.tb-topic-card:hover {
-  box-shadow: 0 6px 16px rgba(11, 22, 55, 0.10);
-  border-color: #d0d6e6;
+.tb-topic-card--clickable {
+  cursor: pointer;
+}
+
+.tb-topic-card--clickable:hover {
+  box-shadow: 0 6px 16px rgba(11, 22, 55, 0.12);
+  border-color: #c8d0e6;
+  background: #fafbff;
+}
+
+.tb-topic-card--clickable:focus {
+  outline: 2px solid #2E2CC4;
+  outline-offset: 2px;
+}
+
+.tb-topic-card--disabled {
+  cursor: default;
+}
+
+.tb-topic-card--disabled .tb-topic-card__name {
+  opacity: 0.5;
 }
 
 /* Checkbox / Completed toggle */
