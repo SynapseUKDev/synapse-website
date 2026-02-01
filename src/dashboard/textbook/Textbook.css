@@ -801,44 +801,61 @@ mark {
 /* Progress Header Section */
 .tb-progress-header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 0;
+  align-items: stretch;
   margin-bottom: 20px;
-  padding: 16px 20px;
+  padding: 0;
   background: #fff;
   border: 1px solid #e7e9f2;
   border-radius: 14px;
   box-shadow: 0 4px 12px rgba(11, 22, 55, 0.06);
+  overflow: hidden;
 }
 
 .tb-progress-section {
   flex: 1;
-  min-width: 180px;
+  min-width: 0;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+
+/* Vertical divider between sections - not full height */
+.tb-progress-section:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  width: 1px;
+  background: #e7e9f2;
 }
 
 .tb-progress-section__title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  color: #596381;
+  color: #7a83a2;
   margin-bottom: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
 }
 
 /* Reading Progress Bar */
 .tb-progress-bar {
-  height: 10px;
+  height: 8px;
   background: #e9ecf3;
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .tb-progress-bar__fill {
   height: 100%;
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
-  border-radius: 6px;
+  border-radius: 4px;
   transition: width 0.3s ease;
 }
 
@@ -853,6 +870,7 @@ mark {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
+  margin-top: 4px;
 }
 
 .tb-confidence-legend__item {
@@ -861,11 +879,12 @@ mark {
   gap: 6px;
   font-size: 14px;
   color: #0B1637;
+  font-weight: 500;
 }
 
 .tb-confidence-legend__dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -885,9 +904,10 @@ mark {
 /* Sort & Filter Controls */
 .tb-controls {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
   flex-wrap: wrap;
+  padding: 16px 24px;
 }
 
 .tb-control-group {
@@ -897,22 +917,22 @@ mark {
 }
 
 .tb-control-label {
-  font-size: 14px;
+  font-size: 13px;
   color: #596381;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .tb-select {
   padding: 8px 32px 8px 12px;
   border: 1px solid #e1e6f0;
-  border-radius: 10px;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23596381' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border-radius: 8px;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23596381' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
   color: #0B1637;
   cursor: pointer;
   appearance: none;
-  min-width: 140px;
+  min-width: 120px;
 }
 
 .tb-select:hover {
@@ -1180,26 +1200,141 @@ mark {
 @media (max-width: 768px) {
   .tb-progress-header {
     flex-direction: column;
-    gap: 16px;
+    gap: 0;
+    margin-bottom: 16px;
   }
 
-  .tb-topic-card {
-    grid-template-columns: auto 1fr;
+  .tb-progress-section {
+    padding: 12px 16px;
+    width: 100%;
+  }
+
+  /* No pseudo-element divider on mobile - use partial-width horizontal line */
+  .tb-progress-section:not(:last-child)::after {
+    display: none;
+  }
+
+  .tb-progress-section:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    height: 1px;
+    background: #e7e9f2;
+  }
+
+  .tb-progress-section__title {
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+
+  .tb-progress-bar {
+    height: 6px;
+  }
+
+  .tb-progress-bar__text {
+    font-size: 13px;
+  }
+
+  .tb-confidence-legend {
     gap: 12px;
   }
 
-  .tb-topic-card__status,
-  .tb-topic-card__confidence {
-    grid-column: 2;
+  .tb-confidence-legend__item {
+    font-size: 13px;
   }
 
+  .tb-confidence-legend__dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  /* Controls section - proper padding on mobile */
   .tb-controls {
     width: 100%;
-    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .tb-control-group {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tb-control-label {
+    font-size: 12px;
+    white-space: nowrap;
   }
 
   .tb-select {
     flex: 1;
     min-width: 0;
+    padding: 6px 28px 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Topic card - reorganize for mobile */
+  .tb-topic-card {
+    display: block;
+    padding: 14px;
+    position: relative;
+  }
+
+  /* Top row: checkbox + info */
+  .tb-topic-card__check {
+    width: 24px;
+    height: 24px;
+    position: absolute;
+    left: 14px;
+    top: 14px;
+  }
+
+  .tb-topic-card__check-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .tb-topic-card__info {
+    padding-left: 36px;
+    padding-right: 80px;
+    margin-bottom: 10px;
+  }
+
+  .tb-topic-card__name {
+    font-size: 14px;
+    text-align: left;
+  }
+
+  .tb-topic-card__meta {
+    font-size: 11px;
+    text-align: left;
+  }
+
+  /* Status badge - top right */
+  .tb-topic-card__status {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+  }
+
+  .tb-status-badge {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  /* Confidence toggle - below info, left aligned */
+  .tb-topic-card__confidence {
+    padding-left: 36px;
+  }
+
+  .tb-confidence-toggle {
+    justify-content: flex-start;
+  }
+
+  .tb-confidence-option {
+    padding: 4px 8px;
+    font-size: 11px;
   }
 }
