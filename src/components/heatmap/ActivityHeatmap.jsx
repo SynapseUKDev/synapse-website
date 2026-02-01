@@ -16,19 +16,33 @@ export default function ActivityHeatmap() {
   const calculateWeeks = useCallback(() => {
     if (!containerRef.current) return
     const containerWidth = containerRef.current.offsetWidth
-    const dayLabelWidth = 20 // space for day labels
-    const availableWidth = containerWidth - dayLabelWidth - 16 // minus padding
+    const dayLabelWidth = 24 // space for day labels (S, M, T, etc.)
+    const wrapperGap = 8 // gap between day labels and grid
+    const availableWidth = containerWidth - dayLabelWidth - wrapperGap - 8 // extra padding
     const cellSize = 14 // width of each cell
     const gap = 3 // gap between cells
     const calculatedWeeks = Math.floor(availableWidth / (cellSize + gap))
-    // Minimum 20 weeks, max 60 weeks (about a year)
-    setNumWeeks(Math.max(20, Math.min(60, calculatedWeeks)))
+    // Minimum 12 weeks (3 months), max 52 weeks (1 year)
+    setNumWeeks(Math.max(12, Math.min(52, calculatedWeeks)))
   }, [])
 
   useEffect(() => {
-    calculateWeeks()
-    window.addEventListener('resize', calculateWeeks)
-    return () => window.removeEventListener('resize', calculateWeeks)
+    // Initial calculation with delay to ensure layout is ready
+    const timer = setTimeout(calculateWeeks, 50)
+
+    // ResizeObserver for container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      calculateWeeks()
+    })
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+
+    return () => {
+      clearTimeout(timer)
+      resizeObserver.disconnect()
+    }
   }, [calculateWeeks])
 
   useEffect(() => {
