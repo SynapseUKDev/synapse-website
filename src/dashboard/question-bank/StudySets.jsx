@@ -3,11 +3,12 @@ import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useNavigate } from 'react-router-dom'
 import { LuLayers, LuTrash2, LuPlus, LuChevronLeft } from 'react-icons/lu'
 import './QuestionBank.css'
+import '../practice/PracticeSetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 
 function StudySetCard({ item, onDelete }) {
   const navigate = useNavigate()
-  
+
   return (
     <div className="qb-card qb-card--set">
       <div className="qb-card__head">
@@ -20,8 +21,8 @@ function StudySetCard({ item, onDelete }) {
             <div className="qb-card__meta">{item.item_count} items included</div>
           </div>
         </div>
-        <button 
-          className="qb-card__del-btn" 
+        <button
+          className="qb-card__del-btn"
           onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
           title="Delete Study Set"
         >
@@ -96,23 +97,27 @@ export default function StudySets() {
 
   return (
     <div className="qb">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-        <button 
-          className="qb-btn-text" 
+      <div className="setup__header">
+        <button
+          className="setup__back"
           onClick={() => navigate('/dashboard/question-bank')}
-          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
         >
-          <LuChevronLeft size={20} /> Back
+          <LuChevronLeft />
+          Back to Question Bank
         </button>
-        <h1 className="qb__title" style={{ margin: 0 }}>Custom Revision Sets</h1>
+        <div className="setup__title-section">
+          <div>
+            <h1 className="setup__title">Custom Revision Sets</h1>
+            <p className="setup__subtitle">Create and manage your personal study sets</p>
+          </div>
+        </div>
       </div>
-      <p className="qb__subtitle">Create and manage your personal study sets</p>
 
       {/* Study Sets Section */}
       <div className="qb__section-header" style={{ marginTop: 32, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 className="qb__section-title" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#1f2937' }}>My Study Sets</h2>
-        <button 
-          className="qb-btn qb-btn--sm" 
+        <button
+          className="qb-btn qb-btn--sm"
           style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
           onClick={() => navigate('/dashboard/question-bank/create-set')}
         >

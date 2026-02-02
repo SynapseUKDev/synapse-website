@@ -252,13 +252,13 @@ export default function Dashboard() {
       <div className="qb__stats db-stats">
         <div className="qb-stat">
           <div className="qb-stat__top"><div className="qb-stat__title">Study Streak</div><div className="qb-stat__icon"><LuFlame size={20} /></div></div>
-          <div className="qb-stat__value">{summary?.study_streak_days ?? 0} days</div>
+          <div className="qb-stat__value">{summary?.study_streak_days ?? 0} {summary?.study_streak_days === 1 ? 'day' : 'days'}</div>
           <div className="qb-stat__sub">Keep it up!</div>
         </div>
         <div className="qb-stat">
           <div className="qb-stat__top"><div className="qb-stat__title">Study Time</div><div className="qb-stat__icon"><LuTimer size={20} /></div></div>
-          <div className="qb-stat__value">{summary?.time_today_minutes ?? 0} mins</div>
-          <div className="qb-stat__sub">Target: {summary?.targets?.time_minutes || 180} mins</div>
+          <div className="qb-stat__value">{summary?.time_today_minutes ?? 0} {summary?.time_today_minutes === 1 ? 'min' : 'mins'}</div>
+          <div className="qb-stat__sub">Target: {summary?.targets?.time_minutes || 180} {summary?.targets?.time_minutes === 1 ? 'min' : 'mins'}</div>
         </div>
         <div className="qb-stat">
           <div className="qb-stat__top"><div className="qb-stat__title">Questions Today</div><div className="qb-stat__icon"><LuTarget size={20} /></div></div>
