@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
+import ReportTopicIssueButton from './ReportTopicIssueButton'
 import { authHeaders } from '../../auth/token'
 
 function AnchorNav({ sections, hasReferences }) {
@@ -245,6 +246,9 @@ export default function TextbookTopic() {
             aria-label="Search query in chapter"
           />
         </form>
+        <div className="tb-header__actions">
+          <ReportTopicIssueButton topicSlug={topicSlug} API_BASE={API_BASE} />
+        </div>
       </header>
 
       <div className="tb-layout">
