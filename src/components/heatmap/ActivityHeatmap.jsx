@@ -182,37 +182,24 @@ export default function ActivityHeatmap() {
 
   // Generate month labels - position at the week column where the 1st of the month appears
   const getMonthLabels = () => {
-    const labels = []
-    let lastMonth = -1
+  const labels = []
+  let lastMonth = -1
 
-    weeks.forEach((week, weekIndex) => {
-      // Check if any day in this week is the 1st of a new month
-      const firstOfMonth = week.find(d => d.getDate() === 1)
-      if (firstOfMonth) {
-        const month = firstOfMonth.getMonth()
-        if (month !== lastMonth) {
-          labels.push({
-            weekIndex,
-            label: firstOfMonth.toLocaleDateString('en-GB', { month: 'short' })
-          })
-          lastMonth = month
-        }
-      }
-    })
+  weeks.forEach((week, weekIndex) => {
+    const weekStart = week[0] // Monday (your weeks start on Monday)
+    const month = weekStart.getMonth()
 
-    // If no label in first 3 columns, add the first month
-    if (labels.length === 0 || labels[0].weekIndex > 3) {
-      if (weeks.length > 0 && weeks[0].length > 0) {
-        const firstDate = weeks[0][0]
-        labels.unshift({
-          weekIndex: 0,
-          label: firstDate.toLocaleDateString('en-GB', { month: 'short' })
-        })
-      }
+    if (month !== lastMonth) {
+      labels.push({
+        weekIndex,
+        label: weekStart.toLocaleDateString('en-GB', { month: 'short' })
+      })
+      lastMonth = month
     }
+  })
 
-    return labels
-  }
+  return labels
+}
 
   const monthLabels = getMonthLabels()
 
