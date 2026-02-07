@@ -186,8 +186,15 @@ export default function ActivityHeatmap() {
   let lastMonth = -1
 
   weeks.forEach((week, weekIndex) => {
-    const weekStart = week[0] // Monday (your weeks start on Monday)
+    const weekStart = week[0] // Monday
     const month = weekStart.getMonth()
+
+    // ✅ If the very first column is a late-month spillover (e.g. Sep 29),
+    // skip labelling that partial month to avoid "SepOct" overlap.
+    if (weekIndex === 0 && weekStart.getDate() > 7) {
+      lastMonth = month
+      return
+    }
 
     if (month !== lastMonth) {
       labels.push({
