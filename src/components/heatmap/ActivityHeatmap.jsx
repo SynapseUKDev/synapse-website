@@ -84,34 +84,35 @@ export default function ActivityHeatmap() {
   }
 
   // Generate dates dynamically based on calculated weeks
-  // End date is the Saturday of current week, so today is near the right side
+  // End date is the Sunday of current week, so today is near the right side
   const generateDates = useCallback(() => {
-    const dates = []
-    const today = new Date()
+  const dates = []
+  const today = new Date()
 
-    // Find the end of the current week (Saturday)
-    const endDate = new Date(today)
-    const daysUntilSaturday = (6 - today.getDay() + 7) % 7
-    endDate.setDate(today.getDate() + daysUntilSaturday)
+  // Start: 1st day of previous month
+  const startMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
 
-    // Calculate start date based on number of weeks
-    const totalDays = numWeeks * 7
-    const startDate = new Date(endDate)
-    startDate.setDate(endDate.getDate() - totalDays + 1)
+  // End: last day of current month
+  const endMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
 
-    // Adjust to start on Sunday
-    const startDay = startDate.getDay()
-    if (startDay !== 0) {
-      startDate.setDate(startDate.getDate() - startDay)
-    }
+  // Align start to Monday
+  const startDate = new Date(startMonth)
+  const startDay = startDate.getDay() === 0 ? 7 : startDate.getDay() // Mon=1..Sun=7
+  startDate.setDate(startDate.getDate() - (startDay - 1))
 
-    const current = new Date(startDate)
-    while (current <= endDate) {
-      dates.push(new Date(current))
-      current.setDate(current.getDate() + 1)
-    }
-    return dates
-  }, [numWeeks])
+  // Align end to Sunday
+  const endDate = new Date(endMonth)
+  const endDay = endDate.getDay() === 0 ? 7 : endDate.getDay()
+  endDate.setDate(endDate.getDate() + (7 - endDay))
+
+  const current = new Date(startDate)
+  while (current <= endDate) {
+    dates.push(new Date(current))
+    current.setDate(current.getDate() + 1)
+  }
+
+  return dates
+}, [numWeeks])
 
   const getMaxCount = () => {
     const counts = Object.values(activityData)
