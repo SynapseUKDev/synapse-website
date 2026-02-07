@@ -2,7 +2,8 @@
   position: relative;
   width: 100%;
   padding: 8px 0;
-  overflow: visible;
+  overflow-x: hidden;   /* stops it spilling off the card/page */
+  overflow-y: visible;  /* keeps tooltip working */
 }
 
 .activity-heatmap-loading {
