@@ -244,7 +244,8 @@ export default function ActivityHeatmap() {
             {dayNames.map((dayName, dayIndex) => (
               <div key={dayIndex} className="activity-heatmap__row">
                 {weeks.map((week, weekIndex) => {
-                  const isMonthStart = week.some(d => d.getDate() === 1)
+                  const isMonthStart =
+                  weekIndex === 0 ? true : week[0].getMonth() !== weeks[weekIndex - 1][0].getMonth()
                   const date = week.find(d => d.getDay() === dayOrder[dayIndex])
 
                   if (!date) {
