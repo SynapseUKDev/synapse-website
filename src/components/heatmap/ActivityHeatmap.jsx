@@ -214,52 +214,63 @@ const buildMonthWeeks = (monthStart) => {
   const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const dayOrder = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun in JS getDay() terms
 
-  // Group dates by week
-  const weeks = []
-  let currentWeek = []
+// --- Month-isolated calendar grids (prevents month bleed) ---
 
-  dates.forEach((date) => {
-    const dayOfWeek = date.getDay()
-    if (dayOfWeek === 1 && currentWeek.length > 0) {
-      weeks.push(currentWeek)
-      currentWeek = []
-    }
-    currentWeek.push(date)
-  })
+const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
-  if (currentWeek.length > 0) {
-    weeks.push(currentWeek)
+const getMonthStarts = (monthsBack = 4) => {
+  const today = new Date()
+  const start = new Date(today.getFullYear(), today.getMonth() - monthsBack, 1)
+  const end = new Date(today.getFullYear(), today.getMonth(), 1)
+
+  const out = []
+  const cur = new Date(start)
+  while (cur <= end) {
+    out.push(new Date(cur))
+    cur.setMonth(cur.getMonth() + 1)
   }
-
-  // Generate month labels - position at the week column where the 1st of the month appears
-  const getMonthLabels = () => {
-  const labels = []
-  let lastMonth = -1
-
-  weeks.forEach((week, weekIndex) => {
-    const weekStart = week[0] // Monday
-    const month = weekStart.getMonth()
-
-    // ✅ If the very first column is a late-month spillover (e.g. Sep 29),
-    // skip labelling that partial month to avoid "SepOct" overlap.
-    if (weekIndex === 0 && weekStart.getDate() > 7) {
-      lastMonth = month
-      return
-    }
-
-    if (month !== lastMonth) {
-      labels.push({
-        weekIndex,
-        label: weekStart.toLocaleDateString('en-GB', { month: 'short' })
-      })
-      lastMonth = month
-    }
-  })
-
-  return labels
+  return out
 }
 
-  const monthLabels = getMonthLabels()
+const startOfMondayWeek = (d) => {
+  const x = new Date(d)
+  const day = x.getDay() === 0 ? 7 : x.getDay() // Mon=1..Sun=7
+  x.setDate(x.getDate() - (day - 1))
+  x.setHours(0, 0, 0, 0)
+  return x
+}
+
+const endOfSundayWeek = (d) => {
+  const x = new Date(d)
+  const day = x.getDay() === 0 ? 7 : x.getDay()
+  x.setDate(x.getDate() + (7 - day))
+  x.setHours(0, 0, 0, 0)
+  return x
+}
+
+// Weeks for ONE month. Each week is 7 dates (Mon..Sun).
+const buildMonthWeeks = (monthStart) => {
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+
+  const gridStart = startOfMondayWeek(monthStart)
+  const gridEnd = endOfSundayWeek(monthEnd)
+
+  const weeks = []
+  const cur = new Date(gridStart)
+
+  while (cur <= gridEnd) {
+    const week = []
+    for (let i = 0; i < 7; i++) {
+      week.push(new Date(cur))
+      cur.setDate(cur.getDate() + 1)
+    }
+    weeks.push(week)
+  }
+
+  return weeks
+}
+
+const monthStarts = getMonthStarts(4)
 
   if (loading) {
     return (
