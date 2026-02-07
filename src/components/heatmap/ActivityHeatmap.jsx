@@ -150,7 +150,7 @@ export default function ActivityHeatmap() {
     const containerRect = containerRef.current?.getBoundingClientRect()
     if (containerRect) {
       setTooltipPos({
-        x: e.clientX,,
+        x: e.clientX,
         y: e.clientY - 12
       })
     }
