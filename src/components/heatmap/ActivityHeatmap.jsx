@@ -89,21 +89,18 @@ export default function ActivityHeatmap() {
   const dates = []
   const today = new Date()
 
-  // Start: 1st day of previous month
-  const startMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  // Start: 1st day of (current month - 4)  => total = 5 months incl current
+  const startMonth = new Date(today.getFullYear(), today.getMonth() - 4, 1)
 
-  // End: last day of current month
-  const endMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  // End: Sunday of the current week (no future spill)
+  const endDate = new Date(today)
+  const endDay = endDate.getDay() === 0 ? 7 : endDate.getDay() // Mon=1..Sun=7
+  endDate.setDate(endDate.getDate() + (7 - endDay))
 
   // Align start to Monday
   const startDate = new Date(startMonth)
-  const startDay = startDate.getDay() === 0 ? 7 : startDate.getDay() // Mon=1..Sun=7
+  const startDay = startDate.getDay() === 0 ? 7 : startDate.getDay()
   startDate.setDate(startDate.getDate() - (startDay - 1))
-
-  // Align end to Sunday
-  const endDate = new Date(endMonth)
-  const endDay = endDate.getDay() === 0 ? 7 : endDate.getDay()
-  endDate.setDate(endDate.getDate() + (7 - endDay))
 
   const current = new Date(startDate)
   while (current <= endDate) {
