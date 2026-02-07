@@ -150,8 +150,8 @@ export default function ActivityHeatmap() {
     const containerRect = containerRef.current?.getBoundingClientRect()
     if (containerRect) {
       setTooltipPos({
-        x: rect.left - containerRect.left + rect.width / 2,
-        y: rect.top - containerRect.top - 8
+        x: e.clientX,,
+        y: e.clientY - 12
       })
     }
     setHoveredDay({ date, count })
@@ -163,7 +163,8 @@ export default function ActivityHeatmap() {
 
   const dates = generateDates()
   const today = new Date()
-  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const dayOrder = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun in JS getDay() terms
 
   // Group dates by week
   const weeks = []
@@ -171,7 +172,7 @@ export default function ActivityHeatmap() {
 
   dates.forEach((date) => {
     const dayOfWeek = date.getDay()
-    if (dayOfWeek === 0 && currentWeek.length > 0) {
+    if (dayOfWeek === 1 && currentWeek.length > 0) {
       weeks.push(currentWeek)
       currentWeek = []
     }
@@ -259,7 +260,7 @@ export default function ActivityHeatmap() {
             {dayNames.map((dayName, dayIndex) => (
               <div key={dayIndex} className="activity-heatmap__row">
                 {weeks.map((week, weekIndex) => {
-                  const date = week.find(d => d.getDay() === dayIndex)
+                  const date = week.find(d => d.getDay() === dayOrder[dayIndex])
 
                   if (!date) {
                     return (
