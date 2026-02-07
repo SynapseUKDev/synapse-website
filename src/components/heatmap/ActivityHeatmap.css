@@ -145,7 +145,7 @@
 
 /* Hover effects */
 .activity-heatmap__day:not(.activity-heatmap__day--empty):not(.activity-heatmap__day--future):hover {
-  transform: scale(1.4);
+  transform: scale(1.15);
   z-index: 10;
   position: relative;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -153,7 +153,7 @@
 
 /* Tooltip */
 .activity-heatmap__tooltip {
-  position: absolute;
+  position: fixed;
   transform: translateX(-50%) translateY(-100%);
   background: var(--syn-navy-700, #1e293b);
   color: #fff;
