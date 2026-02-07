@@ -257,13 +257,14 @@ export default function ActivityHeatmap() {
             {dayNames.map((dayName, dayIndex) => (
               <div key={dayIndex} className="activity-heatmap__row">
                 {weeks.map((week, weekIndex) => {
+                  const isMonthStart = week.some(d => d.getDate() === 1)
                   const date = week.find(d => d.getDay() === dayOrder[dayIndex])
 
                   if (!date) {
                     return (
                       <div
                         key={weekIndex}
-                        className="activity-heatmap__day activity-heatmap__day--empty"
+                        className={`activity-heatmap__day activity-heatmap__day--empty ${isMonthStart ? 'activity-heatmap__day--month-start' : ''}`}
                       />
                     )
                   }
@@ -278,7 +279,7 @@ export default function ActivityHeatmap() {
                     return (
                       <div
                         key={weekIndex}
-                        className="activity-heatmap__day activity-heatmap__day--future"
+                        className={`activity-heatmap__day activity-heatmap__day--future ${isMonthStart ? 'activity-heatmap__day--month-start' : ''}`}
                       />
                     )
                   }
@@ -286,7 +287,7 @@ export default function ActivityHeatmap() {
                   return (
                     <div
                       key={weekIndex}
-                      className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${isToday ? 'activity-heatmap__day--today' : ''}`}
+                      className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${isToday ? 'activity-heatmap__day--today' : ''} ${isMonthStart ? 'activity-heatmap__day--month-start' : ''}`}
                       onMouseEnter={(e) => handleMouseEnter(e, date, count)}
                       onMouseLeave={handleMouseLeave}
                     />
