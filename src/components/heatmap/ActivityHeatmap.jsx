@@ -299,12 +299,10 @@ const buildMonthWeeks = (monthStart) => {
           </div>
         </div>
       )
-    })}
-  </div>
-</div>
-</div>  {/* closes .activity-heatmap__months */}
-</div>  {/* closes .activity-heatmap__content */}
-</div>  {/* closes .activity-heatmap__wrapper */}
+        })}
+        </div>  {/* closes .activity-heatmap__months */}
+      </div>    {/* closes .activity-heatmap__content */}
+    </div>      {/* closes .activity-heatmap__wrapper */}
 
       {/* Tooltip */}
       {hoveredDay && (
