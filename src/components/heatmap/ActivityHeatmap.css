@@ -59,6 +59,7 @@
 
 /* Content area - no scrolling, fills width */
 .activity-heatmap__content {
+  flex: 1 1 0;
   min-width: 0; /* important in flex layouts */
 }
 
@@ -68,6 +69,7 @@
   justify-content: space-between; /* spread months across available width */
   align-items: flex-start;
   width: 100%;
+  gap: clamp(6px, 1.2vw, 12px);
 }
 
 /* Month labels row */
@@ -92,20 +94,20 @@
 .activity-heatmap__grid {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--gap);
 }
 
 .activity-heatmap__row {
   display: flex;
-  gap: 3px;
+  gap: var(--gap);
 }
 
 /* Day cells - fixed size for alignment */
 .activity-heatmap__day {
-  width: 14px;
-  height: 14px;
+  width: var(--cell);
+  height: var(--cell);
   flex-shrink: 0;
-  border-radius: 3px;
+  border-radius: clamp(3px, 0.4vw, 6px);
   background: #ebedf0;
   transition: all 0.15s ease;
   cursor: pointer;
@@ -219,13 +221,13 @@
 
 .activity-heatmap__legend-squares {
   display: flex;
-  gap: 3px;
+  gap: var(--gap);
 }
 
 .activity-heatmap__legend-square {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: clamp(3px, 0.4vw, 6px);
 }
 
 .activity-heatmap__legend-label {
@@ -235,9 +237,9 @@
 
 /* Responsive - smaller screens */
 @media (max-width: 768px) {
-  .activity-heatmap__day {
-    width: 10px;
-    height: 10px;
+    .activity-heatmap {
+    --cell: 10px;
+    --gap: 3px;
   }
 
   .activity-heatmap__day-label {
@@ -265,27 +267,18 @@
   .activity-heatmap__legend {
     margin-top: 8px;
   }
-
-  .activity-heatmap__legend-square {
-    width: 10px;
-    height: 10px;
-  }
 }
 
 .activity-heatmap__day--month-start {
   box-shadow: inset 2px 0 0 rgba(0, 0, 0, 0.08);
 }
 
-.activity-heatmap__months {
-  display: flex;
-  gap: clamp(6px, 1.2vw, 12px);
-  align-items: flex-start;
-}
-
 .activity-heatmap__month {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .activity-heatmap__month-header {
@@ -293,4 +286,16 @@
   font-size: 11px;
   font-weight: 600;
   opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-heatmap {
+  --cell: clamp(10px, 1.0vw, 14px);
+  --gap: clamp(2px, 0.4vw, 3px);
+}
+
+.activity-heatmap__months > * {
+  min-width: 0;
 }
