@@ -305,36 +305,6 @@ const buildMonthWeeks = (monthStart) => {
   })}
 </div>
 
-                  const dateKey = formatDateKey(date)
-                  const count = activityData[dateKey] || 0
-                  const intensity = getIntensity(count)
-                  const isToday = formatDateKey(today) === dateKey
-                  const isFuture = date > today
-
-                  if (isFuture) {
-                    return (
-                      <div
-                        key={weekIndex}
-                        className={`activity-heatmap__day activity-heatmap__day--future ${isMonthStart ? 'activity-heatmap__day--month-start' : ''}`}
-                      />
-                    )
-                  }
-
-                  return (
-                    <div
-                      key={weekIndex}
-                      className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${isToday ? 'activity-heatmap__day--today' : ''} ${isMonthStart ? 'activity-heatmap__day--month-start' : ''}`}
-                      onMouseEnter={(e) => handleMouseEnter(e, date, count)}
-                      onMouseLeave={handleMouseLeave}
-                    />
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* Tooltip */}
       {hoveredDay && (
         <div
