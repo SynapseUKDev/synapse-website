@@ -59,9 +59,15 @@
 
 /* Content area - no scrolling, fills width */
 .activity-heatmap__content {
-  flex: 1;
-  overflow: visible;
-  min-width: 0;
+  min-width: 0; /* important in flex layouts */
+}
+
+.activity-heatmap__months {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between; /* spread months across available width */
+  align-items: flex-start;
+  width: 100%;
 }
 
 /* Month labels row */
@@ -272,7 +278,7 @@
 
 .activity-heatmap__months {
   display: flex;
-  gap: 12px;
+  gap: clamp(6px, 1.2vw, 12px);
   align-items: flex-start;
 }
 
