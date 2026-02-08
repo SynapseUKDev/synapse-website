@@ -213,64 +213,7 @@ const buildMonthWeeks = (monthStart) => {
   const today = new Date()
   const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const dayOrder = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun in JS getDay() terms
-
-// --- Month-isolated calendar grids (prevents month bleed) ---
-
-const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-
-const getMonthStarts = (monthsBack = 4) => {
-  const today = new Date()
-  const start = new Date(today.getFullYear(), today.getMonth() - monthsBack, 1)
-  const end = new Date(today.getFullYear(), today.getMonth(), 1)
-
-  const out = []
-  const cur = new Date(start)
-  while (cur <= end) {
-    out.push(new Date(cur))
-    cur.setMonth(cur.getMonth() + 1)
-  }
-  return out
-}
-
-const startOfMondayWeek = (d) => {
-  const x = new Date(d)
-  const day = x.getDay() === 0 ? 7 : x.getDay() // Mon=1..Sun=7
-  x.setDate(x.getDate() - (day - 1))
-  x.setHours(0, 0, 0, 0)
-  return x
-}
-
-const endOfSundayWeek = (d) => {
-  const x = new Date(d)
-  const day = x.getDay() === 0 ? 7 : x.getDay()
-  x.setDate(x.getDate() + (7 - day))
-  x.setHours(0, 0, 0, 0)
-  return x
-}
-
-// Weeks for ONE month. Each week is 7 dates (Mon..Sun).
-const buildMonthWeeks = (monthStart) => {
-  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
-
-  const gridStart = startOfMondayWeek(monthStart)
-  const gridEnd = endOfSundayWeek(monthEnd)
-
-  const weeks = []
-  const cur = new Date(gridStart)
-
-  while (cur <= gridEnd) {
-    const week = []
-    for (let i = 0; i < 7; i++) {
-      week.push(new Date(cur))
-      cur.setDate(cur.getDate() + 1)
-    }
-    weeks.push(week)
-  }
-
-  return weeks
-}
-
-const monthStarts = getMonthStarts(4)
+  const monthStarts = getMonthStarts(4)
 
   if (loading) {
     return (
