@@ -239,35 +239,71 @@ const buildMonthWeeks = (monthStart) => {
         </div>
 
         <div className="activity-heatmap__content">
-          {/* Month labels row */}
-          <div className="activity-heatmap__month-labels">
-            {weeks.map((_, weekIndex) => {
-              const monthLabel = monthLabels.find(m => m.weekIndex === weekIndex)
-              return (
-                <div key={weekIndex} className="activity-heatmap__month-label">
-                  {monthLabel ? monthLabel.label : ''}
-                </div>
-              )
-            })}
-          </div>
 
-          {/* Grid: 7 days x N weeks */}
-          <div className="activity-heatmap__grid">
-            {dayNames.map((dayName, dayIndex) => (
-              <div key={dayIndex} className="activity-heatmap__row">
-                {weeks.map((week, weekIndex) => {
-                  const isMonthStart =
-                  weekIndex === 0 ? true : week[0].getMonth() !== weeks[weekIndex - 1][0].getMonth()
-                  const date = week.find(d => d.getDay() === dayOrder[dayIndex])
+         <div className="activity-heatmap__months">
+  {monthStarts.map((monthStart) => {
+    const monthWeeks = buildMonthWeeks(monthStart)
+    const monthLabel = monthStart.toLocaleDateString('en-GB', { month: 'short' })
+    const monthIndex = monthStart.getMonth()
+    const monthYear = monthStart.getFullYear()
 
-                  if (!date) {
-                    return (
-                      <div
-                        key={weekIndex}
-                        className={`activity-heatmap__day activity-heatmap__day--empty ${isMonthStart ? 'activity-heatmap__day--month-start' : ''}`}
-                      />
-                    )
-                  }
+    return (
+      <div key={`${monthYear}-${monthIndex}`} className="activity-heatmap__month">
+        <div className="activity-heatmap__month-header">{monthLabel}</div>
+
+        <div className="activity-heatmap__grid">
+          {dayNames.map((_, dayIndex) => (
+            <div key={dayIndex} className="activity-heatmap__row">
+              {monthWeeks.map((week, weekIndex) => {
+                const date = week[dayIndex]
+
+                // only show real days belonging to THIS month
+                const isInMonth =
+                  date.getFullYear() === monthYear &&
+                  date.getMonth() === monthIndex
+
+                if (!isInMonth) {
+                  return (
+                    <div
+                      key={weekIndex}
+                      className="activity-heatmap__day activity-heatmap__day--empty"
+                    />
+                  )
+                }
+
+                const dateKey = formatDateKey(date)
+                const count = activityData[dateKey] || 0
+                const intensity = getIntensity(count)
+                const isToday = formatDateKey(today) === dateKey
+                const isFuture = date > today
+
+                if (isFuture) {
+                  return (
+                    <div
+                      key={weekIndex}
+                      className="activity-heatmap__day activity-heatmap__day--future"
+                    />
+                  )
+                }
+
+                return (
+                  <div
+                    key={weekIndex}
+                    className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${
+                      isToday ? 'activity-heatmap__day--today' : ''
+                    }`}
+                    onMouseEnter={(e) => handleMouseEnter(e, date, count)}
+                    onMouseLeave={handleMouseLeave}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  })}
+</div>
 
                   const dateKey = formatDateKey(date)
                   const count = activityData[dateKey] || 0
