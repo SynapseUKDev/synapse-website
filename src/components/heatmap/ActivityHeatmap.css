@@ -272,7 +272,7 @@
 
 .activity-heatmap__months {
   display: flex;
-  gap: 6px;
+  gap: 12px;
   align-items: flex-start;
 }
 
