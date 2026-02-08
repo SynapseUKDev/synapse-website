@@ -213,7 +213,7 @@ const buildMonthWeeks = (monthStart) => {
   const today = new Date()
   const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const dayOrder = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun in JS getDay() terms
-  const monthStarts = getMonthStarts(4)
+  const monthStarts = getMonthStarts(3)
 
   if (loading) {
     return (
