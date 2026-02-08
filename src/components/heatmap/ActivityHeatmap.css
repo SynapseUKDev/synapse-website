@@ -58,25 +58,17 @@
 
 .activity-heatmap__content {
   flex: 1 1 0;
-  min-width: 0; /* important in flex layouts */
-
-  overflow-x: auto;     /* allow horizontal scroll instead of squeezing months */
-  overflow-y: visible;  /* keep tooltip visible */
-  padding-right: 10px;  /* stops last column kissing the edge */
-  scrollbar-gutter: stable;
+  min-width: 0;
+  overflow: visible; /* no scrolling, don’t clip future dots */
 }
-
-/* hide scrollbar but keep scroll */
-.activity-heatmap__content::-webkit-scrollbar { height: 0; }
-.activity-heatmap__content { scrollbar-width: none; -ms-overflow-style: none; }
 
 .activity-heatmap__months {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: flex-start;  /* don’t stretch/squeeze month columns */
+  justify-content: space-between; /* spread 4 months neatly */
   align-items: flex-start;
-  width: max-content;           /* make months take their natural width */
-  gap: clamp(12px, 2vw, 22px);  /* slightly clearer separation */
+  width: 100%;
+  gap: clamp(12px, 2vw, 22px);
 }
 
 /* Month labels row */
