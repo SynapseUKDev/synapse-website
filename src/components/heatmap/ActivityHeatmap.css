@@ -2,8 +2,7 @@
   position: relative;
   width: 100%;
   padding: 8px 0;
-  overflow-x: hidden;   /* stops it spilling off the card/page */
-  overflow-y: visible;  /* keeps tooltip working */
+  overflow: visible; /* do NOT clip the right edge or tooltip */
 }
 
 .activity-heatmap-loading {
@@ -57,19 +56,27 @@
   min-width: 12px;
 }
 
-/* Content area - no scrolling, fills width */
 .activity-heatmap__content {
   flex: 1 1 0;
   min-width: 0; /* important in flex layouts */
+
+  overflow-x: auto;     /* allow horizontal scroll instead of squeezing months */
+  overflow-y: visible;  /* keep tooltip visible */
+  padding-right: 10px;  /* stops last column kissing the edge */
+  scrollbar-gutter: stable;
 }
+
+/* hide scrollbar but keep scroll */
+.activity-heatmap__content::-webkit-scrollbar { height: 0; }
+.activity-heatmap__content { scrollbar-width: none; -ms-overflow-style: none; }
 
 .activity-heatmap__months {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: space-between; /* spread months across available width */
+  justify-content: flex-start;  /* don’t stretch/squeeze month columns */
   align-items: flex-start;
-  width: 100%;
-  gap: clamp(6px, 1.2vw, 12px);
+  width: max-content;           /* make months take their natural width */
+  gap: clamp(12px, 2vw, 22px);  /* slightly clearer separation */
 }
 
 /* Month labels row */
@@ -277,8 +284,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 auto;  /* prevent squeezing that causes “merged” columns */
 }
 
 .activity-heatmap__month-header {
