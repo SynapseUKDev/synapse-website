@@ -276,7 +276,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 0 0 auto;  /* prevent squeezing that causes “merged” columns */
+  flex: 1 1 0;     /* ✅ allow months to shrink to fit card */
+  min-width: 0;    /* ✅ required so flex children can shrink */
 }
 
 .activity-heatmap__month-header {
