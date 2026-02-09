@@ -48,8 +48,7 @@ function RenderBlock({ block, query }) {
   const highlightPlain = (text, q) => {
     if (!q) return text
     const re = new RegExp(escapeRegExp(q), 'ig')
-    return text.replace(re, (m) => `
-<mark class="tb-search-mark">${m}</mark>)
+    return text.replace(re, (m) => `<mark class="tb-search-mark">${m}</mark>`)
   }
   const highlightHtml = (html, q) => {
     if (!q) return html
@@ -58,8 +57,7 @@ function RenderBlock({ block, query }) {
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]
       if (part && !part.startsWith('<')) {
-        parts[i] = part.replace(re, (m) => `
-<mark class="tb-search-mark">${m}</mark>)
+        parts[i] = part.replace(re, (m) => `<mark class="tb-search-mark">${m}</mark>`)
       }
     }
     return parts.join('')
