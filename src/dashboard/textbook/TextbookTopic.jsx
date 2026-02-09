@@ -216,7 +216,14 @@ export default function TextbookTopic() {
 }, []);
 
       async function createHighlight({ withNote }) {
-  const sel = window.getSelection();
+  console.log('[HL] createHighlight clicked', { withNote })
+const sel = window.getSelection()
+console.log('[HL] selection', {
+  hasSel: !!sel,
+  rangeCount: sel?.rangeCount,
+  isCollapsed: sel?.isCollapsed,
+  lastRange: !!lastRangeRef.current,
+})
 
 let range = null;
 
