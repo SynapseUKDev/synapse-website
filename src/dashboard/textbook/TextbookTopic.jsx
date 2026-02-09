@@ -186,9 +186,6 @@ export default function TextbookTopic() {
 }, [highlights]);
 
       useEffect(() => {
-  const container = mainRef.current;
-  if (!container) return;
-
   const onMouseUp = () => {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) {
