@@ -153,7 +153,7 @@ useEffect(() => {
         setHighlights(Array.isArray(json?.highlights) ? json.highlights : [])
       }
     } catch (e) {
-      console.error('Failed to l
+      console.error('Failed to load highlights', e)
 
     useEffect(() => {
   const container = mainRef.current;
