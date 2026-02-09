@@ -91,6 +91,14 @@ export default function TextbookTopic() {
   const [currentIdx, setCurrentIdx] = useState(-1)
   const [topicQ, setTopicQ] = useState('')
 
+  const mainRef = useRef(null);
+
+  const [highlights, setHighlights] = useState([]);
+  const [hlToolbar, setHlToolbar] = useState({ open: false, x: 0, y: 0 });
+  const [activeHlId, setActiveHlId] = useState(null);
+  const [activeNoteDraft, setActiveNoteDraft] = useState('');
+  const [activeColorDraft, setActiveColorDraft] = useState('yellow');
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -118,6 +126,184 @@ export default function TextbookTopic() {
     load()
     return () => { cancelled = true }
   }, [topicSlug, API_BASE])
+
+  // ===============================
+// Fetch user highlights
+// ===============================
+useEffect(() => {
+  const pageId = data?.page?.id
+  if (!pageId) return
+
+  let cancelled = false
+
+  ;(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/textbook/highlights/${pageId}`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+        },
+      })
+
+      if (!res.ok) return
+      const json = await res.json()
+
+      if (!cancelled) {
+        setHighlights(Array.isArray(json?.highlights) ? json.highlights : [])
+      }
+    } catch (e) {
+      console.error('Failed to l
+
+    useEffect(() => {
+  const container = mainRef.current;
+  if (!container) return;
+
+  // clear old
+  unwrapAllUserHighlights(container);
+
+  // re-apply by block
+  for (const h of highlights) {
+    const blockEl = container.querySelector(`[data-tb-block-id="${h.block_id}"]`);
+    if (!blockEl) continue;
+
+    const blockText = blockEl.innerText || blockEl.textContent || '';
+    const offsets = findBestOffsets(blockText, h);
+    if (!offsets) continue;
+
+    const r = rangeFromOffsets(blockEl, offsets.start, offsets.end);
+    if (!r) continue;
+
+    applyHighlightToRange(r, h);
+  }
+}, [highlights]);
+
+      useEffect(() => {
+  const container = mainRef.current;
+  if (!container) return;
+
+  const onMouseUp = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) {
+      setHlToolbar((t) => ({ ...t, open: false }));
+      return;
+    }
+    const blockEl = getBlockWrapperFromSelection(sel);
+    if (!blockEl) return;
+
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    setHlToolbar({
+      open: true,
+      x: rect.left + rect.width / 2 + window.scrollX,
+      y: rect.top + window.scrollY - 10,
+    });
+  };
+
+  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('touchend', onMouseUp);
+
+  return () => {
+    document.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener('touchend', onMouseUp);
+  };
+}, []);
+
+      async function createHighlight({ withNote }) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+
+  const range = sel.getRangeAt(0);
+  const blockEl = getBlockWrapperFromSelection(sel);
+  if (!blockEl) return;
+
+  const blockId = blockEl.getAttribute('data-tb-block-id');
+  const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || '';
+
+  const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range);
+
+  const payload = {
+    page_id: data.page.id,
+    section_anchor: sectionAnchor,
+    block_id: blockId,
+    color: activeColorDraft,
+    quote,
+    start_offset: start,
+    end_offset: end,
+    prefix,
+    suffix,
+    note: withNote ? (activeNoteDraft || '') : null,
+  };
+
+  const res = await fetch(`${API_BASE}/textbook/highlights`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) return;
+
+  const json = await res.json();
+  if (json?.highlight) setHighlights((h) => [...h, json.highlight]);
+
+  // cleanup
+  sel.removeAllRanges();
+  setHlToolbar((t) => ({ ...t, open: false }));
+  setActiveNoteDraft('');
+}
+
+      useEffect(() => {
+  const container = mainRef.current;
+  if (!container) return;
+
+  const onClick = (e) => {
+    const mark = e.target.closest?.('mark.tb-user-mark');
+    if (!mark) return;
+
+    const id = mark.dataset.hlId;
+    const hl = highlights.find((x) => x.id === id);
+    if (!hl) return;
+
+    setActiveHlId(id);
+    setActiveNoteDraft(hl.note || '');
+    setActiveColorDraft(hl.color || 'yellow');
+  };
+
+  container.addEventListener('click', onClick);
+  return () => container.removeEventListener('click', onClick);
+}, [highlights]);
+
+      async function updateActiveHighlight() {
+  const id = activeHlId;
+  if (!id) return;
+
+  const res = await fetch(`${API_BASE}/textbook/highlights/${id}`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ color: activeColorDraft, note: activeNoteDraft }),
+  });
+  if (!res.ok) return;
+  const json = await res.json();
+  if (!json?.highlight) return;
+
+  setHighlights((arr) => arr.map((h) => (h.id === id ? json.highlight : h)));
+}
+
+async function deleteActiveHighlight() {
+  const id = activeHlId;
+  if (!id) return;
+
+  const res = await fetch(`${API_BASE}/textbook/highlights/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+  });
+  if (!res.ok) return;
+
+  setHighlights((arr) => arr.filter((h) => h.id !== id));
+  setActiveHlId(null);
+}
 
   // Scroll to anchor if hash present
   useEffect(() => {
@@ -259,7 +445,55 @@ export default function TextbookTopic() {
       </header>
 
       <div className="tb-layout">
-        <div className="tb-main">
+        <div className="tb-main" ref={mainRef}>
+          {hlToolbar.open && (
+  <div
+    className="tb-hl-toolbar"
+    style={{ left: hlToolbar.x, top: hlToolbar.y }}
+    role="dialog"
+    aria-label="Highlight toolbar"
+  >
+    <div className="tb-hl-colors">
+      {['yellow','green','pink','blue'].map((c) => (
+        <button
+          key={c}
+          className={`tb-hl-color ${activeColorDraft === c ? 'is-active' : ''}`}
+          onClick={() => setActiveColorDraft(c)}
+          aria-label={`Highlight colour ${c}`}
+        />
+      ))}
+    </div>
+
+    <button className="tb-hl-btn" onClick={() => createHighlight({ withNote: false })}>
+      Highlight
+    </button>
+
+    <button className="tb-hl-btn tb-hl-btn--note" onClick={() => createHighlight({ withNote: true })}>
+      Add note
+    </button>
+  </div>
+)}
+
+{activeHlId && (
+  <div className="tb-hl-popover" role="dialog" aria-label="Edit highlight">
+    <div className="tb-hl-popover__row">
+      <div className="tb-hl-popover__label">Note</div>
+      <textarea
+        className="tb-hl-popover__textarea"
+        value={activeNoteDraft}
+        onChange={(e) => setActiveNoteDraft(e.target.value)}
+        placeholder="Add a note for this highlight…"
+      />
+    </div>
+
+    <div className="tb-hl-popover__actions">
+      <button className="tb-hl-btn" onClick={updateActiveHighlight}>Save</button>
+      <button className="tb-hl-btn tb-hl-btn--danger" onClick={deleteActiveHighlight}>Delete</button>
+      <button className="tb-hl-btn tb-hl-btn--ghost" onClick={() => setActiveHlId(null)}>Close</button>
+    </div>
+  </div>
+)}
+          
           {topSections.map((s) => (
             <section key={s.id} id={`sec-${s.anchor_slug}`} className="tb-section">
               <h2 className="tb-section__title">{s.title}</h2>
