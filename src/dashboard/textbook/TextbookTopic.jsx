@@ -49,7 +49,7 @@ function RenderBlock({ block, query }) {
     if (!q) return text
     const re = new RegExp(escapeRegExp(q), 'ig')
     return text.replace(re, (m) => `
-<mark>${m}</mark>`)
+<mark class="tb-search-mark">${m}</mark>)
   }
   const highlightHtml = (html, q) => {
     if (!q) return html
@@ -59,7 +59,7 @@ function RenderBlock({ block, query }) {
       const part = parts[i]
       if (part && !part.startsWith('<')) {
         parts[i] = part.replace(re, (m) => `
-<mark>${m}</mark>`)
+<mark class="tb-search-mark">${m}</mark>)
       }
     }
     return parts.join('')
@@ -258,8 +258,15 @@ export default function TextbookTopic() {
               <h2 className="tb-section__title">{s.title}</h2>
               <div className="tb-section__content">
                 {(blocksBySection[s.id] || []).map((b) => (
-                  <RenderBlock key={b.id} block={b} query={topicQ} />
-                ))}
+  <div
+    key={b.id}
+    className="tb-block"
+    data-tb-block-id={b.id}
+    data-tb-section-anchor={s.anchor_slug}
+  >
+    <RenderBlock block={b} query={topicQ} />
+  </div>
+))}
               </div>
             </section>
           ))}
