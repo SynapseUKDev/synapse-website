@@ -127,33 +127,40 @@ export default function TextbookTopic() {
     return () => { cancelled = true }
   }, [topicSlug, API_BASE])
 
+   // ===============================
+  // Fetch user highlights
   // ===============================
-// Fetch user highlights
-// ===============================
-useEffect(() => {
-  const pageId = data?.page?.id
-  if (!pageId) return
+  useEffect(() => {
+    const pageId = data?.page?.id
+    if (!pageId) return
 
-  let cancelled = false
+    let cancelled = false
 
-  ;(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/textbook/highlights/${pageId}`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders(),
-        },
-      })
+    ;(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/textbook/highlights/${pageId}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders(),
+          },
+        })
 
-      if (!res.ok) return
-      const json = await res.json()
+        if (!res.ok) return
+        const json = await res.json()
 
-      if (!cancelled) {
-        setHighlights(Array.isArray(json?.highlights) ? json.highlights : [])
+        if (!cancelled) {
+          setHighlights(Array.isArray(json?.highlights) ? json.highlights : [])
+        }
+      } catch (e) {
+        console.error('Failed to load highlights', e)
       }
-    } catch (e) {
-      console.error('Failed to load highlights', e)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [API_BASE, data?.page?.id])
 
     useEffect(() => {
   const container = mainRef.current;
