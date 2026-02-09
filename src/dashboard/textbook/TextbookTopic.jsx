@@ -460,6 +460,7 @@ async function deleteActiveHighlight() {
     <div className="tb-hl-colors">
       {['yellow','green','pink','blue'].map((c) => (
         <button
+          type="button"
           key={c}
           className={`tb-hl-color ${activeColorDraft === c ? 'is-active' : ''}`}
           onClick={() => setActiveColorDraft(c)}
@@ -468,11 +469,19 @@ async function deleteActiveHighlight() {
       ))}
     </div>
 
-    <button className="tb-hl-btn" onClick={() => createHighlight({ withNote: false })}>
+    <button 
+      type="button"
+      className="tb-hl-btn" 
+      onClick={() => createHighlight({ withNote: false })}
+      >
       Highlight
     </button>
 
-    <button className="tb-hl-btn tb-hl-btn--note" onClick={() => createHighlight({ withNote: true })}>
+    <button 
+      type="button"
+      className="tb-hl-btn tb-hl-btn--note" 
+      onClick={() => createHighlight({ withNote: true })}
+      >
       Add note
     </button>
   </div>
@@ -491,9 +500,9 @@ async function deleteActiveHighlight() {
     </div>
 
     <div className="tb-hl-popover__actions">
-      <button className="tb-hl-btn" onClick={updateActiveHighlight}>Save</button>
-      <button className="tb-hl-btn tb-hl-btn--danger" onClick={deleteActiveHighlight}>Delete</button>
-      <button className="tb-hl-btn tb-hl-btn--ghost" onClick={() => setActiveHlId(null)}>Close</button>
+      <button type="button" className="tb-hl-btn" onClick={updateActiveHighlight}>Save</button>
+      <button type="button" className="tb-hl-btn tb-hl-btn--danger" onClick={deleteActiveHighlight}>Delete</button>
+      <button type="button" className="tb-hl-btn tb-hl-btn--ghost" onClick={() => setActiveHlId(null)}>Close</button>
     </div>
   </div>
 )}
