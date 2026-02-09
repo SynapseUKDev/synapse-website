@@ -234,8 +234,14 @@ if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
 } else {
   return;
 }
+
+          const pageId = data?.page?.id || data?.page_id || data?.id;
+  if (!pageId) return;
         
-  const blockEl = getBlockWrapperFromSelection(sel);
+    const blockEl =
+    (!sel || sel.isCollapsed ? null : getBlockWrapperFromSelection(sel)) ||
+    range?.commonAncestorContainer?.parentElement?.closest?.('[data-tb-block-id]');
+
   if (!blockEl) return;
 
   const blockId = blockEl.getAttribute('data-tb-block-id');
@@ -244,7 +250,7 @@ if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
   const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range);
 
   const payload = {
-    page_id: data.page.id,
+    page_id: pageId,
     section_anchor: sectionAnchor,
     block_id: blockId,
     color: activeColorDraft,
@@ -269,7 +275,7 @@ if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
   if (json?.highlight) setHighlights((h) => [...h, json.highlight]);
 
   // cleanup
-  sel.removeAllRanges();
+  if (sel?.removeAllRanges) sel.removeAllRanges();
   setHlToolbar((t) => ({ ...t, open: false }));
   setActiveNoteDraft('');
 }
