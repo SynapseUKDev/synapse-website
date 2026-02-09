@@ -1,3 +1,12 @@
+import {
+  getBlockWrapperFromSelection,
+  computeOffsetsWithinBlock,
+  rangeFromOffsets,
+  unwrapAllUserHighlights,
+  applyHighlightToRange,
+  findBestOffsets,
+} from './textbookHighlights'
+
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import './Textbook.css'
