@@ -98,6 +98,7 @@ export default function TextbookTopic() {
   const [activeHlId, setActiveHlId] = useState(null);
   const [activeNoteDraft, setActiveNoteDraft] = useState('');
   const [activeColorDraft, setActiveColorDraft] = useState('yellow');
+  const lastRangeRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -195,6 +196,8 @@ export default function TextbookTopic() {
     const blockEl = getBlockWrapperFromSelection(sel);
     if (!blockEl) return;
 
+    lastRangeRef.current = sel.getRangeAt(0).cloneRange()
+
     const rect = sel.getRangeAt(0).getBoundingClientRect();
     setHlToolbar({
       open: true,
@@ -214,9 +217,17 @@ export default function TextbookTopic() {
 
       async function createHighlight({ withNote }) {
   const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
 
-  const range = sel.getRangeAt(0);
+let range = null;
+
+if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+  range = sel.getRangeAt(0);
+} else if (lastRangeRef.current) {
+  range = lastRangeRef.current;
+} else {
+  return;
+}
+        
   const blockEl = getBlockWrapperFromSelection(sel);
   if (!blockEl) return;
 
