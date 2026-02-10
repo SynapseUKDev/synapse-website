@@ -244,7 +244,8 @@ if (ok) {
     y: rect.top + window.scrollY - 10,
   })
 }
-
+    
+  };
   // ✅ Use capture so we can intercept before other handlers collapse selection
   document.addEventListener('mouseup', onMouseUp, true)
   document.addEventListener('touchend', onMouseUp, true)
