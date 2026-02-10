@@ -346,21 +346,53 @@ setActiveNoteDraft('')
   if (!container) return;
 
   const onClick = (e) => {
-    const mark = e.target.closest?.('mark.tb-user-mark');
-    if (!mark) return;
+  // ✅ If user clicked the small "x" button, delete immediately
+  const xBtn = e.target.closest?.('button.tb-hl-x');
+  if (xBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = xBtn.dataset.hlId;
+    deleteHighlightById(id);
+    return;
+  }
 
-    const id = mark.dataset.hlId;
-    const hl = highlights.find((x) => x.id === id);
-    if (!hl) return;
+  // ✅ Otherwise clicking the highlight opens the optional note editor
+  const mark = e.target.closest?.('mark.tb-user-mark');
+  if (!mark) return;
 
-    setActiveHlId(id);
-    setActiveNoteDraft(hl.note || '');
-    setActiveColorDraft(hl.color || 'yellow');
-  };
+  const id = mark.dataset.hlId;
+  const hl = highlights.find((x) => x.id === id);
+  if (!hl) return;
+
+  setActiveHlId(id);
+  setActiveNoteDraft(hl.note || '');
+  setActiveColorDraft(hl.color || 'yellow');
+};
 
   container.addEventListener('click', onClick);
   return () => container.removeEventListener('click', onClick);
-}, [highlights]);
+}, [highlights, activeHlId]);
+
+  async function deleteHighlightById(id) {
+  if (!id) return;
+
+  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    console.error('[HL] Failed to delete highlight:', res.status);
+    return;
+  }
+
+  setHighlights((arr) => arr.filter((h) => h.id !== id));
+
+  // if the popover was open for this highlight, close it
+  if (activeHlId === id) {
+    setActiveHlId(null);
+    setActiveNoteDraft('');
+  }
+}
 
       async function updateActiveHighlight() {
   const id = activeHlId;
