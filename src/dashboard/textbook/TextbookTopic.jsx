@@ -323,7 +323,6 @@ if (json?.highlight) setHighlights((h) => [...h, json.highlight])
 
 // cleanup
 pendingSelectionRef.current = null
-const sel = window.getSelection()
 if (sel?.removeAllRanges) sel.removeAllRanges()
 setHlToolbar((t) => ({ ...t, open: false }))
 setActiveNoteDraft('')
