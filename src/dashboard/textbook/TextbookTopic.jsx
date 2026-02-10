@@ -99,6 +99,7 @@ export default function TextbookTopic() {
   const [activeNoteDraft, setActiveNoteDraft] = useState('');
   const [activeColorDraft, setActiveColorDraft] = useState('yellow');
   const lastRangeRef = useRef(null)
+  const pendingSelectionRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -203,16 +204,35 @@ if (!res.ok) {
     }
 
     const blockEl = getBlockWrapperFromSelection(sel)
-    if (!blockEl) return
+if (!blockEl) return
 
-    lastRangeRef.current = sel.getRangeAt(0).cloneRange()
+const range = sel.getRangeAt(0)
 
-    const rect = sel.getRangeAt(0).getBoundingClientRect()
-    setHlToolbar({
-      open: true,
-      x: rect.left + rect.width / 2 + window.scrollX,
-      y: rect.top + window.scrollY - 10,
-    })
+// Store a clone as backup (optional)
+lastRangeRef.current = range.cloneRange()
+
+// ✅ Compute and store deterministic offsets NOW (before re-render collapses selection)
+const blockId = blockEl.getAttribute('data-tb-block-id')
+const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
+
+const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range)
+
+pendingSelectionRef.current = {
+  block_id: blockId,
+  section_anchor: sectionAnchor,
+  start_offset: start,
+  end_offset: end,
+  quote,
+  prefix,
+  suffix,
+}
+
+const rect = range.getBoundingClientRect()
+setHlToolbar({
+  open: true,
+  x: rect.left + rect.width / 2 + window.scrollX,
+  y: rect.top + window.scrollY - 10,
+})
   }
 
   // ✅ Use capture so we can intercept before other handlers collapse selection
@@ -235,42 +255,78 @@ console.log('[HL] selection', {
   lastRange: !!lastRangeRef.current,
 })
 
-let range = null;
+const pageId = data?.page?.id || data?.page_id || data?.id
+if (!pageId) return
 
-if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-  range = sel.getRangeAt(0);
-} else if (lastRangeRef.current) {
-  range = lastRangeRef.current;
-} else {
-  return;
-}
+// ✅ Prefer the stored selection payload (survives re-render)
+let selPayload = pendingSelectionRef.current
 
-          const pageId = data?.page?.id || data?.page_id || data?.id;
-  if (!pageId) return;
-        
-    const blockEl =
+// Fallback: if user somehow opens toolbar without stored payload
+if (!selPayload) {
+  const sel = window.getSelection()
+  let range = null
+
+  if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+    range = sel.getRangeAt(0)
+  } else if (lastRangeRef.current) {
+    range = lastRangeRef.current
+  } else {
+    return
+  }
+
+  const blockEl =
     (!sel || sel.isCollapsed ? null : getBlockWrapperFromSelection(sel)) ||
-    range?.commonAncestorContainer?.parentElement?.closest?.('[data-tb-block-id]');
+    range?.commonAncestorContainer?.parentElement?.closest?.('[data-tb-block-id]')
 
-  if (!blockEl) return;
+  if (!blockEl) return
 
-  const blockId = blockEl.getAttribute('data-tb-block-id');
-  const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || '';
+  const blockId = blockEl.getAttribute('data-tb-block-id')
+  const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
+  const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range)
 
-  const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range);
-
-  const payload = {
-    page_id: pageId,
-    section_anchor: sectionAnchor,
+  selPayload = {
     block_id: blockId,
-    color: activeColorDraft,
-    quote,
+    section_anchor: sectionAnchor,
     start_offset: start,
     end_offset: end,
+    quote,
     prefix,
     suffix,
-    note: withNote ? (activeNoteDraft || '') : null,
-  };
+  }
+}
+
+const payload = {
+  page_id: pageId,
+  section_anchor: selPayload.section_anchor,
+  block_id: selPayload.block_id,
+  color: activeColorDraft,
+  quote: selPayload.quote,
+  start_offset: selPayload.start_offset,
+  end_offset: selPayload.end_offset,
+  prefix: selPayload.prefix,
+  suffix: selPayload.suffix,
+  note: withNote ? (activeNoteDraft || '') : null,
+}
+
+const res = await authenticatedFetch(`${API_BASE}/textbook/highlights`, {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+
+if (!res.ok) {
+  console.error('[HL] Failed to create highlight:', res.status)
+  return
+}
+
+const json = await res.json()
+if (json?.highlight) setHighlights((h) => [...h, json.highlight])
+
+// cleanup
+pendingSelectionRef.current = null
+const sel = window.getSelection()
+if (sel?.removeAllRanges) sel.removeAllRanges()
+setHlToolbar((t) => ({ ...t, open: false }))
+setActiveNoteDraft('')
 
   const res = await authenticatedFetch(`${API_BASE}/textbook/highlights`, {
   method: 'POST',
