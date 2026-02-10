@@ -12,7 +12,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
-import { authHeaders } from '../../auth/token'
+import { authHeaders, authenticatedFetch } from '../../auth/token'
 
 function AnchorNav({ sections, hasReferences }) {
   const navigateTo = (anchor) => {
@@ -139,15 +139,14 @@ export default function TextbookTopic() {
 
     ;(async () => {
       try {
-        const res = await fetch(`${API_BASE}/textbook/highlights/${pageId}`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeaders(),
-          },
-        })
+        const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${pageId}`, {
+  method: 'GET',
+})
 
-        if (!res.ok) return
+if (!res.ok) {
+  console.error('[HL] Failed to load highlights:', res.status)
+  return
+}
         const json = await res.json()
 
         if (!cancelled) {
@@ -273,14 +272,15 @@ if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
     note: withNote ? (activeNoteDraft || '') : null,
   };
 
-  const res = await fetch(`${API_BASE}/textbook/highlights`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify(payload),
-  });
+  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights`, {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
 
-  if (!res.ok) return;
+if (!res.ok) {
+  console.error('[HL] Failed to create highlight:', res.status)
+  return
+}
 
   const json = await res.json();
   if (json?.highlight) setHighlights((h) => [...h, json.highlight]);
@@ -316,13 +316,15 @@ if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
   const id = activeHlId;
   if (!id) return;
 
-  const res = await fetch(`${API_BASE}/textbook/highlights/${id}`, {
-    method: 'PUT',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ color: activeColorDraft, note: activeNoteDraft }),
-  });
-  if (!res.ok) return;
+  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
+  method: 'PUT',
+  body: JSON.stringify({ color: activeColorDraft, note: activeNoteDraft }),
+})
+if (!res.ok) {
+  console.error('[HL] Failed to update highlight:', res.status)
+  return
+}
+
   const json = await res.json();
   if (!json?.highlight) return;
 
@@ -333,12 +335,13 @@ async function deleteActiveHighlight() {
   const id = activeHlId;
   if (!id) return;
 
-  const res = await fetch(`${API_BASE}/textbook/highlights/${id}`, {
-    method: 'DELETE',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-  });
-  if (!res.ok) return;
+  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
+  method: 'DELETE',
+})
+if (!res.ok) {
+  console.error('[HL] Failed to delete highlight:', res.status)
+  return
+}
 
   setHighlights((arr) => arr.filter((h) => h.id !== id));
   setActiveHlId(null);
