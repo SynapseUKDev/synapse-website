@@ -175,7 +175,7 @@ if (!res.ok) {
     const blockEl = container.querySelector(`[data-tb-block-id="${h.block_id}"]`);
     if (!blockEl) continue;
 
-    const blockText = blockEl.innerText || blockEl.textContent || '';
+    const blockText = blockEl.textContent || '';
     const offsets = findBestOffsets(blockText, h);
     if (!offsets) continue;
 
@@ -319,7 +319,17 @@ if (!res.ok) {
 }
 
 const json = await res.json()
-if (json?.highlight) setHighlights((h) => [...h, json.highlight])
+
+if (json?.highlight) {
+  setHighlights((h) => [...h, json.highlight])
+
+  // ✅ If user clicked "Add note", immediately open the editor for the new highlight
+  if (withNote) {
+    setActiveHlId(json.highlight.id)
+    setActiveNoteDraft(json.highlight.note || '')
+    setActiveColorDraft(json.highlight.color || activeColorDraft)
+  }
+}
 
 // cleanup
 pendingSelectionRef.current = null
