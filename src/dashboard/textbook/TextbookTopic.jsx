@@ -187,7 +187,7 @@ if (!res.ok) {
 }, [highlights, data?.blocks, topicQ]);
 
       useEffect(() => {
-  const onMouseUp = (e) => {
+  const onMouseUp = async (e) => {
     // ✅ If the user is clicking the toolbar/popover, don't treat it as "selection ended"
     if (
       e?.target?.closest?.('.tb-hl-toolbar') ||
@@ -228,15 +228,22 @@ pendingSelectionRef.current = {
 }
 
 // ✅ Auto-create highlight immediately (no note)
-setActiveNoteDraft('') // ensures we don't accidentally attach an old draft note
-createHighlight({ withNote: false })
+setActiveNoteDraft('') // ensure we don't accidentally attach an old note draft
+const ok = await createHighlight({ withNote: false })
 
-// ✅ Clear native selection (so the blue selection disappears)
-try { sel.removeAllRanges() } catch {}
-
-// ✅ Do not open toolbar
-setHlToolbar((t) => ({ ...t, open: false }))
-  }
+if (ok) {
+  // Only clear selection AFTER we successfully saved the highlight
+  try { sel.removeAllRanges() } catch {}
+  setHlToolbar((t) => ({ ...t, open: false }))
+} else {
+  // If save failed, show toolbar again so it doesn't feel "dead"
+  const rect = range.getBoundingClientRect()
+  setHlToolbar({
+    open: true,
+    x: rect.left + rect.width / 2 + window.scrollX,
+    y: rect.top + window.scrollY - 10,
+  })
+}
 
   // ✅ Use capture so we can intercept before other handlers collapse selection
   document.addEventListener('mouseup', onMouseUp, true)
@@ -259,7 +266,7 @@ console.log('[HL] selection', {
 })
 
 const pageId = data?.page?.id || data?.page_id || data?.id
-if (!pageId) return
+if (!pageId) return false
 
 // ✅ Prefer the stored selection payload (survives re-render)
 let selPayload = pendingSelectionRef.current
@@ -274,14 +281,14 @@ if (!selPayload) {
   } else if (lastRangeRef.current) {
     range = lastRangeRef.current
   } else {
-    return
+    return false
   }
 
   const blockEl =
     (!sel || sel.isCollapsed ? null : getBlockWrapperFromSelection(sel)) ||
     range?.commonAncestorContainer?.parentElement?.closest?.('[data-tb-block-id]')
 
-  if (!blockEl) return
+  if (!blockEl) return false
 
   const blockId = blockEl.getAttribute('data-tb-block-id')
   const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
@@ -317,8 +324,10 @@ const res = await authenticatedFetch(`${API_BASE}/textbook/highlights`, {
 })
 
 if (!res.ok) {
-  console.error('[HL] Failed to create highlight:', res.status)
-  return
+  let errText = ''
+  try { errText = await res.text() } catch {}
+  console.error('[HL] Failed to create highlight:', res.status, errText)
+  return false
 }
 
 const json = await res.json()
@@ -334,11 +343,14 @@ if (json?.highlight) {
   }
 }
 
-// cleanup
+// cleanup (caller controls selection + toolbar)
 pendingSelectionRef.current = null
-if (sel?.removeAllRanges) sel.removeAllRanges()
-setHlToolbar((t) => ({ ...t, open: false }))
-setActiveNoteDraft('')
+
+// If backend didn't return a highlight object, treat as failure
+if (!json?.highlight) return false
+
+if (!withNote) setActiveNoteDraft('')
+return true
 }
 
       useEffect(() => {
