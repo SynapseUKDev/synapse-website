@@ -113,10 +113,16 @@
 
 /* User highlights */
 mark.tb-user-mark {
-  padding: 0 2px;
-  border-radius: 4px;
+  display: inline;                  /* prevents inline-block layout weirdness */
+  padding: 0 2px;                   /* keep tiny horizontal padding only */
+  border-radius: 6px;
   cursor: pointer;
   position: relative;
+
+  line-height: inherit;             /* stops line-height distortion */
+  vertical-align: baseline;         /* stops baseline “jump” */
+  box-decoration-break: clone;      /* keeps highlight consistent across line wraps */
+  -webkit-box-decoration-break: clone;
 }
 
 mark.tb-user-mark--yellow { background: #fff59d; }
