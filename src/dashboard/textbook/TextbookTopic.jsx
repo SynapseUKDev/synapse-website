@@ -187,12 +187,45 @@ export default function TextbookTopic() {
 }, [highlights]);
 
       useEffect(() => {
-  const onMouseUp = () => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed) {
-      setHlToolbar((t) => ({ ...t, open: false }));
-      return;
+  const onMouseUp = (e) => {
+    // ✅ If the user is clicking the toolbar/popover, don't treat it as "selection ended"
+    if (
+      e?.target?.closest?.('.tb-hl-toolbar') ||
+      e?.target?.closest?.('.tb-hl-popover')
+    ) {
+      return
     }
+
+    const sel = window.getSelection()
+
+    if (!sel || sel.isCollapsed) {
+      setHlToolbar((t) => ({ ...t, open: false }))
+      return
+    }
+
+    const blockEl = getBlockWrapperFromSelection(sel)
+    if (!blockEl) return
+
+    lastRangeRef.current = sel.getRangeAt(0).cloneRange()
+
+    const rect = sel.getRangeAt(0).getBoundingClientRect()
+    setHlToolbar({
+      open: true,
+      x: rect.left + rect.width / 2 + window.scrollX,
+      y: rect.top + window.scrollY - 10,
+    })
+  }
+
+  // ✅ Use capture so we can intercept before other handlers collapse selection
+  document.addEventListener('mouseup', onMouseUp, true)
+  document.addEventListener('touchend', onMouseUp, true)
+
+  return () => {
+    document.removeEventListener('mouseup', onMouseUp, true)
+    document.removeEventListener('touchend', onMouseUp, true)
+  }
+}, [])
+
     const blockEl = getBlockWrapperFromSelection(sel);
     if (!blockEl) return;
 
@@ -476,11 +509,14 @@ async function deleteActiveHighlight() {
         <div className="tb-main" ref={mainRef}>
           {hlToolbar.open && (
   <div
-    className="tb-hl-toolbar"
-    style={{ left: hlToolbar.x, top: hlToolbar.y }}
-    role="dialog"
-    aria-label="Highlight toolbar"
-  >
+  className="tb-hl-toolbar"
+  style={{ left: hlToolbar.x, top: hlToolbar.y }}
+  role="dialog"
+  aria-label="Highlight toolbar"
+  onMouseDown={(e) => e.preventDefault()}   // ✅ keep selection alive
+  onClick={(e) => e.stopPropagation()}     // ✅ don't bubble to document
+>
+
     <div className="tb-hl-colors">
       {['yellow','green','pink','blue'].map((c) => (
         <button
