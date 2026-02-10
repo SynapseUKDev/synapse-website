@@ -227,12 +227,15 @@ pendingSelectionRef.current = {
   suffix,
 }
 
-const rect = range.getBoundingClientRect()
-setHlToolbar({
-  open: true,
-  x: rect.left + rect.width / 2 + window.scrollX,
-  y: rect.top + window.scrollY - 10,
-})
+// ✅ Auto-create highlight immediately (no note)
+setActiveNoteDraft('') // ensures we don't accidentally attach an old draft note
+createHighlight({ withNote: false })
+
+// ✅ Clear native selection (so the blue selection disappears)
+try { sel.removeAllRanges() } catch {}
+
+// ✅ Do not open toolbar
+setHlToolbar((t) => ({ ...t, open: false }))
   }
 
   // ✅ Use capture so we can intercept before other handlers collapse selection
