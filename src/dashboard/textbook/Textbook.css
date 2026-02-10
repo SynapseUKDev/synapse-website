@@ -130,6 +130,40 @@ mark.tb-user-mark--green  { background: #b7f7c6; }
 mark.tb-user-mark--pink   { background: #ffd1ef; }
 mark.tb-user-mark--blue   { background: #cfe8ff; }
 
+/* Wrapper adds the removable "x" like Qbank */
+.tb-hl-wrap {
+  position: relative;
+  display: inline;
+}
+
+/* Small delete cross */
+.tb-hl-x {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+
+  border: 1px solid #e1e6f0;
+  background: #ffffff;
+  color: #0B1637;
+
+  font-weight: 900;
+  font-size: 14px;
+  line-height: 16px;
+
+  cursor: pointer;
+  padding: 0;
+
+  box-shadow: 0 6px 14px rgba(11, 22, 55, 0.10);
+  z-index: 60;
+}
+
+.tb-hl-x:hover {
+  transform: scale(1.05);
+}
+
 /* Hover note preview */
 mark.tb-user-mark[data-note]:hover::after {
   content: attr(data-note);
