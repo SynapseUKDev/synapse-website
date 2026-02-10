@@ -110,6 +110,28 @@ export function rangeFromOffsets(blockEl, startOffset, endOffset) {
 }
 
 export function unwrapAllUserHighlights(container) {
+  // 1) unwrap wrappers (new structure)
+  const wraps = container.querySelectorAll('span.tb-hl-wrap');
+  wraps.forEach((w) => {
+    const parent = w.parentNode;
+
+    // Prefer unwrapping the mark content only
+    const mark = w.querySelector('mark.tb-user-mark');
+    if (mark) {
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, w);
+    } else {
+      // Fallback: move all non-button children out
+      [...w.childNodes].forEach((n) => {
+        if (n.nodeType === 1 && n.matches?.('button.tb-hl-x')) return;
+        parent.insertBefore(n, w);
+      });
+    }
+
+    parent.removeChild(w);
+    parent.normalize();
+  });
+
+  // 2) safety: unwrap any leftover marks (old structure)
   const marks = container.querySelectorAll('mark.tb-user-mark');
   marks.forEach((m) => {
     const parent = m.parentNode;
@@ -125,16 +147,36 @@ export function applyHighlightToRange(range, highlight) {
   mark.dataset.hlId = highlight.id;
   if (highlight.note) mark.dataset.note = highlight.note;
 
+  // Wrapper for positioning the "x"
+  const wrap = document.createElement('span');
+  wrap.className = 'tb-hl-wrap';
+
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.className = 'tb-hl-x';
+  x.dataset.hlId = highlight.id;
+  x.setAttribute('aria-label', 'Remove highlight');
+  x.title = 'Remove highlight';
+  x.textContent = '×';
+
   try {
     range.surroundContents(mark);
-    return true;
   } catch {
     // If selection crosses complex nodes, fallback to extract+wrap
     const frag = range.extractContents();
     mark.appendChild(frag);
     range.insertNode(mark);
-    return true;
   }
+
+  // Replace mark in DOM with wrapper(mark + x)
+  const parent = mark.parentNode;
+  if (!parent) return false;
+
+  parent.insertBefore(wrap, mark);
+  wrap.appendChild(mark);
+  wrap.appendChild(x);
+
+  return true;
 }
 
 export function findBestOffsets(blockText, h) {
