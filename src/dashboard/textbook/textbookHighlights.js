@@ -12,26 +12,60 @@ export function getBlockWrapperFromSelection(sel) {
 }
 
 export function computeOffsetsWithinBlock(blockEl, range) {
-  // Offsets are based on textContent of the block element (not HTML)
-  const fullText = blockEl.innerText || blockEl.textContent || '';
+  // ✅ Make offsets match "textContent" deterministically (backend-friendly)
+  const fullText = blockEl.textContent || '';
 
-  const pre = range.cloneRange();
-  pre.selectNodeContents(blockEl);
-  pre.setEnd(range.startContainer, range.startOffset);
-  const start = pre.toString().length;
+  const nodes = walkTextNodes(blockEl);
 
-  const pre2 = range.cloneRange();
-  pre2.selectNodeContents(blockEl);
-  pre2.setEnd(range.endContainer, range.endOffset);
-  const end = pre2.toString().length;
+  const getAbsOffset = (container, offset) => {
+    // Most of the time start/end containers are text nodes
+    if (container?.nodeType === Node.TEXT_NODE) {
+      let cur = 0;
+      for (const n of nodes) {
+        if (n === container) return cur + offset;
+        cur += n.nodeValue.length;
+      }
+      return null;
+    }
+
+    // Fallback: try to locate nearest text node
+    const el = container?.nodeType === Node.ELEMENT_NODE ? container : container?.parentElement;
+    if (!el) return null;
+
+    let cur = 0;
+    for (const n of nodes) {
+      if (el.contains(n)) {
+        // if offset is 0 treat as start of this element's text
+        // if offset > 0, we can't map child-index precisely, so best-effort
+        return cur;
+      }
+      cur += n.nodeValue.length;
+    }
+    return null;
+  };
+
+  const start = getAbsOffset(range.startContainer, range.startOffset);
+  const end = getAbsOffset(range.endContainer, range.endOffset);
+
+  if (start == null || end == null) {
+    const quote = range.toString();
+    return {
+      fullText,
+      start: 0,
+      end: Math.min(fullText.length, quote.length),
+      quote,
+      prefix: '',
+      suffix: fullText.slice(Math.min(fullText.length, quote.length), Math.min(fullText.length, quote.length + 30)),
+    };
+  }
 
   const quote = range.toString();
-
   const prefix = fullText.slice(Math.max(0, start - 30), start);
   const suffix = fullText.slice(end, Math.min(fullText.length, end + 30));
 
   return { fullText, start, end, quote, prefix, suffix };
 }
+
 
 function walkTextNodes(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
