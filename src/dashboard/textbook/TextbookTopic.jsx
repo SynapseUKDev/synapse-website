@@ -184,7 +184,7 @@ if (!res.ok) {
 
     applyHighlightToRange(r, h);
   }
-}, [highlights]);
+}, [highlights, data?.blocks, topicQ]);
 
       useEffect(() => {
   const onMouseUp = (e) => {
