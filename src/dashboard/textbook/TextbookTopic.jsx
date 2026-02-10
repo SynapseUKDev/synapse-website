@@ -327,24 +327,6 @@ const sel = window.getSelection()
 if (sel?.removeAllRanges) sel.removeAllRanges()
 setHlToolbar((t) => ({ ...t, open: false }))
 setActiveNoteDraft('')
-
-  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights`, {
-  method: 'POST',
-  body: JSON.stringify(payload),
-})
-
-if (!res.ok) {
-  console.error('[HL] Failed to create highlight:', res.status)
-  return
-}
-
-  const json = await res.json();
-  if (json?.highlight) setHighlights((h) => [...h, json.highlight]);
-
-  // cleanup
-  if (sel?.removeAllRanges) sel.removeAllRanges();
-  setHlToolbar((t) => ({ ...t, open: false }));
-  setActiveNoteDraft('');
 }
 
       useEffect(() => {
