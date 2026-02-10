@@ -226,28 +226,6 @@ export default function TextbookTopic() {
   }
 }, [])
 
-    const blockEl = getBlockWrapperFromSelection(sel);
-    if (!blockEl) return;
-
-    lastRangeRef.current = sel.getRangeAt(0).cloneRange()
-
-    const rect = sel.getRangeAt(0).getBoundingClientRect();
-    setHlToolbar({
-      open: true,
-      x: rect.left + rect.width / 2 + window.scrollX,
-      y: rect.top + window.scrollY - 10,
-    });
-  };
-
-  document.addEventListener('mouseup', onMouseUp);
-  document.addEventListener('touchend', onMouseUp);
-
-  return () => {
-    document.removeEventListener('mouseup', onMouseUp);
-    document.removeEventListener('touchend', onMouseUp);
-  };
-}, []);
-
       async function createHighlight({ withNote }) {
   console.log('[HL] createHighlight clicked', { withNote })
 const sel = window.getSelection()
