@@ -1356,9 +1356,7 @@ mark {
 
   .tb-confidence-toggle {
     justify-content: flex-start;
-  }
-
-  .tb-confidence-option {
+  }  .tb-confidence-option {
     padding: 4px 8px;
     font-size: 11px;
   }
