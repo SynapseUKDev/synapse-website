@@ -84,34 +84,32 @@ export default function ActivityHeatmap() {
   }
 
   // Generate dates dynamically based on calculated weeks
-  // End date is the Saturday of current week, so today is near the right side
+  // End date is the Sunday of current week, so today is near the right side
   const generateDates = useCallback(() => {
-    const dates = []
-    const today = new Date()
+  const dates = []
+  const today = new Date()
 
-    // Find the end of the current week (Saturday)
-    const endDate = new Date(today)
-    const daysUntilSaturday = (6 - today.getDay() + 7) % 7
-    endDate.setDate(today.getDate() + daysUntilSaturday)
+  // Start: 1st day of (current month - 4)  => total = 5 months incl current
+  const startMonth = new Date(today.getFullYear(), today.getMonth() - 4, 1)
 
-    // Calculate start date based on number of weeks
-    const totalDays = numWeeks * 7
-    const startDate = new Date(endDate)
-    startDate.setDate(endDate.getDate() - totalDays + 1)
+  // End: Sunday of the current week (no future spill)
+  const endDate = new Date(today)
+  const endDay = endDate.getDay() === 0 ? 7 : endDate.getDay() // Mon=1..Sun=7
+  endDate.setDate(endDate.getDate() + (7 - endDay))
 
-    // Adjust to start on Sunday
-    const startDay = startDate.getDay()
-    if (startDay !== 0) {
-      startDate.setDate(startDate.getDate() - startDay)
-    }
+  // Align start to Monday
+  const startDate = new Date(startMonth)
+  const startDay = startDate.getDay() === 0 ? 7 : startDate.getDay()
+  startDate.setDate(startDate.getDate() - (startDay - 1))
 
-    const current = new Date(startDate)
-    while (current <= endDate) {
-      dates.push(new Date(current))
-      current.setDate(current.getDate() + 1)
-    }
-    return dates
-  }, [numWeeks])
+  const current = new Date(startDate)
+  while (current <= endDate) {
+    dates.push(new Date(current))
+    current.setDate(current.getDate() + 1)
+  }
+
+  return dates
+}, [numWeeks])
 
   const getMaxCount = () => {
     const counts = Object.values(activityData)
@@ -127,6 +125,57 @@ export default function ActivityHeatmap() {
     if (ratio <= 0.75) return 3
     return 4
   }
+
+  const getMonthStarts = (monthsBack = 4) => {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() - monthsBack, 1);
+  const end = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  const out = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    out.push(new Date(cur));
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return out;
+};
+
+const startOfMondayWeek = (d) => {
+  const x = new Date(d);
+  const day = x.getDay() === 0 ? 7 : x.getDay(); // Mon=1..Sun=7
+  x.setDate(x.getDate() - (day - 1));
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+
+const endOfSundayWeek = (d) => {
+  const x = new Date(d);
+  const day = x.getDay() === 0 ? 7 : x.getDay();
+  x.setDate(x.getDate() + (7 - day));
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+
+// Weeks for ONE month. Each week is 7 dates (Mon..Sun).
+const buildMonthWeeks = (monthStart) => {
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+  const gridStart = startOfMondayWeek(monthStart);
+  const gridEnd = endOfSundayWeek(monthEnd);
+
+  const weeks = [];
+  const cur = new Date(gridStart);
+
+  while (cur <= gridEnd) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      week.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  return weeks;
+};
 
   const formatDateKey = (date) => {
     const year = date.getUTCFullYear()
@@ -149,8 +198,8 @@ export default function ActivityHeatmap() {
     const containerRect = containerRef.current?.getBoundingClientRect()
     if (containerRect) {
       setTooltipPos({
-        x: rect.left - containerRect.left + rect.width / 2,
-        y: rect.top - containerRect.top - 8
+        x: e.clientX,
+        y: e.clientY - 12
       })
     }
     setHoveredDay({ date, count })
@@ -162,60 +211,9 @@ export default function ActivityHeatmap() {
 
   const dates = generateDates()
   const today = new Date()
-  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-
-  // Group dates by week
-  const weeks = []
-  let currentWeek = []
-
-  dates.forEach((date) => {
-    const dayOfWeek = date.getDay()
-    if (dayOfWeek === 0 && currentWeek.length > 0) {
-      weeks.push(currentWeek)
-      currentWeek = []
-    }
-    currentWeek.push(date)
-  })
-
-  if (currentWeek.length > 0) {
-    weeks.push(currentWeek)
-  }
-
-  // Generate month labels - position at the week column where the 1st of the month appears
-  const getMonthLabels = () => {
-    const labels = []
-    let lastMonth = -1
-
-    weeks.forEach((week, weekIndex) => {
-      // Check if any day in this week is the 1st of a new month
-      const firstOfMonth = week.find(d => d.getDate() === 1)
-      if (firstOfMonth) {
-        const month = firstOfMonth.getMonth()
-        if (month !== lastMonth) {
-          labels.push({
-            weekIndex,
-            label: firstOfMonth.toLocaleDateString('en-GB', { month: 'short' })
-          })
-          lastMonth = month
-        }
-      }
-    })
-
-    // If no label in first 3 columns, add the first month
-    if (labels.length === 0 || labels[0].weekIndex > 3) {
-      if (weeks.length > 0 && weeks[0].length > 0) {
-        const firstDate = weeks[0][0]
-        labels.unshift({
-          weekIndex: 0,
-          label: firstDate.toLocaleDateString('en-GB', { month: 'short' })
-        })
-      }
-    }
-
-    return labels
-  }
-
-  const monthLabels = getMonthLabels()
+  const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const dayOrder = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun in JS getDay() terms
+  const monthStarts = getMonthStarts(3)
 
   if (loading) {
     return (
@@ -241,26 +239,27 @@ export default function ActivityHeatmap() {
         </div>
 
         <div className="activity-heatmap__content">
-          {/* Month labels row */}
-          <div className="activity-heatmap__month-labels">
-            {weeks.map((_, weekIndex) => {
-              const monthLabel = monthLabels.find(m => m.weekIndex === weekIndex)
-              return (
-                <div key={weekIndex} className="activity-heatmap__month-label">
-                  {monthLabel ? monthLabel.label : ''}
-                </div>
-              )
-            })}
-          </div>
+  <div className="activity-heatmap__months">
+    {monthStarts.map((monthStart) => {
+      const monthWeeks = buildMonthWeeks(monthStart)
+      const monthLabel = monthStart.toLocaleDateString('en-GB', { month: 'short' })
+      const monthIndex = monthStart.getMonth()
+      const monthYear = monthStart.getFullYear()
 
-          {/* Grid: 7 days x N weeks */}
+      return (
+        <div key={`${monthYear}-${monthIndex}`} className="activity-heatmap__month">
+          <div className="activity-heatmap__month-header">{monthLabel}</div>
+
           <div className="activity-heatmap__grid">
-            {dayNames.map((dayName, dayIndex) => (
+            {dayNames.map((_, dayIndex) => (
               <div key={dayIndex} className="activity-heatmap__row">
-                {weeks.map((week, weekIndex) => {
-                  const date = week.find(d => d.getDay() === dayIndex)
+                {monthWeeks.map((week, weekIndex) => {
+                  const date = week[dayIndex]
 
-                  if (!date) {
+                  const isInMonth =
+                    date.getFullYear() === monthYear && date.getMonth() === monthIndex
+
+                  if (!isInMonth) {
                     return (
                       <div
                         key={weekIndex}
@@ -287,7 +286,9 @@ export default function ActivityHeatmap() {
                   return (
                     <div
                       key={weekIndex}
-                      className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${isToday ? 'activity-heatmap__day--today' : ''}`}
+                      className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${
+                        isToday ? 'activity-heatmap__day--today' : ''
+                      }`}
                       onMouseEnter={(e) => handleMouseEnter(e, date, count)}
                       onMouseLeave={handleMouseLeave}
                     />
@@ -297,7 +298,11 @@ export default function ActivityHeatmap() {
             ))}
           </div>
         </div>
-      </div>
+      )
+        })}
+        </div>  {/* closes .activity-heatmap__months */}
+      </div>    {/* closes .activity-heatmap__content */}
+    </div>      {/* closes .activity-heatmap__wrapper */}
 
       {/* Tooltip */}
       {hoveredDay && (

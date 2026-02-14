@@ -1,9 +1,18 @@
+import {
+  getBlockWrapperFromSelection,
+  computeOffsetsWithinBlock,
+  rangeFromOffsets,
+  unwrapAllUserHighlights,
+  applyHighlightToRange,
+  findBestOffsets,
+} from './textbookHighlights'
+
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
-import { authHeaders } from '../../auth/token'
+import { authHeaders, authenticatedFetch } from '../../auth/token'
 
 function AnchorNav({ sections, hasReferences }) {
   const navigateTo = (anchor) => {
@@ -48,8 +57,7 @@ function RenderBlock({ block, query }) {
   const highlightPlain = (text, q) => {
     if (!q) return text
     const re = new RegExp(escapeRegExp(q), 'ig')
-    return text.replace(re, (m) => `
-<mark>${m}</mark>`)
+    return text.replace(re, (m) => `<mark class="tb-search-mark">${m}</mark>`)
   }
   const highlightHtml = (html, q) => {
     if (!q) return html
@@ -58,8 +66,7 @@ function RenderBlock({ block, query }) {
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]
       if (part && !part.startsWith('<')) {
-        parts[i] = part.replace(re, (m) => `
-<mark>${m}</mark>`)
+        parts[i] = part.replace(re, (m) => `<mark class="tb-search-mark">${m}</mark>`)
       }
     }
     return parts.join('')
@@ -83,6 +90,16 @@ export default function TextbookTopic() {
   const [navItems, setNavItems] = useState([])
   const [currentIdx, setCurrentIdx] = useState(-1)
   const [topicQ, setTopicQ] = useState('')
+
+  const mainRef = useRef(null);
+
+  const [highlights, setHighlights] = useState([]);
+  const [hlToolbar, setHlToolbar] = useState({ open: false, x: 0, y: 0 });
+  const [activeHlId, setActiveHlId] = useState(null);
+  const [activeNoteDraft, setActiveNoteDraft] = useState('');
+  const [activeColorDraft, setActiveColorDraft] = useState('yellow');
+  const lastRangeRef = useRef(null)
+  const pendingSelectionRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -111,6 +128,319 @@ export default function TextbookTopic() {
     load()
     return () => { cancelled = true }
   }, [topicSlug, API_BASE])
+
+   // ===============================
+  // Fetch user highlights
+  // ===============================
+  useEffect(() => {
+    const pageId = data?.page?.id
+    if (!pageId) return
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${pageId}`, {
+  method: 'GET',
+})
+
+if (!res.ok) {
+  console.error('[HL] Failed to load highlights:', res.status)
+  return
+}
+        const json = await res.json()
+
+        if (!cancelled) {
+          setHighlights(Array.isArray(json?.highlights) ? json.highlights : [])
+        }
+      } catch (e) {
+        console.error('Failed to load highlights', e)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [API_BASE, data?.page?.id])
+
+    useEffect(() => {
+  const container = mainRef.current;
+  if (!container) return;
+
+  // clear old
+  unwrapAllUserHighlights(container);
+
+  // re-apply by block
+  for (const h of highlights) {
+    const blockEl = container.querySelector(`[data-tb-block-id="${h.block_id}"]`);
+    if (!blockEl) continue;
+
+    const blockText = blockEl.textContent || '';
+    const offsets = findBestOffsets(blockText, h);
+    if (!offsets) continue;
+
+    const r = rangeFromOffsets(blockEl, offsets.start, offsets.end);
+    if (!r) continue;
+
+    applyHighlightToRange(r, h);
+  }
+}, [highlights, data?.blocks, topicQ]);
+
+      useEffect(() => {
+  const onMouseUp = async (e) => {
+    // ✅ If the user is clicking the toolbar/popover, don't treat it as "selection ended"
+    if (
+      e?.target?.closest?.('.tb-hl-toolbar') ||
+      e?.target?.closest?.('.tb-hl-popover')
+    ) {
+      return
+    }
+
+    const sel = window.getSelection()
+
+    if (!sel || sel.isCollapsed) {
+      setHlToolbar((t) => ({ ...t, open: false }))
+      return
+    }
+
+    const blockEl = getBlockWrapperFromSelection(sel)
+if (!blockEl) return
+
+const range = sel.getRangeAt(0)
+
+// Store a clone as backup (optional)
+lastRangeRef.current = range.cloneRange()
+
+// ✅ Compute and store deterministic offsets NOW (before re-render collapses selection)
+const blockId = blockEl.getAttribute('data-tb-block-id')
+const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
+
+const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range)
+
+pendingSelectionRef.current = {
+  block_id: blockId,
+  section_anchor: sectionAnchor,
+  start_offset: start,
+  end_offset: end,
+  quote,
+  prefix,
+  suffix,
+}
+
+// ✅ Auto-create highlight immediately (no note)
+setActiveNoteDraft('') // ensure we don't accidentally attach an old note draft
+const ok = await createHighlight({ withNote: false })
+
+if (ok) {
+  // Only clear selection AFTER we successfully saved the highlight
+  try { sel.removeAllRanges() } catch {}
+  setHlToolbar((t) => ({ ...t, open: false }))
+} else {
+  // If save failed, show toolbar again so it doesn't feel "dead"
+  const rect = range.getBoundingClientRect()
+  setHlToolbar({
+    open: true,
+    x: rect.left + rect.width / 2 + window.scrollX,
+    y: rect.top + window.scrollY - 10,
+  })
+}
+    
+  };
+  // ✅ Use capture so we can intercept before other handlers collapse selection
+  document.addEventListener('mouseup', onMouseUp, true)
+  document.addEventListener('touchend', onMouseUp, true)
+
+  return () => {
+    document.removeEventListener('mouseup', onMouseUp, true)
+    document.removeEventListener('touchend', onMouseUp, true)
+  }
+}, [])
+
+      async function createHighlight({ withNote }) {
+  console.log('[HL] createHighlight clicked', { withNote })
+const sel = window.getSelection()
+console.log('[HL] selection', {
+  hasSel: !!sel,
+  rangeCount: sel?.rangeCount,
+  isCollapsed: sel?.isCollapsed,
+  lastRange: !!lastRangeRef.current,
+})
+
+const pageId = data?.page?.id || data?.page_id || data?.id
+if (!pageId) return false
+
+// ✅ Prefer the stored selection payload (survives re-render)
+let selPayload = pendingSelectionRef.current
+
+// Fallback: if user somehow opens toolbar without stored payload
+if (!selPayload) {
+  const sel = window.getSelection()
+  let range = null
+
+  if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+    range = sel.getRangeAt(0)
+  } else if (lastRangeRef.current) {
+    range = lastRangeRef.current
+  } else {
+    return false
+  }
+
+  const blockEl =
+    (!sel || sel.isCollapsed ? null : getBlockWrapperFromSelection(sel)) ||
+    range?.commonAncestorContainer?.parentElement?.closest?.('[data-tb-block-id]')
+
+  if (!blockEl) return false
+
+  const blockId = blockEl.getAttribute('data-tb-block-id')
+  const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
+  const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range)
+
+  selPayload = {
+    block_id: blockId,
+    section_anchor: sectionAnchor,
+    start_offset: start,
+    end_offset: end,
+    quote,
+    prefix,
+    suffix,
+  }
+}
+
+const payload = {
+  page_id: pageId,
+  section_anchor: selPayload.section_anchor,
+  block_id: selPayload.block_id,
+  color: activeColorDraft,
+  quote: selPayload.quote,
+  start_offset: selPayload.start_offset,
+  end_offset: selPayload.end_offset,
+  prefix: selPayload.prefix,
+  suffix: selPayload.suffix,
+  note: withNote ? (activeNoteDraft || '') : null,
+}
+
+const res = await authenticatedFetch(`${API_BASE}/textbook/highlights`, {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+
+if (!res.ok) {
+  let errText = ''
+  try { errText = await res.text() } catch {}
+  console.error('[HL] Failed to create highlight:', res.status, errText)
+  return false
+}
+
+const json = await res.json()
+
+if (json?.highlight) {
+  setHighlights((h) => [...h, json.highlight])
+
+  // ✅ If user clicked "Add note", immediately open the editor for the new highlight
+  if (withNote) {
+    setActiveHlId(json.highlight.id)
+    setActiveNoteDraft(json.highlight.note || '')
+    setActiveColorDraft(json.highlight.color || activeColorDraft)
+  }
+}
+
+// cleanup (caller controls selection + toolbar)
+pendingSelectionRef.current = null
+
+// If backend didn't return a highlight object, treat as failure
+if (!json?.highlight) return false
+
+if (!withNote) setActiveNoteDraft('')
+return true
+}
+
+      useEffect(() => {
+  const container = mainRef.current;
+  if (!container) return;
+
+  const onClick = (e) => {
+  // ✅ If user clicked the small "x" button, delete immediately
+  const xBtn = e.target.closest?.('button.tb-hl-x');
+  if (xBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = xBtn.dataset.hlId;
+    deleteHighlightById(id);
+    return;
+  }
+
+  // ✅ Otherwise clicking the highlight opens the optional note editor
+  const mark = e.target.closest?.('mark.tb-user-mark');
+  if (!mark) return;
+
+  const id = mark.dataset.hlId;
+  const hl = highlights.find((x) => x.id === id);
+  if (!hl) return;
+
+  setActiveHlId(id);
+  setActiveNoteDraft(hl.note || '');
+  setActiveColorDraft(hl.color || 'yellow');
+};
+
+  container.addEventListener('click', onClick);
+  return () => container.removeEventListener('click', onClick);
+}, [highlights, activeHlId]);
+
+  async function deleteHighlightById(id) {
+  if (!id) return;
+
+  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    console.error('[HL] Failed to delete highlight:', res.status);
+    return;
+  }
+
+  setHighlights((arr) => arr.filter((h) => h.id !== id));
+
+  // if the popover was open for this highlight, close it
+  if (activeHlId === id) {
+    setActiveHlId(null);
+    setActiveNoteDraft('');
+  }
+}
+
+      async function updateActiveHighlight() {
+  const id = activeHlId;
+  if (!id) return;
+
+  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
+  method: 'PUT',
+  body: JSON.stringify({ color: activeColorDraft, note: activeNoteDraft }),
+})
+if (!res.ok) {
+  console.error('[HL] Failed to update highlight:', res.status)
+  return
+}
+
+  const json = await res.json();
+  if (!json?.highlight) return;
+
+  setHighlights((arr) => arr.map((h) => (h.id === id ? json.highlight : h)));
+}
+
+async function deleteActiveHighlight() {
+  const id = activeHlId;
+  if (!id) return;
+
+  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
+  method: 'DELETE',
+})
+if (!res.ok) {
+  console.error('[HL] Failed to delete highlight:', res.status)
+  return
+}
+
+  setHighlights((arr) => arr.filter((h) => h.id !== id));
+  setActiveHlId(null);
+}
 
   // Scroll to anchor if hash present
   useEffect(() => {
@@ -252,14 +582,81 @@ export default function TextbookTopic() {
       </header>
 
       <div className="tb-layout">
-        <div className="tb-main">
+        <div className="tb-main" ref={mainRef}>
+          {hlToolbar.open && (
+  <div
+  className="tb-hl-toolbar"
+  style={{ left: hlToolbar.x, top: hlToolbar.y }}
+  role="dialog"
+  aria-label="Highlight toolbar"
+  onMouseDown={(e) => e.preventDefault()}   // ✅ keep selection alive
+  onClick={(e) => e.stopPropagation()}     // ✅ don't bubble to document
+>
+
+    <div className="tb-hl-colors">
+      {['yellow','green','pink','blue'].map((c) => (
+        <button
+          type="button"
+          key={c}
+          className={`tb-hl-color ${activeColorDraft === c ? 'is-active' : ''}`}
+          onClick={() => setActiveColorDraft(c)}
+          aria-label={`Highlight colour ${c}`}
+        />
+      ))}
+    </div>
+
+    <button 
+      type="button"
+      className="tb-hl-btn" 
+      onClick={() => createHighlight({ withNote: false })}
+      >
+      Highlight
+    </button>
+
+    <button 
+      type="button"
+      className="tb-hl-btn tb-hl-btn--note" 
+      onClick={() => createHighlight({ withNote: true })}
+      >
+      Add note
+    </button>
+  </div>
+)}
+
+{activeHlId && (
+  <div className="tb-hl-popover" role="dialog" aria-label="Edit highlight">
+    <div className="tb-hl-popover__row">
+      <div className="tb-hl-popover__label">Note</div>
+      <textarea
+        className="tb-hl-popover__textarea"
+        value={activeNoteDraft}
+        onChange={(e) => setActiveNoteDraft(e.target.value)}
+        placeholder="Add a note for this highlight…"
+      />
+    </div>
+
+    <div className="tb-hl-popover__actions">
+      <button type="button" className="tb-hl-btn" onClick={updateActiveHighlight}>Save</button>
+      <button type="button" className="tb-hl-btn tb-hl-btn--danger" onClick={deleteActiveHighlight}>Delete</button>
+      <button type="button" className="tb-hl-btn tb-hl-btn--ghost" onClick={() => setActiveHlId(null)}>Close</button>
+    </div>
+  </div>
+)}
+          
           {topSections.map((s) => (
             <section key={s.id} id={`sec-${s.anchor_slug}`} className="tb-section">
               <h2 className="tb-section__title">{s.title}</h2>
               <div className="tb-section__content">
                 {(blocksBySection[s.id] || []).map((b) => (
-                  <RenderBlock key={b.id} block={b} query={topicQ} />
-                ))}
+  <div
+    key={b.id}
+    className="tb-block"
+    data-tb-block-id={b.id}
+    data-tb-section-anchor={s.anchor_slug}
+  >
+    <RenderBlock block={b} query={topicQ} />
+  </div>
+))}
               </div>
             </section>
           ))}
