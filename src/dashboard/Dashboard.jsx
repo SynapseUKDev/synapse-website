@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import { authHeaders, authenticatedFetch } from '../auth/token'
-import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuUserPlus, LuCheck, LuX, LuUsers, LuMail, LuTrash2, LuTrophy, LuAward } from 'react-icons/lu'
+import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuTrophy, LuArrowRight } from 'react-icons/lu'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import useStaleJson from '../utils/useStaleJson'
 
@@ -22,23 +22,16 @@ export default function Dashboard() {
     staleMs: 5 * 60_000,
     persist: 'session',
     key: 'dashboard:trend',
-    transform: (t) => ({ days: Array.isArray(t.days) ? t.days : buildDemoTrend() }),
+    transform: (t) => ({
+      days: Array.isArray(t.days)
+        ? t.days.map((d) => ({ ...d, questions_answered: d.questions_answered ?? 0 }))
+        : buildDemoTrend(),
+    }),
   })
 
   const summary = summaryReq.data || { study_streak_days: 0, time_today_minutes: 0, questions_today: 0, last_specialty: null, targets: { time_minutes: 180, questions: 30 } }
   const trend = trendReq.data?.days || buildDemoTrend()
   const loading = summaryReq.loading && !summaryReq.data
-
-  // Friends state
-  const [friendEmail, setFriendEmail] = useState('')
-  const [sendLoading, setSendLoading] = useState(false)
-  const [requests, setRequests] = useState({ inbox: [], outbox: [] })
-  const [friends, setFriends] = useState([])
-  const [requestsLoading, setRequestsLoading] = useState(true)
-  const [friendsLoading, setFriendsLoading] = useState(true)
-  const [friendsTab, setFriendsTab] = useState('friends') // friends | requests
-  const [friendsError, setFriendsError] = useState('')
-  const [friendsSuccess, setFriendsSuccess] = useState('')
 
   // Leaderboard state
   const [leaderboard, setLeaderboard] = useState([])
@@ -48,6 +41,7 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState('total_answered') // total_answered | correct | accuracy_pct
 
   const [recentTopic, setRecentTopic] = useState(null)
+  const [analyticsChart, setAnalyticsChart] = useState('questions') // 'questions' | 'accuracy' | 'time'
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -69,40 +63,6 @@ export default function Dashboard() {
       })
     return () => { cancelled = true }
   }, [API_BASE])
-
-  const loadFriendsData = async () => {
-    try {
-      setRequestsLoading(true)
-      const reqRes = await authenticatedFetch(`${API_BASE}/friends/requests`)
-      if (reqRes.ok) {
-        const reqJson = await reqRes.json().catch(() => ({}))
-        setRequests({ inbox: reqJson?.inbox || [], outbox: reqJson?.outbox || [] })
-      } else {
-        setRequests({ inbox: [], outbox: [] })
-      }
-    } catch (_e) {
-      setRequests({ inbox: [], outbox: [] })
-    } finally {
-      setRequestsLoading(false)
-    }
-  }
-
-  const loadFriendsList = async () => {
-    try {
-      setFriendsLoading(true)
-      const res = await authenticatedFetch(`${API_BASE}/friends`)
-      if (res.ok) {
-        const json = await res.json().catch(() => ({}))
-        setFriends(json?.friends || [])
-      } else {
-        setFriends([])
-      }
-    } catch (_e) {
-      setFriends([])
-    } finally {
-      setFriendsLoading(false)
-    }
-  }
 
   const loadSpecialties = async () => {
     try {
@@ -139,93 +99,12 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    loadFriendsData()
-    loadFriendsList()
     loadSpecialties()
   }, [])
 
   useEffect(() => {
     loadLeaderboard()
   }, [selectedSpecialty])
-
-  // Clear error/success messages when switching tabs
-  useEffect(() => {
-    setFriendsError('')
-    setFriendsSuccess('')
-  }, [friendsTab])
-
-  const sendFriendRequest = async (e) => {
-    e?.preventDefault?.()
-    setFriendsError('')
-    setFriendsSuccess('')
-
-    const email = friendEmail.trim()
-    if (!email) return
-
-    // Check if user is already a friend
-    const isAlreadyFriend = friends.some(f =>
-      f.friend_email?.toLowerCase() === email.toLowerCase()
-    )
-    if (isAlreadyFriend) {
-      setFriendsError('This user is already your friend')
-      return
-    }
-
-    setSendLoading(true)
-    try {
-      const res = await authenticatedFetch(`${API_BASE}/friends/requests`, {
-        method: 'POST',
-        body: JSON.stringify({ email })
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setFriendsError(json?.error || 'Failed to send request')
-      } else {
-        setFriendEmail('')
-        await loadFriendsData()
-        setFriendsSuccess('Friend request sent successfully!')
-        // Clear success message after 3 seconds
-        setTimeout(() => setFriendsSuccess(''), 3000)
-      }
-    } catch (_e) {
-      setFriendsError('Failed to send request. Please try again.')
-    } finally {
-      setSendLoading(false)
-    }
-  }
-
-  const respondToRequest = async (requestId, action) => {
-    setFriendsError('')
-    setFriendsSuccess('')
-
-    try {
-      const res = await authenticatedFetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
-        method: 'POST',
-        body: JSON.stringify({ action })
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setFriendsError(json?.error || 'Failed to update request')
-      } else {
-        await loadFriendsData()
-        await loadFriendsList()
-
-        // Show success message
-        if (action === 'accept') {
-          setFriendsSuccess('Friend request accepted!')
-        } else if (action === 'decline') {
-          setFriendsSuccess('Friend request declined')
-        } else if (action === 'cancel') {
-          setFriendsSuccess('Friend request cancelled')
-        }
-
-        // Clear success message after 3 seconds
-        setTimeout(() => setFriendsSuccess(''), 3000)
-      }
-    } catch (_e) {
-      setFriendsError('Failed to update request. Please try again.')
-    }
-  }
 
   const continueQuestions = () => {
     const spec = summary.last_specialty
@@ -267,10 +146,12 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="db-split">
+        <div className="db-split__left">
       <div className="db-qa">
         <div className="db-qa__title">Quick Actions</div>
         <div className="db-qa__sub">Jump back into your learning journey</div>
-        <div className="db-qa__actions">
+        <div className="db-qa__actions db-qa__actions--stacked">
           <button className="db-btn" onClick={continueQuestions}>
             <div className="db-btn__left">
               <div className="db-btn__icon db-btn__icon--purple"><LuCirclePlay size={18} /></div>
@@ -304,8 +185,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="db-leaderboard-friends-grid">
-        <div className="db-leaderboard">
+      <div className="db-leaderboard">
           <div className="db-card">
             <div className="db-card__top">
               <div className="db-leaderboard__title">
@@ -405,156 +285,148 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </div>
+        </div>
+      </div>
         </div>
 
-        <div className="db-friends">
-          <div className="db-card">
-            <div className="db-card__top">
-              <div className="db-friends__title">Friends</div>
-              <div className="db-tabs">
-                <button className={`db-tab ${friendsTab === 'friends' ? 'is-active' : ''}`} onClick={() => setFriendsTab('friends')}>
-                  <LuUsers size={14} />
-                  <span>Friends</span>
-                </button>
-                <button className={`db-tab ${friendsTab === 'requests' ? 'is-active' : ''}`} onClick={() => setFriendsTab('requests')}>
-                  <LuMail size={14} />
-                  <span>Requests</span>
-                  {(requests.inbox.length > 0) && <span className="db-tab__badge">{requests.inbox.length}</span>}
-                </button>
-              </div>
+        <aside className="db-analytics">
+          <div className="db-card db-analytics__card">
+            <div className="db-analytics__head">Analytics</div>
+            <div className="db-analytics__tabs">
+              <button
+                type="button"
+                className={`db-analytics__tab ${analyticsChart === 'questions' ? 'is-active' : ''}`}
+                onClick={() => setAnalyticsChart('questions')}
+              >
+                Questions
+              </button>
+              <button
+                type="button"
+                className={`db-analytics__tab ${analyticsChart === 'accuracy' ? 'is-active' : ''}`}
+                onClick={() => setAnalyticsChart('accuracy')}
+              >
+                Accuracy
+              </button>
+              <button
+                type="button"
+                className={`db-analytics__tab ${analyticsChart === 'time' ? 'is-active' : ''}`}
+                onClick={() => setAnalyticsChart('time')}
+              >
+                Time
+              </button>
             </div>
-
-            {friendsTab === 'friends' && (
-              <div className="db-friends__content">
-                {friendsError && (
-                  <div className="db-friends__alert db-friends__alert--error">
-                    <LuX size={16} />
-                    {friendsError}
-                  </div>
-                )}
-                {friendsSuccess && (
-                  <div className="db-friends__alert db-friends__alert--success">
-                    <LuCheck size={16} />
-                    {friendsSuccess}
-                  </div>
-                )}
-                <p className="db-friends__desc">Add friends by email to connect and compete with other users.</p>
-                <form className="db-inputrow" onSubmit={sendFriendRequest}>
-                  <input
-                    type="email"
-                    className="db-input"
-                    placeholder="friend@example.com"
-                    value={friendEmail}
-                    onChange={(e) => setFriendEmail(e.target.value)}
-                  />
-                  <button className="db-btn-primary" type="submit" disabled={sendLoading || !friendEmail.trim()}>
-                    {sendLoading ? 'Sending…' : 'Send Request'}
-                  </button>
-                </form>
-
-                <div className="db-friends__divider" />
-
-                {friendsLoading ? (
-                  <div className="db-empty">Loading friends…</div>
-                ) : (
-                  <div>
-                    <div className="db-subheading">
-                      <LuUsers size={14} />
-                      Your Friends ({friends.length})
-                    </div>
-                    <div className="db-list">
-                      {friends.length === 0 && <div className="db-empty">No friends yet. Send some requests!</div>}
-                      {friends.map((f) => (
-                        <div key={f.id} className="db-list__item db-list__item--friend">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{f.friend_username || f.friend_email?.split('@')[0] || 'User'}</div>
-                            <div className="db-list__sub">{f.friend_email}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {friendsTab === 'requests' && (
-              <div className="db-friends__content">
-                {friendsError && (
-                  <div className="db-friends__alert db-friends__alert--error">
-                    <LuX size={16} />
-                    {friendsError}
-                  </div>
-                )}
-                {friendsSuccess && (
-                  <div className="db-friends__alert db-friends__alert--success">
-                    <LuCheck size={16} />
-                    {friendsSuccess}
-                  </div>
-                )}
-                {requestsLoading ? (
-                  <div className="db-empty">Loading requests…</div>
-                ) : (
-                  <div className="db-twoCols">
-                    <div>
-                      <div className="db-subheading">
-                        <LuMail size={14} />
-                        Received ({requests.inbox.length})
-                      </div>
-                      <div className="db-list">
-                        {(requests.inbox || []).length === 0 && <div className="db-empty">No pending requests</div>}
-                        {(requests.inbox || []).map((r) => (
-                          <div key={r.id} className="db-list__item db-list__item--request">
-                            <div className="db-list__main">
-                              <div className="db-list__title">{r.requester?.username || r.requester?.email?.split('@')[0] || 'User'}</div>
-                              <div className="db-list__sub">{r.requester?.email}</div>
-                            </div>
-                            <div className="db-list__actions">
-                              <button className="db-chip db-chip--accept" onClick={() => respondToRequest(r.id, 'accept')} title="Accept">
-                                <LuCheck size={16} />
-                              </button>
-                              <button className="db-chip db-chip--decline" onClick={() => respondToRequest(r.id, 'decline')} title="Decline">
-                                <LuX size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="db-requests-divider" />
-                    <div>
-                      <div className="db-subheading">
-                        <LuMail size={14} />
-                        Sent ({requests.outbox.length})
-                      </div>
-                      <div className="db-list">
-                        {(requests.outbox || []).length === 0 && <div className="db-empty">No pending requests</div>}
-                        {(requests.outbox || []).map((r) => (
-                          <div key={r.id} className="db-list__item db-list__item--request">
-                            <div className="db-list__main">
-                              <div className="db-list__title">{r.target?.username || r.target?.email?.split('@')[0] || 'User'}</div>
-                              <div className="db-list__sub">{r.target?.email}</div>
-                            </div>
-                            <div className="db-list__actions">
-                              <button className="db-chip db-chip--neutral" onClick={() => respondToRequest(r.id, 'cancel')}>
-                                <LuTrash2 size={14} />
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="db-analytics__graph">
+              {analyticsChart === 'questions' && renderQuestionsChart(trend)}
+              {analyticsChart === 'accuracy' && renderAccuracyChart(trend)}
+              {analyticsChart === 'time' && renderTimeChart(trend)}
+            </div>
+            <p className="db-analytics__copy">
+              {analyticsChart === 'questions' && 'Track how many questions you answer each day. Consistency helps build long-term retention and improves exam readiness.'}
+              {analyticsChart === 'accuracy' && 'Your accuracy shows how well you understand the material. Use this to spot weak areas and focus your study time.'}
+              {analyticsChart === 'time' && 'Average time per question helps you pace yourself. Aim to improve speed while keeping accuracy high.'}
+            </p>
+            <button
+              type="button"
+              className="db-analytics__view-btn"
+              onClick={() => navigate('/dashboard')}
+            >
+              View analytics
+              <LuArrowRight size={12} />
+            </button>
           </div>
-        </div>
+        </aside>
       </div>
 
     </div>
+  )
+}
+
+function renderQuestionsChart(days) {
+  const w = 400
+  const h = 160
+  const pad = { top: 10, right: 14, bottom: 24, left: 32 }
+  const innerW = w - pad.left - pad.right
+  const innerH = h - pad.top - pad.bottom
+  const vals = days.map((d) => d.questions_answered ?? 0)
+  const maxVal = Math.max(1, ...vals)
+  const xStep = innerW / Math.max(days.length - 1, 1)
+  const pt = (i, v) => {
+    const x = pad.left + i * xStep
+    const y = pad.top + (1 - (v / maxVal)) * innerH
+    return [x, y]
+  }
+  let d = ''
+  vals.forEach((v, i) => {
+    const [x, y] = pt(i, v)
+    d += (d ? ' L ' : 'M ') + x + ' ' + y
+  })
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Questions answered over time">
+      <rect x={0} y={0} width={w} height={h} fill="transparent" />
+      {d && <path d={d} fill="none" stroke="var(--syn-cyan)" strokeWidth={2} />}
+      <text x={pad.left} y={h - 4} fontSize={10} fill="#64748b">Day 1</text>
+      <text x={w - pad.right} y={h - 4} fontSize={10} fill="#64748b" textAnchor="end">{days.length}d</text>
+    </svg>
+  )
+}
+
+function renderAccuracyChart(days) {
+  const w = 400
+  const h = 160
+  const pad = { top: 10, right: 14, bottom: 24, left: 32 }
+  const innerW = w - pad.left - pad.right
+  const innerH = h - pad.top - pad.bottom
+  const vals = days.map((d) => d.accuracy_pct ?? null)
+  const maxVal = 100
+  const xStep = innerW / Math.max(days.length - 1, 1)
+  const pt = (i, v) => {
+    const x = pad.left + i * xStep
+    const y = pad.top + (1 - (v / maxVal)) * innerH
+    return [x, y]
+  }
+  let d = ''
+  vals.forEach((v, i) => {
+    if (v == null) return
+    const [x, y] = pt(i, v)
+    d += (d ? ' L ' : 'M ') + x + ' ' + y
+  })
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Accuracy over time">
+      <rect x={0} y={0} width={w} height={h} fill="transparent" />
+      {d && <path d={d} fill="none" stroke="#3b82f6" strokeWidth={2} />}
+      <text x={pad.left} y={h - 4} fontSize={10} fill="#64748b">Day 1</text>
+      <text x={w - pad.right} y={h - 4} fontSize={10} fill="#64748b" textAnchor="end">{days.length}d</text>
+    </svg>
+  )
+}
+
+function renderTimeChart(days) {
+  const w = 400
+  const h = 160
+  const pad = { top: 10, right: 14, bottom: 24, left: 32 }
+  const innerW = w - pad.left - pad.right
+  const innerH = h - pad.top - pad.bottom
+  const vals = days.map((d) => (d.avg_time_ms != null ? Math.round(d.avg_time_ms / 1000) : null))
+  const timeMax = Math.max(60, ...vals.filter((v) => v != null), 0)
+  const xStep = innerW / Math.max(days.length - 1, 1)
+  const pt = (i, v) => {
+    const x = pad.left + i * xStep
+    const y = pad.top + (1 - ((v ?? 0) / timeMax)) * innerH
+    return [x, y]
+  }
+  let d = ''
+  vals.forEach((v, i) => {
+    if (v == null) return
+    const [x, y] = pt(i, v)
+    d += (d ? ' L ' : 'M ') + x + ' ' + y
+  })
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Average time per question">
+      <rect x={0} y={0} width={w} height={h} fill="transparent" />
+      {d && <path d={d} fill="none" stroke="#16a34a" strokeWidth={2} />}
+      <text x={pad.left} y={h - 4} fontSize={10} fill="#64748b">Day 1</text>
+      <text x={w - pad.right} y={h - 4} fontSize={10} fill="#64748b" textAnchor="end">{days.length}d</text>
+    </svg>
   )
 }
 
@@ -632,12 +504,13 @@ function renderTrendChart(days) {
 }
 
 function buildDemoTrend() {
-  // Create gentle up-trending accuracy and slightly down-trending time
   const days = Array.from({ length: 30 }, (_, i) => {
     const accuracy = 70 + Math.round(8 * Math.sin(i / 4) + i * 0.4)
     const avgTimeS = 40 - Math.round(6 * Math.cos(i / 3) + i * 0.2)
+    const questions = Math.round(15 + 12 * Math.sin(i / 5) + i * 0.3)
     return {
       date: '',
+      questions_answered: Math.max(0, questions),
       accuracy_pct: Math.max(40, Math.min(98, accuracy)),
       avg_time_ms: Math.max(20, avgTimeS) * 1000,
     }
