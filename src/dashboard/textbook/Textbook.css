@@ -18,6 +18,31 @@
   gap: 8px;
 }
 
+.tb-highlights-toggle {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e1e6f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.tb-highlights-toggle:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.tb-highlights-toggle.is-on {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
 /* Search UI */
 .tb-search {
   display: flex;

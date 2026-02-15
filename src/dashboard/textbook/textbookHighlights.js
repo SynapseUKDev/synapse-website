@@ -147,56 +147,150 @@ export function applyHighlightToRange(range, highlight) {
   mark.dataset.hlId = highlight.id;
   if (highlight.note) mark.dataset.note = highlight.note;
 
-  // Wrapper for positioning the "x"
   const wrap = document.createElement('span');
   wrap.className = 'tb-hl-wrap';
-
-  const x = document.createElement('button');
-  x.type = 'button';
-  x.className = 'tb-hl-x';
-  x.dataset.hlId = highlight.id;
-  x.setAttribute('aria-label', 'Remove highlight');
-  x.title = 'Remove highlight';
-  x.textContent = '×';
 
   try {
     range.surroundContents(mark);
   } catch {
-    // If selection crosses complex nodes, fallback to extract+wrap
     const frag = range.extractContents();
     mark.appendChild(frag);
     range.insertNode(mark);
   }
 
-  // Replace mark in DOM with wrapper(mark + x)
   const parent = mark.parentNode;
   if (!parent) return false;
 
   parent.insertBefore(wrap, mark);
   wrap.appendChild(mark);
-  wrap.appendChild(x);
 
   return true;
 }
 
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export function findBestOffsets(blockText, h) {
-  // 1) offsets are best if within range and quote matches nearby
-  if (h.start_offset >= 0 && h.end_offset <= blockText.length) {
+  const quote = h.quote != null ? String(h.quote) : '';
+  if (!quote || !blockText) return null;
+
+  // 1) offsets are best if within range and quote matches
+  if (typeof h.start_offset === 'number' && typeof h.end_offset === 'number' && h.end_offset <= blockText.length) {
     const slice = blockText.slice(h.start_offset, h.end_offset);
-    if (slice === h.quote) return { start: h.start_offset, end: h.end_offset };
+    if (slice === quote) return { start: h.start_offset, end: h.end_offset };
   }
 
-  // 2) try exact quote match
-  const idx = blockText.indexOf(h.quote);
-  if (idx !== -1) return { start: idx, end: idx + h.quote.length };
+  // 2) exact quote match
+  const idx = blockText.indexOf(quote);
+  if (idx !== -1) return { start: idx, end: idx + quote.length };
 
   // 3) context match prefix+quote+suffix
-  const combo = `${h.prefix || ''}${h.quote}${h.suffix || ''}`;
-  const idx2 = combo.trim() ? blockText.indexOf(combo) : -1;
-  if (idx2 !== -1) {
-    const start = idx2 + (h.prefix || '').length;
-    return { start, end: start + h.quote.length };
+  const prefix = h.prefix != null ? String(h.prefix) : '';
+  const suffix = h.suffix != null ? String(h.suffix) : '';
+  const combo = `${prefix}${quote}${suffix}`.trim();
+  if (combo) {
+    const idx2 = blockText.indexOf(combo);
+    if (idx2 !== -1) {
+      const start = idx2 + prefix.length;
+      return { start, end: start + quote.length };
+    }
+  }
+
+  // 4) whitespace-tolerant: collapse runs of whitespace to single space, then find
+  const norm = (s) => String(s).trim().replace(/\s+/g, ' ');
+  const normBlock = norm(blockText);
+  const normQuote = norm(quote);
+  if (normQuote.length > 0) {
+    const re = new RegExp(normQuote.split(/\s+/).map(escapeRegExp).join('\\s+'), 'i');
+    const match = blockText.match(re);
+    if (match && match.index !== undefined) {
+      return { start: match.index, end: match.index + match[0].length };
+    }
   }
 
   return null;
+}
+
+/**
+ * Extract plain text from HTML and segment mapping (text offset -> html offset).
+ * Returns { fullText, segments } where each segment is { textStart, textEnd, htmlStart, htmlEnd } (exclusive end).
+ */
+function getTextSegmentsFromHtml(html) {
+  const segments = [];
+  let fullText = '';
+  let i = 0;
+  while (i < html.length) {
+    if (html[i] === '<') {
+      const end = html.indexOf('>', i + 1);
+      i = end === -1 ? html.length : end + 1;
+      continue;
+    }
+    const start = i;
+    let text = '';
+    while (i < html.length && html[i] !== '<') {
+      text += html[i];
+      i++;
+    }
+    if (text.length > 0) {
+      const textStart = fullText.length;
+      fullText += text;
+      segments.push({
+        textStart,
+        textEnd: fullText.length,
+        htmlStart: start,
+        htmlEnd: start + text.length,
+      });
+    }
+  }
+  return { fullText, segments };
+}
+
+function getHtmlOffset(segments, textOffset, totalTextLen) {
+  if (textOffset <= 0) return segments[0] ? segments[0].htmlStart : 0;
+  if (textOffset >= totalTextLen && segments.length > 0) {
+    const s = segments[segments.length - 1];
+    return s.htmlEnd;
+  }
+  for (const s of segments) {
+    if (s.textStart <= textOffset && textOffset < s.textEnd) {
+      return s.htmlStart + (textOffset - s.textStart);
+    }
+    if (s.textStart < textOffset && textOffset <= s.textEnd) {
+      return s.htmlStart + (textOffset - s.textStart);
+    }
+  }
+  return segments[0] ? segments[0].htmlStart : 0;
+}
+
+/**
+ * Inject user highlight markup into HTML string so React can render it as the normal state.
+ * Returns new HTML with <span class="tb-hl-wrap"><mark class="tb-user-mark ..." data-hl-id="...">...</mark></span>.
+ */
+export function injectUserHighlightsIntoHtml(html, highlights) {
+  if (!html || !highlights?.length) return html;
+
+  const { fullText, segments } = getTextSegmentsFromHtml(html);
+  if (!fullText) return html;
+
+  const insertions = [];
+  for (const h of highlights) {
+    const offsets = findBestOffsets(fullText, h);
+    if (!offsets) continue;
+    const htmlStart = getHtmlOffset(segments, offsets.start, fullText.length);
+    const htmlEnd = getHtmlOffset(segments, offsets.end, fullText.length);
+    if (htmlStart >= htmlEnd) continue;
+    insertions.push({ htmlStart, htmlEnd, h });
+  }
+  insertions.sort((a, b) => b.htmlStart - a.htmlStart);
+
+  let result = html;
+  for (const { htmlStart, htmlEnd, h } of insertions) {
+    const color = (h.color && /^[a-z]+$/.test(h.color)) ? h.color : 'yellow';
+    const id = String(h.id || '').replace(/"/g, '&quot;');
+    const openTag = `<span class="tb-hl-wrap"><mark class="tb-user-mark tb-user-mark--${color}" data-hl-id="${id}">`;
+    const closeTag = '</mark></span>';
+    result = result.slice(0, htmlStart) + openTag + result.slice(htmlStart, htmlEnd) + closeTag + result.slice(htmlEnd);
+  }
+  return result;
 }
