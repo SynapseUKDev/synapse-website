@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuCircleCheck, LuCheck, LuMinus } from 'react-icons/lu'
+import { LuCircleCheck, LuCheck, LuMinus, LuChevronDown, LuFileText } from 'react-icons/lu'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { authHeaders } from '../../auth/token'
@@ -108,6 +108,149 @@ function TopicCard({ topic, progress, onStatusChange, onConfidenceChange, onTopi
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+function SubtopicItem({ node, depth = 0, progress, onStatusChange, onConfidenceChange, onSubtopicClick }) {
+  const hasPage = !!node.has_page || !!(node.textbook_pages && node.textbook_pages[0])
+  const children = Array.isArray(node.children) ? node.children : []
+  const readingStatus = progress?.reading_status || 'not_read'
+  const confidence = progress?.confidence || 'low'
+  const lastReviewedAt = progress?.last_reviewed_at
+
+  const formatRelativeTime = (isoDate) => {
+    if (!isoDate) return null
+    const d = new Date(isoDate)
+    if (Number.isNaN(d.getTime())) return null
+    const now = new Date()
+    const diffMs = now - d
+    const diffDays = Math.floor(diffMs / 86400000)
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays} days ago`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
+
+  const cycleStatus = (e) => {
+    e.stopPropagation()
+    const order = ['not_read', 'in_progress', 'completed']
+    const currentIdx = order.indexOf(readingStatus)
+    const nextStatus = order[(currentIdx + 1) % 3]
+    onStatusChange(node.id, nextStatus)
+  }
+
+  const handleConfidenceClick = (e, level) => {
+    e.stopPropagation()
+    onConfidenceChange(node.id, level)
+  }
+
+  const handleCardClick = () => {
+    if (hasPage) onSubtopicClick(node)
+  }
+
+  const checkboxClass = `tb-topic-card__check ${readingStatus === 'completed' ? 'tb-topic-card__check--completed' : readingStatus === 'in_progress' ? 'tb-topic-card__check--in-progress' : ''}`
+
+  return (
+    <>
+      <div
+        className={`tb-subtopic-card ${hasPage ? 'tb-subtopic-card--clickable' : 'tb-subtopic-card--disabled'}`}
+        style={{ '--sub-depth': depth }}
+        onClick={handleCardClick}
+        role={hasPage ? 'button' : undefined}
+        tabIndex={hasPage ? 0 : undefined}
+        onKeyDown={hasPage ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleCardClick() } : undefined}
+      >
+        {/* Checkbox */}
+        <button className={checkboxClass} onClick={cycleStatus} aria-label="Toggle reading status">
+          {readingStatus === 'completed' && <LuCheck className="tb-topic-card__check-icon" />}
+          {readingStatus === 'in_progress' && <LuMinus className="tb-topic-card__check-icon" />}
+        </button>
+
+        {/* Name */}
+        <div className="tb-topic-card__info">
+          <span className="tb-topic-card__name">{node.name}</span>
+          <span className="tb-topic-card__meta">
+            {lastReviewedAt ? `Last reviewed: ${formatRelativeTime(lastReviewedAt)}` : ''}
+          </span>
+        </div>
+
+        {/* Status badge */}
+        <div className="tb-topic-card__status">
+          <button className={`tb-status-badge tb-status-badge--${readingStatus}`} onClick={cycleStatus}>
+            {readingStatus === 'completed' && <LuCircleCheck className="tb-status-badge__check" />}
+            {STATUS_LABELS[readingStatus]}
+          </button>
+        </div>
+
+        {/* Confidence */}
+        <div className="tb-topic-card__confidence">
+          <div className="tb-confidence-toggle">
+            {['low', 'moderate', 'high'].map((level) => (
+              <button
+                key={level}
+                className={`tb-confidence-option tb-confidence-option--${level} ${confidence === level ? 'tb-confidence-option--active' : ''}`}
+                onClick={(e) => handleConfidenceClick(e, level)}
+              >
+                <span className="tb-confidence-option__dot" />
+                {CONFIDENCE_LABELS[level]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      {children.map((child) => (
+        <SubtopicItem
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          progress={progress}
+          onStatusChange={onStatusChange}
+          onConfidenceChange={onConfidenceChange}
+          onSubtopicClick={onSubtopicClick}
+        />
+      ))}
+    </>
+  )
+}
+
+function TopicGroupCard({ topic, subtopicProgressData, onSubtopicStatusChange, onSubtopicConfidenceChange, onSubtopicClick, isExpanded, onToggle }) {
+  const subtopics = Array.isArray(topic.subtopics) ? topic.subtopics : []
+
+  // Derive completion count from subtopic progress
+  const completedCount = subtopics.reduce((acc, st) => {
+    const p = subtopicProgressData[st.id]
+    return acc + (p?.reading_status === 'completed' ? 1 : 0)
+  }, 0)
+
+  return (
+    <div className={`tb-topic-group-card ${isExpanded ? 'tb-topic-group-card--open' : ''}`}>
+      {/* Header — just topic name + count + chevron */}
+      <div className="tb-topic-group-card__header" onClick={onToggle} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggle() }}>
+        <div className="tb-topic-group-card__title">{topic.name}</div>
+        <span className="tb-topic-group-card__count">
+          {completedCount}/{subtopics.length} completed
+        </span>
+        <LuChevronDown className={`tb-topic-group-card__chevron ${isExpanded ? 'tb-topic-group-card__chevron--open' : ''}`} />
+      </div>
+
+      {/* Expanded subtopics list */}
+      {isExpanded && (
+        <div className="tb-topic-group-card__children">
+          {subtopics.map((st) => (
+            <SubtopicItem
+              key={st.id}
+              node={st}
+              depth={0}
+              progress={subtopicProgressData[st.id]}
+              onStatusChange={onSubtopicStatusChange}
+              onConfidenceChange={onSubtopicConfidenceChange}
+              onSubtopicClick={onSubtopicClick}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -337,6 +480,7 @@ export default function Textbook() {
 
   // Progress tracking state (for specialty view)
   const [progressData, setProgressData] = useState({})
+  const [subtopicProgressData, setSubtopicProgressData] = useState({})
   const [progressSummary, setProgressSummary] = useState({ total: 0, not_read: 0, in_progress: 0, completed: 0, low: 0, moderate: 0, high: 0 })
   const [progressLoading, setProgressLoading] = useState(false)
   const [sortBy, setSortBy] = useState('default')
@@ -479,7 +623,18 @@ export default function Textbook() {
           const res = await fetch(`${API_BASE}/textbook/specialty/${slug}`, { credentials: 'include', headers: { 'Content-Type': 'application/json', ...authHeaders() } })
           if (!res.ok) throw new Error(`Failed to load specialty: ${res.status}`)
           const json = await res.json()
-          if (!cancelled) setData(json)
+          if (!cancelled) {
+            setData(json)
+            // Auto-expand all topics with subtopics
+            if (json.topics) {
+              const slugsToExpand = json.topics
+                .filter(t => t.has_subtopics && Array.isArray(t.subtopics) && t.subtopics.length > 0)
+                .map(t => t.slug)
+              if (slugsToExpand.length > 0) {
+                setExpandedSet(new Set(slugsToExpand))
+              }
+            }
+          }
         }
       } catch (e) {
         if (!cancelled) setError(e?.message || 'Failed to load textbook')
@@ -504,6 +659,7 @@ export default function Textbook() {
       .then((json) => {
         if (!cancelled) {
           setProgressData(json.progress || {})
+          setSubtopicProgressData(json.subtopic_progress || {})
           setProgressSummary(json.summary || { total: 0, not_read: 0, in_progress: 0, completed: 0, low: 0, moderate: 0, high: 0 })
         }
       })
@@ -511,6 +667,7 @@ export default function Textbook() {
         console.error('Error loading progress:', err)
         if (!cancelled) {
           setProgressData({})
+          setSubtopicProgressData({})
           setProgressSummary({ total: 0, not_read: 0, in_progress: 0, completed: 0, low: 0, moderate: 0, high: 0 })
         }
       })
@@ -580,6 +737,63 @@ export default function Textbook() {
       console.error('Failed to update confidence:', err)
     }
   }, [progressData, API_BASE])
+
+  // Subtopic progress handlers
+  const handleSubtopicStatusChange = useCallback(async (subtopicId, newStatus) => {
+    const oldProgress = subtopicProgressData[subtopicId] || { reading_status: 'not_read', confidence: 'low' }
+    setSubtopicProgressData((prev) => ({
+      ...prev,
+      [subtopicId]: { ...oldProgress, reading_status: newStatus, last_reviewed_at: new Date().toISOString() },
+    }))
+    setProgressSummary((prev) => {
+      const s = { ...prev }
+      if (oldProgress.reading_status === 'not_read') s.not_read = Math.max(0, s.not_read - 1)
+      else if (oldProgress.reading_status === 'in_progress') s.in_progress = Math.max(0, s.in_progress - 1)
+      else if (oldProgress.reading_status === 'completed') s.completed = Math.max(0, s.completed - 1)
+      if (newStatus === 'not_read') s.not_read++
+      else if (newStatus === 'in_progress') s.in_progress++
+      else if (newStatus === 'completed') s.completed++
+      return s
+    })
+    try {
+      await fetch(`${API_BASE}/textbook/subtopic/${subtopicId}/progress`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ reading_status: newStatus }),
+      })
+    } catch (err) {
+      console.error('Failed to update subtopic status:', err)
+    }
+  }, [subtopicProgressData, API_BASE])
+
+  const handleSubtopicConfidenceChange = useCallback(async (subtopicId, newConfidence) => {
+    const oldProgress = subtopicProgressData[subtopicId] || { reading_status: 'not_read', confidence: 'low' }
+    setSubtopicProgressData((prev) => ({
+      ...prev,
+      [subtopicId]: { ...oldProgress, confidence: newConfidence },
+    }))
+    setProgressSummary((prev) => {
+      const s = { ...prev }
+      if (oldProgress.confidence === 'low') s.low = Math.max(0, s.low - 1)
+      else if (oldProgress.confidence === 'moderate') s.moderate = Math.max(0, s.moderate - 1)
+      else if (oldProgress.confidence === 'high') s.high = Math.max(0, s.high - 1)
+      if (newConfidence === 'low') s.low++
+      else if (newConfidence === 'moderate') s.moderate++
+      else if (newConfidence === 'high') s.high++
+      return s
+    })
+    try {
+      await fetch(`${API_BASE}/textbook/subtopic/${subtopicId}/progress`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ confidence: newConfidence }),
+      })
+    } catch (err) {
+      console.error('Failed to update subtopic confidence:', err)
+    }
+  }, [subtopicProgressData, API_BASE])
 
   // Filter and sort topics for specialty view
   const filteredAndSortedTopics = useMemo(() => {
@@ -741,17 +955,20 @@ export default function Textbook() {
         {/* Topic Cards */}
         <div className="tb-topic-list--dashboard">
           {filteredAndSortedTopics.map((t) => {
-            // Skip subtopics view for now - show flat topic list
             if (t.has_subtopics && Array.isArray(t.subtopics) && t.subtopics.length > 0) {
-              // For topics with subtopics, show as parent topic card
               return (
-                <TopicCard
+                <TopicGroupCard
                   key={t.id}
                   topic={t}
-                  progress={progressData[t.id]}
-                  onStatusChange={handleStatusChange}
-                  onConfidenceChange={handleConfidenceChange}
-                  onTopicClick={handleTopicClick}
+                  subtopicProgressData={subtopicProgressData}
+                  onSubtopicStatusChange={handleSubtopicStatusChange}
+                  onSubtopicConfidenceChange={handleSubtopicConfidenceChange}
+                  onSubtopicClick={(st) => {
+                    const hasPage = !!st.has_page || !!(st.textbook_pages && st.textbook_pages[0])
+                    if (hasPage) navigate(`/dashboard/textbook/topic/${st.slug}`)
+                  }}
+                  isExpanded={expandedSet.has(t.slug)}
+                  onToggle={() => toggleExpanded(t.slug)}
                 />
               )
             }
