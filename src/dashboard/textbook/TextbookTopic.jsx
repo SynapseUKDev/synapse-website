@@ -1,10 +1,7 @@
 import {
   getBlockWrapperFromSelection,
   computeOffsetsWithinBlock,
-  rangeFromOffsets,
-  unwrapAllUserHighlights,
-  applyHighlightToRange,
-  findBestOffsets,
+  injectUserHighlightsIntoHtml,
 } from './textbookHighlights'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -36,7 +33,7 @@ function AnchorNav({ sections, hasReferences }) {
   )
 }
 
-function RenderBlock({ block, query }) {
+function RenderBlock({ block, query, blockHighlights = [] }) {
   if (block.block_type === 'image') {
     const meta = block.data || {}
     return (
@@ -52,7 +49,8 @@ function RenderBlock({ block, query }) {
     )
   }
   const raw = block.content || ''
-  const isHtml = /<[^>]+>/.test(raw)
+  const withUserHighlights = injectUserHighlightsIntoHtml(raw, blockHighlights)
+  const isHtml = /<[^>]+>/.test(withUserHighlights)
   const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const highlightPlain = (text, q) => {
     if (!q) return text
@@ -72,8 +70,8 @@ function RenderBlock({ block, query }) {
     return parts.join('')
   }
   const rendered = isHtml
-    ? highlightHtml(raw, query)
-    : highlightPlain(raw, query).replace(/\n/g, '<br/>')
+    ? highlightHtml(withUserHighlights, query)
+    : highlightPlain(withUserHighlights, query).replace(/\n/g, '<br/>')
   return <div className="tb-md" dangerouslySetInnerHTML={{ __html: rendered }} />
 }
 
@@ -94,6 +92,7 @@ export default function TextbookTopic() {
   const mainRef = useRef(null);
 
   const [highlights, setHighlights] = useState([]);
+  const [highlightsOn, setHighlightsOn] = useState(true);
   const [hlToolbar, setHlToolbar] = useState({ open: false, x: 0, y: 0 });
   const [activeHlId, setActiveHlId] = useState(null);
   const [activeNoteDraft, setActiveNoteDraft] = useState('');
@@ -163,30 +162,7 @@ if (!res.ok) {
     }
   }, [API_BASE, data?.page?.id])
 
-    useEffect(() => {
-  const container = mainRef.current;
-  if (!container) return;
-
-  // clear old
-  unwrapAllUserHighlights(container);
-
-  // re-apply by block
-  for (const h of highlights) {
-    const blockEl = container.querySelector(`[data-tb-block-id="${h.block_id}"]`);
-    if (!blockEl) continue;
-
-    const blockText = blockEl.textContent || '';
-    const offsets = findBestOffsets(blockText, h);
-    if (!offsets) continue;
-
-    const r = rangeFromOffsets(blockEl, offsets.start, offsets.end);
-    if (!r) continue;
-
-    applyHighlightToRange(r, h);
-  }
-}, [highlights, data?.blocks, topicQ]);
-
-      useEffect(() => {
+  useEffect(() => {
   const onMouseUp = async (e) => {
     // ✅ If the user is clicking the toolbar/popover, don't treat it as "selection ended"
     if (
@@ -195,6 +171,8 @@ if (!res.ok) {
     ) {
       return
     }
+    const clickedEl = e?.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e?.target;
+    if (clickedEl?.closest?.('mark.tb-user-mark') || clickedEl?.closest?.('span.tb-hl-wrap')) return
 
     const sel = window.getSelection()
 
@@ -236,12 +214,12 @@ if (ok) {
   try { sel.removeAllRanges() } catch {}
   setHlToolbar((t) => ({ ...t, open: false }))
 } else {
-  // If save failed, show toolbar again so it doesn't feel "dead"
   const rect = range.getBoundingClientRect()
   setHlToolbar({
     open: true,
     x: rect.left + rect.width / 2 + window.scrollX,
     y: rect.top + window.scrollY - 10,
+    mode: 'selection',
   })
 }
     
@@ -311,7 +289,7 @@ const payload = {
   section_anchor: selPayload.section_anchor,
   block_id: selPayload.block_id,
   color: activeColorDraft,
-  quote: selPayload.quote,
+  quote: selPayload.quote?.trim() || selPayload.quote,
   start_offset: selPayload.start_offset,
   end_offset: selPayload.end_offset,
   prefix: selPayload.prefix,
@@ -319,7 +297,8 @@ const payload = {
   note: withNote ? (activeNoteDraft || '') : null,
 }
 
-const res = await authenticatedFetch(`${API_BASE}/textbook/highlights`, {
+// Sync: backend returns existing highlight (with stored color) or creates new one
+const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/sync`, {
   method: 'POST',
   body: JSON.stringify(payload),
 })
@@ -327,29 +306,30 @@ const res = await authenticatedFetch(`${API_BASE}/textbook/highlights`, {
 if (!res.ok) {
   let errText = ''
   try { errText = await res.text() } catch {}
-  console.error('[HL] Failed to create highlight:', res.status, errText)
+  console.error('[HL] Failed to sync highlight:', res.status, errText)
   return false
 }
 
 const json = await res.json()
 
 if (json?.highlight) {
-  setHighlights((h) => [...h, json.highlight])
+  const hl = json.highlight
+  setHighlights((prev) => {
+    const idx = prev.findIndex((h) => h.id === hl.id)
+    if (idx >= 0) return prev.map((h, i) => (i === idx ? hl : h))
+    return [...prev, hl]
+  })
 
   // ✅ If user clicked "Add note", immediately open the editor for the new highlight
   if (withNote) {
-    setActiveHlId(json.highlight.id)
-    setActiveNoteDraft(json.highlight.note || '')
-    setActiveColorDraft(json.highlight.color || activeColorDraft)
+    setActiveHlId(hl.id)
+    setActiveNoteDraft(hl.note || '')
+    setActiveColorDraft(hl.color || activeColorDraft)
   }
 }
 
-// cleanup (caller controls selection + toolbar)
 pendingSelectionRef.current = null
-
-// If backend didn't return a highlight object, treat as failure
 if (!json?.highlight) return false
-
 if (!withNote) setActiveNoteDraft('')
 return true
 }
@@ -359,32 +339,28 @@ return true
   if (!container) return;
 
   const onClick = (e) => {
-  // ✅ If user clicked the small "x" button, delete immediately
-  const xBtn = e.target.closest?.('button.tb-hl-x');
-  if (xBtn) {
-    e.preventDefault();
-    e.stopPropagation();
-    const id = xBtn.dataset.hlId;
-    deleteHighlightById(id);
-    return;
-  }
-
-  // ✅ Otherwise clicking the highlight opens the optional note editor
-  const mark = e.target.closest?.('mark.tb-user-mark');
+  const clicked = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
+  const mark = clicked?.closest?.('mark.tb-user-mark') || clicked?.closest?.('span.tb-hl-wrap')?.querySelector?.('mark.tb-user-mark');
   if (!mark) return;
 
   const id = mark.dataset.hlId;
-  const hl = highlights.find((x) => x.id === id);
-  if (!hl) return;
+  if (!highlights.find((x) => x.id === id)) return;
 
-  setActiveHlId(id);
-  setActiveNoteDraft(hl.note || '');
-  setActiveColorDraft(hl.color || 'yellow');
+  e.preventDefault();
+  e.stopPropagation();
+  const rect = mark.getBoundingClientRect();
+  setHlToolbar({
+    open: true,
+    x: rect.left + rect.width / 2 + window.scrollX,
+    y: rect.top + window.scrollY - 10,
+    mode: 'existing',
+    highlightId: id,
+  });
 };
 
   container.addEventListener('click', onClick);
   return () => container.removeEventListener('click', onClick);
-}, [highlights, activeHlId]);
+}, [highlights]);
 
   async function deleteHighlightById(id) {
   if (!id) return;
@@ -577,6 +553,15 @@ if (!res.ok) {
           />
         </form>
         <div className="tb-header__actions">
+          <button
+            type="button"
+            className={`tb-highlights-toggle ${highlightsOn ? 'is-on' : ''}`}
+            onClick={() => setHighlightsOn((on) => !on)}
+            title={highlightsOn ? 'Hide highlights' : 'Show highlights'}
+            aria-pressed={highlightsOn}
+          >
+            {highlightsOn ? 'Hide highlights' : 'Show highlights'}
+          </button>
           <ReportTopicIssueButton topicSlug={topicSlug} API_BASE={API_BASE} />
         </div>
       </header>
@@ -588,38 +573,38 @@ if (!res.ok) {
   className="tb-hl-toolbar"
   style={{ left: hlToolbar.x, top: hlToolbar.y }}
   role="dialog"
-  aria-label="Highlight toolbar"
-  onMouseDown={(e) => e.preventDefault()}   // ✅ keep selection alive
-  onClick={(e) => e.stopPropagation()}     // ✅ don't bubble to document
+  aria-label={hlToolbar.mode === 'existing' ? 'Highlight actions' : 'Highlight toolbar'}
+  onMouseDown={(e) => e.preventDefault()}
+  onClick={(e) => e.stopPropagation()}
 >
-
-    <div className="tb-hl-colors">
-      {['yellow','green','pink','blue'].map((c) => (
-        <button
-          type="button"
-          key={c}
-          className={`tb-hl-color ${activeColorDraft === c ? 'is-active' : ''}`}
-          onClick={() => setActiveColorDraft(c)}
-          aria-label={`Highlight colour ${c}`}
-        />
-      ))}
-    </div>
-
-    <button 
+  {hlToolbar.mode === 'existing' ? (
+    <button
       type="button"
-      className="tb-hl-btn" 
-      onClick={() => createHighlight({ withNote: false })}
-      >
-      Highlight
+      className="tb-hl-btn tb-hl-btn--danger"
+      onClick={() => {
+        if (hlToolbar.highlightId) deleteHighlightById(hlToolbar.highlightId);
+        setHlToolbar((t) => ({ ...t, open: false }));
+      }}
+    >
+      Delete
     </button>
-
-    <button 
-      type="button"
-      className="tb-hl-btn tb-hl-btn--note" 
-      onClick={() => createHighlight({ withNote: true })}
-      >
-      Add note
-    </button>
+  ) : (
+    <>
+      <div className="tb-hl-colors">
+        {['yellow','green','pink','blue'].map((c) => (
+          <button
+            type="button"
+            key={c}
+            className={`tb-hl-color ${activeColorDraft === c ? 'is-active' : ''}`}
+            onClick={() => setActiveColorDraft(c)}
+            aria-label={`Highlight colour ${c}`}
+          />
+        ))}
+      </div>
+      <button type="button" className="tb-hl-btn" onClick={() => createHighlight({ withNote: false })}>Highlight</button>
+      <button type="button" className="tb-hl-btn tb-hl-btn--note" onClick={() => createHighlight({ withNote: true })}>Add note</button>
+    </>
+  )}
   </div>
 )}
 
@@ -654,7 +639,7 @@ if (!res.ok) {
     data-tb-block-id={b.id}
     data-tb-section-anchor={s.anchor_slug}
   >
-    <RenderBlock block={b} query={topicQ} />
+    <RenderBlock block={b} query={topicQ} blockHighlights={highlightsOn ? highlights.filter((h) => String(h.block_id) === String(b.id)) : []} />
   </div>
 ))}
               </div>
