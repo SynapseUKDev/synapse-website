@@ -1537,9 +1537,7 @@ mark.tb-user-mark[data-note]:hover::after {
   padding: 10px;
   font-family: inherit;
   font-size: 13px;
-}
-
-.tb-hl-popover__actions {
+}.tb-hl-popover__actions {
   display: flex;
   gap: 10px;
   margin-top: 10px;
