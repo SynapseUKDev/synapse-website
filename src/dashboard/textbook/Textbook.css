@@ -1544,9 +1544,7 @@ mark.tb-user-mark[data-note]:hover::after {
   gap: 10px;
   margin-top: 10px;
   flex-wrap: wrap;
-}
-
-/* Mobile: toolbar sticks to bottom for usability */
+}/* Mobile: toolbar sticks to bottom for usability */
 @media (max-width: 768px) {
   .tb-hl-toolbar {
     position: fixed;
