@@ -498,6 +498,17 @@
   font-size: 14px;
 }
 
+.setup__min-remaining-msg {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: var(--syn-amber-50, #fffbeb);
+  border: 1px solid var(--syn-amber-200, #fde68a);
+  border-radius: 8px;
+  color: var(--syn-amber-800, #92400e);
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .setup__summary-divider {
   height: 1px;
   background: var(--syn-border);

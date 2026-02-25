@@ -58,7 +58,7 @@ export default function GroupPractice() {
   const studySetName = params.get('study_set_name') || 'Group Study'
   const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '0')
-  const includeAttempted = params.get('include_attempted') !== '0'
+  const includeAttempted = params.get('include_attempted') === '1'
 
   // Session state
   const [loading, setLoading] = useState(true)

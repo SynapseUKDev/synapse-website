@@ -126,7 +126,7 @@ export default function Practice() {
   const topicIds = params.get('topic_ids')
   const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '25')
-  const includeAttempted = params.get('include_attempted') !== '0'
+  const includeAttempted = params.get('include_attempted') === '1'
 
   // Session state
   const [loading, setLoading] = useState(!isReviewMode) // Don't show loading in review mode
@@ -263,7 +263,7 @@ export default function Practice() {
         let errorMessage = 'Failed to load session'
         try {
           const errorData = await qRes.json()
-          errorMessage = errorData.error || errorData.details || errorMessage
+          errorMessage = errorData.details || errorData.error || errorMessage
           console.error('Session error details:', errorData)
         } catch (_e) {
           const errorText = await qRes.text()

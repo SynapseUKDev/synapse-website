@@ -21,7 +21,8 @@ export default function PracticeSetup() {
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [includeAttempted, setIncludeAttempted] = useState(false)
   const [studySetData, setStudySetData] = useState(null)
-  
+  const [specialtyAttemptedCount, setSpecialtyAttemptedCount] = useState(null)
+  const [specialtyTotalQuestions, setSpecialtyTotalQuestions] = useState(null)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -67,6 +68,8 @@ export default function PracticeSetup() {
       if (!res.ok) throw new Error('Failed to load topics')
       const data = await res.json()
       setTopics(data.topics || [])
+      setSpecialtyAttemptedCount(typeof data.specialty_attempted_count === 'number' ? data.specialty_attempted_count : null)
+      setSpecialtyTotalQuestions(typeof data.specialty_total_questions === 'number' ? data.specialty_total_questions : null)
       
       // Select all topics by default
       const allTopicIds = new Set(data.topics?.map(t => t.id) || [])
@@ -171,7 +174,8 @@ export default function PracticeSetup() {
   const totalAvailable = getTotalQuestions()
   const maxQuestions = totalAvailable
   const stepperMin = getStepperMin()
-  const isDisabled = totalAvailable === 0
+  const belowMinNew = !includeAttempted && !studySetId && totalAvailable > 0 && totalAvailable < 50
+  const isDisabled = totalAvailable === 0 || belowMinNew
 
   return (
     <div className="setup">
@@ -186,7 +190,11 @@ export default function PracticeSetup() {
         <div className="setup__title-section">
           <div>
             <h1 className="setup__title">{studySetId ? studySetName : specialtyName} Practice Setup</h1>
-            <p className="setup__subtitle">Configure your study session</p>
+            <p className="setup__subtitle">
+              {!studySetId && specialtyAttemptedCount !== null && specialtyTotalQuestions !== null
+                ? `${specialtyAttemptedCount}/${specialtyTotalQuestions} attempted in this specialty • Configure your session`
+                : 'Configure your study session'}
+            </p>
           </div>
         </div>
       </div>
@@ -380,10 +388,16 @@ export default function PracticeSetup() {
 
             <div className="setup__summary-divider"></div>
 
+            {belowMinNew && (
+              <p className="setup__min-remaining-msg" role="alert">
+                You need at least 50 new questions remaining to start. You have {totalAvailable} remaining.
+              </p>
+            )}
+
             <button 
               className="setup__start-btn"
               onClick={startSession}
-              disabled={!studySetId && selectedTopics.size === 0}
+              disabled={isDisabled}
             >
               <LuPlay />
               Start Session
