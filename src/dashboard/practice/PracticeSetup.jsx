@@ -174,8 +174,7 @@ export default function PracticeSetup() {
   const totalAvailable = getTotalQuestions()
   const maxQuestions = totalAvailable
   const stepperMin = getStepperMin()
-  const belowMinNew = !includeAttempted && !studySetId && totalAvailable > 0 && totalAvailable < 50
-  const isDisabled = totalAvailable === 0 || belowMinNew
+  const isDisabled = totalAvailable === 0
 
   return (
     <div className="setup">
@@ -387,12 +386,6 @@ export default function PracticeSetup() {
             </div>
 
             <div className="setup__summary-divider"></div>
-
-            {belowMinNew && (
-              <p className="setup__min-remaining-msg" role="alert">
-                You need at least 50 new questions remaining to start. You have {totalAvailable} remaining.
-              </p>
-            )}
 
             <button 
               className="setup__start-btn"
