@@ -679,63 +679,29 @@ function renderQuestionsChart(weekDayStats) {
     return [x, y]
   }
   const points = vals.map((v, i) => pt(i, v))
+  let linePath = ''
+  points.forEach(([x, y], i) => { linePath += (i ? ' L ' : 'M ') + x + ' ' + y })
+  const areaPath = linePath
+    ? `M ${points[0][0]} ${baselineY} L ${points.map(([x, y]) => `${x} ${y}`).join(' L ')} L ${points[points.length - 1][0]} ${baselineY} Z`
+    : ''
   const yTicks = [0, Math.ceil(maxVal / 2), maxVal].filter((v, i, a) => a.indexOf(v) === i)
-  const lowThreshold = maxVal * 0.4
-  const midThreshold = maxVal * 0.75
-  const getHeatColor = (v) => {
-    if (v <= lowThreshold) return '#ef4444' // low avg: red
-    if (v <= midThreshold) return '#f59e0b' // medium avg: yellow/amber
-    return '#22c55e' // good avg: green
-  }
   return (
     <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Average questions by day of week">
+      <defs>
+        <linearGradient id="q-gradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--syn-cyan)" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="var(--syn-cyan)" stopOpacity={0} />
+        </linearGradient>
+      </defs>
       <rect x={0} y={0} width={w} height={h} fill="transparent" />
-      {points.map(([x, y], i) => {
-        const prev = points[i - 1]
-        const next = points[i + 1]
-        const singleColHalfWidth = innerW * 0.08
-        const xLeft = prev ? (prev[0] + x) / 2 : (x - singleColHalfWidth)
-        const xRight = next ? (x + next[0]) / 2 : (x + singleColHalfWidth)
-        const yLeft = prev ? (prev[1] + y) / 2 : y
-        const yRight = next ? (y + next[1]) / 2 : y
-        const color = getHeatColor(vals[i] ?? 0)
-        return (
-          <polygon
-            key={`col-area-${i}`}
-            points={`${xLeft},${baselineY} ${xLeft},${yLeft} ${x},${y} ${xRight},${yRight} ${xRight},${baselineY}`}
-            fill={color}
-            fillOpacity={0.2}
-          />
-        )
-      })}
-      {points.length > 1 && points.slice(0, -1).map(([x1, y1], i) => {
-        const [x2, y2] = points[i + 1]
-        const v1 = vals[i] ?? 0
-        const v2 = vals[i + 1] ?? 0
-        const color = getHeatColor((v1 + v2) / 2)
-        return (
-          <line
-            key={`seg-${i}`}
-            x1={x1}
-            y1={y1}
-            x2={x2}
-            y2={y2}
-            stroke={color}
-            strokeWidth={2.5}
-            strokeLinecap="round"
-          />
-        )
-      })}
-      {points.length === 1 && (
-        <circle cx={points[0][0]} cy={points[0][1]} r={1} fill={getHeatColor(vals[0] ?? 0)} />
-      )}
+      {areaPath && <path d={areaPath} fill="url(#q-gradient)" />}
+      {linePath && <path d={linePath} fill="none" stroke="var(--syn-cyan)" strokeWidth={2} />}
       {points.map(([x, y], i) => {
         const dayName = weekDayStats[i]?.dayName ?? WEEKDAY_ORDER[i]
         const v = vals[i]
         const tooltip = `${dayName}: ${v} question${v === 1 ? '' : 's'} on average`
-        const pointColor = getHeatColor(v)
         return (
-          <circle key={i} cx={x} cy={y} r={5} fill="#fff" stroke={pointColor} strokeWidth={2.5}>
+          <circle key={i} cx={x} cy={y} r={5} fill="#fff" stroke="var(--syn-cyan)" strokeWidth={2.5}>
             <title>{tooltip}</title>
           </circle>
         )
