@@ -722,6 +722,112 @@ mark.tb-user-mark[data-note]:hover::after {
   font-style: italic;
 }
 
+/* Textbook image carousel (React component) */
+.tb-carousel {
+  position: relative;
+  display: grid;
+  grid-template-columns: 36px auto 36px;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 16px;
+  justify-content: center;
+}
+
+.tb-carousel__nav {
+  height: 36px;
+  width: 36px;
+  border-radius: 999px;
+  border: 1px solid #e7e9f2;
+  background: #fff;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1;
+  color: #0B1637;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(11, 22, 55, 0.08);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tb-carousel__nav:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #c8d0e0;
+}
+
+.tb-carousel__nav:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tb-carousel__prev {
+  grid-column: 1;
+}
+
+.tb-carousel__next {
+  grid-column: 3;
+}
+
+.tb-carousel__asset {
+  grid-column: 2;
+  margin: 0;
+  border: 1px solid #e7e9f2;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(11, 22, 55, 0.08);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.tb-carousel__asset img {
+  display: block;
+  max-width: 360px;
+  width: auto;
+  height: auto;
+  vertical-align: middle;
+  background: #f8fafc;
+}
+
+.tb-carousel__cap {
+  padding: 10px 12px;
+  border-top: 1px solid #eef2f7;
+  background: #fff;
+}
+
+.tb-carousel__caption {
+  color: #0B1637;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tb-carousel__dots {
+  grid-column: 1 / span 3;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tb-carousel__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.tb-carousel__dot:hover {
+  background: #cbd5e1;
+}
+
+.tb-carousel__dot.is-active {
+  background: #2E2CC4;
+  border-color: #2E2CC4;
+}
+
 /* Anchors side panel */
 .tb-anchors {
   background: #fff;
@@ -785,6 +891,63 @@ mark.tb-user-mark[data-note]:hover::after {
 /* Chapter style variant */
 .tb-page--chapter .tb-title {
   font-size: 30px;
+}
+
+/* Topic page: no gray or low opacity – all text dark blue (#0B1637) or bold */
+.tb-page--chapter .tb-breadcrumbs {
+  color: #0B1637;
+}
+
+.tb-page--chapter .tb-sep {
+  opacity: 1;
+  color: #0B1637;
+}
+
+.tb-page--chapter .tb-current {
+  color: #0B1637;
+}
+
+.tb-page--chapter .tb-link {
+  color: #0B1637;
+}
+
+.tb-page--chapter .tb-sub {
+  color: #0B1637;
+}
+
+.tb-page--chapter .tb-section__content {
+  color: #0B1637;
+}
+
+.tb-page--chapter .tb-md,
+.tb-page--chapter .tb-md p,
+.tb-page--chapter .tb-md li,
+.tb-page--chapter .tb-md span {
+  color: #0B1637 !important;
+}
+
+.tb-page--chapter .tb-md a {
+  color: #2E2CC4 !important;
+}
+
+.tb-page--chapter .tb-md b,
+.tb-page--chapter .tb-md strong {
+  color: #0B1637 !important;
+  font-weight: 800;
+}
+
+.tb-page--chapter .tb-figure figcaption {
+  color: #0B1637;
+}
+
+.tb-page--chapter .tb-ref,
+.tb-page--chapter .tb-ref__meta {
+  color: #0B1637;
+}
+
+.tb-page--chapter .tb-ref__dot {
+  opacity: 1;
+  color: #0B1637;
 }
 
 /* References styling */
@@ -1723,9 +1886,7 @@ mark.tb-user-mark[data-note]:hover::after {
   font-size: 13px;
   color: #0B1637;
   margin-bottom: 6px;
-}
-
-.tb-hl-popover__textarea {
+}.tb-hl-popover__textarea {
   width: 100%;
   min-height: 70px;
   resize: vertical;

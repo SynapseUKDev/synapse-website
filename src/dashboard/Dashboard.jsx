@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import { authHeaders, authenticatedFetch } from '../auth/token'
-import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuTrophy, LuArrowRight } from 'react-icons/lu'
+import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuTrophy, LuArrowRight, LuUserPlus } from 'react-icons/lu'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import useStaleJson from '../utils/useStaleJson'
 
@@ -63,6 +63,16 @@ export default function Dashboard() {
   const [recentTopic, setRecentTopic] = useState(null)
   const [analyticsChart, setAnalyticsChart] = useState('questions') // 'questions' | 'accuracy' | 'time'
 
+  // Friends state
+  const [friends, setFriends] = useState([])
+  const [friendRequests, setFriendRequests] = useState({ inbox: [], outbox: [] })
+  const [friendsLoading, setFriendsLoading] = useState(true)
+  const [requestsLoading, setRequestsLoading] = useState(true)
+  const [friendEmail, setFriendEmail] = useState('')
+  const [friendMessage, setFriendMessage] = useState(null) // { type: 'success'|'error', text }
+  const [respondingId, setRespondingId] = useState(null)
+  const [friendsTab, setFriendsTab] = useState('friends') // 'friends' | 'requests'
+
   useEffect(() => {
     window.scrollTo(0, 0)
   }, []);
@@ -121,6 +131,94 @@ export default function Dashboard() {
   useEffect(() => {
     loadSpecialties()
   }, [])
+
+  useEffect(() => {
+    loadLeaderboard()
+  }, [selectedSpecialty])
+
+  const loadFriends = async () => {
+    try {
+      setFriendsLoading(true)
+      const res = await authenticatedFetch(`${API_BASE}/friends`)
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setFriends(json?.friends ?? [])
+      } else {
+        setFriends([])
+      }
+    } catch (_e) {
+      setFriends([])
+    } finally {
+      setFriendsLoading(false)
+    }
+  }
+
+  const loadFriendRequests = async () => {
+    try {
+      setRequestsLoading(true)
+      const res = await authenticatedFetch(`${API_BASE}/friends/requests`)
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setFriendRequests({ inbox: json?.inbox ?? [], outbox: json?.outbox ?? [] })
+      } else {
+        setFriendRequests({ inbox: [], outbox: [] })
+      }
+    } catch (_e) {
+      setFriendRequests({ inbox: [], outbox: [] })
+    } finally {
+      setRequestsLoading(false)
+    }
+  }
+
+  const sendFriendRequest = async (e) => {
+    e.preventDefault()
+    const email = (friendEmail || '').trim().toLowerCase()
+    if (!email) {
+      setFriendMessage({ type: 'error', text: 'Enter an email address' })
+      return
+    }
+    setFriendMessage(null)
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/friends/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setFriendEmail('')
+        setFriendMessage({ type: 'success', text: 'Friend request sent' })
+        loadFriendRequests()
+      } else {
+        setFriendMessage({ type: 'error', text: json?.error || 'Failed to send request' })
+      }
+    } catch (_e) {
+      setFriendMessage({ type: 'error', text: 'Failed to send request' })
+    }
+  }
+
+  const respondToRequest = async (requestId, action) => {
+    setRespondingId(requestId)
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/friends/requests/${requestId}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (res.ok) {
+        loadFriendRequests()
+        loadFriends()
+        loadLeaderboard()
+      }
+    } finally {
+      setRespondingId(null)
+    }
+  }
+
+  useEffect(() => {
+    loadFriends()
+    loadFriendRequests()
+  }, [API_BASE])
 
   useEffect(() => {
     loadLeaderboard()
@@ -354,6 +452,138 @@ export default function Dashboard() {
               <LuArrowRight size={12} />
             </button>
           </div>
+
+          <div className="db-card db-friends__card">
+            <div className="db-card__top">
+              <div className="db-friends__title">
+                <LuUserPlus size={18} />
+                Friends
+              </div>
+            </div>
+            <div className="db-friends__content">
+              <div className="db-analytics__tabs db-friends__tabs">
+                <button
+                  type="button"
+                  className={`db-analytics__tab ${friendsTab === 'friends' ? 'is-active' : ''}`}
+                  onClick={() => setFriendsTab('friends')}
+                >
+                  Friends
+                </button>
+                <button
+                  type="button"
+                  className={`db-analytics__tab ${friendsTab === 'requests' ? 'is-active' : ''}`}
+                  onClick={() => setFriendsTab('requests')}
+                >
+                  Requests
+                </button>
+              </div>
+
+              <p className="db-friends__desc">
+                Add friends by email to see them on the leaderboard and compete together.
+              </p>
+              {friendMessage && (
+                <div className={`db-friends__alert db-friends__alert--${friendMessage.type}`}>
+                  {friendMessage.text}
+                </div>
+              )}
+              <form className="db-inputrow" onSubmit={sendFriendRequest}>
+                <input
+                  type="email"
+                  className="db-input"
+                  placeholder="Friend's email"
+                  value={friendEmail}
+                  onChange={(e) => setFriendEmail(e.target.value)}
+                  aria-label="Friend email"
+                />
+                <button type="submit" className="db-btn--small db-btn-primary" disabled={!friendEmail.trim()}>
+                  Add
+                </button>
+              </form>
+
+              <div className="db-friends__divider" />
+
+              {friendsTab === 'friends' && (
+                <>
+                  <div className="db-subheading">Your friends</div>
+                  {friendsLoading ? (
+                    <div className="db-empty">Loading…</div>
+                  ) : friends.length === 0 ? (
+                    <div className="db-empty">No friends yet. Add someone by email above.</div>
+                  ) : (
+                    <div className="db-list">
+                      {friends.map((f) => (
+                        <div key={f.id} className="db-list__item db-list__item--friend">
+                          <div className="db-list__main">
+                            <div className="db-list__title">{f.friend_username || f.friend_email || 'Friend'}</div>
+                            <div className="db-list__sub">{f.friend_email}</div>
+                          </div>
+                          <span className="db-friend-badge">Friends</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {friendsTab === 'requests' && (
+                <>
+                  <div className="db-subheading">Requests</div>
+                  {requestsLoading ? (
+                    <div className="db-empty">Loading…</div>
+                  ) : (friendRequests.inbox?.length === 0 && friendRequests.outbox?.length === 0) ? (
+                    <div className="db-empty">No pending requests.</div>
+                  ) : (
+                    <div className="db-list">
+                      {friendRequests.inbox?.map((r) => (
+                        <div key={r.id} className="db-list__item">
+                          <div className="db-list__main">
+                            <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
+                            <div className="db-list__sub">Wants to be your friend</div>
+                          </div>
+                          <div className="db-list__actions">
+                            <button
+                              type="button"
+                              className="db-chip db-chip--accept"
+                              onClick={() => respondToRequest(r.id, 'accept')}
+                              disabled={respondingId === r.id}
+                              aria-label="Accept"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              type="button"
+                              className="db-chip db-chip--decline"
+                              onClick={() => respondToRequest(r.id, 'decline')}
+                              disabled={respondingId === r.id}
+                              aria-label="Decline"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {friendRequests.outbox?.map((r) => (
+                        <div key={r.id} className="db-list__item">
+                          <div className="db-list__main">
+                            <div className="db-list__title">{r.target?.username || r.target?.email || 'User'}</div>
+                            <div className="db-list__sub">Pending</div>
+                          </div>
+                          <button
+                            type="button"
+                            className="db-chip db-chip--neutral"
+                            onClick={() => respondToRequest(r.id, 'cancel')}
+                            disabled={respondingId === r.id}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </aside>
       </div>
 
@@ -449,30 +679,63 @@ function renderQuestionsChart(weekDayStats) {
     return [x, y]
   }
   const points = vals.map((v, i) => pt(i, v))
-  let linePath = ''
-  points.forEach(([x, y], i) => { linePath += (i ? ' L ' : 'M ') + x + ' ' + y })
-  const areaPath = linePath
-    ? `M ${points[0][0]} ${baselineY} L ${points.map(([x, y]) => `${x} ${y}`).join(' L ')} L ${points[points.length - 1][0]} ${baselineY} Z`
-    : ''
   const yTicks = [0, Math.ceil(maxVal / 2), maxVal].filter((v, i, a) => a.indexOf(v) === i)
-  const gradientId = 'q-gradient'
+  const lowThreshold = maxVal * 0.4
+  const midThreshold = maxVal * 0.75
+  const getHeatColor = (v) => {
+    if (v <= lowThreshold) return '#ef4444' // low avg: red
+    if (v <= midThreshold) return '#f59e0b' // medium avg: yellow/amber
+    return '#22c55e' // good avg: green
+  }
   return (
     <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Average questions by day of week">
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--syn-cyan)" stopOpacity={0.35} />
-          <stop offset="100%" stopColor="var(--syn-cyan)" stopOpacity={0} />
-        </linearGradient>
-      </defs>
       <rect x={0} y={0} width={w} height={h} fill="transparent" />
-      {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} />}
-      {linePath && <path d={linePath} fill="none" stroke="var(--syn-cyan)" strokeWidth={2} />}
+      {points.map(([x, y], i) => {
+        const prev = points[i - 1]
+        const next = points[i + 1]
+        const singleColHalfWidth = innerW * 0.08
+        const xLeft = prev ? (prev[0] + x) / 2 : (x - singleColHalfWidth)
+        const xRight = next ? (x + next[0]) / 2 : (x + singleColHalfWidth)
+        const yLeft = prev ? (prev[1] + y) / 2 : y
+        const yRight = next ? (y + next[1]) / 2 : y
+        const color = getHeatColor(vals[i] ?? 0)
+        return (
+          <polygon
+            key={`col-area-${i}`}
+            points={`${xLeft},${baselineY} ${xLeft},${yLeft} ${x},${y} ${xRight},${yRight} ${xRight},${baselineY}`}
+            fill={color}
+            fillOpacity={0.2}
+          />
+        )
+      })}
+      {points.length > 1 && points.slice(0, -1).map(([x1, y1], i) => {
+        const [x2, y2] = points[i + 1]
+        const v1 = vals[i] ?? 0
+        const v2 = vals[i + 1] ?? 0
+        const color = getHeatColor((v1 + v2) / 2)
+        return (
+          <line
+            key={`seg-${i}`}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke={color}
+            strokeWidth={2.5}
+            strokeLinecap="round"
+          />
+        )
+      })}
+      {points.length === 1 && (
+        <circle cx={points[0][0]} cy={points[0][1]} r={1} fill={getHeatColor(vals[0] ?? 0)} />
+      )}
       {points.map(([x, y], i) => {
         const dayName = weekDayStats[i]?.dayName ?? WEEKDAY_ORDER[i]
         const v = vals[i]
         const tooltip = `${dayName}: ${v} question${v === 1 ? '' : 's'} on average`
+        const pointColor = getHeatColor(v)
         return (
-          <circle key={i} cx={x} cy={y} r={3} fill="var(--syn-cyan)" stroke="#fff" strokeWidth={1}>
+          <circle key={i} cx={x} cy={y} r={5} fill="#fff" stroke={pointColor} strokeWidth={2.5}>
             <title>{tooltip}</title>
           </circle>
         )
@@ -540,7 +803,7 @@ function renderAccuracyChartByWeekday(weekDayStats) {
         const v = vals[i]
         const tooltip = `${dayName}: ${v}% accuracy on average`
         return (
-          <circle key={i} cx={x} cy={y} r={3} fill="#3b82f6" stroke="#fff" strokeWidth={1}>
+          <circle key={i} cx={x} cy={y} r={5} fill="#fff" stroke="#3b82f6" strokeWidth={2.5}>
             <title>{tooltip}</title>
           </circle>
         )
@@ -608,7 +871,7 @@ function renderTimeChartByWeekday(weekDayStats) {
         const v = vals[i]
         const tooltip = `${dayName}: ${v}s per question on average`
         return (
-          <circle key={i} cx={x} cy={y} r={3} fill="#16a34a" stroke="#fff" strokeWidth={1}>
+          <circle key={i} cx={x} cy={y} r={5} fill="#fff" stroke="#16a34a" strokeWidth={2.5}>
             <title>{tooltip}</title>
           </circle>
         )

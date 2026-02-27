@@ -534,6 +534,8 @@
   font-family: 'Urbanist', sans-serif;
 }
 .db-friends__content { margin-top: 16px; }
+.db-friends__card { margin-top: 16px; }
+.db-friends__tabs { margin-top: 4px; margin-bottom: 12px; }
 .db-friends__desc { 
   color: var(--syn-muted); 
   font-size: 14px; 

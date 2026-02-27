@@ -33,24 +33,160 @@ function AnchorNav({ sections, hasReferences }) {
   )
 }
 
-function RenderBlock({ block, query, blockHighlights = [] }) {
-  if (block.block_type === 'image') {
-    const meta = block.data || {}
-    return (
-      <figure className="tb-figure">
-        <img src={meta.url} alt={meta.alt || ''} />
-        {(meta.caption || meta.attribution) && (
-          <figcaption>
-            {meta.caption && <div>{meta.caption}</div>}
-            {meta.attribution && <div className="tb-attr">{meta.attribution}{meta.license ? `, ${meta.license}` : ''}</div>}
+function ImageCarousel({ images }) {
+  const [idx, setIdx] = useState(0)
+  const n = Math.max(0, images.length)
+  const i = n === 0 ? 0 : ((idx % n) + n) % n
+  const cur = images[i]
+  const prev = () => setIdx((j) => (n > 0 ? (j - 1 + n) % n : 0))
+  const next = () => setIdx((j) => (n > 0 ? (j + 1) % n : 0))
+  if (!cur) return null
+  return (
+    <div className="tb-carousel" role="region" aria-label="Image carousel">
+      <button
+        type="button"
+        className="tb-carousel__nav tb-carousel__prev"
+        onClick={prev}
+        aria-label="Previous image"
+        disabled={n <= 1}
+      >
+        ‹
+      </button>
+      <figure className="tb-carousel__asset">
+        <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+        {(cur.caption || cur.attribution) && (
+          <figcaption className="tb-carousel__cap">
+            {cur.caption && <div className="tb-carousel__caption">{cur.caption}</div>}
+            {cur.attribution && <div className="tb-attr">{cur.attribution}{cur.license ? `, ${cur.license}` : ''}</div>}
           </figcaption>
         )}
       </figure>
-    )
+      <button
+        type="button"
+        className="tb-carousel__nav tb-carousel__next"
+        onClick={next}
+        aria-label="Next image"
+        disabled={n <= 1}
+      >
+        ›
+      </button>
+      {n > 1 && (
+        <div className="tb-carousel__dots" role="tablist" aria-label="Image selector">
+          {images.map((_, di) => (
+            <button
+              key={di}
+              type="button"
+              role="tab"
+              className={`tb-carousel__dot ${di === i ? 'is-active' : ''}`}
+              aria-label={`Go to image ${di + 1}`}
+              aria-selected={di === i}
+              onClick={() => setIdx(di)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Find and extract carousel div: any div with class containing "carousel". Returns { start, end, inner } or null. */
+function findCarouselDiv(html) {
+  const start = html.search(/<div[^>]*\bclass="[^"]*carousel[^"]*"/i)
+  if (start === -1) return null
+  let pos = html.indexOf('>', start) + 1
+  let depth = 1
+  while (depth > 0 && pos < html.length) {
+    const nextOpen = html.indexOf('<div', pos)
+    const nextClose = html.indexOf('</div>', pos)
+    if (nextClose === -1) return null
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth += 1
+      pos = nextOpen + 4
+    } else {
+      depth -= 1
+      pos = nextClose + 6
+      if (depth === 0) {
+        return { start, end: pos, inner: html.slice(html.indexOf('>', start) + 1, nextClose) }
+      }
+    }
+  }
+  return null
+}
+
+/** Extract image entries from legacy carousel inner HTML (slides with img + .cap). */
+function extractImagesFromCarouselInner(inner) {
+  const images = []
+  const imgTagRe = /<img\s[^>]*>/gi
+  const capRe = /<div[^>]*\bclass="[^"]*cap[^"]*"[^>]*>([\s\S]*?)<\/div>/gi
+  const srcAlt = []
+  let m
+  while ((m = imgTagRe.exec(inner)) !== null) {
+    const tag = m[0]
+    const src = /src="([^"]*)"/.exec(tag)
+    const alt = /alt="([^"]*)"/.exec(tag)
+    if (src && src[1]) srcAlt.push({ url: src[1], alt: (alt && alt[1]) ? alt[1].trim() : '' })
+  }
+  const caps = []
+  while ((m = capRe.exec(inner)) !== null) {
+    caps.push((m[1] || '').replace(/\s+/g, ' ').trim())
+  }
+  for (let i = 0; i < srcAlt.length; i++) {
+    images.push({
+      url: srcAlt[i].url,
+      alt: srcAlt[i].alt,
+      caption: caps[i] !== undefined ? caps[i] : '',
+    })
+  }
+  return images
+}
+
+/** Parse HTML content into segments: html chunks and carousel data (so we can render React carousels). */
+function parseContentWithCarousels(html) {
+  if (!html || typeof html !== 'string') return [{ type: 'html', content: '' }]
+  const segs = []
+  let remaining = html
+  while (remaining.length > 0) {
+    const car = findCarouselDiv(remaining)
+    if (!car) {
+      segs.push({ type: 'html', content: remaining })
+      break
+    }
+    if (car.start > 0) {
+      segs.push({ type: 'html', content: remaining.slice(0, car.start) })
+    }
+    const images = extractImagesFromCarouselInner(car.inner)
+    if (images.length > 0) {
+      segs.push({ type: 'carousel', images })
+    }
+    remaining = remaining.slice(car.end)
+  }
+  return segs.length > 0 ? segs : [{ type: 'html', content: html }]
+}
+
+function RenderBlock({ block, query, blockHighlights = [] }) {
+  if (block.block_type === 'image') {
+    const data = block.data || {}
+    // Backend can send either:
+    // - data.images = [{ url, alt?, caption?, attribution?, license? }, ...] for a carousel (bundled images)
+    // - data.url (+ optional alt, caption, attribution, license) for a single image (rendered as 1-slide carousel)
+    const images = Array.isArray(data.images) && data.images.length > 0
+      ? data.images.map((im) => ({
+          url: im.url,
+          alt: im.alt ?? '',
+          caption: im.caption ?? data.caption,
+          attribution: im.attribution ?? data.attribution,
+          license: im.license ?? data.license,
+        }))
+      : data.url
+        ? [{ url: data.url, alt: data.alt ?? '', caption: data.caption, attribution: data.attribution, license: data.license }]
+        : []
+    if (images.length > 0) {
+      return <ImageCarousel images={images} />
+    }
+    return null
   }
   const raw = block.content || ''
-  const withUserHighlights = injectUserHighlightsIntoHtml(raw, blockHighlights)
-  const isHtml = /<[^>]+>/.test(withUserHighlights)
+  const segments = parseContentWithCarousels(raw)
   const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const highlightPlain = (text, q) => {
     if (!q) return text
@@ -69,10 +205,23 @@ function RenderBlock({ block, query, blockHighlights = [] }) {
     }
     return parts.join('')
   }
-  const rendered = isHtml
-    ? highlightHtml(withUserHighlights, query)
-    : highlightPlain(withUserHighlights, query).replace(/\n/g, '<br/>')
-  return <div className="tb-md" dangerouslySetInnerHTML={{ __html: rendered }} />
+  return (
+    <>
+      {segments.map((seg, idx) => {
+        if (seg.type === 'carousel') {
+          return <ImageCarousel key={idx} images={seg.images} />
+        }
+        const withUserHighlights = injectUserHighlightsIntoHtml(seg.content, blockHighlights)
+        const isHtml = /<[^>]+>/.test(withUserHighlights)
+        const rendered = isHtml
+          ? highlightHtml(withUserHighlights, query)
+          : highlightPlain(withUserHighlights, query).replace(/\n/g, '<br/>')
+        return (
+          <div key={idx} className="tb-md" dangerouslySetInnerHTML={{ __html: rendered }} />
+        )
+      })}
+    </>
+  )
 }
 
 export default function TextbookTopic() {
