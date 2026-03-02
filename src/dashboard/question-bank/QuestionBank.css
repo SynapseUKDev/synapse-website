@@ -156,6 +156,16 @@
   color: #16a34a;
 }
 
+.qb-stat__badge--ok {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.qb-stat__badge--warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .qb-stat__badge--fast {
   background: #fef3c7;
   color: #d97706;

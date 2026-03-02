@@ -1968,6 +1968,11 @@ input:checked+.toggle-slider:before {
   border-color: #cbd5e1;
 }
 
+.seg--answered {
+  background: #cbd5e1;
+  border-color: #94a3b8;
+}
+
 .seg--correct {
   background: #bbf7d0;
   border-color: #22c55e;

@@ -164,12 +164,6 @@ export default function QuestionBank() {
           <div className="qb-stat__value">
             <AnimatedCounter value={summary?.accuracy_pct ?? 0} suffix="%" duration={1200} />
           </div>
-          <div className="qb-stat__sub">
-            <div
-              className="qb-stat__progress-ring"
-              style={{ '--progress': `${summary?.accuracy_pct ?? 0}%` }}
-            />
-          </div>
         </div>
         <div className="qb-stat qb-stat--interactive">
           <div className="qb-stat__top">
@@ -194,13 +188,15 @@ export default function QuestionBank() {
             <AnimatedCounter value={summary?.avg_time_ms ? Math.round(summary.avg_time_ms / 1000) : 0} suffix="s" duration={1000} />
           </div>
           <div className="qb-stat__sub">
-            {summary?.avg_time_ms ? (
-              Math.round(summary.avg_time_ms / 1000) >= 30 && Math.round(summary.avg_time_ms / 1000) <= 60
-                ? <span className="qb-stat__badge qb-stat__badge--good">✓ Optimal pace</span>
-                : Math.round(summary.avg_time_ms / 1000) < 30
-                  ? <span className="qb-stat__badge qb-stat__badge--fast">⚡ Quick pace</span>
-                  : <span className="qb-stat__badge qb-stat__badge--slow">🐢 Take your time</span>
-            ) : 'Optimal range: 30–60s'}
+            {(() => {
+              const avgSec = summary?.avg_time_ms ? Math.round(summary.avg_time_ms / 1000) : null
+              if (avgSec == null) return 'Answer questions to see your pace'
+              if (avgSec <= 20) return <span className="qb-stat__badge qb-stat__badge--good">✓ That's good</span>
+              if (avgSec <= 40) return <span className="qb-stat__badge qb-stat__badge--ok">Alright</span>
+              if (avgSec <= 60) return <span className="qb-stat__badge qb-stat__badge--ok">Still fine</span>
+              if (avgSec <= 100) return <span className="qb-stat__badge qb-stat__badge--warning">Needs improvement — not that good</span>
+              return <span className="qb-stat__badge qb-stat__badge--slow">Too slow — try to speed up</span>
+            })()}
           </div>
         </div>
       </div>

@@ -266,8 +266,6 @@ export default function GroupPractice() {
 
       // Clear local answer list for new question (all clients clear)
       setQuestionAnswers({})
-      // Clear revealed status for new question
-      setRevealedQuestions(new Set())
     })
 
     socketRef.current.on('question-answers', (data) => {
@@ -1745,21 +1743,31 @@ export default function GroupPractice() {
               <div className="card__body">
                 {/* Session Progress Header */}
                 <div className="progress-tracker-header">
-                  <div className="progress-stats-row">
-                    <div className="progress-stat">
-                      <div className="progress-stat__value">{sessionAnswered}/{questions.length}</div>
-                      <div className="progress-stat__label">Completed</div>
-                    </div>
-                    <div className="progress-stat">
-                      <div className="progress-stat__value stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
-                      <div className="progress-stat__label">Accuracy</div>
-                    </div>
-                    <div className="progress-stat">
-                      <div className="progress-stat__value stat--blue">{sessionAnswered ? Math.round((sessionTotalMs / sessionAnswered) / 1000) : 0}s</div>
-                      <div className="progress-stat__label">Avg Time</div>
-                    </div>
-                  </div>
-                  <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
+                  {(() => {
+                    const revealedQs = questions.filter(q => revealedQuestions.has(q.id) && userAnswers[q.id]?.submitted)
+                    const revealedAnswered = revealedQs.length
+                    const revealedCorrect = revealedQs.filter(q => userAnswers[q.id]?.isCorrect).length
+                    const revealedTotalMs = revealedQs.reduce((sum, q) => sum + (userAnswers[q.id]?.timeTaken || 0), 0)
+                    return (
+                      <>
+                        <div className="progress-stats-row">
+                          <div className="progress-stat">
+                            <div className="progress-stat__value">{revealedAnswered}/{questions.length}</div>
+                            <div className="progress-stat__label">Completed</div>
+                          </div>
+                          <div className="progress-stat">
+                            <div className="progress-stat__value stat--green">{revealedAnswered ? Math.round((revealedCorrect / revealedAnswered) * 100) : 0}%</div>
+                            <div className="progress-stat__label">Accuracy</div>
+                          </div>
+                          <div className="progress-stat">
+                            <div className="progress-stat__value stat--blue">{revealedAnswered ? Math.round((revealedTotalMs / revealedAnswered) / 1000) : 0}s</div>
+                            <div className="progress-stat__label">Avg Time</div>
+                          </div>
+                        </div>
+                        <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((revealedAnswered / questions.length) * 100)}%` }} /></div>
+                      </>
+                    )
+                  })()}
                 </div>
 
                 {/* Track Questions Section - Paginated */}
@@ -1845,8 +1853,11 @@ export default function GroupPractice() {
                             const ua = userAnswers[qid]
                             const isCurrent = idx === currentIndex
                             const isFlag = flagged.has(qid)
+                            const isRevealed = revealedQuestions.has(qid)
                             let status = 'Unanswered'
-                            if (ua?.submitted) status = ua.isCorrect ? 'Correct' : 'Wrong'
+                            if (ua?.submitted) {
+                              status = isRevealed ? (ua.isCorrect ? 'Correct' : 'Wrong') : 'Answered'
+                            }
                             const matchesFilter = trkFilter === 'All' || (trkFilter === 'Flagged' ? isFlag : trkFilter === status)
                             const classes = `seg seg--${status.toLowerCase()} ${isCurrent ? 'seg--current' : ''} ${isFlag ? 'seg--flagged' : ''} ${matchesFilter ? '' : 'seg--dim'}`
                             return (

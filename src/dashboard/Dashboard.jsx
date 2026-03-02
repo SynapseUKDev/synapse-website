@@ -253,12 +253,12 @@ export default function Dashboard() {
           <div className="qb-stat__sub">Keep it up!</div>
         </div>
         <div className="qb-stat">
-          <div className="qb-stat__top"><div className="qb-stat__title">Study Time</div><div className="qb-stat__icon"><LuTimer size={20} /></div></div>
+          <div className="qb-stat__top"><div className="qb-stat__title">Focused study</div><div className="qb-stat__icon"><LuTimer size={20} /></div></div>
           <div className="qb-stat__value">{summary?.time_today_minutes ?? 0} {summary?.time_today_minutes === 1 ? 'min' : 'mins'}</div>
           <div className="qb-stat__sub">Target: {summary?.targets?.time_minutes || 180} {summary?.targets?.time_minutes === 1 ? 'min' : 'mins'}</div>
         </div>
         <div className="qb-stat">
-          <div className="qb-stat__top"><div className="qb-stat__title">Questions Today</div><div className="qb-stat__icon"><LuTarget size={20} /></div></div>
+          <div className="qb-stat__top"><div className="qb-stat__title">Study streak</div><div className="qb-stat__icon"><LuTarget size={20} /></div></div>
           <div className="qb-stat__value">{summary?.questions_today ?? 0}/{summary?.targets?.questions || 30}</div>
           <div className="db-progress"><div className="db-progress__fill" style={{ width: `${Math.min(100, Math.round((((summary?.questions_today || 0) / (summary?.targets?.questions || 30)) * 100)))}%` }} /></div>
         </div>
