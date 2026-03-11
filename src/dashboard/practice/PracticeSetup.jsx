@@ -19,7 +19,7 @@ export default function PracticeSetup() {
   const [numQuestions, setNumQuestions] = useState(25)
   const [timerMinutes, setTimerMinutes] = useState(30)
   const [timerEnabled, setTimerEnabled] = useState(false)
-  const [includeAttempted, setIncludeAttempted] = useState(false)
+  const [includeAttempted, setIncludeAttempted] = useState(() => searchParams.get('include_attempted') === '1')
   const [studySetData, setStudySetData] = useState(null)
   const [specialtyAttemptedCount, setSpecialtyAttemptedCount] = useState(null)
   const [specialtyTotalQuestions, setSpecialtyTotalQuestions] = useState(null)

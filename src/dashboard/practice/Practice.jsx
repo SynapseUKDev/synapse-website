@@ -283,6 +283,21 @@ export default function Practice() {
       console.log('Loaded session with', data.questions?.length, 'questions')
 
       if (!data.questions || data.questions.length === 0) {
+        if (data.all_attempted) {
+          alert("You've attempted all questions in this set with \"New questions only.\" To continue practicing, use \"Include previously answered\" to practice with old questions.")
+          const setupParams = new URLSearchParams()
+          setupParams.set('include_attempted', '1')
+          if (studySetId) {
+            setupParams.set('study_set_id', studySetId)
+            if (params.get('study_set_name')) setupParams.set('study_set_name', params.get('study_set_name'))
+          } else if (specialtyId) {
+            setupParams.set('specialty_id', specialtyId)
+            if (specialtyName) setupParams.set('specialty_name', specialtyName)
+            if (topicIds) setupParams.set('topic_ids', topicIds)
+          }
+          navigate(`/dashboard/question-bank/setup?${setupParams.toString()}`)
+          return
+        }
         alert('No questions available for the selected criteria')
         navigate('/dashboard/question-bank')
         return
