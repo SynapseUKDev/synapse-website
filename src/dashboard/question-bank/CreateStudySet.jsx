@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authenticatedFetch } from '../../auth/token'
+import { authenticatedFetch, authHeaders } from '../../auth/token'
 import { LuChevronDown, LuChevronRight, LuX, LuSave, LuRefreshCw } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import useStaleJson from '../../utils/useStaleJson'
 import './CreateStudySet.css'
 import '../practice/Practice.css'
 
@@ -10,8 +11,17 @@ export default function CreateStudySet() {
   const navigate = useNavigate()
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-  const [loading, setLoading] = useState(true)
-  const [specialties, setSpecialties] = useState([])
+  const specialtiesReq = useStaleJson(`${API_BASE}/qbank/specialties`, {
+    headers: authHeaders(),
+    staleMs: 5 * 60_000,
+    persist: 'session',
+    key: 'qbank:specialties',
+    transform: (t) => (Array.isArray(t.specialties) ? t.specialties : []),
+  })
+
+  const specialties = specialtiesReq.data || []
+  const loading = specialtiesReq.loading && !specialtiesReq.data
+
   const [expandedSpecs, setExpandedSpecs] = useState(new Set())
   const [topicsBySpec, setTopicsBySpec] = useState({}) // specId -> [topics]
   const [loadingTopics, setLoadingTopics] = useState(new Set()) // specIds being loaded
@@ -28,23 +38,6 @@ export default function CreateStudySet() {
   const nameInputRef = useRef(null)
   const contentAreaRef = useRef(null)
 
-  useEffect(() => {
-    loadSpecialties()
-  }, [])
-
-  const loadSpecialties = async () => {
-    try {
-      const res = await authenticatedFetch(`${API_BASE}/qbank/specialties`)
-      if (res.ok) {
-        const data = await res.json()
-        setSpecialties(data.specialties || [])
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const loadTopicsFor = async (specId) => {
     if (topicsBySpec[specId] || loadingTopics.has(specId)) return
@@ -210,7 +203,7 @@ export default function CreateStudySet() {
 
       if (!res.ok) throw new Error('Failed to create set')
 
-      navigate('/dashboard/question-bank/study-sets')
+      navigate('/dashboard/study-sets')
     } catch (e) {
       console.error(e)
       alert('Failed to create study set')

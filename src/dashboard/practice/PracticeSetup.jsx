@@ -12,7 +12,7 @@ export default function PracticeSetup() {
   const specialtyName = searchParams.get('specialty_name') || 'Unknown Specialty'
   const studySetId = searchParams.get('study_set_id')
   const studySetName = searchParams.get('study_set_name') || 'Unknown Set'
-  
+
   const [loading, setLoading] = useState(true)
   const [topics, setTopics] = useState([])
   const [selectedTopics, setSelectedTopics] = useState(new Set())
@@ -45,8 +45,10 @@ export default function PracticeSetup() {
       if (!res.ok) throw new Error('Failed to load study set')
       const data = await res.json()
       setStudySetData(data.set)
-      
-      const totalAvailable = data.set.total_questions || 0
+
+      const totalAvailable = includeAttempted
+        ? (data.set.total_questions || 0)
+        : (data.set.remaining_questions ?? data.set.total_questions ?? 0)
       if (totalAvailable > 0) {
         setNumQuestions(Math.min(totalAvailable, 25))
       } else {
@@ -70,11 +72,11 @@ export default function PracticeSetup() {
       setTopics(data.topics || [])
       setSpecialtyAttemptedCount(typeof data.specialty_attempted_count === 'number' ? data.specialty_attempted_count : null)
       setSpecialtyTotalQuestions(typeof data.specialty_total_questions === 'number' ? data.specialty_total_questions : null)
-      
+
       // Select all topics by default
       const allTopicIds = new Set(data.topics?.map(t => t.id) || [])
       setSelectedTopics(allTopicIds)
-      
+
       const totalAvailable = (data.topics || []).reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
       if (totalAvailable > 0) {
         setNumQuestions(Math.min(totalAvailable, 25))
@@ -97,12 +99,12 @@ export default function PracticeSetup() {
       newSelected.add(topicId)
     }
     setSelectedTopics(newSelected)
-    
+
     // Update question count when topics change
     const newTotalAvailable = topics
       .filter(t => newSelected.has(t.id))
       .reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
-    
+
     if (newTotalAvailable === 0) {
       setNumQuestions(0)
     } else if (numQuestions === 0 || numQuestions > newTotalAvailable) {
@@ -127,11 +129,11 @@ export default function PracticeSetup() {
 
   const getTotalQuestions = () => {
     if (studySetId) {
-      // For study set, we use the total from DB. 
-      // TODO: Ideally fetch "remaining" vs "total" for set if includeAttempted logic is needed.
-      // Currently `total_questions` is static total.
-      // Let's assume for now we just use total available.
-      return studySetData?.total_questions || 0
+      if (includeAttempted) {
+        return studySetData?.total_questions || 0
+      }
+      // When "new only", use remaining (unattempted) count
+      return studySetData?.remaining_questions ?? studySetData?.total_questions ?? 0
     }
     return topics
       .filter(t => selectedTopics.has(t.id))
@@ -163,7 +165,7 @@ export default function PracticeSetup() {
       params.append('specialty_name', specialtyName)
       params.append('topic_ids', Array.from(selectedTopics).join(','))
     }
-    
+
     navigate(`/dashboard/question-bank/practice?${params.toString()}`)
   }
 
@@ -179,7 +181,7 @@ export default function PracticeSetup() {
   return (
     <div className="setup">
       <div className="setup__header">
-        <button 
+        <button
           className="setup__back"
           onClick={() => navigate('/dashboard/question-bank')}
         >
@@ -257,7 +259,7 @@ export default function PracticeSetup() {
                   </label>
                   <div className="setup__qty">
                     <div className="qty__control">
-                      <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={()=> setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
+                      <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={() => setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
                       <input
                         type="number"
                         className="qty__input"
@@ -265,19 +267,19 @@ export default function PracticeSetup() {
                         min={stepperMin}
                         max={maxQuestions}
                         disabled={isDisabled}
-                        onChange={(e)=>{
+                        onChange={(e) => {
                           const v = parseInt(e.target.value || '0', 10)
                           if (Number.isNaN(v)) return
                           setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
                         }}
                       />
-                      <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={()=> setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
+                      <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={() => setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
                     </div>
                     <div className="qty__chips">
-                      {[10,25,50,100,200].filter(n => n <= maxQuestions).map(n => (
-                        <button key={n} className={`chip ${numQuestions===n ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(n)}>{n}</button>
+                      {[10, 25, 50, 100, 200].filter(n => n <= maxQuestions).map(n => (
+                        <button key={n} className={`chip ${numQuestions === n ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(n)}>{n}</button>
                       ))}
-                      <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
+                      <button className={`chip ${numQuestions === maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(maxQuestions)}>Max</button>
                     </div>
                   </div>
                   <div className="setup__toggle-row" style={{ marginTop: 20 }}>
@@ -289,15 +291,25 @@ export default function PracticeSetup() {
                         checked={includeAttempted}
                         onChange={(e) => {
                           const next = e.target.checked
+                          const oldMax = getTotalQuestions()
                           setIncludeAttempted(next)
-                          if (!studySetId) {
-                            const total = topics
+                          if (studySetId && studySetData) {
+                            const newMax = next
+                              ? (studySetData.total_questions || 0)
+                              : (studySetData.remaining_questions ?? studySetData.total_questions ?? 0)
+                            if (newMax === 0) {
+                              setNumQuestions(0)
+                            } else if (numQuestions === oldMax || numQuestions > newMax) {
+                              setNumQuestions(newMax)
+                            }
+                          } else if (!studySetId) {
+                            const newMax = topics
                               .filter(t => selectedTopics.has(t.id))
                               .reduce((sum, t) => sum + (next ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
-                            if (total === 0) {
+                            if (newMax === 0) {
                               setNumQuestions(0)
-                            } else if (numQuestions === 0 || numQuestions > total) {
-                              setNumQuestions(total)
+                            } else if (numQuestions === oldMax || numQuestions > newMax) {
+                              setNumQuestions(newMax)
                             }
                           }
                         }}
@@ -307,7 +319,7 @@ export default function PracticeSetup() {
                     </div>
                     <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
                   </div>
-                 
+
                 </div>
               </div>
               <div className="qs-col">
@@ -340,7 +352,7 @@ export default function PracticeSetup() {
                         value={timerMinutes}
                         onChange={(e) => setTimerMinutes(parseInt(e.target.value))}
                         className={`setup__slider ${!timerEnabled ? 'setup__slider--disabled' : ''}`}
-                        style={{'--progress': `${updateSliderProgress(timerMinutes, 10, 120)}%`}}
+                        style={{ '--progress': `${updateSliderProgress(timerMinutes, 10, 120)}%` }}
                         disabled={!timerEnabled}
                       />
                       <div className="setup__slider-labels-new">
@@ -358,12 +370,12 @@ export default function PracticeSetup() {
         <div className="setup__sidebar">
           <div className="setup__summary">
             <h3 className="setup__summary-title">Session Summary</h3>
-            
+
             <div className="setup__summary-item">
               <div className="setup__summary-label">Type:</div>
               <div className="setup__summary-value">{studySetId ? 'Study Set' : 'Specialty Practice'}</div>
             </div>
-            
+
             {!studySetId && (
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Topics:</div>
@@ -372,12 +384,12 @@ export default function PracticeSetup() {
                 </div>
               </div>
             )}
-            
+
             <div className="setup__summary-item">
               <div className="setup__summary-label">Questions:</div>
               <div className="setup__summary-value">{numQuestions}</div>
             </div>
-            
+
             <div className="setup__summary-item">
               <div className="setup__summary-label">Time:</div>
               <div className="setup__summary-value">
@@ -387,7 +399,7 @@ export default function PracticeSetup() {
 
             <div className="setup__summary-divider"></div>
 
-            <button 
+            <button
               className="setup__start-btn"
               onClick={startSession}
               disabled={isDisabled}
@@ -395,11 +407,11 @@ export default function PracticeSetup() {
               <LuPlay />
               Start Session
             </button>
-           
+
 
           </div>
         </div>
-       
+
       </div>
     </div>
   )

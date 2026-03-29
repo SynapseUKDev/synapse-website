@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useNavigate } from 'react-router-dom'
 import { LuLayers, LuTrash2, LuPlus, LuChevronLeft } from 'react-icons/lu'
 import './QuestionBank.css'
 import '../practice/PracticeSetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import useStaleJson from '../../utils/useStaleJson'
 
 function StudySetCard({ item, onDelete }) {
   const navigate = useNavigate()
@@ -44,31 +45,16 @@ export default function StudySets() {
   const navigate = useNavigate()
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-  const [studySets, setStudySets] = useState([])
-  const [loadingSets, setLoadingSets] = useState(true)
+  const setsReq = useStaleJson(`${API_BASE}/qbank/sets`, {
+    headers: authHeaders(),
+    staleMs: 30_000,
+    persist: 'session',
+    key: 'qbank:study-sets',
+    transform: (d) => d?.sets || [],
+  })
 
-  useEffect(() => {
-    loadStudySets()
-    window.scrollTo(0, 0)
-  }, [])
-
-  const loadStudySets = async () => {
-    try {
-      setLoadingSets(true)
-      const res = await authenticatedFetch(`${API_BASE}/qbank/sets`, {
-        credentials: 'include',
-        headers: authHeaders(),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setStudySets(data.sets || [])
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoadingSets(false)
-    }
-  }
+  const studySets = setsReq.data || []
+  const loadingSets = setsReq.loading && !setsReq.data
 
   const handleDeleteSet = async (setId) => {
     if (!window.confirm('Are you sure you want to delete this study set?')) return
@@ -79,7 +65,7 @@ export default function StudySets() {
         headers: authHeaders()
       })
       if (res.ok) {
-        setStudySets(prev => prev.filter(s => s.id !== setId))
+        setsReq.refetch()
       }
     } catch (e) {
       console.error(e)
@@ -94,6 +80,7 @@ export default function StudySets() {
       </div>
     )
   }
+
 
   return (
     <div className="qb">
