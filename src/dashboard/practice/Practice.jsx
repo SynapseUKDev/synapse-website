@@ -7,6 +7,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
+import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
@@ -142,7 +143,8 @@ export default function Practice() {
   })
   const [flagged, setFlagged] = useState(new Set())
   const [struckOut, setStruckOut] = useState({}) // Track struck out options per question: { currentQuestionId: Set([optionId1, optionId2]) }
-  const [highlights, setHighlights] = useState({}) // Track highlighted text ranges per question: { currentQuestionId: [{ start, end, text }] }
+  const [highlights, setHighlights] = useState({}) // { questionId: [{ start, end, text, id, note }] }
+  const [popoverHl, setPopoverHl] = useState(null) // { questionId, highlight, rect }
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
   const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
@@ -588,14 +590,25 @@ export default function Practice() {
       start: startIndex,
       end: endIndex,
       text: matchedText,
-      id: Date.now()
+      id: Date.now(),
+      note: '',
+      color: 'yellow'
     }
+
+    const range = selection.getRangeAt(0)
+    const rect = range.getBoundingClientRect()
 
     setHighlights(prev => {
       const current = prev[currentQ.id] || []
       const allHighlights = [...current, newHighlight]
       const merged = mergeOverlappingHighlights(allHighlights)
       return { ...prev, [currentQ.id]: merged }
+    })
+
+    setPopoverHl({
+      questionId: currentQ.id,
+      highlight: newHighlight,
+      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
     })
 
     setShowHighlightBtn(false)
@@ -620,8 +633,9 @@ export default function Practice() {
         current = {
           start: current.start,
           end: Math.max(current.end, next.end),
-          text: '', // Will be recalculated from stem
-          id: current.id // Keep the original ID
+          text: '',
+          id: current.id,
+          note: current.note || next.note || ''
         }
       } else {
         // No overlap, add current to merged and move to next
@@ -647,6 +661,24 @@ export default function Practice() {
       }
       return { ...prev, [currentQuestionId]: filtered }
     })
+    setPopoverHl(null)
+  }
+
+  const updateHighlightNote = (questionId, highlightId, note) => {
+    setHighlights(prev => {
+      const current = prev[questionId] || []
+      return { ...prev, [questionId]: current.map(hl => hl.id === highlightId ? { ...hl, note } : hl) }
+    })
+    setPopoverHl(null)
+  }
+
+  const openHighlightPopover = (questionId, highlightId, e) => {
+    const mark = e?.target?.closest?.('mark.hl-mark') || e?.target?.closest?.('.highlight-wrapper')
+    if (!mark) return
+    const rect = mark.getBoundingClientRect()
+    const hl = (highlights[questionId] || []).find(h => h.id === highlightId)
+    if (!hl) return
+    setPopoverHl({ questionId, highlight: hl, rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height } })
   }
 
   const clearHighlights = (currentQuestionId) => {
@@ -711,8 +743,10 @@ export default function Practice() {
       const highlightedWithBr = highlighted.replace(/\n(?!\n)/g, '<br/>')
 
       // Insert HTML with wrapper span that has the highlight ID
+      const hlColor = hl.color || 'yellow'
+      const hasNoteClass = hl.note ? ' hl-mark--has-note' : ''
       result = before +
-        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="highlight">${highlightedWithBr}</mark></span>` +
+        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}">${highlightedWithBr}</mark></span>` +
         after
     })
 
@@ -745,24 +779,19 @@ export default function Practice() {
               if (props.className === 'highlight-wrapper') {
                 const highlightId = props['data-highlight-id'] || node?.properties?.['data-highlight-id']
                 return (
-                  <span className="highlight-wrapper" data-highlight-id={highlightId} {...props}>
+                  <span
+                    className="highlight-wrapper"
+                    data-highlight-id={highlightId}
+                    {...props}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const id = parseInt(highlightId)
+                      if (id) openHighlightPopover(currentQuestionId, id, e)
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     {children}
-                    <button
-                      className="highlight-remove-btn"
-                      data-highlight-id={highlightId}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        const id = e.currentTarget.getAttribute('data-highlight-id')
-                        if (id) {
-                          removeHighlight(currentQuestionId, parseInt(id))
-                        }
-                      }}
-                      title="Remove this highlight"
-                      aria-label="Remove highlight"
-                    >
-                      ×
-                    </button>
                   </span>
                 )
               }
@@ -833,20 +862,24 @@ export default function Practice() {
       <span style={{ whiteSpace: 'pre-line' }}>
         {parts.map(part =>
           part.highlighted ? (
-            <span key={part.key} className="highlight-wrapper">
-              <mark className="highlight">{part.text}</mark>
-              <button
-                className="highlight-remove-btn"
-                onClick={(e) => {
-                  e.preventDefault()
-                  removeHighlight(currentQuestionId, part.highlightId)
-                }}
-                title="Remove this highlight"
-                aria-label="Remove highlight"
-              >
-                ×
-              </button>
-            </span>
+            (() => {
+              const hl = questionHighlights.find(h => h.id === part.highlightId)
+              const hlColor = hl?.color || 'yellow'
+              const hasNoteClass = hl?.note ? ' hl-mark--has-note' : ''
+              return (
+                <span
+                  key={part.key}
+                  className="highlight-wrapper"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    openHighlightPopover(currentQuestionId, part.highlightId, e)
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <mark className={`hl-mark hl-mark--${hlColor}${hasNoteClass}`}>{part.text}</mark>
+                </span>
+              )
+            })()
           ) : (
             <React.Fragment key={part.key}>{part.text}</React.Fragment>
           )
@@ -1203,6 +1236,22 @@ export default function Practice() {
                     {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
                   </div>
                 </div>
+                {popoverHl && (
+                  <HighlightPopover
+                    anchorRect={popoverHl.rect}
+                    highlight={popoverHl.highlight}
+                    showColors={true}
+                    onSave={({ note, color }) => {
+                      setHighlights(prev => {
+                        const current = prev[popoverHl.questionId] || []
+                        return { ...prev, [popoverHl.questionId]: current.map(hl => hl.id === popoverHl.highlight.id ? { ...hl, note, color } : hl) }
+                      })
+                      setPopoverHl(null)
+                    }}
+                    onDelete={() => removeHighlight(popoverHl.questionId, popoverHl.highlight.id)}
+                    onClose={() => setPopoverHl(null)}
+                  />
+                )}
                 {Array.isArray(currentQuestion.assets) && currentQuestion.assets.length > 0 && (
                   (() => {
                     const assets = currentQuestion.assets.filter(a => a && a.url)

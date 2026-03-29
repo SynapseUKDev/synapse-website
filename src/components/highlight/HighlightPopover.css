@@ -1,0 +1,159 @@
+/* HighlightPopover – shared popup for highlight actions (note, delete, color) */
+.hl-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+.hl-popover {
+  position: fixed;
+  z-index: 1000;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+  padding: 16px;
+  width: 300px;
+  animation: hlPopIn .2s ease-out;
+  font-family: 'Urbanist', sans-serif;
+}
+
+@keyframes hlPopIn {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Arrow pointing up towards the highlight */
+.hl-popover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  border-left: 1px solid #e2e8f0;
+}
+
+/* Color row – textbook only */
+.hl-popover__colors {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.hl-popover__color {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all .2s;
+  padding: 0;
+}
+.hl-popover__color:hover { transform: scale(1.1); }
+.hl-popover__color.is-active { border-color: #475569; transform: scale(1.1); }
+.hl-popover__color--yellow { background: #fef08a; }
+.hl-popover__color--green  { background: #bbf7d0; }
+.hl-popover__color--pink   { background: #fbcfe8; }
+.hl-popover__color--blue   { background: #bfdbfe; }
+
+/* Note textarea */
+.hl-popover__note {
+  width: 100%;
+  min-height: 80px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  font-family: 'Urbanist', sans-serif;
+  resize: none;
+  outline: none;
+  transition: all .2s;
+  background: #fff;
+  color: #1e293b;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  display: block;
+}
+.hl-popover__note:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.hl-popover__note::placeholder {
+  color: #94a3b8;
+}
+
+/* Action row */
+.hl-popover__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hl-popover__btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  font-family: 'Urbanist', sans-serif;
+}
+
+.hl-popover__btn--delete {
+  background: #fef2f2;
+  color: #ef4444;
+}
+.hl-popover__btn--delete:hover { background: #fee2e2; }
+
+.hl-popover__btn--close {
+  background: #f1f5f9;
+  color: #64748b;
+  margin-left: auto;
+}
+.hl-popover__btn--close:hover { background: #e2e8f0; }
+
+.hl-popover__btn--save {
+  background: #6366f1;
+  color: #fff;
+}
+.hl-popover__btn--save:hover {
+  background: #4f46e5;
+  transform: translateY(-1px);
+}
+
+/* Highlight marks across all modules */
+mark.hl-mark {
+  background: #fef08a; /* Default yellow */
+  border-radius: 4px;
+  padding: 0 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: inherit;
+  box-shadow: none;
+}
+
+mark.hl-mark.hl-mark--has-note {
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+}
+
+mark.hl-mark:hover {
+  filter: brightness(0.95);
+}
+
+/* Color variations */
+mark.hl-mark--yellow { background: #fef08a; }
+mark.hl-mark--yellow.hl-mark--has-note { box-shadow: inset 0 -3px 0 #f59e0b; }
+
+mark.hl-mark--green { background: #bbf7d0; }
+mark.hl-mark--green.hl-mark--has-note { box-shadow: inset 0 -3px 0 #16a34a; }
+
+mark.hl-mark--pink { background: #fbcfe8; }
+mark.hl-mark--pink.hl-mark--has-note { box-shadow: inset 0 -3px 0 #db2777; }
+
+mark.hl-mark--blue { background: #bfdbfe; }
+mark.hl-mark--blue.hl-mark--has-note { box-shadow: inset 0 -3px 0 #2563eb; }

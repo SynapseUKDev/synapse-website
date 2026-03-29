@@ -1,15 +1,141 @@
-import {
-  getBlockWrapperFromSelection,
-  computeOffsetsWithinBlock,
-  injectUserHighlightsIntoHtml,
-} from './textbookHighlights'
-
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
+import HighlightPopover from '../../components/highlight/HighlightPopover'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
+
+// ---- Inline highlight injection into HTML ----
+
+function decodeHtmlEntities(html) {
+  const el = typeof document !== 'undefined' ? document.createElement('textarea') : null
+  if (!el) return html
+  el.innerHTML = html
+  return el.value
+}
+
+function getTextSegmentsFromHtml(html) {
+  const segments = []
+  let fullText = ''
+  let i = 0
+  while (i < html.length) {
+    if (html[i] === '<') {
+      const end = html.indexOf('>', i + 1)
+      i = end === -1 ? html.length : end + 1
+      continue
+    }
+    const start = i
+    let raw = ''
+    while (i < html.length && html[i] !== '<') { raw += html[i]; i++ }
+    if (raw.length > 0) {
+      const textStart = fullText.length
+      const decoded = decodeHtmlEntities(raw)
+      fullText += decoded
+      segments.push({ textStart, textEnd: fullText.length, htmlStart: start, htmlEnd: start + raw.length })
+    }
+  }
+  return { fullText, segments }
+}
+
+function findBestOffsets(blockText, h) {
+  if (!blockText) return null
+  const quote = h.quote != null ? String(h.quote) : ''
+  const len = blockText.length
+  if (typeof h.start_offset === 'number' && typeof h.end_offset === 'number') {
+    let s = Math.max(0, Math.min(len, h.start_offset))
+    let e = Math.max(s, Math.min(len, h.end_offset))
+    if (s < e) return { start: s, end: e }
+  }
+  if (quote) {
+    const idx = blockText.indexOf(quote)
+    if (idx !== -1) return { start: idx, end: idx + quote.length }
+  }
+  return null
+}
+
+function decodedOffsetToHtmlOffset(raw, decodedOffset) {
+  let dec = 0, i = 0
+  while (i < raw.length && dec < decodedOffset) {
+    if (raw[i] === '&') {
+      const semi = raw.indexOf(';', i)
+      if (semi !== -1) { dec++; i = semi + 1; continue }
+    }
+    dec++; i++
+  }
+  return i
+}
+
+function injectHighlightsIntoHtml(html, highlights) {
+  if (!html || !highlights?.length) return html
+  const { fullText, segments } = getTextSegmentsFromHtml(html)
+  if (!fullText) return html
+
+  const insertions = []
+  for (const h of highlights) {
+    const offsets = findBestOffsets(fullText, h)
+    if (!offsets) continue
+    const color = (h.color && /^[a-z]+$/.test(h.color)) ? h.color : 'yellow'
+    const id = String(h.id || '').replace(/"/g, '&quot;')
+    const hasNote = h.note && h.note.trim()
+    const noteAttr = hasNote ? ` data-hl-note="1"` : ''
+    const openTag = `<mark class="tb-user-mark tb-user-mark--${color}" data-hl-id="${id}"${noteAttr}>`
+    const closeTag = '</mark>'
+    for (const seg of segments) {
+      const segStart = Math.max(seg.textStart, offsets.start)
+      const segEnd = Math.min(seg.textEnd, offsets.end)
+      if (segStart >= segEnd) continue
+      const rawSeg = html.slice(seg.htmlStart, seg.htmlEnd)
+      const htmlSegStart = seg.htmlStart + decodedOffsetToHtmlOffset(rawSeg, segStart - seg.textStart)
+      const htmlSegEnd = seg.htmlStart + decodedOffsetToHtmlOffset(rawSeg, segEnd - seg.textStart)
+      if (htmlSegStart >= htmlSegEnd) continue
+      const slice = fullText.slice(segStart, segEnd)
+      if (/^\s*$/.test(slice)) continue
+      insertions.push({ pos: htmlSegEnd, tag: closeTag })
+      insertions.push({ pos: htmlSegStart, tag: openTag })
+    }
+  }
+  insertions.sort((a, b) => b.pos - a.pos)
+  let result = html
+  for (const ins of insertions) {
+    result = result.slice(0, ins.pos) + ins.tag + result.slice(ins.pos)
+  }
+  return result
+}
+
+// ---- DOM selection helpers ----
+
+function walkTextNodes(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (n.nodeValue && n.nodeValue.length > 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+  })
+  const nodes = []
+  let n
+  while ((n = walker.nextNode())) nodes.push(n)
+  return nodes
+}
+
+function computeSelectionOffsets(blockEl, range) {
+  const fullText = blockEl.textContent || ''
+  const nodes = walkTextNodes(blockEl)
+  const getAbsOffset = (container, offset) => {
+    if (container?.nodeType === Node.TEXT_NODE) {
+      let cur = 0
+      for (const n of nodes) {
+        if (n === container) return cur + offset
+        cur += n.nodeValue.length
+      }
+      return null
+    }
+    return null
+  }
+  const start = getAbsOffset(range.startContainer, range.startOffset)
+  const end = getAbsOffset(range.endContainer, range.endOffset)
+  const quote = range.toString()
+  const prefix = start != null ? fullText.slice(Math.max(0, start - 30), start) : ''
+  const suffix = end != null ? fullText.slice(end, Math.min(fullText.length, end + 30)) : ''
+  return { start: start ?? 0, end: end ?? quote.length, quote, prefix, suffix }
+}
 
 function AnchorNav({ sections, hasReferences }) {
   const navigateTo = (anchor) => {
@@ -163,12 +289,162 @@ function parseContentWithCarousels(html) {
   return segs.length > 0 ? segs : [{ type: 'html', content: html }]
 }
 
+const RenderBlockContent = ({ content, highlights = [], query = '' }) => {
+  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  // Convert HTML string to React elements with highlights
+  const renderContent = useMemo(() => {
+    if (!content) return null
+
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(content, 'text/html')
+    const body = doc.body
+
+    let currentGlobalOffset = 0
+
+    const highlightText = (text, startOffset) => {
+      let parts = []
+      let lastIndex = 0
+      
+      const nodeStart = startOffset
+      const nodeEnd = startOffset + text.length
+      
+      // 1. Handle User Highlights
+      const activeHighlights = highlights.filter(h => 
+        h.start_offset < nodeEnd && h.end_offset > nodeStart
+      ).sort((a, b) => a.start_offset - b.start_offset)
+
+      activeHighlights.forEach((hl, i) => {
+        const hlStart = Math.max(0, hl.start_offset - nodeStart)
+        const hlEnd = Math.min(text.length, hl.end_offset - nodeStart)
+        
+        if (hlStart > lastIndex) {
+          parts.push({ type: 'text', content: text.slice(lastIndex, hlStart) })
+        }
+
+        parts.push({ 
+          type: 'user-hl', 
+          content: text.slice(hlStart, hlEnd),
+          id: hl.id,
+          color: hl.color,
+          note: hl.note
+        })
+        lastIndex = hlEnd
+      })
+
+      if (lastIndex < text.length) {
+        parts.push({ type: 'text', content: text.slice(lastIndex) })
+      }
+
+      // 2. Handle Search Query in 'text' parts
+      if (query && query.trim()) {
+        const re = new RegExp(escapeRegExp(query), 'ig')
+        const newParts = []
+        
+        parts.forEach(p => {
+          if (p.type === 'text') {
+            let subIndex = 0
+            const mText = p.content
+            let match
+            while ((match = re.exec(mText)) !== null) {
+              if (match.index > subIndex) {
+                newParts.push({ type: 'text', content: mText.slice(subIndex, match.index) })
+              }
+              newParts.push({ type: 'search-hl', content: match[0] })
+              subIndex = re.lastIndex
+            }
+            if (subIndex < mText.length) {
+              newParts.push({ type: 'text', content: mText.slice(subIndex) })
+            }
+          } else {
+            newParts.push(p)
+          }
+        })
+        parts = newParts
+      }
+
+      // 3. Convert Parts to React Elements
+      return parts.map((p, i) => {
+        if (p.type === 'text') return p.content
+        if (p.type === 'user-hl') {
+          const hasNoteClass = p.note ? ' hl-mark--has-note' : ''
+          return (
+            <mark 
+              key={`hl-${p.id}-${i}`} 
+              className={`hl-mark hl-mark--${p.color || 'yellow'}${hasNoteClass}`}
+              data-hl-id={p.id}
+            >
+              {p.content}
+            </mark>
+          )
+        }
+        if (p.type === 'search-hl') return (
+          <mark key={`search-${i}`} className="tb-search-mark">
+            {p.content}
+          </mark>
+        )
+        return null
+      })
+    }
+
+    const VOID_ELEMENTS = new Set(['img', 'br', 'hr', 'input', 'col', 'meta', 'link'])
+    const TABLE_ELEMENTS = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'colgroup'])
+
+    const traverse = (node, key, parentTagName = '') => {
+      // 1. Handle Text Nodes
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent
+        const isWhitespace = !text.trim()
+        
+        // Skip whitespace-only nodes in table contexts to avoid React errors
+        if (isWhitespace && TABLE_ELEMENTS.has(parentTagName)) {
+          return null
+        }
+
+        const offset = currentGlobalOffset
+        currentGlobalOffset += text.length
+        return highlightText(text, offset)
+      }
+
+      // 2. Handle Element Nodes
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const tagName = node.tagName.toLowerCase()
+        const props = { key }
+        
+        if (node.id) props.id = node.id
+        if (node.className) props.className = node.className
+        
+        if (tagName === 'a') props.href = node.getAttribute('href')
+        if (tagName === 'img') {
+          props.src = node.getAttribute('src')
+          props.alt = node.getAttribute('alt')
+        }
+
+        // Void elements MUST NOT have children
+        if (VOID_ELEMENTS.has(tagName)) {
+          return React.createElement(tagName, props)
+        }
+
+        // Recursively traverse children
+        const children = Array.from(node.childNodes)
+          .map((child, i) => traverse(child, `${key}-${i}`, tagName))
+          .filter(Boolean) // Remove nulls (like skipped whitespace)
+
+        return React.createElement(tagName, props, children)
+      }
+
+      return null
+    }
+
+    return Array.from(body.childNodes).map((node, i) => traverse(node, `root-${i}`))
+  }, [content, highlights, query])
+
+  return <div className="tb-md">{renderContent}</div>
+}
+
 function RenderBlock({ block, query, blockHighlights = [] }) {
   if (block.block_type === 'image') {
     const data = block.data || {}
-    // Backend can send either:
-    // - data.images = [{ url, alt?, caption?, attribution?, license? }, ...] for a carousel (bundled images)
-    // - data.url (+ optional alt, caption, attribution, license) for a single image (rendered as 1-slide carousel)
     const images = Array.isArray(data.images) && data.images.length > 0
       ? data.images.map((im) => ({
           url: im.url,
@@ -185,39 +461,22 @@ function RenderBlock({ block, query, blockHighlights = [] }) {
     }
     return null
   }
-  const raw = block.content || ''
-  const segments = parseContentWithCarousels(raw)
-  const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const highlightPlain = (text, q) => {
-    if (!q) return text
-    const re = new RegExp(escapeRegExp(q), 'ig')
-    return text.replace(re, (m) => `<mark class="tb-search-mark">${m}</mark>`)
-  }
-  const highlightHtml = (html, q) => {
-    if (!q) return html
-    const parts = html.split(/(<[^>]+>)/)
-    const re = new RegExp(escapeRegExp(q), 'ig')
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i]
-      if (part && !part.startsWith('<')) {
-        parts[i] = part.replace(re, (m) => `<mark class="tb-search-mark">${m}</mark>`)
-      }
-    }
-    return parts.join('')
-  }
+
+  const segments = useMemo(() => parseContentWithCarousels(block.content || ''), [block.content])
+
   return (
     <>
       {segments.map((seg, idx) => {
         if (seg.type === 'carousel') {
           return <ImageCarousel key={idx} images={seg.images} />
         }
-        const withUserHighlights = injectUserHighlightsIntoHtml(seg.content, blockHighlights)
-        const isHtml = /<[^>]+>/.test(withUserHighlights)
-        const rendered = isHtml
-          ? highlightHtml(withUserHighlights, query)
-          : highlightPlain(withUserHighlights, query).replace(/\n/g, '<br/>')
         return (
-          <div key={idx} className="tb-md" dangerouslySetInnerHTML={{ __html: rendered }} />
+          <RenderBlockContent
+            key={idx}
+            content={seg.content}
+            highlights={blockHighlights}
+            query={query}
+          />
         )
       })}
     </>
@@ -242,12 +501,8 @@ export default function TextbookTopic() {
 
   const [highlights, setHighlights] = useState([]);
   const [highlightsOn, setHighlightsOn] = useState(true);
-  const [hlToolbar, setHlToolbar] = useState({ open: false, x: 0, y: 0 });
-  const [activeHlId, setActiveHlId] = useState(null);
-  const [activeNoteDraft, setActiveNoteDraft] = useState('');
-  const [activeColorDraft, setActiveColorDraft] = useState('yellow');
-  const lastRangeRef = useRef(null)
-  const pendingSelectionRef = useRef(null)
+  const [popoverHl, setPopoverHl] = useState(null); // highlight object for popover
+  const [popoverRect, setPopoverRect] = useState(null); // anchor rect for popover
 
   useEffect(() => {
     let cancelled = false
@@ -265,7 +520,7 @@ export default function TextbookTopic() {
             credentials: 'include',
             headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ topic_slug: topicSlug }),
-          }).catch((err) => console.error('Record read failed:', err))
+          }).catch(() => {})
         }
       } catch (e) {
         if (!cancelled) setError(e?.message || 'Failed to load')
@@ -277,295 +532,139 @@ export default function TextbookTopic() {
     return () => { cancelled = true }
   }, [topicSlug, API_BASE])
 
-   // ===============================
   // Fetch user highlights
-  // ===============================
   useEffect(() => {
     const pageId = data?.page?.id
     if (!pageId) return
-
     let cancelled = false
-
     ;(async () => {
       try {
-        const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${pageId}`, {
-  method: 'GET',
-})
-
-if (!res.ok) {
-  console.error('[HL] Failed to load highlights:', res.status)
-  return
-}
+        const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${pageId}`, { method: 'GET' })
+        if (!res.ok) return
         const json = await res.json()
-
-        if (!cancelled) {
-          setHighlights(Array.isArray(json?.highlights) ? json.highlights : [])
-        }
-      } catch (e) {
-        console.error('Failed to load highlights', e)
-      }
+        if (!cancelled) setHighlights(Array.isArray(json?.highlights) ? json.highlights : [])
+      } catch {}
     })()
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [API_BASE, data?.page?.id])
 
+  // Auto-highlight on text selection
   useEffect(() => {
-  const onMouseUp = async (e) => {
-    // ✅ If the user is clicking the toolbar/popover, don't treat it as "selection ended"
-    if (
-      e?.target?.closest?.('.tb-hl-toolbar') ||
-      e?.target?.closest?.('.tb-hl-popover')
-    ) {
-      return
+    const onMouseUp = async (e) => {
+      if (e?.target?.closest?.('.hl-popover') || e?.target?.closest?.('.hl-popover-backdrop')) return
+      const clickedEl = e?.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e?.target
+      if (clickedEl?.closest?.('mark.tb-user-mark')) return
+
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) return
+
+      const range = sel.getRangeAt(0)
+      const node = range.commonAncestorContainer?.nodeType === 1
+        ? range.commonAncestorContainer
+        : range.commonAncestorContainer?.parentElement
+      const blockEl = node?.closest?.('[data-tb-block-id]')
+      if (!blockEl) return
+
+      const pageId = data?.page?.id
+      if (!pageId) return
+
+      const blockId = blockEl.getAttribute('data-tb-block-id')
+      const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
+      const { start, end, quote, prefix, suffix } = computeSelectionOffsets(blockEl, range)
+      if (!quote || !quote.trim()) return
+
+      try { sel.removeAllRanges() } catch {}
+
+      const payload = {
+        page_id: pageId,
+        section_anchor: sectionAnchor,
+        block_id: blockId,
+        color: 'yellow',
+        quote: quote.trim(),
+        start_offset: start,
+        end_offset: end,
+        prefix,
+        suffix,
+        note: null,
+      }
+
+      try {
+        const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/sync`, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) return
+        const json = await res.json()
+        if (json?.highlight) {
+          const newHl = json.highlight
+          setHighlights((prev) => {
+            const idx = prev.findIndex((h) => h.id === newHl.id)
+            if (idx >= 0) return prev.map((h, i) => (i === idx ? newHl : h))
+            return [...prev, newHl]
+          })
+
+          // Auto-open popover for the new highlight
+          const rect = range.getBoundingClientRect()
+          setPopoverRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
+          setPopoverHl(newHl)
+        }
+      } catch {}
     }
-    const clickedEl = e?.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e?.target;
-    if (clickedEl?.closest?.('mark.tb-user-mark') || clickedEl?.closest?.('span.tb-hl-wrap')) return
-
-    const sel = window.getSelection()
-
-    if (!sel || sel.isCollapsed) {
-      setHlToolbar((t) => ({ ...t, open: false }))
-      return
+    document.addEventListener('mouseup', onMouseUp, true)
+    document.addEventListener('touchend', onMouseUp, true)
+    return () => {
+      document.removeEventListener('mouseup', onMouseUp, true)
+      document.removeEventListener('touchend', onMouseUp, true)
     }
+  }, [data?.page?.id, API_BASE])
 
-    const blockEl = getBlockWrapperFromSelection(sel)
-if (!blockEl) return
+  // Click existing highlight to open popover
+  useEffect(() => {
+    const container = mainRef.current
+    if (!container) return
+    const onClick = (e) => {
+      const mark = e.target.closest?.('mark.hl-mark')
+      if (!mark) return
+      const id = mark.dataset.hlId
+      const hl = highlights.find((x) => x.id === id)
+      if (!hl) return
+      e.preventDefault()
+      e.stopPropagation()
+      const rect = mark.getBoundingClientRect()
+      setPopoverRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
+      setPopoverHl(hl)
+    }
+    container.addEventListener('click', onClick)
+    return () => container.removeEventListener('click', onClick)
+  }, [highlights])
 
-const range = sel.getRangeAt(0)
+  const handlePopoverSave = useCallback(async ({ note, color }) => {
+    if (!popoverHl) return
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${popoverHl.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ color, note }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json?.highlight) {
+          setHighlights((arr) => arr.map((h) => (h.id === popoverHl.id ? json.highlight : h)))
+        }
+      }
+    } catch {}
+    setPopoverHl(null)
+  }, [popoverHl, API_BASE])
 
-// Store a clone as backup (optional)
-lastRangeRef.current = range.cloneRange()
-
-// ✅ Compute and store deterministic offsets NOW (before re-render collapses selection)
-const blockId = blockEl.getAttribute('data-tb-block-id')
-const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
-
-const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range)
-
-pendingSelectionRef.current = {
-  block_id: blockId,
-  section_anchor: sectionAnchor,
-  start_offset: start,
-  end_offset: end,
-  quote,
-  prefix,
-  suffix,
-}
-
-// ✅ Auto-create highlight immediately (no note)
-setActiveNoteDraft('') // ensure we don't accidentally attach an old note draft
-const ok = await createHighlight({ withNote: false })
-
-if (ok) {
-  // Only clear selection AFTER we successfully saved the highlight
-  try { sel.removeAllRanges() } catch {}
-  setHlToolbar((t) => ({ ...t, open: false }))
-} else {
-  const rect = range.getBoundingClientRect()
-  setHlToolbar({
-    open: true,
-    x: rect.left + rect.width / 2 + window.scrollX,
-    y: rect.top + window.scrollY - 10,
-    mode: 'selection',
-  })
-}
-    
-  };
-  // ✅ Use capture so we can intercept before other handlers collapse selection
-  document.addEventListener('mouseup', onMouseUp, true)
-  document.addEventListener('touchend', onMouseUp, true)
-
-  return () => {
-    document.removeEventListener('mouseup', onMouseUp, true)
-    document.removeEventListener('touchend', onMouseUp, true)
-  }
-}, [])
-
-      async function createHighlight({ withNote }) {
-  console.log('[HL] createHighlight clicked', { withNote })
-const sel = window.getSelection()
-console.log('[HL] selection', {
-  hasSel: !!sel,
-  rangeCount: sel?.rangeCount,
-  isCollapsed: sel?.isCollapsed,
-  lastRange: !!lastRangeRef.current,
-})
-
-const pageId = data?.page?.id || data?.page_id || data?.id
-if (!pageId) return false
-
-// ✅ Prefer the stored selection payload (survives re-render)
-let selPayload = pendingSelectionRef.current
-
-// Fallback: if user somehow opens toolbar without stored payload
-if (!selPayload) {
-  const sel = window.getSelection()
-  let range = null
-
-  if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-    range = sel.getRangeAt(0)
-  } else if (lastRangeRef.current) {
-    range = lastRangeRef.current
-  } else {
-    return false
-  }
-
-  const blockEl =
-    (!sel || sel.isCollapsed ? null : getBlockWrapperFromSelection(sel)) ||
-    range?.commonAncestorContainer?.parentElement?.closest?.('[data-tb-block-id]')
-
-  if (!blockEl) return false
-
-  const blockId = blockEl.getAttribute('data-tb-block-id')
-  const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
-  const { start, end, quote, prefix, suffix } = computeOffsetsWithinBlock(blockEl, range)
-
-  selPayload = {
-    block_id: blockId,
-    section_anchor: sectionAnchor,
-    start_offset: start,
-    end_offset: end,
-    quote,
-    prefix,
-    suffix,
-  }
-}
-
-const payload = {
-  page_id: pageId,
-  section_anchor: selPayload.section_anchor,
-  block_id: selPayload.block_id,
-  color: activeColorDraft,
-  quote: selPayload.quote?.trim() || selPayload.quote,
-  start_offset: selPayload.start_offset,
-  end_offset: selPayload.end_offset,
-  prefix: selPayload.prefix,
-  suffix: selPayload.suffix,
-  note: withNote ? (activeNoteDraft || '') : null,
-}
-
-// Sync: backend returns existing highlight (with stored color) or creates new one
-const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/sync`, {
-  method: 'POST',
-  body: JSON.stringify(payload),
-})
-
-if (!res.ok) {
-  let errText = ''
-  try { errText = await res.text() } catch {}
-  console.error('[HL] Failed to sync highlight:', res.status, errText)
-  return false
-}
-
-const json = await res.json()
-
-if (json?.highlight) {
-  const hl = json.highlight
-  setHighlights((prev) => {
-    const idx = prev.findIndex((h) => h.id === hl.id)
-    if (idx >= 0) return prev.map((h, i) => (i === idx ? hl : h))
-    return [...prev, hl]
-  })
-
-  // ✅ If user clicked "Add note", immediately open the editor for the new highlight
-  if (withNote) {
-    setActiveHlId(hl.id)
-    setActiveNoteDraft(hl.note || '')
-    setActiveColorDraft(hl.color || activeColorDraft)
-  }
-}
-
-pendingSelectionRef.current = null
-if (!json?.highlight) return false
-if (!withNote) setActiveNoteDraft('')
-return true
-}
-
-      useEffect(() => {
-  const container = mainRef.current;
-  if (!container) return;
-
-  const onClick = (e) => {
-  const clicked = e.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e.target;
-  const mark = clicked?.closest?.('mark.tb-user-mark') || clicked?.closest?.('span.tb-hl-wrap')?.querySelector?.('mark.tb-user-mark');
-  if (!mark) return;
-
-  const id = mark.dataset.hlId;
-  if (!highlights.find((x) => x.id === id)) return;
-
-  e.preventDefault();
-  e.stopPropagation();
-  const rect = mark.getBoundingClientRect();
-  setHlToolbar({
-    open: true,
-    x: rect.left + rect.width / 2 + window.scrollX,
-    y: rect.top + window.scrollY - 10,
-    mode: 'existing',
-    highlightId: id,
-  });
-};
-
-  container.addEventListener('click', onClick);
-  return () => container.removeEventListener('click', onClick);
-}, [highlights]);
-
-  async function deleteHighlightById(id) {
-  if (!id) return;
-
-  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
-    method: 'DELETE',
-  });
-
-  if (!res.ok) {
-    console.error('[HL] Failed to delete highlight:', res.status);
-    return;
-  }
-
-  setHighlights((arr) => arr.filter((h) => h.id !== id));
-
-  // if the popover was open for this highlight, close it
-  if (activeHlId === id) {
-    setActiveHlId(null);
-    setActiveNoteDraft('');
-  }
-}
-
-      async function updateActiveHighlight() {
-  const id = activeHlId;
-  if (!id) return;
-
-  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
-  method: 'PUT',
-  body: JSON.stringify({ color: activeColorDraft, note: activeNoteDraft }),
-})
-if (!res.ok) {
-  console.error('[HL] Failed to update highlight:', res.status)
-  return
-}
-
-  const json = await res.json();
-  if (!json?.highlight) return;
-
-  setHighlights((arr) => arr.map((h) => (h.id === id ? json.highlight : h)));
-}
-
-async function deleteActiveHighlight() {
-  const id = activeHlId;
-  if (!id) return;
-
-  const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${id}`, {
-  method: 'DELETE',
-})
-if (!res.ok) {
-  console.error('[HL] Failed to delete highlight:', res.status)
-  return
-}
-
-  setHighlights((arr) => arr.filter((h) => h.id !== id));
-  setActiveHlId(null);
-}
+  const handlePopoverDelete = useCallback(async () => {
+    if (!popoverHl) return
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${popoverHl.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setHighlights((arr) => arr.filter((h) => h.id !== popoverHl.id))
+      }
+    } catch {}
+    setPopoverHl(null)
+  }, [popoverHl, API_BASE])
 
   // Scroll to anchor if hash present
   useEffect(() => {
@@ -717,65 +816,16 @@ if (!res.ok) {
 
       <div className="tb-layout">
         <div className="tb-main" ref={mainRef}>
-          {hlToolbar.open && (
-  <div
-  className="tb-hl-toolbar"
-  style={{ left: hlToolbar.x, top: hlToolbar.y }}
-  role="dialog"
-  aria-label={hlToolbar.mode === 'existing' ? 'Highlight actions' : 'Highlight toolbar'}
-  onMouseDown={(e) => e.preventDefault()}
-  onClick={(e) => e.stopPropagation()}
->
-  {hlToolbar.mode === 'existing' ? (
-    <button
-      type="button"
-      className="tb-hl-btn tb-hl-btn--danger"
-      onClick={() => {
-        if (hlToolbar.highlightId) deleteHighlightById(hlToolbar.highlightId);
-        setHlToolbar((t) => ({ ...t, open: false }));
-      }}
-    >
-      Delete
-    </button>
-  ) : (
-    <>
-      <div className="tb-hl-colors">
-        {['yellow','green','pink','blue'].map((c) => (
-          <button
-            type="button"
-            key={c}
-            className={`tb-hl-color ${activeColorDraft === c ? 'is-active' : ''}`}
-            onClick={() => setActiveColorDraft(c)}
-            aria-label={`Highlight colour ${c}`}
-          />
-        ))}
-      </div>
-      <button type="button" className="tb-hl-btn" onClick={() => createHighlight({ withNote: false })}>Highlight</button>
-      <button type="button" className="tb-hl-btn tb-hl-btn--note" onClick={() => createHighlight({ withNote: true })}>Add note</button>
-    </>
-  )}
-  </div>
-)}
-
-{activeHlId && (
-  <div className="tb-hl-popover" role="dialog" aria-label="Edit highlight">
-    <div className="tb-hl-popover__row">
-      <div className="tb-hl-popover__label">Note</div>
-      <textarea
-        className="tb-hl-popover__textarea"
-        value={activeNoteDraft}
-        onChange={(e) => setActiveNoteDraft(e.target.value)}
-        placeholder="Add a note for this highlight…"
-      />
-    </div>
-
-    <div className="tb-hl-popover__actions">
-      <button type="button" className="tb-hl-btn" onClick={updateActiveHighlight}>Save</button>
-      <button type="button" className="tb-hl-btn tb-hl-btn--danger" onClick={deleteActiveHighlight}>Delete</button>
-      <button type="button" className="tb-hl-btn tb-hl-btn--ghost" onClick={() => setActiveHlId(null)}>Close</button>
-    </div>
-  </div>
-)}
+          {popoverHl && popoverRect && (
+            <HighlightPopover
+              anchorRect={popoverRect}
+              highlight={popoverHl}
+              showColors={true}
+              onSave={handlePopoverSave}
+              onDelete={handlePopoverDelete}
+              onClose={() => setPopoverHl(null)}
+            />
+          )}
           
           {topSections.map((s) => (
             <section key={s.id} id={`sec-${s.anchor_slug}`} className="tb-section">
