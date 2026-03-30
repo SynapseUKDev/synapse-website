@@ -728,11 +728,19 @@ export default function GroupPractice() {
 
     const startIndex = bestMatch.index
     const endIndex = startIndex + bestMatch.length
-    const matchedText = originalText.slice(startIndex, endIndex)
+    
+    // Word snapping
+    const stemText = originalText || ''
+    let wordStart = startIndex
+    while (wordStart > 0 && /\w/.test(stemText[wordStart - 1])) wordStart--
+    let wordEnd = endIndex
+    while (wordEnd < stemText.length && /\w/.test(stemText[wordEnd])) wordEnd++
+
+    const matchedText = stemText.slice(wordStart, wordEnd)
 
     const newHighlight = {
-      start: startIndex,
-      end: endIndex,
+      start: wordStart,
+      end: wordEnd,
       text: matchedText,
       id: Date.now(),
       note: '',
@@ -891,7 +899,7 @@ export default function GroupPractice() {
       const hlColor = hl.color || 'yellow'
       const hasNoteClass = hl.note ? ' hl-mark--has-note' : ''
       result = before +
-        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}">${highlightedWithBr}</mark></span>` +
+        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}" data-highlight-id="${hl.id}">${highlightedWithBr}</mark></span>` +
         after
     })
 
@@ -920,7 +928,6 @@ export default function GroupPractice() {
           components={{
             // Custom renderer for span wrappers (highlights)
             span: ({ node, children, ...props }) => {
-              // Check if this is a highlight wrapper by checking className
               if (props.className === 'highlight-wrapper') {
                 const highlightId = props['data-highlight-id'] || node?.properties?.['data-highlight-id']
                 return (
@@ -941,6 +948,29 @@ export default function GroupPractice() {
                 )
               }
               return <span {...props}>{children}</span>
+            },
+            // Custom renderer for mark elements (within highlights) to add delete button
+            mark: ({ node, children, ...props }) => {
+              if (props.className?.includes('hl-mark')) {
+                const highlightId = props['data-highlight-id']
+                return (
+                  <mark {...props}>
+                    {children}
+                    <button
+                      className="hl-mark__delete"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const id = parseInt(highlightId)
+                        if (id) removeHighlight(questionId, id)
+                      }}
+                    >
+                      &times;
+                    </button>
+                  </mark>
+                )
+              }
+              return <mark {...props}>{children}</mark>
             },
             // Style other markdown elements
             p: ({ node, ...props }) => <p style={{ marginBottom: '8px', lineHeight: '1.6', marginTop: 0 }} {...props} />,
@@ -1005,6 +1035,10 @@ export default function GroupPractice() {
       if (hl.start > lastIndex) {
         parts.push({ text: text.slice(lastIndex, hl.start), highlighted: false, key: `text-${idx}`, highlightId: null })
       }
+      
+      // Robust guard: Skip if this highlight overlaps with the previous one (already rendered)
+      if (hl.start < lastIndex) return
+
       // Add highlighted text
       parts.push({ text: text.slice(hl.start, hl.end), highlighted: true, key: `hl-${hl.id}`, highlightId: hl.id })
       lastIndex = hl.end
@@ -1034,7 +1068,20 @@ export default function GroupPractice() {
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <mark className={`hl-mark hl-mark--${hlColor}${hasNoteClass}`}>{part.text}</mark>
+                    <mark className={`hl-mark hl-mark--${hlColor}${hasNoteClass}`}>
+                    {part.text}
+                    <button 
+                      className="hl-mark__delete"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        removeHighlight(questionId, part.highlightId)
+                      }}
+                      title="Delete highlight"
+                    >
+                      &times;
+                    </button>
+                  </mark>
                   </span>
                 )
               })()

@@ -18,6 +18,7 @@ export default function HighlightPopover({
   anchorRect,
   highlight,
   showColors = false,
+  showNote = true,
   onSave,
   onDelete,
   onClose,
@@ -27,11 +28,14 @@ export default function HighlightPopover({
   const popRef = useRef(null)
   const noteRef = useRef(null)
 
-  // Position the popover below the highlight
+  // Position the popover relative to the viewport, but adjusted for scroll
   const [pos, setPos] = useState({ top: 0, left: 0 })
+  const [scrollInit, setScrollInit] = useState({ x: 0, y: 0 })
 
   useEffect(() => {
     if (!anchorRect) return
+    setScrollInit({ x: window.scrollX, y: window.scrollY })
+
     const popW = 300
     const pad = 12
     let left = anchorRect.left + anchorRect.width / 2 - popW / 2
@@ -40,16 +44,44 @@ export default function HighlightPopover({
     // Keep within viewport
     if (left < pad) left = pad
     if (left + popW > window.innerWidth - pad) left = window.innerWidth - pad - popW
-    if (top + 200 > window.innerHeight) {
-      top = anchorRect.top - 200 - 10
-    }
+
     setPos({ top, left })
   }, [anchorRect])
 
+  // Update position on scroll to stay with the text
+  useEffect(() => {
+    if (!anchorRect) return
+
+    const handleScroll = () => {
+      const dx = window.scrollX - scrollInit.x
+      const dy = window.scrollY - scrollInit.y
+
+      const popW = 300
+      const pad = 12
+      let left = (anchorRect.left - dx) + anchorRect.width / 2 - popW / 2
+      let top = (anchorRect.top - dy) + anchorRect.height + 10
+
+      // Keep within viewport horizontally
+      if (left < pad) left = pad
+      if (left + popW > window.innerWidth - pad) left = window.innerWidth - pad - popW
+
+      setPos({ top, left })
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleScroll)
+    }
+  }, [anchorRect, scrollInit])
+
   // Focus note textarea on open
   useEffect(() => {
-    setTimeout(() => noteRef.current?.focus(), 50)
-  }, [])
+    if (showNote) {
+      setTimeout(() => noteRef.current?.focus(), 50)
+    }
+  }, [showNote])
 
   // Escape to close
   useEffect(() => {
@@ -97,14 +129,16 @@ export default function HighlightPopover({
           </div>
         )}
 
-        <textarea
-          ref={noteRef}
-          className="hl-popover__note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Add a note… (Cmd+Enter to save)"
-        />
+        {showNote && (
+          <textarea
+            ref={noteRef}
+            className="hl-popover__note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Add a note… (Cmd+Enter to save)"
+          />
+        )}
 
         <div className="hl-popover__actions">
           <button type="button" className="hl-popover__btn hl-popover__btn--delete" onClick={onDelete}>
@@ -112,11 +146,13 @@ export default function HighlightPopover({
           </button>
           <div style={{ flex: 1 }} />
           <button type="button" className="hl-popover__btn hl-popover__btn--close" onClick={onClose}>
-            Cancel
+            {showNote ? 'Cancel' : 'Close'}
           </button>
-          <button type="button" className="hl-popover__btn hl-popover__btn--save" onClick={() => handleSave()}>
-            Save
-          </button>
+          {showNote && (
+            <button type="button" className="hl-popover__btn hl-popover__btn--save" onClick={() => handleSave()}>
+              Save
+            </button>
+          )}
         </div>
       </div>
     </>

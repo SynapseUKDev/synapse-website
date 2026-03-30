@@ -736,3 +736,121 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Dashboard Target Editing */
+.qb-stat.is-clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.qb-stat.is-clickable:hover {
+  background: var(--surface-tint-cyan);
+  border-color: #b6f6fc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.qb-stat.is-editing {
+  border-color: var(--syn-cyan);
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  position: relative; /* Anchor for absolute edit actions */
+}
+
+.qb-stat__target-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qb-stat__edit-hint {
+  opacity: 0;
+  color: var(--syn-cyan);
+  transition: opacity 0.2s ease;
+}
+
+.qb-stat:hover .qb-stat__edit-hint {
+  opacity: 1;
+}
+
+.qb-stat__edit-hint--float {
+  position: absolute;
+  right: 0;
+  top: -4px;
+}
+
+.qb-stat__edit-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.qb-stat__action {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.qb-stat__action--save {
+  background: #10b981;
+  color: white;
+}
+
+.qb-stat__action--save:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.qb-stat__action--cancel {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.qb-stat__action--cancel:hover {
+  background: #e2e8f0;
+  color: #ef4444;
+  transform: translateY(-2px);
+}
+
+.qb-stat__input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.qb-stat__input {
+  width: 50px;
+  border: 1px solid var(--syn-cyan);
+  border-radius: 6px;
+  padding: 2px 4px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: inherit;
+  text-align: center;
+  outline: none;
+}
+
+.qb-stat__input--large {
+  width: 60px;
+  font-size: 28px;
+  height: 34px;
+  margin-left: 2px;
+}
+
+/* Hide spin buttons */
+.qb-stat__input::-webkit-outer-spin-button,
+.qb-stat__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

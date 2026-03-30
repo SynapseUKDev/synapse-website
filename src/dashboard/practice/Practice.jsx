@@ -501,10 +501,18 @@ export default function Practice() {
     const end = Math.max(startA, endA)
     if (start === end) return
 
+    // Word snapping
+    let wordStart = start
+    while (wordStart > 0 && /\w/.test(stemText[wordStart - 1])) wordStart--
+    let wordEnd = end
+    while (wordEnd < stemText.length && /\w/.test(stemText[wordEnd])) wordEnd++
+
+    const matchedText = stemText.slice(wordStart, wordEnd)
+
     const newHighlight = {
-      start,
-      end,
-      text: selectedText,
+      start: wordStart,
+      end: wordEnd,
+      text: matchedText,
       id: Date.now()
     }
 
@@ -582,13 +590,21 @@ export default function Practice() {
       }
     }
 
-    const startIndex = bestMatch.index
-    const endIndex = startIndex + bestMatch.length
-    const matchedText = originalText.slice(startIndex, endIndex)
+    const start = bestMatch.index
+    const end = bestMatch.index + bestMatch.length
+
+    // Word snapping
+    const stemText = currentQ.stem || ''
+    let wordStart = start
+    while (wordStart > 0 && /\w/.test(stemText[wordStart - 1])) wordStart--
+    let wordEnd = end
+    while (wordEnd < stemText.length && /\w/.test(stemText[wordEnd])) wordEnd++
+
+    const matchedText = stemText.slice(wordStart, wordEnd)
 
     const newHighlight = {
-      start: startIndex,
-      end: endIndex,
+      start: wordStart,
+      end: wordEnd,
       text: matchedText,
       id: Date.now(),
       note: '',
@@ -627,15 +643,16 @@ export default function Practice() {
     for (let i = 1; i < sorted.length; i++) {
       const next = sorted[i]
 
-      // Check if current and next overlap or are adjacent
+      // Check if current and next overlap or are adjacent (within 1 char)
       if (next.start <= current.end) {
         // Merge them
         current = {
           start: current.start,
           end: Math.max(current.end, next.end),
-          text: '',
+          text: current.text, // Text will be derived from stem during render/save
           id: current.id,
-          note: current.note || next.note || ''
+          note: current.note || next.note || '',
+          color: current.color || next.color || 'yellow'
         }
       } else {
         // No overlap, add current to merged and move to next
@@ -746,7 +763,7 @@ export default function Practice() {
       const hlColor = hl.color || 'yellow'
       const hasNoteClass = hl.note ? ' hl-mark--has-note' : ''
       result = before +
-        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}">${highlightedWithBr}</mark></span>` +
+        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}" data-highlight-id="${hl.id}">${highlightedWithBr}</mark></span>` +
         after
     })
 
@@ -775,7 +792,6 @@ export default function Practice() {
           components={{
             // Custom renderer for span wrappers (highlights)
             span: ({ node, children, ...props }) => {
-              // Check if this is a highlight wrapper by checking className
               if (props.className === 'highlight-wrapper') {
                 const highlightId = props['data-highlight-id'] || node?.properties?.['data-highlight-id']
                 return (
@@ -785,7 +801,6 @@ export default function Practice() {
                     {...props}
                     onClick={(e) => {
                       e.preventDefault()
-                      e.stopPropagation()
                       const id = parseInt(highlightId)
                       if (id) openHighlightPopover(currentQuestionId, id, e)
                     }}
@@ -796,6 +811,29 @@ export default function Practice() {
                 )
               }
               return <span {...props}>{children}</span>
+            },
+            // Custom renderer for mark elements (within highlights) to add delete button
+            mark: ({ node, children, ...props }) => {
+              if (props.className?.includes('hl-mark')) {
+                const highlightId = props['data-highlight-id']
+                return (
+                  <mark {...props}>
+                    {children}
+                    <button
+                      className="hl-mark__delete"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const id = parseInt(highlightId)
+                        if (id) removeHighlight(currentQuestionId, id)
+                      }}
+                    >
+                      &times;
+                    </button>
+                  </mark>
+                )
+              }
+              return <mark {...props}>{children}</mark>
             },
             // Style other markdown elements
             p: ({ node, ...props }) => <p style={{ marginBottom: '12px', lineHeight: '1.6' }} {...props} />,
@@ -848,6 +886,10 @@ export default function Practice() {
       if (hl.start > lastIndex) {
         parts.push({ text: text.slice(lastIndex, hl.start), highlighted: false, key: `text-${idx}`, highlightId: null })
       }
+      
+      // Robust guard: Skip if this highlight overlaps with the previous one (already rendered)
+      if (hl.start < lastIndex) return
+
       // Add highlighted text
       parts.push({ text: text.slice(hl.start, hl.end), highlighted: true, key: `hl-${hl.id}`, highlightId: hl.id })
       lastIndex = hl.end
@@ -876,7 +918,20 @@ export default function Practice() {
                   }}
                   style={{ cursor: 'pointer' }}
                 >
-                  <mark className={`hl-mark hl-mark--${hlColor}${hasNoteClass}`}>{part.text}</mark>
+                  <mark className={`hl-mark hl-mark--${hlColor}${hasNoteClass}`}>
+                    {part.text}
+                    <button 
+                      className="hl-mark__delete"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        removeHighlight(currentQuestionId, part.highlightId)
+                      }}
+                      title="Delete highlight"
+                    >
+                      &times;
+                    </button>
+                  </mark>
                 </span>
               )
             })()
@@ -1240,7 +1295,8 @@ export default function Practice() {
                   <HighlightPopover
                     anchorRect={popoverHl.rect}
                     highlight={popoverHl.highlight}
-                    showColors={true}
+                    showColors={false}
+                    showNote={false}
                     onSave={({ note, color }) => {
                       setHighlights(prev => {
                         const current = prev[popoverHl.questionId] || []

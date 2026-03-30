@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import { authHeaders, authenticatedFetch } from '../auth/token'
-import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuTrophy, LuArrowRight, LuUserPlus } from 'react-icons/lu'
+import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuTrophy, LuArrowRight, LuUserPlus, LuCheck, LuX, LuPencil } from 'react-icons/lu'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import useStaleJson from '../utils/useStaleJson'
 
@@ -26,11 +26,11 @@ export default function Dashboard() {
     transform: (t) => ({
       days: Array.isArray(t.days)
         ? t.days.map((d) => ({
-            date: d.date,
-            questions_answered: d.questions_answered ?? 0,
-            accuracy_pct: d.accuracy_pct ?? null,
-            avg_time_ms: d.avg_time_ms ?? null,
-          }))
+          date: d.date,
+          questions_answered: d.questions_answered ?? 0,
+          accuracy_pct: d.accuracy_pct ?? null,
+          avg_time_ms: d.avg_time_ms ?? null,
+        }))
         : buildDemoTrend(),
     }),
   })
@@ -72,6 +72,9 @@ export default function Dashboard() {
   const [friendMessage, setFriendMessage] = useState(null) // { type: 'success'|'error', text }
   const [respondingId, setRespondingId] = useState(null)
   const [friendsTab, setFriendsTab] = useState('friends') // 'friends' | 'requests'
+  const [isEditingTargets, setIsEditingTargets] = useState(null) // 'time' | 'questions' | null
+  const [tempTargets, setTempTargets] = useState({ questions: 30, time_minutes: 180 })
+  const editRef = useRef(null)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -232,6 +235,69 @@ export default function Dashboard() {
       navigate('/dashboard/question-bank')
     }
   }
+  
+  const startEditingTargets = (type) => {
+    setTempTargets({
+      questions: summary?.targets?.questions || 30,
+      time_minutes: summary?.targets?.time_minutes || 180
+    })
+    setIsEditingTargets(type)
+  }
+
+  // Click-away to save
+  useEffect(() => {
+    if (!isEditingTargets) return;
+    const handleClickOutside = (e) => {
+      if (editRef.current && !editRef.current.contains(e.target)) {
+        saveTargets();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isEditingTargets, tempTargets, summary]); // include summary/tempTargets to ensure saveTargets has fresh state if it's not a callback
+
+  const saveTargets = async () => {
+    if (!isEditingTargets) return;
+    // Optimistic update
+    const previousTargets = { ...summary.targets }
+    const questionsVal = parseInt(tempTargets.questions) || 30
+    const timeVal = parseInt(tempTargets.time_minutes) || 180
+    
+    summary.targets = {
+      questions: questionsVal,
+      time_minutes: timeVal
+    }
+    setIsEditingTargets(null)
+
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/me/targets`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          daily_question_target: questionsVal,
+          daily_study_minutes_target: timeVal
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+    } catch (e) {
+      console.error('Failed to save targets:', e)
+      // Rollback
+      summary.targets = previousTargets
+      alert('Failed to save targets. Please try again.')
+    }
+  }
+
+  const handleTargetKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      saveTargets()
+    } else if (e.key === 'Escape') {
+      setIsEditingTargets(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -252,159 +318,242 @@ export default function Dashboard() {
           <div className="qb-stat__value">{summary?.study_streak_days ?? 0} {summary?.study_streak_days === 1 ? 'day' : 'days'}</div>
           <div className="qb-stat__sub">Keep it up!</div>
         </div>
-        <div className="qb-stat">
-          <div className="qb-stat__top"><div className="qb-stat__title">Focused study</div><div className="qb-stat__icon"><LuTimer size={20} /></div></div>
-          <div className="qb-stat__value">{summary?.time_today_minutes ?? 0} {summary?.time_today_minutes === 1 ? 'min' : 'mins'}</div>
-          <div className="qb-stat__sub">Target: {summary?.targets?.time_minutes || 180} {summary?.targets?.time_minutes === 1 ? 'min' : 'mins'}</div>
+        
+        <div 
+          className={`qb-stat ${isEditingTargets === 'time' ? 'is-editing' : 'is-clickable'}`} 
+          onClick={!isEditingTargets ? () => startEditingTargets('time') : undefined}
+          ref={isEditingTargets === 'time' ? editRef : null}
+        >
+          <div className="qb-stat__top">
+            <div className="qb-stat__title">Focused study</div>
+            <div className="qb-stat__icon">
+              <LuTimer size={20} />
+            </div>
+          </div>
+          <div className="qb-stat__value">
+            {summary?.time_today_minutes ?? 0} mins
+          </div>
+          <div className="qb-stat__sub">
+            {isEditingTargets === 'time' ? (
+              <div className="qb-stat__input-wrap">
+                Target: 
+                <input
+                  type="number"
+                  className="qb-stat__input"
+                  value={tempTargets.time_minutes}
+                  onChange={(e) => setTempTargets({ ...tempTargets, time_minutes: e.target.value })}
+                  onKeyDown={handleTargetKeyDown}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                />
+                mins
+              </div>
+            ) : (
+              <div className="qb-stat__target-wrap">
+                Target: {summary?.targets?.time_minutes || 180} {summary?.targets?.time_minutes === 1 ? 'min' : 'mins'}
+                <LuPencil className="qb-stat__edit-hint" size={12} />
+              </div>
+            )}
+          </div>
+          
+          {isEditingTargets === 'time' && (
+            <div className="qb-stat__edit-actions">
+              <button className="qb-stat__action qb-stat__action--save" onClick={(e) => { e.stopPropagation(); saveTargets(); }} title="Save">
+                <LuCheck size={18} />
+              </button>
+              <button className="qb-stat__action qb-stat__action--cancel" onClick={(e) => { e.stopPropagation(); setIsEditingTargets(null); }} title="Cancel">
+                <LuX size={18} />
+              </button>
+            </div>
+          )}
         </div>
-        <div className="qb-stat">
-          <div className="qb-stat__top"><div className="qb-stat__title">Study streak</div><div className="qb-stat__icon"><LuTarget size={20} /></div></div>
-          <div className="qb-stat__value">{summary?.questions_today ?? 0}/{summary?.targets?.questions || 30}</div>
-          <div className="db-progress"><div className="db-progress__fill" style={{ width: `${Math.min(100, Math.round((((summary?.questions_today || 0) / (summary?.targets?.questions || 30)) * 100)))}%` }} /></div>
+        
+        <div 
+          className={`qb-stat ${isEditingTargets === 'questions' ? 'is-editing' : 'is-clickable'}`} 
+          onClick={!isEditingTargets ? () => startEditingTargets('questions') : undefined}
+          ref={isEditingTargets === 'questions' ? editRef : null}
+        >
+          <div className="qb-stat__top"><div className="qb-stat__title">Questions Completed</div><div className="qb-stat__icon"><LuTarget size={20} /></div></div>
+          <div className="qb-stat__value">
+            {summary?.questions_today ?? 0}/
+            {isEditingTargets === 'questions' ? (
+              <input
+                type="number"
+                className="qb-stat__input qb-stat__input--large"
+                value={tempTargets.questions}
+                onChange={(e) => setTempTargets({ ...tempTargets, questions: e.target.value })}
+                onKeyDown={handleTargetKeyDown}
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span>{summary?.targets?.questions || 30}</span>
+            )}
+          </div>
+          <div className="qb-stat__sub">
+            <div className="qb-stat__progress">
+              <div 
+                className="qb-stat__progress-bar" 
+                style={{ width: `${Math.min(100, Math.round((((summary?.questions_today || 0) / (summary?.targets?.questions || 30)) * 100)))}%` }}
+              ></div>
+            </div>
+            {!isEditingTargets && <LuPencil className="qb-stat__edit-hint qb-stat__edit-hint--float" size={12} />}
+          </div>
+
+          {isEditingTargets === 'questions' && (
+            <div className="qb-stat__edit-actions">
+              <button className="qb-stat__action qb-stat__action--save" onClick={(e) => { e.stopPropagation(); saveTargets(); }} title="Save">
+                <LuCheck size={18} />
+              </button>
+              <button className="qb-stat__action qb-stat__action--cancel" onClick={(e) => { e.stopPropagation(); setIsEditingTargets(null); }} title="Cancel">
+                <LuX size={18} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="db-split">
         <div className="db-split__left">
-      <div className="db-qa">
-        <div className="db-qa__title">Quick Actions</div>
-        <div className="db-qa__sub">Jump back into your learning journey</div>
-        <div className="db-qa__actions db-qa__actions--stacked">
-          <button className="db-btn" onClick={continueQuestions}>
-            <div className="db-btn__left">
-              <div className="db-btn__icon db-btn__icon--purple"><LuCirclePlay size={18} /></div>
-              <div>
-                <div>Continue Questions</div>
-                <div className="db-btn__meta">{summary.last_specialty?.name ? `Resume ${summary.last_specialty.name} set` : 'Open Question Bank'}</div>
-              </div>
+          <div className="db-qa">
+            <div className="db-qa__title">Quick Actions</div>
+            <div className="db-qa__sub">Jump back into your learning journey</div>
+            <div className="db-qa__actions db-qa__actions--stacked">
+              <button className="db-btn" onClick={continueQuestions}>
+                <div className="db-btn__left">
+                  <div className="db-btn__icon db-btn__icon--purple"><LuCirclePlay size={18} /></div>
+                  <div>
+                    <div>Continue Questions</div>
+                    <div className="db-btn__meta">{summary.last_specialty?.name ? `Resume ${summary.last_specialty.name} set` : 'Open Question Bank'}</div>
+                  </div>
+                </div>
+                <span>›</span>
+              </button>
+              <button className="db-btn" onClick={() => {
+                if (recentTopic?.topic_slug) {
+                  navigate(`/dashboard/textbook/topic/${recentTopic.topic_slug}`)
+                } else {
+                  navigate('/dashboard/textbook')
+                }
+              }}>
+                <div className="db-btn__left">
+                  <div className="db-btn__icon db-btn__icon--blue"><LuBookOpen size={18} /></div>
+                  <div>
+                    <div>{recentTopic ? 'Continue Reading' : 'Read Textbook'}</div>
+                    <div className="db-btn__meta">
+                      {recentTopic?.topic_name
+                        ? recentTopic.topic_name
+                        : 'Browse chapters and topics'}
+                    </div>
+                  </div>
+                </div>
+                <span>›</span>
+              </button>
             </div>
-            <span>›</span>
-          </button>
-          <button className="db-btn" onClick={() => {
-            if (recentTopic?.topic_slug) {
-              navigate(`/dashboard/textbook/topic/${recentTopic.topic_slug}`)
-            } else {
-              navigate('/dashboard/textbook')
-            }
-          }}>
-            <div className="db-btn__left">
-              <div className="db-btn__icon db-btn__icon--blue"><LuBookOpen size={18} /></div>
-              <div>
-                <div>{recentTopic ? 'Continue Reading' : 'Read Textbook'}</div>
-                <div className="db-btn__meta">
-                  {recentTopic?.topic_name
-                    ? recentTopic.topic_name
-                    : 'Browse chapters and topics'}
+          </div>
+
+          <div className="db-leaderboard">
+            <div className="db-card">
+              <div className="db-card__top">
+                <div className="db-leaderboard__title">
+                  <LuTrophy size={18} />
+                  Leaderboard
                 </div>
               </div>
-            </div>
-            <span>›</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="db-leaderboard">
-          <div className="db-card">
-            <div className="db-card__top">
-              <div className="db-leaderboard__title">
-                <LuTrophy size={18} />
-                Leaderboard
-              </div>
-            </div>
-            <div className="db-leaderboard__content">
-              <div className="db-filters">
-                <div className="db-filter">
-                  <select
-                    className="db-select"
-                    value={selectedSpecialty}
-                    onChange={(e) => setSelectedSpecialty(e.target.value)}
-                  >
-                    <option value="all">All Specialties</option>
-                    {specialties.map((spec) => (
-                      <option key={spec.specialty_id} value={spec.specialty_id}>
-                        {spec.specialty_name}
-                      </option>
-                    ))}
-                  </select>
+              <div className="db-leaderboard__content">
+                <div className="db-filters">
+                  <div className="db-filter">
+                    <select
+                      className="db-select"
+                      value={selectedSpecialty}
+                      onChange={(e) => setSelectedSpecialty(e.target.value)}
+                    >
+                      <option value="all">All Specialties</option>
+                      {specialties.map((spec) => (
+                        <option key={spec.specialty_id} value={spec.specialty_id}>
+                          {spec.specialty_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="db-filter">
+                    <select
+                      className="db-select"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="total_answered">Sort by Total Answered</option>
+                      <option value="correct">Sort by Correct Answers</option>
+                      <option value="accuracy_pct">Sort by Accuracy</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="db-filter">
-                  <select
-                    className="db-select"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                  >
-                    <option value="total_answered">Sort by Total Answered</option>
-                    <option value="correct">Sort by Correct Answers</option>
-                    <option value="accuracy_pct">Sort by Accuracy</option>
-                  </select>
-                </div>
-              </div>
 
-              {leaderboardLoading ? (
-                <div className="db-empty">Loading leaderboard…</div>
-              ) : leaderboard.length === 0 ? (
-                <div className="db-empty">No data available. Add friends to compete!</div>
-              ) : (
-                <div className="db-leaderboard__list">
-                  {(() => {
-                    // Sort leaderboard based on selected metric
-                    const sorted = [...leaderboard].sort((a, b) => {
-                      if (sortBy === 'accuracy_pct') {
-                        const aVal = a.accuracy_pct ?? -1
-                        const bVal = b.accuracy_pct ?? -1
-                        return bVal - aVal
-                      } else {
-                        return (b[sortBy] || 0) - (a[sortBy] || 0)
-                      }
-                    })
+                {leaderboardLoading ? (
+                  <div className="db-empty">Loading leaderboard…</div>
+                ) : leaderboard.length === 0 ? (
+                  <div className="db-empty">No data available. Add friends to compete!</div>
+                ) : (
+                  <div className="db-leaderboard__list">
+                    {(() => {
+                      // Sort leaderboard based on selected metric
+                      const sorted = [...leaderboard].sort((a, b) => {
+                        if (sortBy === 'accuracy_pct') {
+                          const aVal = a.accuracy_pct ?? -1
+                          const bVal = b.accuracy_pct ?? -1
+                          return bVal - aVal
+                        } else {
+                          return (b[sortBy] || 0) - (a[sortBy] || 0)
+                        }
+                      })
 
-                    return sorted.map((entry, index) => {
-                      const isCurrentUser = entry.user_id === user?.id
-                      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
+                      return sorted.map((entry, index) => {
+                        const isCurrentUser = entry.user_id === user?.id
+                        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
 
-                      // Determine what to show on the right based on sort
-                      let scoreValue, scoreLabel
-                      if (sortBy === 'accuracy_pct') {
-                        scoreValue = entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'
-                        scoreLabel = 'accuracy'
-                      } else if (sortBy === 'correct') {
-                        scoreValue = entry.correct || 0
-                        scoreLabel = 'correct'
-                      } else {
-                        scoreValue = entry.total_answered || 0
-                        scoreLabel = 'total'
-                      }
+                        // Determine what to show on the right based on sort
+                        let scoreValue, scoreLabel
+                        if (sortBy === 'accuracy_pct') {
+                          scoreValue = entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'
+                          scoreLabel = 'accuracy'
+                        } else if (sortBy === 'correct') {
+                          scoreValue = entry.correct || 0
+                          scoreLabel = 'correct'
+                        } else {
+                          scoreValue = entry.total_answered || 0
+                          scoreLabel = 'total'
+                        }
 
-                      return (
-                        <div
-                          key={entry.user_id}
-                          className={`db-leaderboard__item ${isCurrentUser ? 'db-leaderboard__item--self' : ''}`}
-                        >
-                          <div className="db-leaderboard__rank">
-                            {medal || `#${index + 1}`}
-                          </div>
-                          <div className="db-leaderboard__user">
-                            <div className="db-leaderboard__username">
-                              {entry.username || entry.email?.split('@')[0] || 'User'}
-                              {isCurrentUser && <span className="db-leaderboard__you">(You)</span>}
+                        return (
+                          <div
+                            key={entry.user_id}
+                            className={`db-leaderboard__item ${isCurrentUser ? 'db-leaderboard__item--self' : ''}`}
+                          >
+                            <div className="db-leaderboard__rank">
+                              {medal || `#${index + 1}`}
                             </div>
-                            <div className="db-leaderboard__stats">
-                              {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
+                            <div className="db-leaderboard__user">
+                              <div className="db-leaderboard__username">
+                                {entry.username || entry.email?.split('@')[0] || 'User'}
+                                {isCurrentUser && <span className="db-leaderboard__you">(You)</span>}
+                              </div>
+                              <div className="db-leaderboard__stats">
+                                {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
+                              </div>
+                            </div>
+                            <div className="db-leaderboard__score">
+                              <div className="db-leaderboard__score-num">{scoreValue}</div>
+                              <div className="db-leaderboard__score-label">{scoreLabel}</div>
                             </div>
                           </div>
-                          <div className="db-leaderboard__score">
-                            <div className="db-leaderboard__score-num">{scoreValue}</div>
-                            <div className="db-leaderboard__score-label">{scoreLabel}</div>
-                          </div>
-                        </div>
-                      )
-                    })
-                  })()}
-                </div>
-              )}
+                        )
+                      })
+                    })()}
+                  </div>
+                )}
+              </div>
             </div>
-        </div>
-      </div>
+          </div>
         </div>
 
         <aside className="db-analytics">
