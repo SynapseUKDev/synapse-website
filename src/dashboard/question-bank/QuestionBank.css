@@ -348,7 +348,7 @@
 }
 
 .qb-card__segment--correct {
-  background: var(--grad-primary);
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
 }
 
 .qb-card__segment--incorrect {

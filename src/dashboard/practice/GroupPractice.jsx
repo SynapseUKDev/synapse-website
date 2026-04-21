@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
@@ -8,6 +8,11 @@ import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
+import {
+  getFlatTextFromStem,
+  mapFlatRangeToMarkdownRange,
+  splitFlatRangeByTableCellsAndSnap,
+} from '../../utils/questionStemHighlight'
 import { io } from 'socket.io-client'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
@@ -563,8 +568,8 @@ export default function GroupPractice() {
     })
   }
 
-  // Text highlighting functionality
-  const addHighlightFromSelection = () => {
+  // Text highlighting functionality (aligned with solo Practice.jsx)
+  const addHighlightFromSelection = useCallback(() => {
     const selection = window.getSelection()
     const currentQ = questions[currentIndex]
     if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
@@ -574,193 +579,137 @@ export default function GroupPractice() {
 
     const range = selection.getRangeAt(0)
 
-    // Only highlight text inside the stem
+    // Only act if selection is inside the stem
     if (!stemRef.current.contains(range.commonAncestorContainer)) return
 
     const stemText = currentQ.stem || ''
-    const isMarkdownStem = hasMarkdown(stemText)
-
-    if (isMarkdownStem) {
-      const selectedTextTrimmed = selectedText.trim()
-      if (!selectedTextTrimmed) return
-
-      // Calculate estimated position based on DOM selection
-      let estimatedPosition = 0
-      if (selection.rangeCount > 0) {
-        const preRange = document.createRange()
-        preRange.selectNodeContents(stemRef.current)
-        preRange.setEnd(range.startContainer, range.startOffset)
-        const textBefore = preRange.toString()
-        estimatedPosition = textBefore.length
-      }
-
-      // Find all occurrences of the selected text
-      const findAllOccurrences = (text, search) => {
-        const indices = []
-        let idx = text.indexOf(search)
-        while (idx !== -1) {
-          indices.push({ index: idx, length: search.length })
-          idx = text.indexOf(search, idx + 1)
-        }
-        return indices
-      }
-
-      const occurrences = findAllOccurrences(stemText, selectedTextTrimmed)
-      if (occurrences.length === 0) return
-
-      // Find the occurrence closest to the estimated position
-      let bestMatch = occurrences[0]
-      let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
-
-      for (let i = 1; i < occurrences.length; i++) {
-        const distance = Math.abs(occurrences[i].index - estimatedPosition)
-        if (distance < minDistance) {
-          minDistance = distance
-          bestMatch = occurrences[i]
-        }
-      }
-
-      const newHighlight = {
-        start: bestMatch.index,
-        end: bestMatch.index + bestMatch.length,
-        text: selectedTextTrimmed,
-        id: Date.now()
-      }
-
-      setHighlights(prev => {
-        const current = prev[currentQ.id] || []
-        const merged = mergeOverlappingHighlights([...current, newHighlight])
-        return { ...prev, [currentQ.id]: merged }
-      })
-
-      selection.removeAllRanges()
-      return
-    }
+    const flat = getFlatTextFromStem(stemRef.current)
 
     const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
     const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
     if (startA == null || endA == null) return
 
-    const start = Math.min(startA, endA)
-    const end = Math.max(startA, endA)
-    if (start === end) return
+    const rawStart = Math.min(startA, endA)
+    const rawEnd = Math.max(startA, endA)
+    if (rawStart === rawEnd) return
 
-    const newHighlight = {
-      start,
-      end,
-      text: selectedText,
-      id: Date.now()
+    const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
+    if (snappedRanges.length === 0) return
+
+    const isMd = hasMarkdown(stemText)
+    const newHighlights = []
+    let idBase = Date.now()
+    for (const snapped of snappedRanges) {
+      let hlStart
+      let hlEnd
+      let matchedText
+
+      if (isMd) {
+        const mapped = mapFlatRangeToMarkdownRange(stemText, flat, snapped.start, snapped.end)
+        if (!mapped) continue
+        hlStart = mapped.start
+        hlEnd = mapped.end
+        matchedText = stemText.slice(hlStart, hlEnd)
+      } else {
+        hlStart = snapped.start
+        hlEnd = snapped.end
+        matchedText = stemText.slice(hlStart, hlEnd)
+      }
+
+      newHighlights.push({
+        start: hlStart,
+        end: hlEnd,
+        text: matchedText,
+        id: idBase++,
+      })
     }
+
+    if (newHighlights.length === 0) return
 
     setHighlights(prev => {
       const current = prev[currentQ.id] || []
-      const merged = mergeOverlappingHighlights([...current, newHighlight])
+      const merged = mergeOverlappingHighlights([...current, ...newHighlights])
       return { ...prev, [currentQ.id]: merged }
     })
 
     // Clear blue selection
     selection.removeAllRanges()
-  }
+  }, [questions, currentIndex])
 
-  const handleTextSelection = () => {
+  const handleTextSelection = useCallback(() => {
     addHighlightFromSelection()
     setShowHighlightBtn(false)
-  }
+  }, [addHighlightFromSelection])
 
   const applyHighlight = () => {
     const selection = window.getSelection()
     const currentQ = questions[currentIndex]
-    if (!selection || selection.isCollapsed || !currentQ) return
+    if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
 
     const selectedText = selection.toString()
     if (!selectedText || !selectedText.trim()) return
 
-    const originalText = currentQ.stem || ''
-
-    let estimatedPosition = 0
-
-    if (stemRef.current && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      const preRange = document.createRange()
-      preRange.selectNodeContents(stemRef.current)
-      preRange.setEnd(range.startContainer, range.startOffset)
-      const textBefore = preRange.toString()
-      estimatedPosition = textBefore.replace(/\s+/g, ' ').length
-    }
-
-    const normalizedSelected = selectedText.replace(/\s+/g, ' ').trim()
-    const findAllOccurrences = (text, search) => {
-      const indices = []
-      let idx = text.indexOf(search)
-      while (idx !== -1) {
-        indices.push({ index: idx, length: search.length, exact: true })
-        idx = text.indexOf(search, idx + 1)
-      }
-
-      if (indices.length === 0) {
-        const escapedText = normalizedSelected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const pattern = escapedText.split(' ').join('\\s+')
-        const regex = new RegExp(pattern, 'g')
-        let match
-        while ((match = regex.exec(text)) !== null) {
-          indices.push({ index: match.index, length: match[0].length, exact: false })
-        }
-      }
-
-      return indices
-    }
-
-    const occurrences = findAllOccurrences(originalText, selectedText)
-
-    if (occurrences.length === 0) return
-
-    // Find the occurrence closest to the estimated position
-    let bestMatch = occurrences[0]
-    let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
-
-    for (let i = 1; i < occurrences.length; i++) {
-      const distance = Math.abs(occurrences[i].index - estimatedPosition)
-      if (distance < minDistance) {
-        minDistance = distance
-        bestMatch = occurrences[i]
-      }
-    }
-
-    const startIndex = bestMatch.index
-    const endIndex = startIndex + bestMatch.length
-    
-    // Word snapping
-    const stemText = originalText || ''
-    let wordStart = startIndex
-    while (wordStart > 0 && /\w/.test(stemText[wordStart - 1])) wordStart--
-    let wordEnd = endIndex
-    while (wordEnd < stemText.length && /\w/.test(stemText[wordEnd])) wordEnd++
-
-    const matchedText = stemText.slice(wordStart, wordEnd)
-
-    const newHighlight = {
-      start: wordStart,
-      end: wordEnd,
-      text: matchedText,
-      id: Date.now(),
-      note: '',
-      color: 'yellow'
-    }
-
     const range = selection.getRangeAt(0)
+    if (!stemRef.current.contains(range.commonAncestorContainer)) return
+
+    const stemText = currentQ.stem || ''
+    const flat = getFlatTextFromStem(stemRef.current)
+
+    const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
+    const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
+    if (startA == null || endA == null) return
+
+    const rawStart = Math.min(startA, endA)
+    const rawEnd = Math.max(startA, endA)
+    if (rawStart === rawEnd) return
+
+    const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
+    if (snappedRanges.length === 0) return
+
+    const isMd = hasMarkdown(stemText)
+    const newHighlights = []
+    let idBase = Date.now()
+    for (const snapped of snappedRanges) {
+      let hlStart
+      let hlEnd
+      let matchedText
+
+      if (isMd) {
+        const mapped = mapFlatRangeToMarkdownRange(stemText, flat, snapped.start, snapped.end)
+        if (!mapped) continue
+        hlStart = mapped.start
+        hlEnd = mapped.end
+        matchedText = stemText.slice(hlStart, hlEnd)
+      } else {
+        hlStart = snapped.start
+        hlEnd = snapped.end
+        matchedText = stemText.slice(hlStart, hlEnd)
+      }
+
+      newHighlights.push({
+        start: hlStart,
+        end: hlEnd,
+        text: matchedText,
+        id: idBase++,
+        note: '',
+        color: 'yellow',
+      })
+    }
+
+    if (newHighlights.length === 0) return
+
     const rect = range.getBoundingClientRect()
 
     setHighlights(prev => {
       const current = prev[currentQ.id] || []
-      const allHighlights = [...current, newHighlight]
-      const merged = mergeOverlappingHighlights(allHighlights)
+      const merged = mergeOverlappingHighlights([...current, ...newHighlights])
       return { ...prev, [currentQ.id]: merged }
     })
 
     setPopoverHl({
       questionId: currentQ.id,
-      highlight: newHighlight,
-      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+      highlight: newHighlights[newHighlights.length - 1],
+      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
     })
 
     setShowHighlightBtn(false)
@@ -780,13 +729,13 @@ export default function GroupPractice() {
       const next = sorted[i]
 
       // Check if current and next overlap or are adjacent
-      if (next.start <= current.end) {
+      if (next.start < current.end) {
         // Merge them
         current = {
           start: current.start,
           end: Math.max(current.end, next.end),
-          text: '', // Will be recalculated from stem
-          id: current.id, // Keep the original ID
+          text: current.text, // Text will be derived from stem during render/save
+          id: current.id,
           note: current.note || next.note || '',
           color: current.color || next.color || 'yellow'
         }
@@ -937,7 +886,6 @@ export default function GroupPractice() {
                     {...props}
                     onClick={(e) => {
                       e.preventDefault()
-                      e.stopPropagation()
                       const id = parseInt(highlightId)
                       if (id) openHighlightPopover(questionId, id, e)
                     }}
@@ -972,26 +920,14 @@ export default function GroupPractice() {
               }
               return <mark {...props}>{children}</mark>
             },
-            // Style other markdown elements
-            p: ({ node, ...props }) => <p style={{ marginBottom: '8px', lineHeight: '1.6', marginTop: 0 }} {...props} />,
-            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.5em', fontWeight: 800, marginBottom: '8px', marginTop: '12px' }} {...props} />,
-            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.3em', fontWeight: 800, marginBottom: '6px', marginTop: '10px' }} {...props} />,
-            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', fontWeight: 700, marginBottom: '6px', marginTop: '8px' }} {...props} />,
-            ul: ({ node, ...props }) => <ul style={{ marginBottom: '8px', marginTop: 0, paddingLeft: '24px' }} {...props} />,
-            ol: ({ node, ...props }) => <ol style={{ marginBottom: '8px', marginTop: 0, paddingLeft: '24px' }} {...props} />,
-            li: ({ node, children, ...props }) => (
-              <li style={{ marginBottom: '2px' }} {...props}>
-                {/* Remove paragraph margins inside list items */}
-                {React.Children.map(children, child => {
-                  if (React.isValidElement(child) && child.type === 'p') {
-                    return React.cloneElement(child, {
-                      style: { ...child.props.style, marginBottom: 0, marginTop: 0 }
-                    })
-                  }
-                  return child
-                })}
-              </li>
-            ),
+            // Style other markdown elements (match Practice.jsx)
+            p: ({ node, ...props }) => <p style={{ marginBottom: '12px', lineHeight: '1.6' }} {...props} />,
+            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.5em', fontWeight: 800, marginBottom: '12px', marginTop: '16px' }} {...props} />,
+            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.3em', fontWeight: 800, marginBottom: '10px', marginTop: '14px' }} {...props} />,
+            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', fontWeight: 700, marginBottom: '8px', marginTop: '12px' }} {...props} />,
+            ul: ({ node, ...props }) => <ul style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+            ol: ({ node, ...props }) => <ol style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
+            li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
             table: ({ node, ...props }) => (
               <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid #e5e7eb' }} {...props} />
@@ -1052,25 +988,24 @@ export default function GroupPractice() {
     return (
       <span style={{ whiteSpace: 'pre-line' }}>
         {parts.map(part =>
-          part.highlighted
-            ? (
-              (() => {
-                const hl = questionHighlights.find(h => h.id === part.highlightId)
-                const hlColor = hl?.color || 'yellow'
-                const hasNoteClass = hl?.note ? ' hl-mark--has-note' : ''
-                return (
-                  <span
-                    key={part.key}
-                    className="highlight-wrapper"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      openHighlightPopover(questionId, part.highlightId, e)
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <mark className={`hl-mark hl-mark--${hlColor}${hasNoteClass}`}>
+          part.highlighted ? (
+            (() => {
+              const hl = questionHighlights.find(h => h.id === part.highlightId)
+              const hlColor = hl?.color || 'yellow'
+              const hasNoteClass = hl?.note ? ' hl-mark--has-note' : ''
+              return (
+                <span
+                  key={part.key}
+                  className="highlight-wrapper"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    openHighlightPopover(questionId, part.highlightId, e)
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <mark className={`hl-mark hl-mark--${hlColor}${hasNoteClass}`}>
                     {part.text}
-                    <button 
+                    <button
                       className="hl-mark__delete"
                       onClick={(e) => {
                         e.preventDefault()
@@ -1082,11 +1017,12 @@ export default function GroupPractice() {
                       &times;
                     </button>
                   </mark>
-                  </span>
-                )
-              })()
-            )
-            : <span key={part.key}>{part.text}</span>
+                </span>
+              )
+            })()
+          ) : (
+            <React.Fragment key={part.key}>{part.text}</React.Fragment>
+          )
         )}
       </span>
     )
@@ -1101,7 +1037,7 @@ export default function GroupPractice() {
       document.removeEventListener('mouseup', handleTextSelection)
       document.removeEventListener('touchend', handleTextSelection)
     }
-  }, [questions, currentIndex])
+  }, [handleTextSelection])
 
 
   // Calculate topic-level performance
@@ -1523,7 +1459,7 @@ export default function GroupPractice() {
             <div className="card__body">
               <div className="question-content">
                 <div className="question-stem-wrapper">
-                  <div ref={stemRef} className="question-stem" style={{ marginBottom: 12 }}>
+                  <div ref={stemRef} className="question-stem">
                     {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
                   </div>
                 </div>
@@ -1531,7 +1467,8 @@ export default function GroupPractice() {
                   <HighlightPopover
                     anchorRect={popoverHl.rect}
                     highlight={popoverHl.highlight}
-                    showColors={true}
+                    showColors={false}
+                    showNote={false}
                     onSave={({ note, color }) => {
                       setHighlights(prev => {
                         const current = prev[popoverHl.questionId] || []

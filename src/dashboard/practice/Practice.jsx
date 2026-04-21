@@ -8,6 +8,11 @@ import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
+import {
+  getFlatTextFromStem,
+  mapFlatRangeToMarkdownRange,
+  splitFlatRangeByTableCellsAndSnap,
+} from '../../utils/questionStemHighlight'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
@@ -448,91 +453,52 @@ export default function Practice() {
     if (!stemRef.current.contains(range.commonAncestorContainer)) return
 
     const stemText = currentQ.stem || ''
-    const isMarkdownStem = hasMarkdown(stemText)
-
-    if (isMarkdownStem) {
-      const selectedTextTrimmed = selectedText.trim()
-      if (!selectedTextTrimmed) return
-
-      // Calculate estimated position based on DOM selection
-      let estimatedPosition = 0
-      if (selection.rangeCount > 0) {
-        const preRange = document.createRange()
-        preRange.selectNodeContents(stemRef.current)
-        preRange.setEnd(range.startContainer, range.startOffset)
-        const textBefore = preRange.toString()
-        estimatedPosition = textBefore.length
-      }
-
-      // Find all occurrences of the selected text
-      const findAllOccurrences = (text, search) => {
-        const indices = []
-        let idx = text.indexOf(search)
-        while (idx !== -1) {
-          indices.push({ index: idx, length: search.length })
-          idx = text.indexOf(search, idx + 1)
-        }
-        return indices
-      }
-
-      const occurrences = findAllOccurrences(stemText, selectedTextTrimmed)
-      if (occurrences.length === 0) return
-
-      // Find the occurrence closest to the estimated position
-      let bestMatch = occurrences[0]
-      let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
-
-      for (let i = 1; i < occurrences.length; i++) {
-        const distance = Math.abs(occurrences[i].index - estimatedPosition)
-        if (distance < minDistance) {
-          minDistance = distance
-          bestMatch = occurrences[i]
-        }
-      }
-
-      const newHighlight = {
-        start: bestMatch.index,
-        end: bestMatch.index + bestMatch.length,
-        text: selectedTextTrimmed,
-        id: Date.now()
-      }
-
-      setHighlights(prev => {
-        const current = prev[currentQ.id] || []
-        const merged = mergeOverlappingHighlights([...current, newHighlight])
-        return { ...prev, [currentQ.id]: merged }
-      })
-
-      selection.removeAllRanges()
-      return
-    }
+    const flat = getFlatTextFromStem(stemRef.current)
 
     const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
     const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
     if (startA == null || endA == null) return
 
-    const start = Math.min(startA, endA)
-    const end = Math.max(startA, endA)
-    if (start === end) return
+    const rawStart = Math.min(startA, endA)
+    const rawEnd = Math.max(startA, endA)
+    if (rawStart === rawEnd) return
 
-    // Word snapping
-    let wordStart = start
-    while (wordStart > 0 && /\w/.test(stemText[wordStart - 1])) wordStart--
-    let wordEnd = end
-    while (wordEnd < stemText.length && /\w/.test(stemText[wordEnd])) wordEnd++
+    const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
+    if (snappedRanges.length === 0) return
 
-    const matchedText = stemText.slice(wordStart, wordEnd)
+    const isMd = hasMarkdown(stemText)
+    const newHighlights = []
+    let idBase = Date.now()
+    for (const snapped of snappedRanges) {
+      let hlStart
+      let hlEnd
+      let matchedText
 
-    const newHighlight = {
-      start: wordStart,
-      end: wordEnd,
-      text: matchedText,
-      id: Date.now()
+      if (isMd) {
+        const mapped = mapFlatRangeToMarkdownRange(stemText, flat, snapped.start, snapped.end)
+        if (!mapped) continue
+        hlStart = mapped.start
+        hlEnd = mapped.end
+        matchedText = stemText.slice(hlStart, hlEnd)
+      } else {
+        hlStart = snapped.start
+        hlEnd = snapped.end
+        matchedText = stemText.slice(hlStart, hlEnd)
+      }
+
+      newHighlights.push({
+        start: hlStart,
+        end: hlEnd,
+        text: matchedText,
+        id: idBase++,
+      })
     }
+
+    if (newHighlights.length === 0) return
 
     setHighlights(prev => {
       const current = prev[currentQ.id] || []
-      const merged = mergeOverlappingHighlights([...current, newHighlight])
+      const merged = mergeOverlappingHighlights([...current, ...newHighlights])
       return { ...prev, [currentQ.id]: merged }
     })
 
@@ -548,97 +514,72 @@ export default function Practice() {
   const applyHighlight = () => {
     const selection = window.getSelection()
     const currentQ = questions[currentIndex]
-    if (!selection || selection.isCollapsed || !currentQ) return
+    if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
 
     const selectedText = selection.toString()
     if (!selectedText || !selectedText.trim()) return
 
-    const originalText = currentQ.stem || ''
-
-    let estimatedPosition = 0
-
-    if (stemRef.current && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      const preRange = document.createRange()
-      preRange.selectNodeContents(stemRef.current)
-      preRange.setEnd(range.startContainer, range.startOffset)
-      const textBefore = preRange.toString()
-      estimatedPosition = textBefore.replace(/\s+/g, ' ').length
-    }
-
-    const normalizedSelected = selectedText.replace(/\s+/g, ' ').trim()
-
-    const findAllOccurrences = (text, search) => {
-      const indices = []
-      let idx = text.indexOf(search)
-      while (idx !== -1) {
-        indices.push({ index: idx, length: search.length, exact: true })
-        idx = text.indexOf(search, idx + 1)
-      }
-
-      if (indices.length === 0) {
-        const escapedText = normalizedSelected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const pattern = escapedText.split(' ').join('\\s+')
-        const regex = new RegExp(pattern, 'g')
-        let match
-        while ((match = regex.exec(text)) !== null) {
-          indices.push({ index: match.index, length: match[0].length, exact: false })
-        }
-      }
-
-      return indices
-    }
-
-    const occurrences = findAllOccurrences(originalText, selectedText)
-
-    if (occurrences.length === 0) return
-
-    let bestMatch = occurrences[0]
-    let minDistance = Math.abs(occurrences[0].index - estimatedPosition)
-
-    for (let i = 1; i < occurrences.length; i++) {
-      const distance = Math.abs(occurrences[i].index - estimatedPosition)
-      if (distance < minDistance) {
-        minDistance = distance
-        bestMatch = occurrences[i]
-      }
-    }
-
-    const start = bestMatch.index
-    const end = bestMatch.index + bestMatch.length
-
-    // Word snapping
-    const stemText = currentQ.stem || ''
-    let wordStart = start
-    while (wordStart > 0 && /\w/.test(stemText[wordStart - 1])) wordStart--
-    let wordEnd = end
-    while (wordEnd < stemText.length && /\w/.test(stemText[wordEnd])) wordEnd++
-
-    const matchedText = stemText.slice(wordStart, wordEnd)
-
-    const newHighlight = {
-      start: wordStart,
-      end: wordEnd,
-      text: matchedText,
-      id: Date.now(),
-      note: '',
-      color: 'yellow'
-    }
-
     const range = selection.getRangeAt(0)
+    if (!stemRef.current.contains(range.commonAncestorContainer)) return
+
+    const stemText = currentQ.stem || ''
+    const flat = getFlatTextFromStem(stemRef.current)
+
+    const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
+    const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
+    if (startA == null || endA == null) return
+
+    const rawStart = Math.min(startA, endA)
+    const rawEnd = Math.max(startA, endA)
+    if (rawStart === rawEnd) return
+
+    const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
+    if (snappedRanges.length === 0) return
+
+    const isMd = hasMarkdown(stemText)
+    const newHighlights = []
+    let idBase = Date.now()
+    for (const snapped of snappedRanges) {
+      let hlStart
+      let hlEnd
+      let matchedText
+
+      if (isMd) {
+        const mapped = mapFlatRangeToMarkdownRange(stemText, flat, snapped.start, snapped.end)
+        if (!mapped) continue
+        hlStart = mapped.start
+        hlEnd = mapped.end
+        matchedText = stemText.slice(hlStart, hlEnd)
+      } else {
+        hlStart = snapped.start
+        hlEnd = snapped.end
+        matchedText = stemText.slice(hlStart, hlEnd)
+      }
+
+      newHighlights.push({
+        start: hlStart,
+        end: hlEnd,
+        text: matchedText,
+        id: idBase++,
+        note: '',
+        color: 'yellow',
+      })
+    }
+
+    if (newHighlights.length === 0) return
+
     const rect = range.getBoundingClientRect()
 
     setHighlights(prev => {
       const current = prev[currentQ.id] || []
-      const allHighlights = [...current, newHighlight]
-      const merged = mergeOverlappingHighlights(allHighlights)
+      const merged = mergeOverlappingHighlights([...current, ...newHighlights])
       return { ...prev, [currentQ.id]: merged }
     })
 
     setPopoverHl({
       questionId: currentQ.id,
-      highlight: newHighlight,
-      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+      highlight: newHighlights[newHighlights.length - 1],
+      rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
     })
 
     setShowHighlightBtn(false)
@@ -657,8 +598,8 @@ export default function Practice() {
     for (let i = 1; i < sorted.length; i++) {
       const next = sorted[i]
 
-      // Check if current and next overlap or are adjacent (within 1 char)
-      if (next.start <= current.end) {
+      // Overlap only (not adjacent): keeps separate highlights for neighbouring table cells, etc.
+      if (next.start < current.end) {
         // Merge them
         current = {
           start: current.start,

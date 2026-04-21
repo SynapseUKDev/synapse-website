@@ -5,6 +5,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
+import { splitFlatRangeByTableCellsAndSnap } from '../../utils/questionStemHighlight'
 
 // ---- Inline highlight injection into HTML ----
 
@@ -148,7 +149,7 @@ function computeSelectionOffsets(blockEl, range) {
   const quote = range.toString()
   const prefix = start != null ? fullText.slice(Math.max(0, start - 30), start) : ''
   const suffix = end != null ? fullText.slice(end, Math.min(fullText.length, end + 30)) : ''
-  return { start: start ?? 0, end: end ?? quote.length, quote, prefix, suffix }
+  return { start: start ?? 0, end: end ?? quote.length, quote, prefix, suffix, fullText, textNodes: nodes }
 }
 
 function AnchorNav({ sections, hasReferences }) {
@@ -495,75 +496,99 @@ export default function TextbookTopic() {
 
       const blockId = blockEl.getAttribute('data-tb-block-id')
       const sectionAnchor = blockEl.getAttribute('data-tb-section-anchor') || ''
-      const { start, end, quote: rawQuote, prefix, suffix } = computeSelectionOffsets(blockEl, range)
+      const { start, end, quote: rawQuote, fullText, textNodes } = computeSelectionOffsets(blockEl, range)
       if (!rawQuote || !rawQuote.trim()) return
 
-      const fullText = blockEl.textContent || ''
-      let wordStart = start
-      while (wordStart > 0 && /\w/.test(fullText[wordStart - 1])) wordStart--
-      let wordEnd = end
-      while (wordEnd < fullText.length && /\w/.test(fullText[wordEnd])) wordEnd++
-
-      const snappedQuote = fullText.slice(wordStart, wordEnd)
-
-      const overlapping = highlights.filter(h =>
-        h.block_id === blockId &&
-        h.start_offset < wordEnd &&
-        h.end_offset > wordStart
+      const rawLo = Math.min(start, end)
+      const rawHi = Math.max(start, end)
+      const snappedRanges = splitFlatRangeByTableCellsAndSnap(
+        blockEl,
+        fullText,
+        rawLo,
+        rawHi,
+        textNodes
       )
+      if (snappedRanges.length === 0) return
 
-      let finalStart = wordStart
-      let finalEnd = wordEnd
-      let finalQuote = snappedQuote
-
-      if (overlapping.length > 0) {
-        finalStart = Math.min(wordStart, ...overlapping.map(h => h.start_offset))
-        finalEnd = Math.max(wordEnd, ...overlapping.map(h => h.end_offset))
-        finalQuote = fullText.slice(finalStart, finalEnd)
-
-        await Promise.all(
-          overlapping.map(oh =>
-            authenticatedFetch(`${API_BASE}/textbook/highlights/${oh.id}`, { method: 'DELETE' }).catch(err => {
-              console.error('Failed to delete overlapping highlight:', err)
-            })
-          )
-        )
-      }
-
-      try { sel.removeAllRanges() } catch { }
-
-      const payload = {
-        page_id: pageId,
-        section_anchor: sectionAnchor,
-        block_id: blockId,
-        color: 'yellow',
-        quote: finalQuote.trim(),
-        start_offset: finalStart,
-        end_offset: finalEnd,
-        prefix: fullText.slice(Math.max(0, finalStart - 30), finalStart),
-        suffix: fullText.slice(finalEnd, Math.min(fullText.length, finalEnd + 30)),
-        note: null,
-      }
-
+      const selectionRect = range.getBoundingClientRect()
       try {
-        const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/sync`, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        })
-        if (!res.ok) return
-        const json = await res.json()
-        if (json?.highlight) {
-          const newHl = json.highlight
-          setHighlights((prev) => {
-            const filtered = prev.filter(h => !overlapping.some(oh => oh.id === h.id))
-            return [...filtered, newHl]
-          })
-
-          const rect = range.getBoundingClientRect()
-          setPopoverRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
-          setPopoverHl(newHl)
-        }
+        sel.removeAllRanges()
       } catch { }
+
+      const created = []
+      const deletedIds = new Set()
+
+      for (let i = 0; i < snappedRanges.length; i++) {
+        const seg = snappedRanges[i]
+        const wordStart = seg.start
+        const wordEnd = seg.end
+        const snappedQuote = fullText.slice(wordStart, wordEnd)
+
+        const overlapping = highlights.filter(
+          (h) =>
+            h.block_id === blockId &&
+            !deletedIds.has(h.id) &&
+            h.start_offset < wordEnd &&
+            h.end_offset > wordStart
+        )
+
+        let finalStart = wordStart
+        let finalEnd = wordEnd
+        let finalQuote = snappedQuote
+
+        if (overlapping.length > 0) {
+          finalStart = Math.min(wordStart, ...overlapping.map((h) => h.start_offset))
+          finalEnd = Math.max(wordEnd, ...overlapping.map((h) => h.end_offset))
+          finalQuote = fullText.slice(finalStart, finalEnd)
+
+          await Promise.all(
+            overlapping.map((oh) =>
+              authenticatedFetch(`${API_BASE}/textbook/highlights/${oh.id}`, { method: 'DELETE' }).catch((err) => {
+                console.error('Failed to delete overlapping highlight:', err)
+              })
+            )
+          )
+          overlapping.forEach((oh) => deletedIds.add(oh.id))
+        }
+
+        const payload = {
+          page_id: pageId,
+          section_anchor: sectionAnchor,
+          block_id: blockId,
+          color: 'yellow',
+          quote: finalQuote.trim(),
+          start_offset: finalStart,
+          end_offset: finalEnd,
+          prefix: fullText.slice(Math.max(0, finalStart - 30), finalStart),
+          suffix: fullText.slice(finalEnd, Math.min(fullText.length, finalEnd + 30)),
+          note: null,
+        }
+
+        try {
+          const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/sync`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          })
+          if (!res.ok) continue
+          const json = await res.json()
+          if (json?.highlight) created.push(json.highlight)
+        } catch { }
+      }
+
+      if (created.length > 0) {
+        setHighlights((prev) => {
+          const filtered = prev.filter((h) => !deletedIds.has(h.id))
+          return [...filtered, ...created]
+        })
+
+        setPopoverRect({
+          top: selectionRect.top,
+          left: selectionRect.left,
+          width: selectionRect.width,
+          height: selectionRect.height,
+        })
+        setPopoverHl(created[created.length - 1])
+      }
     }
     document.addEventListener('mouseup', onMouseUp, true)
     document.addEventListener('touchend', onMouseUp, true)
