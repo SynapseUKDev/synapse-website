@@ -23,6 +23,7 @@ export default function GroupStudySetup() {
   const [timerMinutes, setTimerMinutes] = useState(30)
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [includeAttempted, setIncludeAttempted] = useState(false)
+  const [includeIncorrect, setIncludeIncorrect] = useState(false)
   
   // Group session state
   const [roomCode, setRoomCode] = useState('')
@@ -64,6 +65,15 @@ export default function GroupStudySetup() {
       }
     }
   }, [sessionCreated, roomCode])
+
+  useEffect(() => {
+    if (!studySetData || mode === 'join') return
+    const max = includeIncorrect
+      ? (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
+      : (studySetData.total_questions || 0)
+    if (max === 0) setNumQuestions(0)
+    else setNumQuestions((n) => (n < 1 || n > max ? Math.min(25, max) : Math.min(n, max)))
+  }, [includeIncorrect, studySetData, mode])
 
   const connectSocket = () => {
     // Get user info from local storage or context
@@ -111,7 +121,8 @@ export default function GroupStudySetup() {
         study_set_name: data.study_set_name,
         num_questions: data.num_questions.toString(),
         timer_minutes: data.timer_minutes.toString(),
-        include_attempted: data.include_attempted ? '1' : '0'
+        include_attempted: data.include_attempted ? '1' : '0',
+        include_incorrect: data.incorrect_only ? '1' : '0'
       })
       
       // Store timer end time in session storage for sync
@@ -141,7 +152,8 @@ export default function GroupStudySetup() {
       if (!res.ok) throw new Error('Failed to load study set')
       const data = await res.json()
       setStudySetData(data.set)
-      
+      if (data.set?.incorrect_only) setIncludeIncorrect(true)
+
       const totalAvailable = data.set.total_questions || 0
       if (totalAvailable > 0) {
         setNumQuestions(Math.min(totalAvailable, 25))
@@ -168,7 +180,8 @@ export default function GroupStudySetup() {
           study_set_id: studySetId,
           num_questions: numQuestions,
           timer_minutes: timerEnabled ? timerMinutes : 0,
-          include_attempted: includeAttempted
+          include_attempted: includeAttempted,
+          include_incorrect: includeIncorrect,
         })
       })
       
@@ -247,7 +260,9 @@ export default function GroupStudySetup() {
     return <LoadingScreen message="Loading group study setup..." />
   }
 
-  const totalAvailable = studySetData?.total_questions || 0
+  const totalAvailable = includeIncorrect
+    ? (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
+    : (studySetData?.total_questions || 0)
   const maxQuestions = totalAvailable
   const stepperMin = totalAvailable > 0 ? 1 : 0
   const isDisabled = totalAvailable === 0
@@ -478,6 +493,7 @@ export default function GroupStudySetup() {
                       <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
                     </div>
                   </div>
+                  {!includeIncorrect && (
                   <div className="setup__toggle-row" style={{ marginTop: 20 }}>
                     <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
                     <div className="setup__toggle-container">
@@ -485,13 +501,34 @@ export default function GroupStudySetup() {
                         type="checkbox"
                         id="include-toggle"
                         checked={includeAttempted}
-                        onChange={(e) => setIncludeAttempted(e.target.checked)}
+                        onChange={(e) => {
+                          const v = e.target.checked
+                          if (v) setIncludeIncorrect(false)
+                          setIncludeAttempted(v)
+                        }}
                         className="setup__toggle-input"
                       />
                       <label htmlFor="include-toggle" className="setup__toggle-slider"></label>
                     </div>
                     <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
                   </div>
+                  )}
+                  {!includeAttempted && (
+                  <div className="setup__toggle-row" style={{ marginTop: 20 }}>
+                    <label htmlFor="g-incorrect-toggle" className="setup__toggle-label">Include incorrectly answered (host)</label>
+                    <div className="setup__toggle-container">
+                      <input
+                        type="checkbox"
+                        id="g-incorrect-toggle"
+                        checked={includeIncorrect}
+                        onChange={(e) => setIncludeIncorrect(e.target.checked)}
+                        className="setup__toggle-input"
+                      />
+                      <label htmlFor="g-incorrect-toggle" className="setup__toggle-slider"></label>
+                    </div>
+                    <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeIncorrect ? 'On' : 'Off'}</span>
+                  </div>
+                  )}
                 </div>
               </div>
               

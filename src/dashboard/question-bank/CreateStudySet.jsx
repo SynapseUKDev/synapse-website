@@ -27,6 +27,7 @@ export default function CreateStudySet() {
   const [loadingTopics, setLoadingTopics] = useState(new Set()) // specIds being loaded
 
   const [setName, setSetName] = useState('')
+  const [defaultIncorrectOnly, setDefaultIncorrectOnly] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const [wholeSpecialties, setWholeSpecialties] = useState(new Set())
@@ -197,7 +198,8 @@ export default function CreateStudySet() {
         body: JSON.stringify({
           name: setName,
           items,
-          color: '#3b82f6' // default blue for now
+          color: '#3b82f6', // default blue for now
+          include_incorrect: defaultIncorrectOnly,
         })
       })
 
@@ -239,6 +241,20 @@ export default function CreateStudySet() {
             }}
             autoFocus
           />
+        </div>
+
+        <div className="form-group" style={{ marginTop: 16 }}>
+          <label className="create-set__checkbox-row" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontWeight: 600 }}>
+            <input
+              type="checkbox"
+              checked={defaultIncorrectOnly}
+              onChange={(e) => setDefaultIncorrectOnly(e.target.checked)}
+              style={{ marginTop: 4 }}
+            />
+            <span>
+              When you open practice from this set, turn on &quot;Include incorrectly answered&quot; by default (you can change it each session).
+            </span>
+          </label>
         </div>
 
         <div ref={contentAreaRef} className={`selection-area ${contentError ? 'selection-area--error' : ''}`}>

@@ -128,6 +128,8 @@ export default function Practice() {
   const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '25')
   const includeAttempted = params.get('include_attempted') === '1'
+  const includeIncorrect =
+    (params.get('include_incorrect') === '1' || params.get('incorrect_only') === '1') && !includeAttempted
 
   // Session state
   const [loading, setLoading] = useState(!isReviewMode) // Don't show loading in review mode
@@ -245,6 +247,7 @@ export default function Practice() {
     try {
       setLoading(true)
       let url = `${API_BASE}/qbank/practice/session?num_questions=${numQuestions}&include_attempted=${includeAttempted ? '1' : '0'}`
+      if (includeIncorrect) url += '&include_incorrect=1'
 
       if (studySetId) {
         url += `&study_set_id=${studySetId}`
@@ -286,9 +289,7 @@ export default function Practice() {
 
       if (!data.questions || data.questions.length === 0) {
         if (data.all_attempted) {
-          alert("You've attempted all questions in this set with \"New questions only.\" To continue practicing, use \"Include previously answered\" to practice with old questions.")
           const setupParams = new URLSearchParams()
-          setupParams.set('include_attempted', '1')
           if (studySetId) {
             setupParams.set('study_set_id', studySetId)
             if (params.get('study_set_name')) setupParams.set('study_set_name', params.get('study_set_name'))
@@ -296,6 +297,19 @@ export default function Practice() {
             setupParams.set('specialty_id', specialtyId)
             if (specialtyName) setupParams.set('specialty_name', specialtyName)
             if (topicIds) setupParams.set('topic_ids', topicIds)
+          }
+          if (data.incorrect_available > 0) {
+            const useMix = window.confirm(
+              `You have attempted every question here with "New questions only." Open setup to include unattempted and incorrectly answered questions together (${data.incorrect_available} incorrect available), or include all previous questions instead.`
+            )
+            if (useMix) {
+              setupParams.set('include_incorrect', '1')
+            } else {
+              setupParams.set('include_attempted', '1')
+            }
+          } else {
+            alert("You've attempted all questions in this set with \"New questions only.\" Use \"Include previously answered\" to keep practicing.")
+            setupParams.set('include_attempted', '1')
           }
           navigate(`/dashboard/question-bank/setup?${setupParams.toString()}`)
           return

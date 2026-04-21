@@ -53,7 +53,17 @@ function AnimatedCounter({ value, suffix = '', duration = 1000 }) {
 }
 
 function SpecialtyCard({ item }) {
-  const pct = item.total_questions > 0 ? Math.round((item.completed_questions / item.total_questions) * 100) : 0
+  const total = item.total_questions > 0 ? item.total_questions : 0
+  const completed = item.completed_questions ?? 0
+  const correct =
+    item.correct_questions != null
+      ? item.correct_questions
+      : total > 0 && item.accuracy_pct != null && completed > 0
+        ? Math.round((completed * Number(item.accuracy_pct)) / 100)
+        : 0
+  const incorrect = Math.max(0, completed - correct)
+  const correctPct = total > 0 ? (correct / total) * 100 : 0
+  const incorrectPct = total > 0 ? (incorrect / total) * 100 : 0
   const navigate = useNavigate()
   const initial = item.specialty_name?.charAt(0) || '•'
   const showImage = typeof item.icon_url === 'string' && item.icon_url.trim().length > 0
@@ -74,7 +84,10 @@ function SpecialtyCard({ item }) {
           </div>
         </div>
       </div>
-      <div className="qb-card__bar"><div className="qb-card__fill" style={{ width: `${pct}%` }} /></div>
+      <div className="qb-card__bar" aria-hidden>
+        <div className="qb-card__segment qb-card__segment--correct" style={{ width: `${correctPct}%` }} />
+        <div className="qb-card__segment qb-card__segment--incorrect" style={{ width: `${incorrectPct}%` }} />
+      </div>
       <div className="qb-card__metrics">
         <div><div className="qb-metric__label">Average Score</div><div className="qb-metric__value">{item.accuracy_pct ?? 0}%</div></div>
         <div><div className="qb-metric__label">Last Studied</div><div className="qb-metric__value">{item.last_studied ? new Date(item.last_studied).toLocaleString() : '—'}</div></div>

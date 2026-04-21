@@ -20,6 +20,12 @@ export default function PracticeSetup() {
   const [timerMinutes, setTimerMinutes] = useState(30)
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [includeAttempted, setIncludeAttempted] = useState(() => searchParams.get('include_attempted') === '1')
+  const [includeIncorrect, setIncludeIncorrect] = useState(() => {
+    return (
+      searchParams.get('include_incorrect') === '1' ||
+      searchParams.get('incorrect_only') === '1'
+    )
+  })
   const [studySetData, setStudySetData] = useState(null)
   const [specialtyAttemptedCount, setSpecialtyAttemptedCount] = useState(null)
   const [specialtyTotalQuestions, setSpecialtyTotalQuestions] = useState(null)
@@ -46,9 +52,17 @@ export default function PracticeSetup() {
       const data = await res.json()
       setStudySetData(data.set)
 
-      const totalAvailable = includeAttempted
-        ? (data.set.total_questions || 0)
-        : (data.set.remaining_questions ?? data.set.total_questions ?? 0)
+      const preferIncludeIncorrect =
+        searchParams.get('include_incorrect') === '1' ||
+        searchParams.get('incorrect_only') === '1' ||
+        data.set?.incorrect_only
+      if (data.set?.incorrect_only) setIncludeIncorrect(true)
+      const totalAvailable =
+        preferIncludeIncorrect && !includeAttempted
+          ? (data.set.remaining_questions ?? 0) + (data.set.incorrect_questions ?? 0)
+          : includeAttempted
+            ? (data.set.total_questions || 0)
+            : (data.set.remaining_questions ?? data.set.total_questions ?? 0)
       if (totalAvailable > 0) {
         setNumQuestions(Math.min(totalAvailable, 25))
       } else {
@@ -77,7 +91,19 @@ export default function PracticeSetup() {
       const allTopicIds = new Set(data.topics?.map(t => t.id) || [])
       setSelectedTopics(allTopicIds)
 
-      const totalAvailable = (data.topics || []).reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
+      const preferIncludeIncorrect =
+        searchParams.get('include_incorrect') === '1' || searchParams.get('incorrect_only') === '1'
+      if (preferIncludeIncorrect) setIncludeIncorrect(true)
+      const totalAvailable =
+        preferIncludeIncorrect && !includeAttempted
+          ? (data.topics || []).reduce(
+              (sum, t) => sum + (t.remaining_count || 0) + (t.incorrect_count || 0),
+              0
+            )
+          : (data.topics || []).reduce(
+              (sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)),
+              0
+            )
       if (totalAvailable > 0) {
         setNumQuestions(Math.min(totalAvailable, 25))
       } else {
@@ -103,7 +129,12 @@ export default function PracticeSetup() {
     // Update question count when topics change
     const newTotalAvailable = topics
       .filter(t => newSelected.has(t.id))
-      .reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
+      .reduce((sum, t) => {
+        if (includeIncorrect && !includeAttempted) {
+          return sum + (t.remaining_count || 0) + (t.incorrect_count || 0)
+        }
+        return sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0))
+      }, 0)
 
     if (newTotalAvailable === 0) {
       setNumQuestions(0)
@@ -128,6 +159,14 @@ export default function PracticeSetup() {
   }
 
   const getTotalQuestions = () => {
+    if (includeIncorrect && !includeAttempted) {
+      if (studySetId) {
+        return (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
+      }
+      return topics
+        .filter(t => selectedTopics.has(t.id))
+        .reduce((sum, t) => sum + (t.remaining_count || 0) + (t.incorrect_count || 0), 0)
+    }
     if (studySetId) {
       if (includeAttempted) {
         return studySetData?.total_questions || 0
@@ -156,6 +195,7 @@ export default function PracticeSetup() {
       timer_minutes: timerEnabled ? timerMinutes.toString() : '0',
       include_attempted: includeAttempted ? '1' : '0'
     })
+    if (includeIncorrect && !includeAttempted) params.set('include_incorrect', '1')
 
     if (studySetId) {
       params.append('study_set_id', studySetId)
@@ -235,6 +275,9 @@ export default function PracticeSetup() {
                         {typeof topic.attempted_count === 'number' ? (
                           <>
                             {topic.attempted_count}/{topic.question_count} done{topic.remaining_count !== undefined ? ` • ${topic.remaining_count} left` : ''}
+                            {typeof topic.incorrect_count === 'number' && topic.incorrect_count > 0
+                              ? ` • ${topic.incorrect_count} incorrect`
+                              : ''}
                           </>
                         ) : (
                           <>{topic.question_count} questions available</>
@@ -282,6 +325,7 @@ export default function PracticeSetup() {
                       <button className={`chip ${numQuestions === maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(maxQuestions)}>Max</button>
                     </div>
                   </div>
+                  {!includeIncorrect && (
                   <div className="setup__toggle-row" style={{ marginTop: 20 }}>
                     <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
                     <div className="setup__toggle-container">
@@ -292,6 +336,7 @@ export default function PracticeSetup() {
                         onChange={(e) => {
                           const next = e.target.checked
                           const oldMax = getTotalQuestions()
+                          if (next) setIncludeIncorrect(false)
                           setIncludeAttempted(next)
                           if (studySetId && studySetData) {
                             const newMax = next
@@ -319,6 +364,41 @@ export default function PracticeSetup() {
                     </div>
                     <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
                   </div>
+                  )}
+
+                  {!includeAttempted && (
+                  <div className="setup__toggle-row" style={{ marginTop: 20 }}>
+                    <label htmlFor="incorrect-toggle" className="setup__toggle-label">Include incorrectly answered</label>
+                    <div className="setup__toggle-container">
+                      <input
+                        type="checkbox"
+                        id="incorrect-toggle"
+                        checked={includeIncorrect}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                          setIncludeIncorrect(next)
+                          const newMax = next
+                            ? (studySetId
+                              ? (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
+                              : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0) + (t.incorrect_count || 0), 0))
+                            : (studySetId
+                              ? (studySetData?.remaining_questions ?? studySetData?.total_questions ?? 0)
+                              : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0), 0))
+                          if (newMax === 0) setNumQuestions(0)
+                          else setNumQuestions((n) => (n === 0 || n > newMax ? newMax : Math.min(n, newMax)))
+                        }}
+                        className="setup__toggle-input"
+                      />
+                      <label htmlFor="incorrect-toggle" className="setup__toggle-slider"></label>
+                    </div>
+                    <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeIncorrect ? 'On' : 'Off'}</span>
+                  </div>
+                  )}
+                  {includeIncorrect && !includeAttempted && (
+                    <p className="setup__section-subtitle" style={{ marginTop: 12, marginBottom: 0 }}>
+                      Unattempted questions are mixed with ones you have not yet answered correctly. If none are left unattempted, only incorrect questions are used.
+                    </p>
+                  )}
 
                 </div>
               </div>
