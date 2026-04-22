@@ -50,19 +50,38 @@ export default function PracticeSetup() {
       })
       if (!res.ok) throw new Error('Failed to load study set')
       const data = await res.json()
-      setStudySetData(data.set)
+      const set = data.set
+      setStudySetData(set)
 
-      const preferIncludeIncorrect =
-        searchParams.get('include_incorrect') === '1' ||
-        searchParams.get('incorrect_only') === '1' ||
-        data.set?.incorrect_only
-      if (data.set?.incorrect_only) setIncludeIncorrect(true)
+      const paramIncAtt = searchParams.get('include_attempted') === '1'
+      const paramIncInc =
+        searchParams.get('include_incorrect') === '1' || searchParams.get('incorrect_only') === '1'
+
+      let effectiveAttempted = false
+      let effectiveIncorrect = false
+      if (paramIncAtt || paramIncInc) {
+        effectiveAttempted = paramIncAtt
+        effectiveIncorrect = paramIncInc && !paramIncAtt
+      } else {
+        const scope = set?.practice_scope_default
+        if (scope === 'all_answered') {
+          effectiveAttempted = true
+          effectiveIncorrect = false
+        } else if (scope === 'incorrect_focus' || set?.incorrect_only) {
+          effectiveIncorrect = true
+          effectiveAttempted = false
+        }
+      }
+
+      setIncludeAttempted(effectiveAttempted)
+      setIncludeIncorrect(effectiveIncorrect)
+
       const totalAvailable =
-        preferIncludeIncorrect && !includeAttempted
-          ? (data.set.remaining_questions ?? 0) + (data.set.incorrect_questions ?? 0)
-          : includeAttempted
-            ? (data.set.total_questions || 0)
-            : (data.set.remaining_questions ?? data.set.total_questions ?? 0)
+        effectiveIncorrect && !effectiveAttempted
+          ? (set.remaining_questions ?? 0) + (set.incorrect_questions ?? 0)
+          : effectiveAttempted
+            ? (set.total_questions || 0)
+            : (set.remaining_questions ?? set.total_questions ?? 0)
       if (totalAvailable > 0) {
         setNumQuestions(Math.min(totalAvailable, 25))
       } else {
@@ -292,7 +311,11 @@ export default function PracticeSetup() {
 
           <div className="setup__section">
             <h2 className="setup__section-title">Question Settings</h2>
-            <p className="setup__section-subtitle">Customize your question experience</p>
+            <p className="setup__section-subtitle">
+              Choose which questions count toward this session. You can use one option or combine them: turn on{' '}
+              <strong>Include previously answered</strong> for full review (every question in scope), or leave it off and turn on{' '}
+              <strong>Include incorrectly answered</strong> to mix new questions with ones you still have not answered correctly.
+            </p>
 
             <div className="qs-grid">
               <div className="qs-col">
@@ -325,7 +348,6 @@ export default function PracticeSetup() {
                       <button className={`chip ${numQuestions === maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(maxQuestions)}>Max</button>
                     </div>
                   </div>
-                  {!includeIncorrect && (
                   <div className="setup__toggle-row" style={{ marginTop: 20 }}>
                     <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
                     <div className="setup__toggle-container">
@@ -341,7 +363,9 @@ export default function PracticeSetup() {
                           if (studySetId && studySetData) {
                             const newMax = next
                               ? (studySetData.total_questions || 0)
-                              : (studySetData.remaining_questions ?? studySetData.total_questions ?? 0)
+                              : includeIncorrect
+                                ? (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
+                                : (studySetData.remaining_questions ?? studySetData.total_questions ?? 0)
                             if (newMax === 0) {
                               setNumQuestions(0)
                             } else if (numQuestions === oldMax || numQuestions > newMax) {
@@ -350,7 +374,11 @@ export default function PracticeSetup() {
                           } else if (!studySetId) {
                             const newMax = topics
                               .filter(t => selectedTopics.has(t.id))
-                              .reduce((sum, t) => sum + (next ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
+                              .reduce((sum, t) => {
+                                if (next) return sum + (t.question_count || 0)
+                                if (includeIncorrect) return sum + (t.remaining_count || 0) + (t.incorrect_count || 0)
+                                return sum + (t.remaining_count || 0)
+                              }, 0)
                             if (newMax === 0) {
                               setNumQuestions(0)
                             } else if (numQuestions === oldMax || numQuestions > newMax) {
@@ -362,28 +390,31 @@ export default function PracticeSetup() {
                       />
                       <label htmlFor="include-toggle" className="setup__toggle-slider"></label>
                     </div>
-                    <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
+                    <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Full pool' : 'Off'}</span>
                   </div>
-                  )}
 
-                  {!includeAttempted && (
                   <div className="setup__toggle-row" style={{ marginTop: 20 }}>
-                    <label htmlFor="incorrect-toggle" className="setup__toggle-label">Include incorrectly answered</label>
+                    <label htmlFor="incorrect-toggle" className="setup__toggle-label">Include incorrectly answered (with new)</label>
                     <div className="setup__toggle-container">
                       <input
                         type="checkbox"
                         id="incorrect-toggle"
                         checked={includeIncorrect}
+                        disabled={includeAttempted}
                         onChange={(e) => {
                           const next = e.target.checked
                           setIncludeIncorrect(next)
-                          const newMax = next
+                          const newMax = includeAttempted
                             ? (studySetId
-                              ? (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
-                              : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0) + (t.incorrect_count || 0), 0))
-                            : (studySetId
-                              ? (studySetData?.remaining_questions ?? studySetData?.total_questions ?? 0)
-                              : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0), 0))
+                              ? (studySetData?.total_questions || 0)
+                              : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.question_count || 0), 0))
+                            : next
+                              ? (studySetId
+                                ? (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
+                                : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0) + (t.incorrect_count || 0), 0))
+                              : (studySetId
+                                ? (studySetData?.remaining_questions ?? studySetData?.total_questions ?? 0)
+                                : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0), 0))
                           if (newMax === 0) setNumQuestions(0)
                           else setNumQuestions((n) => (n === 0 || n > newMax ? newMax : Math.min(n, newMax)))
                         }}
@@ -393,6 +424,10 @@ export default function PracticeSetup() {
                     </div>
                     <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeIncorrect ? 'On' : 'Off'}</span>
                   </div>
+                  {includeAttempted && (
+                    <p className="setup__section-subtitle" style={{ marginTop: 12, marginBottom: 0 }}>
+                      Full pool is every question in this set or topic selection, including ones you already got right. Turn this off if you only want new and/or incorrect questions.
+                    </p>
                   )}
                   {includeIncorrect && !includeAttempted && (
                     <p className="setup__section-subtitle" style={{ marginTop: 12, marginBottom: 0 }}>

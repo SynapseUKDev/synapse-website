@@ -1,7 +1,49 @@
 /**
  * Highlight helpers for question stems: DOM-ordered text, whitespace boundaries,
- * and mapping visible (rendered) offsets back to markdown source indices.
+ * block-level splits (e.g. across <p> siblings), table cells, and mapping visible
+ * offsets back to markdown source indices. Shared by practice, group practice, and textbook.
  */
+
+/**
+ * True when `div` exists only to wrap a table (practice stems often use div > table).
+ * Such a div is ignored for highlight run boundaries so snapping/splitting matches table cells.
+ */
+export function isTableOnlyWrapperDiv(el) {
+  if (!el || el.tagName !== 'DIV') return false
+  const kids = el.children
+  if (kids.length !== 1) return false
+  return kids[0].tagName === 'TABLE'
+}
+
+function isBlockSplitElement(el) {
+  if (!el || el.nodeType !== Node.ELEMENT_NODE) return false
+  const tag = el.tagName
+  if (tag === 'P' || tag === 'LI' || tag === 'BLOCKQUOTE' || tag === 'CAPTION' || tag === 'PRE' || tag === 'FIGURE') {
+    return true
+  }
+  if (/^H[1-6]$/.test(tag)) return true
+  if (tag === 'DIV' && !isTableOnlyWrapperDiv(el)) return true
+  return false
+}
+
+/**
+ * Stable key for splitting highlights: one run per table cell, or per block-level
+ * slice outside cells (innermost p/heading/div/etc. under stem root).
+ */
+export function getHighlightRunKeyForTextNode(node, rootEl) {
+  if (!node || node.nodeType !== Node.TEXT_NODE || !rootEl) return '__invalid__'
+
+  const cell = node.parentElement?.closest?.('td, th')
+  if (cell && rootEl.contains(cell)) return cell
+
+  let el = node.parentElement
+  while (el && el !== rootEl) {
+    if (isBlockSplitElement(el)) return el
+    el = el.parentElement
+  }
+
+  return '__stem_root__'
+}
 
 /**
  * Text nodes in document order (same traversal as flat text / selection offsets).
@@ -29,16 +71,15 @@ export function getFlatTextFromStem(rootEl) {
 
 /**
  * Contiguous runs of text for highlight splitting: each `td` / `th` is its own run.
- * Non-table content is grouped in runs that break when leaving a cell (so text after
- * a table does not merge with text before it).
+ * Outside cells, runs break on block boundaries (e.g. consecutive `<p>` elements) so
+ * a selection snaps per block and never merges across elements. Table-only wrapper `div`s
+ * are transparent (see `isTableOnlyWrapperDiv`).
  */
 export function buildTextRunsForTableSplitFromTextNodes(textNodesOrdered, rootEl) {
   if (!rootEl || !textNodesOrdered?.length) return []
 
   const runs = []
   let pos = 0
-  let prevInCell = false
-  let outsideRunId = 0
   let current = null
 
   for (const node of textNodesOrdered) {
@@ -46,20 +87,7 @@ export function buildTextRunsForTableSplitFromTextNodes(textNodesOrdered, rootEl
     const len = text.length
     if (len === 0) continue
 
-    const cell = node.parentElement?.closest?.('td, th')
-    const inCell = !!(cell && rootEl.contains(cell))
-
-    let runKey
-    if (inCell) {
-      runKey = cell
-      prevInCell = true
-    } else {
-      if (prevInCell) {
-        outsideRunId += 1
-        prevInCell = false
-      }
-      runKey = `__outside__${outsideRunId}`
-    }
+    const runKey = getHighlightRunKeyForTextNode(node, rootEl)
 
     if (current && current.runKey === runKey) {
       current.globalEnd = pos + len
@@ -75,8 +103,9 @@ export function buildTextRunsForTableSplitFromTextNodes(textNodesOrdered, rootEl
 
 /**
  * Split a [rawStart, rawEnd) selection into one or more ranges when it crosses `td`/`th`
- * boundaries. Each segment is snapped to whitespace boundaries within that cell (or
- * outside-cell run) only — same rules as a single highlight, but never merges across cells.
+ * boundaries or block-level boundaries (`p`, headings, list items, non–table-only `div`, etc.).
+ * Each segment is snapped to whitespace boundaries within that run only (word-aligned, and
+ * run edges act as hard stops). Table-only wrapper `div > table` does not add an extra split.
  *
  * @param {string} flat - Must match concatenation of text nodes used for offsets (see getFlatTextFromStem).
  * @param {Text[]} [textNodesOverride] - Optional (e.g. textbook blocks that filter ignored nodes).

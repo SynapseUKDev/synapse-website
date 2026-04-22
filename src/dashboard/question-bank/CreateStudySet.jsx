@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authenticatedFetch, authHeaders } from '../../auth/token'
 import { LuChevronDown, LuChevronRight, LuX, LuSave, LuRefreshCw } from 'react-icons/lu'
@@ -27,7 +27,6 @@ export default function CreateStudySet() {
   const [loadingTopics, setLoadingTopics] = useState(new Set()) // specIds being loaded
 
   const [setName, setSetName] = useState('')
-  const [defaultIncorrectOnly, setDefaultIncorrectOnly] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const [wholeSpecialties, setWholeSpecialties] = useState(new Set())
@@ -39,6 +38,42 @@ export default function CreateStudySet() {
   const nameInputRef = useRef(null)
   const contentAreaRef = useRef(null)
 
+  const selectionStats = useMemo(() => {
+    let totalQuestions = 0
+    let totalRemaining = 0
+    let totalIncorrect = 0
+    const counted = new Set()
+
+    for (const specId of wholeSpecialties) {
+      const topics = topicsBySpec[specId] || []
+      for (const t of topics) {
+        counted.add(t.id)
+        totalQuestions += t.question_count || 0
+        totalRemaining += t.remaining_count ?? 0
+        totalIncorrect += t.incorrect_count ?? 0
+      }
+    }
+
+    for (const topicId of selectedTopics) {
+      if (counted.has(topicId)) continue
+      let t = null
+      for (const sid of Object.keys(topicsBySpec)) {
+        t = topicsBySpec[sid]?.find((x) => x.id === topicId)
+        if (t) break
+      }
+      if (!t) continue
+      totalQuestions += t.question_count || 0
+      totalRemaining += t.remaining_count ?? 0
+      totalIncorrect += t.incorrect_count ?? 0
+    }
+
+    // Ready when we have an array for each whole specialty (even []). Empty ≠ "still loading".
+    const needsTopicStats =
+      wholeSpecialties.size > 0 &&
+      [...wholeSpecialties].some((id) => !Array.isArray(topicsBySpec[id]))
+
+    return { totalQuestions, totalRemaining, totalIncorrect, needsTopicStats }
+  }, [wholeSpecialties, selectedTopics, topicsBySpec])
 
   const loadTopicsFor = async (specId) => {
     if (topicsBySpec[specId] || loadingTopics.has(specId)) return
@@ -49,9 +84,12 @@ export default function CreateStudySet() {
       if (res.ok) {
         const data = await res.json()
         setTopicsBySpec(prev => ({ ...prev, [specId]: data.topics || [] }))
+      } else {
+        setTopicsBySpec(prev => ({ ...prev, [specId]: [] }))
       }
     } catch (e) {
       console.error(e)
+      setTopicsBySpec(prev => ({ ...prev, [specId]: [] }))
     } finally {
       setLoadingTopics(prev => {
         const next = new Set(prev)
@@ -101,6 +139,7 @@ export default function CreateStudySet() {
     } else {
       // Select whole
       setWholeSpecialties(prev => new Set(prev).add(specId))
+      loadTopicsFor(specId)
       // We can clear individual selections for this spec as they are redundant
       if (topicsBySpec[specId]) {
         const tIds = new Set(topicsBySpec[specId].map(t => t.id))
@@ -180,6 +219,11 @@ export default function CreateStudySet() {
 
     if (hasError) return
 
+    if (selectionStats.needsTopicStats) {
+      alert('Still loading topic stats for the specialties you selected. Expand each specialty or wait a moment, then try again.')
+      return
+    }
+
     setSubmitting(true)
 
     const items = []
@@ -199,7 +243,8 @@ export default function CreateStudySet() {
           name: setName,
           items,
           color: '#3b82f6', // default blue for now
-          include_incorrect: defaultIncorrectOnly,
+          // Pool is always the full set; users choose new vs review vs incorrect on Practice Setup before starting.
+          practice_scope_default: 'unattempted',
         })
       })
 
@@ -241,20 +286,6 @@ export default function CreateStudySet() {
             }}
             autoFocus
           />
-        </div>
-
-        <div className="form-group" style={{ marginTop: 16 }}>
-          <label className="create-set__checkbox-row" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontWeight: 600 }}>
-            <input
-              type="checkbox"
-              checked={defaultIncorrectOnly}
-              onChange={(e) => setDefaultIncorrectOnly(e.target.checked)}
-              style={{ marginTop: 4 }}
-            />
-            <span>
-              When you open practice from this set, turn on &quot;Include incorrectly answered&quot; by default (you can change it each session).
-            </span>
-          </label>
         </div>
 
         <div ref={contentAreaRef} className={`selection-area ${contentError ? 'selection-area--error' : ''}`}>
@@ -314,7 +345,10 @@ export default function CreateStudySet() {
                                   onChange={() => toggleTopic(spec.specialty_id, topic.id)}
                                 />
                                 <span className="topic-name">{topic.name}</span>
-                                <span className="topic-count">{topic.remaining_count ?? topic.question_count} qs</span>
+                                <span className="topic-count">
+                                  {topic.question_count} qs
+                                  {topic.remaining_count === 0 ? ' · done' : ''}
+                                </span>
                               </label>
                             )
                           })}
@@ -327,6 +361,15 @@ export default function CreateStudySet() {
             })}
           </div>
         </div>
+
+        {selectionStats.totalQuestions > 0 &&
+          selectionStats.totalRemaining === 0 &&
+          !selectionStats.needsTopicStats && (
+            <p className="form-group" style={{ marginTop: 24, marginBottom: 0, color: '#64748b', fontSize: 15, lineHeight: 1.5 }}>
+              You&apos;ve already attempted questions in this selection. After you create the set, open{' '}
+              <strong>Practice Setup</strong> to choose new questions only, full review (all questions), or to mix in ones you got wrong.
+            </p>
+          )}
       </div>
 
       <div className="create-set__footer">
@@ -336,7 +379,7 @@ export default function CreateStudySet() {
         <button
           className="btn btn--primary btn--icon"
           onClick={handleCreate}
-          disabled={submitting}
+          disabled={submitting || selectionStats.needsTopicStats}
         >
           {submitting ? 'Creating...' : 'Create Study Set'} <LuSave />
         </button>

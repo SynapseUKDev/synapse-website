@@ -68,12 +68,15 @@ export default function GroupStudySetup() {
 
   useEffect(() => {
     if (!studySetData || mode === 'join') return
-    const max = includeIncorrect
-      ? (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
-      : (studySetData.total_questions || 0)
+    const max =
+      includeIncorrect && !includeAttempted
+        ? (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
+        : includeAttempted
+          ? (studySetData.total_questions || 0)
+          : (studySetData.remaining_questions ?? studySetData.total_questions ?? 0)
     if (max === 0) setNumQuestions(0)
     else setNumQuestions((n) => (n < 1 || n > max ? Math.min(25, max) : Math.min(n, max)))
-  }, [includeIncorrect, studySetData, mode])
+  }, [includeIncorrect, includeAttempted, studySetData, mode])
 
   const connectSocket = () => {
     // Get user info from local storage or context
@@ -151,10 +154,38 @@ export default function GroupStudySetup() {
       })
       if (!res.ok) throw new Error('Failed to load study set')
       const data = await res.json()
-      setStudySetData(data.set)
-      if (data.set?.incorrect_only) setIncludeIncorrect(true)
+      const set = data.set
+      setStudySetData(set)
 
-      const totalAvailable = data.set.total_questions || 0
+      const paramIncAtt = searchParams.get('include_attempted') === '1'
+      const paramIncInc =
+        searchParams.get('include_incorrect') === '1' || searchParams.get('incorrect_only') === '1'
+
+      let effectiveAttempted = false
+      let effectiveIncorrect = false
+      if (paramIncAtt || paramIncInc) {
+        effectiveAttempted = paramIncAtt
+        effectiveIncorrect = paramIncInc && !paramIncAtt
+      } else {
+        const scope = set?.practice_scope_default
+        if (scope === 'all_answered') {
+          effectiveAttempted = true
+          effectiveIncorrect = false
+        } else if (scope === 'incorrect_focus' || set?.incorrect_only) {
+          effectiveIncorrect = true
+          effectiveAttempted = false
+        }
+      }
+
+      setIncludeAttempted(effectiveAttempted)
+      setIncludeIncorrect(effectiveIncorrect)
+
+      const totalAvailable =
+        effectiveIncorrect && !effectiveAttempted
+          ? (set.remaining_questions ?? 0) + (set.incorrect_questions ?? 0)
+          : effectiveAttempted
+            ? (set.total_questions || 0)
+            : (set.remaining_questions ?? set.total_questions ?? 0)
       if (totalAvailable > 0) {
         setNumQuestions(Math.min(totalAvailable, 25))
       } else {
@@ -260,9 +291,12 @@ export default function GroupStudySetup() {
     return <LoadingScreen message="Loading group study setup..." />
   }
 
-  const totalAvailable = includeIncorrect
-    ? (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
-    : (studySetData?.total_questions || 0)
+  const totalAvailable =
+    includeIncorrect && !includeAttempted
+      ? (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
+      : includeAttempted
+        ? (studySetData?.total_questions || 0)
+        : (studySetData?.remaining_questions ?? studySetData?.total_questions ?? 0)
   const maxQuestions = totalAvailable
   const stepperMin = totalAvailable > 0 ? 1 : 0
   const isDisabled = totalAvailable === 0
