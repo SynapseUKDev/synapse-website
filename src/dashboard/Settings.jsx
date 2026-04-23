@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { authHeaders } from '../auth/token'
-import { LuUser, LuCreditCard, LuShield, LuCheck, LuX, LuTarget } from 'react-icons/lu'
+import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon } from 'react-icons/lu'
+import { getStoredPreference, setPreference } from '../theme'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import LoadingScreen from '../components/loading/LoadingScreen'
@@ -19,6 +20,7 @@ export default function Settings() {
   const [savingTargets, setSavingTargets] = useState(false)
   const [targetMessage, setTargetMessage] = useState({ type: '', text: '' })
   const [portalLoading, setPortalLoading] = useState(false)
+  const [appearance, setAppearance] = useState(() => getStoredPreference())
 
   const fetchData = useCallback(async () => {
     try {
@@ -163,6 +165,39 @@ export default function Settings() {
       <h1 className="qb__title">Settings</h1>
       <p className="qb__subtitle">Manage your account and subscription</p>
 
+      <div className="qb-card" style={{ marginTop: 16 }}>
+        <div className="qb-card__head">
+          <div className="qb-card__titlewrap">
+            <div className="qb-card__icon" style={{ background: 'var(--surface-tint-blue)', border: '1px solid var(--syn-border)', color: '#3b82f6', borderRadius: '12px' }}>
+              <LuMoon size={20} />
+            </div>
+            <div>
+              <div className="qb-card__title">Appearance</div>
+              <div className="qb-card__meta" style={{ marginTop: 4 }}>Light or dark</div>
+            </div>
+          </div>
+        </div>
+        <div className="settings-appearance__options" role="group" aria-label="Color theme">
+          {[
+            { id: 'light', label: 'Light', Icon: LuSun },
+            { id: 'dark', label: 'Dark', Icon: LuMoon },
+          ].map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={`settings-appearance__btn ${appearance === id ? 'is-active' : ''}`}
+              onClick={() => {
+                setPreference(id)
+                setAppearance(id)
+              }}
+            >
+              <Icon size={18} aria-hidden />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="settings__grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 16 }}>
         {/* Profile card */}
         <div className="qb-card">
@@ -183,8 +218,8 @@ export default function Settings() {
                 type="email"
                 value={user?.email || ''}
                 disabled
-                className="db-input"
-                style={{ width: '100%', background: '#f1f5f9', cursor: 'not-allowed' }}
+                className="db-input settings__input--disabled"
+                style={{ width: '100%', cursor: 'not-allowed', opacity: 0.92 }}
               />
               <label className="qb__subtitle" style={{ display: 'block', marginTop: 12, marginBottom: 6 }}>Username</label>
               <input

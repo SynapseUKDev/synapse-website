@@ -5,9 +5,11 @@ import '../practice/Practice.css'
 
 const CATEGORY_OPTIONS = [
   { value: '', label: 'Select category' },
-  { value: 'typo', label: 'Typo' },
-  { value: 'wrong_answer', label: 'Wrong answer' },
-  { value: 'unclear', label: 'Unclear' },
+  { value: 'typo', label: 'Typo or grammar' },
+  { value: 'unclear_content', label: 'Unclear or hard to follow' },
+  { value: 'factual_error', label: 'Incorrect or outdated information' },
+  { value: 'broken_image_or_link', label: 'Broken image, table, or link' },
+  { value: 'formatting', label: 'Layout or formatting' },
   { value: 'other', label: 'Other' },
 ]
 

@@ -88,6 +88,9 @@ function SpecialtyCard({ item }) {
         <div className="qb-card__segment qb-card__segment--correct" style={{ width: `${correctPct}%` }} />
         <div className="qb-card__segment qb-card__segment--incorrect" style={{ width: `${incorrectPct}%` }} />
       </div>
+      <div className="qb-card__meta" style={{ marginTop: -12, marginBottom: 18 }}>
+        Correct: <strong>{correct}</strong> • Incorrect: <strong>{incorrect}</strong>
+      </div>
       <div className="qb-card__metrics">
         <div><div className="qb-metric__label">Average Score</div><div className="qb-metric__value">{item.accuracy_pct ?? 0}%</div></div>
         <div><div className="qb-metric__label">Last Studied</div><div className="qb-metric__value">{item.last_studied ? new Date(item.last_studied).toLocaleString() : '—'}</div></div>
@@ -180,7 +183,7 @@ export default function QuestionBank() {
         </div>
         <div className="qb-stat qb-stat--interactive">
           <div className="qb-stat__top">
-            <div className="qb-stat__title">Questions Answered</div>
+            <div className="qb-stat__title">Questions Attempted</div>
             <div className="qb-stat__icon qb-stat__icon--questions">
               <LuListCheck size={20} />
             </div>
@@ -188,7 +191,7 @@ export default function QuestionBank() {
           <div className="qb-stat__value">
             <AnimatedCounter value={summary?.total_answered ?? 0} duration={1500} />
           </div>
-          <div className="qb-stat__sub">Across all specialties</div>
+          <div className="qb-stat__sub">All attempts across specialties (same as leaderboard)</div>
         </div>
         <div className="qb-stat qb-stat--interactive">
           <div className="qb-stat__top">
