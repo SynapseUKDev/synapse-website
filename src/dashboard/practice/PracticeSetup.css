@@ -103,7 +103,7 @@
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--syn-muted);
   cursor: pointer;
   transition: all 0.2s;
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
@@ -272,7 +272,7 @@
   cursor: pointer;
   font-weight: 700;
   font-size: 14px;
-  color: #334155;
+  color: var(--syn-muted);
   font-family: 'Urbanist', ui-sans-serif, system-ui;
 }
 
@@ -375,7 +375,7 @@
 .setup__slider-label-left,
 .setup__slider-label-right {
   font-size: 14px;
-  color: #64748b;
+  color: var(--syn-muted);
   font-weight: 600;
 }
 
@@ -393,7 +393,7 @@
 }
 
 .setup__timer-inline.is-off {
-  color: #9ca3af;
+  color: var(--dm-outline);
   font-weight: 600;
 }
 
@@ -456,7 +456,7 @@
 .setup__checkbox {
   width: 18px;
   height: 18px;
-  accent-color: #0b1637;
+  accent-color: var(--dm-primary-container);
   margin-right: 8px;
 }
 

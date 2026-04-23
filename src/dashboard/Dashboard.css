@@ -104,13 +104,13 @@
 .db__grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
 .db-card { background: var(--surface-card); border: 1px solid var(--syn-border); border-radius: 16px; padding: 18px; }
 .db-card__top { display: flex; justify-content: space-between; align-items: center; }
-.db-card__title { color: #0b1637; font-weight: 800; font-size: 14px; }
+.db-card__title { color: var(--syn-navy-700); font-weight: 800; font-size: 14px; }
 .db-card__icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; border: 1px solid var(--syn-border); }
 .db-card__icon--orange { background: var(--surface-tint-gold); color: #a15d00; border-color: #ffe7cc; }
 .db-card__icon--green { background: #ecfdf5; color: #10b981; border-color: #a7f3d0; }
 .db-card__icon--blue { background: var(--surface-tint-cyan); color: #0ea5b5; border-color: #b6f6fc; }
 .db-card__value { margin-top: 8px; font-size: 28px; font-weight: 800; color: var(--syn-navy-700); }
-.db-card__sub { color: #8da2bf; font-size: 13px; margin-top: 4px; }
+.db-card__sub { color: var(--syn-muted); font-size: 13px; margin-top: 4px; }
 .db-progress { margin-top: 8px; height: 10px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
 .db-progress__fill { height: 100%; background: var(--syn-cyan); }
 
@@ -814,7 +814,7 @@
 
 .qb-stat__action--cancel {
   background: #f1f5f9;
-  color: #64748b;
+  color: var(--syn-muted);
 }
 
 .qb-stat__action--cancel:hover {

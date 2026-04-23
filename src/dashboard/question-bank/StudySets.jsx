@@ -102,7 +102,7 @@ export default function StudySets() {
 
       {/* Study Sets Section */}
       <div className="qb__section-header" style={{ marginTop: 32, marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 className="qb__section-title" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#1f2937' }}>My Study Sets</h2>
+        <h2 className="qb__section-title" style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>My Study Sets</h2>
         <button
           className="qb-btn qb-btn--sm"
           style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}

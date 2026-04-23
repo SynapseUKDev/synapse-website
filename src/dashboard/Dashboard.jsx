@@ -860,7 +860,7 @@ function renderQuestionsChart(weekDayStats) {
         return (
           <g key={tick}>
             <line x1={pad.left} y1={y} x2={pad.left - 4} y2={y} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="#64748b" textAnchor="end">{tick}</text>
+            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="var(--syn-muted)" textAnchor="end">{tick}</text>
           </g>
         )
       })}
@@ -870,7 +870,7 @@ function renderQuestionsChart(weekDayStats) {
         return (
           <g key={i}>
             <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={x} y={h - 6} fontSize={9} fill="#64748b" textAnchor="middle">{label}</text>
+            <text x={x} y={h - 6} fontSize={9} fill="var(--syn-muted)" textAnchor="middle">{label}</text>
           </g>
         )
       })}
@@ -928,7 +928,7 @@ function renderAccuracyChartByWeekday(weekDayStats) {
         return (
           <g key={tick}>
             <line x1={pad.left} y1={y} x2={pad.left - 4} y2={y} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="#64748b" textAnchor="end">{tick}%</text>
+            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="var(--syn-muted)" textAnchor="end">{tick}%</text>
           </g>
         )
       })}
@@ -938,7 +938,7 @@ function renderAccuracyChartByWeekday(weekDayStats) {
         return (
           <g key={i}>
             <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={x} y={h - 6} fontSize={9} fill="#64748b" textAnchor="middle">{label}</text>
+            <text x={x} y={h - 6} fontSize={9} fill="var(--syn-muted)" textAnchor="middle">{label}</text>
           </g>
         )
       })}
@@ -996,7 +996,7 @@ function renderTimeChartByWeekday(weekDayStats) {
         return (
           <g key={tick}>
             <line x1={pad.left} y1={y} x2={pad.left - 4} y2={y} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="#64748b" textAnchor="end">{tick}s</text>
+            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="var(--syn-muted)" textAnchor="end">{tick}s</text>
           </g>
         )
       })}
@@ -1006,7 +1006,7 @@ function renderTimeChartByWeekday(weekDayStats) {
         return (
           <g key={i}>
             <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={x} y={h - 6} fontSize={9} fill="#64748b" textAnchor="middle">{label}</text>
+            <text x={x} y={h - 6} fontSize={9} fill="var(--syn-muted)" textAnchor="middle">{label}</text>
           </g>
         )
       })}
@@ -1063,7 +1063,7 @@ function renderAccuracyChart(days) {
         return (
           <g key={tick}>
             <line x1={pad.left} y1={y} x2={pad.left - 4} y2={y} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="#64748b" textAnchor="end">{tick}</text>
+            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="var(--syn-muted)" textAnchor="end">{tick}</text>
           </g>
         )
       })}
@@ -1073,7 +1073,7 @@ function renderAccuracyChart(days) {
         return (
           <g key={i}>
             <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={x} y={h - 6} fontSize={9} fill="#64748b" textAnchor="middle">{label}</text>
+            <text x={x} y={h - 6} fontSize={9} fill="var(--syn-muted)" textAnchor="middle">{label}</text>
           </g>
         )
       })}
@@ -1130,7 +1130,7 @@ function renderTimeChart(days) {
         return (
           <g key={tick}>
             <line x1={pad.left} y1={y} x2={pad.left - 4} y2={y} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="#64748b" textAnchor="end">{tick}s</text>
+            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="var(--syn-muted)" textAnchor="end">{tick}s</text>
           </g>
         )
       })}
@@ -1140,7 +1140,7 @@ function renderTimeChart(days) {
         return (
           <g key={i}>
             <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={x} y={h - 6} fontSize={9} fill="#64748b" textAnchor="middle">{label}</text>
+            <text x={x} y={h - 6} fontSize={9} fill="var(--syn-muted)" textAnchor="middle">{label}</text>
           </g>
         )
       })}
@@ -1163,7 +1163,7 @@ function renderAccuracyChartByTopic(topicCards) {
   if (topicCards.length === 0) {
     return (
       <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Accuracy by topic">
-        <text x={w / 2} y={h / 2} fontSize={13} fill="#64748b" textAnchor="middle">Answer questions to see accuracy by topic</text>
+        <text x={w / 2} y={h / 2} fontSize={13} fill="var(--syn-muted)" textAnchor="middle">Answer questions to see accuracy by topic</text>
       </svg>
     )
   }
@@ -1210,7 +1210,7 @@ function renderAccuracyChartByTopic(topicCards) {
         return (
           <g key={tick}>
             <line x1={pad.left} y1={y} x2={pad.left - 4} y2={y} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="#64748b" textAnchor="end">{tick}%</text>
+            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="var(--syn-muted)" textAnchor="end">{tick}%</text>
           </g>
         )
       })}
@@ -1220,7 +1220,7 @@ function renderAccuracyChartByTopic(topicCards) {
         return (
           <g key={t.topic_id || i}>
             <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={x} y={h - 8} fontSize={8} fill="#64748b" textAnchor="middle">{label}</text>
+            <text x={x} y={h - 8} fontSize={8} fill="var(--syn-muted)" textAnchor="middle">{label}</text>
           </g>
         )
       })}
@@ -1238,7 +1238,7 @@ function renderTimeChartByTopic(topicCards) {
   if (topicCards.length === 0) {
     return (
       <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Time by topic">
-        <text x={w / 2} y={h / 2} fontSize={13} fill="#64748b" textAnchor="middle">Answer questions to see time by topic</text>
+        <text x={w / 2} y={h / 2} fontSize={13} fill="var(--syn-muted)" textAnchor="middle">Answer questions to see time by topic</text>
       </svg>
     )
   }
@@ -1285,7 +1285,7 @@ function renderTimeChartByTopic(topicCards) {
         return (
           <g key={tick}>
             <line x1={pad.left} y1={y} x2={pad.left - 4} y2={y} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="#64748b" textAnchor="end">{tick}s</text>
+            <text x={pad.left - 6} y={y + 3} fontSize={9} fill="var(--syn-muted)" textAnchor="end">{tick}s</text>
           </g>
         )
       })}
@@ -1295,7 +1295,7 @@ function renderTimeChartByTopic(topicCards) {
         return (
           <g key={t.topic_id || i}>
             <line x1={x} y1={baselineY} x2={x} y2={baselineY + 4} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={x} y={h - 8} fontSize={8} fill="#64748b" textAnchor="middle">{label}</text>
+            <text x={x} y={h - 8} fontSize={8} fill="var(--syn-muted)" textAnchor="middle">{label}</text>
           </g>
         )
       })}
@@ -1345,20 +1345,20 @@ function renderTrendChart(days) {
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" height="100%" role="img" aria-label="Performance trend chart">
-      <rect x="0" y="0" width={width} height={height} fill="#fff" rx="12" />
+      <rect x="0" y="0" width={width} height={height} fill="var(--surface-card)" rx="12" />
       {/* grid */}
       {accTicks.map((t, i) => {
         const y = padding.top + (1 - (t / accMax)) * innerH
-        return <line key={`g-${i}`} x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#eef2f7" />
+        return <line key={`g-${i}`} x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="var(--syn-border)" />
       })}
       {/* axes labels */}
       {xTicks.map((i) => {
         const x = padding.left + i * xStep
-        return <text key={`xt-${i}`} x={x} y={height - 6} textAnchor="middle" fontSize="11" fill="#64748b">{i === 0 ? 'Day 1' : i === days.length - 1 ? `Day ${days.length}` : `Day ${i + 1}`}</text>
+        return <text key={`xt-${i}`} x={x} y={height - 6} textAnchor="middle" fontSize="11" fill="var(--syn-muted)">{i === 0 ? 'Day 1' : i === days.length - 1 ? `Day ${days.length}` : `Day ${i + 1}`}</text>
       })}
       {accTicks.map((t) => {
         const y = padding.top + (1 - (t / accMax)) * innerH
-        return <text key={`yt-a-${t}`} x={6} y={y + 3} fontSize="11" fill="#64748b">{t}</text>
+        return <text key={`yt-a-${t}`} x={6} y={y + 3} fontSize="11" fill="var(--syn-muted)">{t}</text>
       })}
       {/* paths */}
       {timePath && <path d={timePath} fill="none" stroke="#16a34a" strokeWidth="2.25" />}
@@ -1366,11 +1366,11 @@ function renderTrendChart(days) {
       {/* legends */}
       <g transform={`translate(${width - padding.right - 160}, ${padding.top + 4})`}>
         <circle cx="6" cy="6" r="4" fill="#3b82f6" />
-        <text x="16" y="9" fontSize="12" fill="#0b1637">Accuracy (%)</text>
+        <text x="16" y="9" fontSize="12" fill="var(--syn-navy-700)">Accuracy (%)</text>
       </g>
       <g transform={`translate(${width - padding.right - 160}, ${padding.top + 22})`}>
         <circle cx="6" cy="6" r="4" fill="#16a34a" />
-        <text x="16" y="9" fontSize="12" fill="#0b1637">Avg Time (s)</text>
+        <text x="16" y="9" fontSize="12" fill="var(--syn-navy-700)">Avg Time (s)</text>
       </g>
     </svg>
   )

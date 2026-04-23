@@ -191,7 +191,7 @@ export default function QuestionBank() {
           <div className="qb-stat__value">
             <AnimatedCounter value={summary?.total_answered ?? 0} duration={1500} />
           </div>
-          <div className="qb-stat__sub">All attempts across specialties (same as leaderboard)</div>
+          <div className="qb-stat__sub">All attempts across specialties</div>
         </div>
         <div className="qb-stat qb-stat--interactive">
           <div className="qb-stat__top">
@@ -267,7 +267,7 @@ export default function QuestionBank() {
         </div>
       </div>
 
-      <h2 className="qb__section-title" style={{ fontSize: 20, fontWeight: 700, marginTop: 32, marginBottom: 16, color: '#1f2937' }}>Browse by Specialty</h2>
+      <h2 className="qb__section-title" style={{ fontSize: 20, fontWeight: 700, marginTop: 32, marginBottom: 16 }}>Browse by Specialty</h2>
 
       {/* Search bar */}
       <div className="qb-search">

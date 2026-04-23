@@ -63,3 +63,27 @@
     transform: rotate(360deg);
   }
 }
+
+/* Full-screen and inline loaders in dark mode */
+html[data-theme="dark"] .loading {
+  background: var(--dm-background);
+}
+
+html[data-theme="dark"] .loading--inline {
+  /* Parent sets surface; keep transparent */
+  background: transparent;
+}
+
+html[data-theme="dark"] .loading__logo-wrap {
+  background: var(--dm-surface-container-high);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .loading__spinner {
+  border-color: var(--dm-outline-variant);
+  border-top-color: var(--dm-primary);
+}
+
+html[data-theme="dark"] .loading__message {
+  color: var(--dm-on-surface);
+}

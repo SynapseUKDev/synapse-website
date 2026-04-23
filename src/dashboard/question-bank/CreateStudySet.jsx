@@ -365,7 +365,7 @@ export default function CreateStudySet() {
         {selectionStats.totalQuestions > 0 &&
           selectionStats.totalRemaining === 0 &&
           !selectionStats.needsTopicStats && (
-            <p className="form-group" style={{ marginTop: 24, marginBottom: 0, color: '#64748b', fontSize: 15, lineHeight: 1.5 }}>
+            <p className="form-group" style={{ marginTop: 24, marginBottom: 0, color: 'var(--syn-muted)', fontSize: 15, lineHeight: 1.5 }}>
               You&apos;ve already attempted questions in this selection. After you create the set, open{' '}
               <strong>Practice Setup</strong> to choose new questions only, full review (all questions), or to mix in ones you got wrong.
             </p>
