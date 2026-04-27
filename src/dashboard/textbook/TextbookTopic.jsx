@@ -5,7 +5,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
-import { splitFlatRangeByTableCellsAndSnap } from '../../utils/questionStemHighlight'
+import { reconcileSelectionRangeToFlat, splitFlatRangeByTableCellsAndSnap } from '../../utils/questionStemHighlight'
 
 // ---- Inline highlight injection into HTML ----
 
@@ -80,8 +80,9 @@ function injectHighlightsIntoHtml(html, highlights) {
     const id = String(h.id || '').replace(/"/g, '&quot;')
     const hasNote = h.note && h.note.trim()
     const noteAttr = hasNote ? ` data-hl-note="1"` : ''
-    const openTag = `<mark class="tb-user-mark tb-user-mark--${color}" data-hl-id="${id}"${noteAttr}>`
-    const closeTag = '</mark>'
+    const openTag = `<mark class="hl-mark hl-mark--${color}${hasNote ? ' hl-mark--has-note' : ''} tb-user-mark" data-hl-id="${id}" style="cursor:pointer;"${noteAttr}>`
+    const deleteBtn = `<button type="button" class="hl-mark__delete" data-tb-ignore="true" data-hl-id="${id}" title="Delete highlight">&times;</button>`
+    const closeTag = `${deleteBtn}</mark>`
     for (const seg of segments) {
       const segStart = Math.max(seg.textStart, offsets.start)
       const segEnd = Math.min(seg.textEnd, offsets.end)
@@ -129,27 +130,170 @@ function walkTextNodes(root) {
   return nodes
 }
 
+/**
+ * Map a (container, offset) range boundary to a single index in the concatenation of
+ * `textNodes`. Handles element boundaries, not just text nodes.
+ */
+function boundaryToFlatOffset(container, offset, textNodes) {
+  if (!container) return null
+  if (container.nodeType === Node.TEXT_NODE) {
+    let acc = 0
+    for (const tn of textNodes) {
+      if (tn === container) {
+        const L = (tn.nodeValue || '').length
+        if (offset < 0 || offset > L) return null
+        return acc + offset
+      }
+      acc += (tn.nodeValue || '').length
+    }
+    return null
+  }
+  const r = document.createRange()
+  try {
+    r.setStart(container, offset)
+    r.collapse(true)
+  } catch (e) {
+    return null
+  }
+  let acc = 0
+  for (const tn of textNodes) {
+    const L = (tn.nodeValue || '').length
+    for (let i = 0; i <= L; i++) {
+      try {
+        if (r.comparePoint(tn, i) === 0) {
+          return acc + i
+        }
+      } catch (err) {
+        // not comparable; try next
+      }
+    }
+    acc += L
+  }
+  return null
+}
+
+function nbs(s) {
+  return (s == null ? '' : String(s)).replace(/\u00a0/g, ' ')
+}
+
 function computeSelectionOffsets(blockEl, range) {
   const nodes = walkTextNodes(blockEl)
   const fullText = nodes.map(n => n.nodeValue).join('')
 
-  const getAbsOffset = (container, offset) => {
-    if (container?.nodeType === Node.TEXT_NODE) {
-      let cur = 0
-      for (const n of nodes) {
-        if (n === container) return cur + offset
-        cur += n.nodeValue.length
-      }
-      return null
-    }
-    return null
+  const qRaw = range.toString()
+  let start = boundaryToFlatOffset(range.startContainer, range.startOffset, nodes)
+  let end = boundaryToFlatOffset(range.endContainer, range.endOffset, nodes)
+  const nQ = nbs(qRaw)
+
+  if (start == null && end != null && nQ.length > 0) {
+    const a = end - qRaw.length
+    if (a >= 0 && nbs(fullText.slice(a, end)) === nQ) start = a
   }
-  const start = getAbsOffset(range.startContainer, range.startOffset)
-  const end = getAbsOffset(range.endContainer, range.endOffset)
-  const quote = range.toString()
+  if (end == null && start != null && nQ.length > 0) {
+    const b = start + qRaw.length
+    if (b <= fullText.length && nbs(fullText.slice(start, b)) === nQ) end = b
+  }
+
+  if (start == null && end == null && nQ.length > 0) {
+    const flat = nbs(fullText)
+    let idx = fullText.indexOf(qRaw)
+    if (idx === -1) idx = flat.indexOf(nQ)
+    if (idx !== -1) {
+      const len = qRaw.length
+      if (idx + len <= fullText.length) {
+        start = idx
+        end = idx + len
+      }
+    }
+  }
+  if (start == null) start = 0
+  if (end == null) {
+    if (nQ.length > 0) {
+      const b = start + qRaw.length
+      if (b <= fullText.length && nbs(fullText.slice(start, b)) === nQ) {
+        end = b
+      } else {
+        const flat = nbs(fullText)
+        const idx = flat.indexOf(nQ, start)
+        if (idx !== -1) {
+          start = idx
+          end = idx + qRaw.length
+        } else {
+          end = Math.min(fullText.length, start + qRaw.length)
+        }
+      }
+    } else {
+      end = start
+    }
+  }
+  if (end < start) {
+    const t = start
+    start = end
+    end = t
+  }
+
+  const quote = qRaw
   const prefix = start != null ? fullText.slice(Math.max(0, start - 30), start) : ''
   const suffix = end != null ? fullText.slice(end, Math.min(fullText.length, end + 30)) : ''
-  return { start: start ?? 0, end: end ?? quote.length, quote, prefix, suffix, fullText, textNodes: nodes }
+  return { start, end, quote, prefix, suffix, fullText, textNodes: nodes }
+}
+
+/** Join split ranges that are only broken at element boundaries (no characters between), not bold/italic–specific. */
+function mergeContiguousSplitRanges(ranges) {
+  const sorted = ranges
+    .filter((r) => r && r.end > r.start)
+    .sort((a, b) => a.start - b.start || a.end - b.end)
+  if (sorted.length <= 1) return sorted
+  const out = [sorted[0]]
+  for (let k = 1; k < sorted.length; k++) {
+    const r = sorted[k]
+    const last = out[out.length - 1]
+    if (r.start < last.end) {
+      last.end = Math.max(last.end, r.end)
+      continue
+    }
+    if (r.start === last.end) last.end = r.end
+    else out.push(r)
+  }
+  return out
+}
+
+/**
+ * Renders pre-built HTML (with injectHighlightsIntoHtml) and delegates clicks to match React <mark> behaviour.
+ */
+/** Clicks on &times; often hit a TextNode; TextNode has no .closest. */
+function elementFromEventTarget(t) {
+  if (!t) return null
+  if (t.nodeType === Node.ELEMENT_NODE) return t
+  if (t.nodeType === Node.TEXT_NODE) return t.parentElement
+  return null
+}
+
+function InjectedTbMd({ html, highlights, onHighlightClick, onDeleteHighlight }) {
+  const onClick = useCallback(
+    (e) => {
+      const el = elementFromEventTarget(e.target)
+      const del = el?.closest?.('button.hl-mark__delete')
+      if (del) {
+        e.preventDefault()
+        e.stopPropagation()
+        const hid = del.getAttribute('data-hl-id')
+        if (hid != null && hid !== '') onDeleteHighlight(hid)
+        return
+      }
+      const mark = el?.closest?.('mark.tb-user-mark')
+      if (mark) {
+        e.preventDefault()
+        e.stopPropagation()
+        const hid = mark.getAttribute('data-hl-id')
+        const hl = highlights.find((h) => String(h.id) === String(hid))
+        if (hl) onHighlightClick(hl, mark.getBoundingClientRect())
+      }
+    },
+    [highlights, onDeleteHighlight, onHighlightClick]
+  )
+
+  return <div className="tb-md" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />
 }
 
 function AnchorNav({ sections, hasReferences }) {
@@ -231,8 +375,13 @@ function ImageCarousel({ images }) {
 }
 
 function RenderBlockContent({ content, highlights = [], query = '', onHighlightClick = () => { }, onDeleteHighlight = () => { } }) {
-  const renderContent = useMemo(() => {
+  const hasQuery = Boolean(query && String(query).trim())
+  const hasHl = Array.isArray(highlights) && highlights.length > 0
+
+  // Search in paragraph must stay on the React parse path (splits by text node).
+  const searchTree = useMemo(() => {
     if (!content) return null
+    if (!hasQuery) return null
     const parser = new DOMParser()
     const doc = parser.parseFromString(content, 'text/html')
     const body = doc.body
@@ -374,9 +523,23 @@ function RenderBlockContent({ content, highlights = [], query = '', onHighlightC
     }
 
     return Array.from(body.childNodes).map((node, i) => traverse(node, `root-${i}`))
-  }, [content, highlights, query, onHighlightClick, onDeleteHighlight])
+  }, [content, highlights, hasQuery, query, onHighlightClick, onDeleteHighlight])
 
-  return <div className="tb-md">{renderContent}</div>
+  if (!content) return null
+  if (hasQuery) {
+    return <div className="tb-md">{searchTree}</div>
+  }
+  if (hasHl) {
+    return (
+      <InjectedTbMd
+        html={injectHighlightsIntoHtml(content, highlights)}
+        highlights={highlights}
+        onHighlightClick={onHighlightClick}
+        onDeleteHighlight={onDeleteHighlight}
+      />
+    )
+  }
+  return <div className="tb-md" dangerouslySetInnerHTML={{ __html: content }} />
 }
 
 function RenderBlock({ block, query, blockHighlights = [], onHighlightClick = () => { }, onDeleteHighlight = () => { } }) {
@@ -499,8 +662,14 @@ export default function TextbookTopic() {
       const { start, end, quote: rawQuote, fullText, textNodes } = computeSelectionOffsets(blockEl, range)
       if (!rawQuote || !rawQuote.trim()) return
 
-      const rawLo = Math.min(start, end)
-      const rawHi = Math.max(start, end)
+      let rawLo = Math.min(start, end)
+      let rawHi = Math.max(start, end)
+      if (e.type === 'mouseup' && e.detail === 2) {
+        const r = reconcileSelectionRangeToFlat(fullText, rawLo, rawHi, rawQuote)
+        rawLo = r.start
+        rawHi = r.end
+        if (rawLo >= rawHi) return
+      }
       const snappedRanges = splitFlatRangeByTableCellsAndSnap(
         blockEl,
         fullText,
@@ -508,7 +677,8 @@ export default function TextbookTopic() {
         rawHi,
         textNodes
       )
-      if (snappedRanges.length === 0) return
+      const rangesToCreate = mergeContiguousSplitRanges(snappedRanges)
+      if (rangesToCreate.length === 0) return
 
       const selectionRect = range.getBoundingClientRect()
       try {
@@ -518,8 +688,8 @@ export default function TextbookTopic() {
       const created = []
       const deletedIds = new Set()
 
-      for (let i = 0; i < snappedRanges.length; i++) {
-        const seg = snappedRanges[i]
+      for (let i = 0; i < rangesToCreate.length; i++) {
+        const seg = rangesToCreate[i]
         const wordStart = seg.start
         const wordEnd = seg.end
         const snappedQuote = fullText.slice(wordStart, wordEnd)
@@ -600,11 +770,12 @@ export default function TextbookTopic() {
 
   const handleDeleteHighlight = async (hlId) => {
     try {
-      const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${hlId}`, { method: 'DELETE' })
+      const idForUrl = encodeURIComponent(String(hlId))
+      const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${idForUrl}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete highlight')
 
-      setHighlights(prev => prev.filter(h => h.id !== hlId))
-      if (popoverHl?.id === hlId) {
+      setHighlights((prev) => prev.filter((h) => String(h.id) !== String(hlId)))
+      if (popoverHl && String(popoverHl.id) === String(hlId)) {
         setPopoverHl(null)
         setPopoverRect(null)
       }

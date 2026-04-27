@@ -158,12 +158,12 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Tooltip */
+/* Tooltip — use --syn-deep-navy, NOT --syn-navy-700: in dark mode --syn-navy-700 is the light “on-surface” text color */
 .activity-heatmap__tooltip {
   position: fixed;
   transform: translateX(-50%) translateY(-100%);
-  background: var(--syn-navy-700, #1e293b);
-  color: #fff;
+  background: var(--syn-deep-navy, #0b1637);
+  color: #f8fafc;
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 12px;
@@ -193,7 +193,7 @@
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: var(--syn-navy-700, #1e293b);
+  border-top-color: var(--syn-deep-navy, #0b1637);
 }
 
 .activity-heatmap__tooltip-count {
@@ -204,7 +204,8 @@
 
 .activity-heatmap__tooltip-date {
   font-size: 11px;
-  opacity: 0.8;
+  opacity: 0.85;
+  color: #cbd5e1;
 }
 
 /* Legend */
@@ -297,4 +298,13 @@
 
 .activity-heatmap__months > * {
   min-width: 0;
+}
+
+/* Dark mode: “future” cells are dashed by design; stronger border on dark cards */
+html[data-theme="dark"] .activity-heatmap__day--future {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+html[data-theme="dark"] .activity-heatmap__month-header {
+  color: var(--dm-on-surface-variant, #9ca3af);
 }

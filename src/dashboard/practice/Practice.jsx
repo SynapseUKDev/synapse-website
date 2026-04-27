@@ -11,6 +11,7 @@ import HighlightPopover from '../../components/highlight/HighlightPopover'
 import {
   getFlatTextFromStem,
   mapFlatRangeToMarkdownRange,
+  reconcileSelectionRangeToFlat,
   splitFlatRangeByTableCellsAndSnap,
 } from '../../utils/questionStemHighlight'
 import ReactMarkdown from 'react-markdown'
@@ -439,7 +440,7 @@ export default function Practice() {
   }
 
   // Text highlighting functionality
-  const addHighlightFromSelection = useCallback(() => {
+  const addHighlightFromSelection = useCallback((e) => {
     const selection = window.getSelection()
     const currentQ = questions[currentIndex]
     if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
@@ -459,9 +460,16 @@ export default function Practice() {
     const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
     if (startA == null || endA == null) return
 
-    const rawStart = Math.min(startA, endA)
-    const rawEnd = Math.max(startA, endA)
+    let rawStart = Math.min(startA, endA)
+    let rawEnd = Math.max(startA, endA)
     if (rawStart === rawEnd) return
+
+    if (e && e.type === 'mouseup' && e.detail === 2) {
+      const r = reconcileSelectionRangeToFlat(flat, rawStart, rawEnd, selectedText)
+      rawStart = r.start
+      rawEnd = r.end
+      if (rawStart >= rawEnd) return
+    }
 
     const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
     if (snappedRanges.length === 0) return
@@ -506,10 +514,13 @@ export default function Practice() {
     selection.removeAllRanges()
   }, [questions, currentIndex])
 
-  const handleTextSelection = useCallback(() => {
-    addHighlightFromSelection()
-    setShowHighlightBtn(false)
-  }, [addHighlightFromSelection])
+  const handleTextSelection = useCallback(
+    (ev) => {
+      addHighlightFromSelection(ev)
+      setShowHighlightBtn(false)
+    },
+    [addHighlightFromSelection]
+  )
 
   const applyHighlight = () => {
     const selection = window.getSelection()
@@ -800,14 +811,40 @@ export default function Practice() {
             li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
             table: ({ node, ...props }) => (
               <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
-                <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid #e5e7eb' }} {...props} />
+                <table
+                  style={{
+                    borderCollapse: 'collapse',
+                    width: '100%',
+                    border: '1px solid var(--stem-md-table-border)',
+                    color: 'var(--stem-md-td-fg)',
+                  }}
+                  {...props}
+                />
               </div>
             ),
             th: ({ node, ...props }) => (
-              <th style={{ border: '1px solid #e5e7eb', padding: '8px', backgroundColor: '#f8fafc', fontWeight: 700, textAlign: 'left' }} {...props} />
+              <th
+                style={{
+                  border: '1px solid var(--stem-md-table-border)',
+                  padding: '8px',
+                  backgroundColor: 'var(--stem-md-th-bg)',
+                  color: 'var(--stem-md-th-fg)',
+                  fontWeight: 700,
+                  textAlign: 'left',
+                }}
+                {...props}
+              />
             ),
             td: ({ node, ...props }) => (
-              <td style={{ border: '1px solid #e5e7eb', padding: '8px', textAlign: 'left' }} {...props} />
+              <td
+                style={{
+                  border: '1px solid var(--stem-md-table-border)',
+                  padding: '8px',
+                  textAlign: 'left',
+                  color: 'var(--stem-md-td-fg)',
+                }}
+                {...props}
+              />
             ),
             blockquote: ({ node, ...props }) => (
               <blockquote style={{ borderLeft: '4px solid #cbd5e1', paddingLeft: '12px', margin: '12px 0', color: '#64748b' }} {...props} />

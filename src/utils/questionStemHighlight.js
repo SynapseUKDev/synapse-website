@@ -101,43 +101,162 @@ export function buildTextRunsForTableSplitFromTextNodes(textNodesOrdered, rootEl
   return runs
 }
 
+function runTouchesTableCell(run) {
+  if (!run || typeof run.runKey !== 'object' || !run.runKey) return false
+  const t = run.runKey.tagName
+  return t === 'TD' || t === 'TH'
+}
+
+/**
+ * Trim [start, end) to exclude leading and trailing whitespace (e.g. double-click often
+ * includes a trailing space in the range).
+ */
+export function trimFlatRange(flat, start, end) {
+  if (flat == null || start == null || end == null) return { start: 0, end: 0 }
+  let a = Math.min(start, end)
+  let b = Math.max(start, end)
+  a = Math.max(0, Math.min(a, flat.length))
+  b = Math.max(0, Math.min(b, flat.length))
+  if (a >= b) return { start: a, end: a }
+  while (a < b && /\s/.test(flat[a])) a++
+  while (b > a && /\s/.test(flat[b - 1])) b--
+  return { start: a, end: b }
+}
+
+/**
+ * `Range` offsets in the DOM for double-clicked text can be off by a few code units vs the
+ * concatenated `flat` string (e.g. marks, &nbsp;). Re-align to a substring in `flat` that matches
+ * the visible selection, preferring a match near the original offsets, then `splitFlatRange`
+ * + `snapRangeToWhitespaceBoundaries` can apply the correct [start, end) word.
+ */
+export function reconcileSelectionRangeToFlat(flat, rawLo, rawHi, selectedText) {
+  const lo0 = Math.min(rawLo, rawHi)
+  const hi0 = Math.max(rawLo, rawHi)
+  if (typeof flat !== 'string' || lo0 < 0 || hi0 > flat.length || lo0 >= hi0) {
+    return { start: lo0, end: hi0 }
+  }
+  const nbs = (s) => (s == null ? '' : String(s)).replace(/\u00a0/g, ' ')
+  const nFlat = nbs(flat)
+  const s = nbs(String(selectedText))
+  if (nFlat.slice(lo0, hi0) === s) return { start: lo0, end: hi0 }
+  const t = s.trim()
+  if (!t) return { start: lo0, end: hi0 }
+  if (nFlat.slice(lo0, lo0 + t.length) === t) return { start: lo0, end: lo0 + t.length }
+  const r = 48
+  const from = Math.max(0, lo0 - r)
+  const to = Math.min(nFlat.length, lo0 + r)
+  const w = nFlat.slice(from, to)
+  const local = w.indexOf(t)
+  if (local !== -1) {
+    const start = from + local
+    return { start, end: start + t.length }
+  }
+  let best = -1
+  let bestD = Infinity
+  for (let p = 0; p <= nFlat.length - t.length; p++) {
+    if (nFlat.slice(p, p + t.length) !== t) continue
+    const d = Math.abs(p - lo0)
+    if (d < bestD) {
+      bestD = d
+      best = p
+    }
+  }
+  if (best !== -1) return { start: best, end: best + t.length }
+  return { start: lo0, end: hi0 }
+}
+
 /**
  * Split a [rawStart, rawEnd) selection into one or more ranges when it crosses `td`/`th`
  * boundaries or block-level boundaries (`p`, headings, list items, non–table-only `div`, etc.).
- * Each segment is snapped to whitespace boundaries within that run only (word-aligned, and
- * run edges act as hard stops). Table-only wrapper `div > table` does not add an extra split.
+ * If the stem has no table cells, the selection is first snapped to whitespace on the *full* flat
+ * string (so a word is not left split across `mark`/text boundaries), then clipped to each run.
+ * If the stem has any `td`/`th` text, snapping is per run/cell to avoid spilling in flat string.
+ * Table-only wrapper `div > table` does not add an extra split.
  *
  * @param {string} flat - Must match concatenation of text nodes used for offsets (see getFlatTextFromStem).
  * @param {Text[]} [textNodesOverride] - Optional (e.g. textbook blocks that filter ignored nodes).
+ * @param {{ skipGlobalWordSnap?: boolean }} [options] - If `skipGlobalWordSnap`, the trimmed
+ *   selection is not expanded on the full flat string.
  */
 export function splitFlatRangeByTableCellsAndSnap(
   rootEl,
   flat,
   rawStart,
   rawEnd,
-  textNodesOverride = null
+  textNodesOverride = null,
+  options = null
 ) {
-  if (rawStart == null || rawEnd == null || rawStart >= rawEnd) return []
+  if (rawStart == null || rawEnd == null) return []
+  if (typeof flat !== 'string' || !flat.length) return []
+
+  const lo = Math.min(rawStart, rawEnd)
+  const hi = Math.max(rawStart, rawEnd)
+  if (lo >= hi) return []
+
+  const { skipGlobalWordSnap = false } = options || {}
+  const trimmed = trimFlatRange(flat, lo, hi)
+  if (trimmed.start >= trimmed.end) return []
+
   const nodes = textNodesOverride || collectTextNodesInOrder(rootEl)
   const runs = buildTextRunsForTableSplitFromTextNodes(nodes, rootEl)
+  if (runs.length === 0) return []
+
+  const hasTableRun = runs.some(runTouchesTableCell)
+
+  const lineIntervals = getLineCharIntervalsForTextNodes(nodes, rootEl)
+
+  let rangeChunks
+  if (!hasTableRun) {
+    if (skipGlobalWordSnap) {
+      if (trimmed.start >= trimmed.end) return []
+      rangeChunks = [{ start: trimmed.start, end: trimmed.end }]
+    } else {
+      rangeChunks = snapToWhitespaceInLineIntervals(
+        flat,
+        trimmed.start,
+        trimmed.end,
+        lineIntervals
+      )
+      if (rangeChunks.length === 0) return []
+    }
+  } else {
+    if (trimmed.start >= trimmed.end) return []
+    rangeChunks = [{ start: trimmed.start, end: trimmed.end }]
+  }
+
   const out = []
 
-  for (const run of runs) {
-    const clipStart = Math.max(rawStart, run.globalStart)
-    const clipEnd = Math.min(rawEnd, run.globalEnd)
-    if (clipStart >= clipEnd) continue
+  for (const ch of rangeChunks) {
+    const rangeStart = ch.start
+    const rangeEnd = ch.end
+    for (const run of runs) {
+      const clipStart = Math.max(rangeStart, run.globalStart)
+      const clipEnd = Math.min(rangeEnd, run.globalEnd)
+      if (clipStart >= clipEnd) continue
 
-    const slice = flat.slice(run.globalStart, run.globalEnd)
-    if (!slice.length) continue
+      if (hasTableRun) {
+        const slice = flat.slice(run.globalStart, run.globalEnd)
+        if (!slice.length) continue
 
-    const localSnap = snapRangeToWhitespaceBoundaries(
-      slice,
-      clipStart - run.globalStart,
-      clipEnd - run.globalStart
-    )
-    const gStart = run.globalStart + localSnap.start
-    const gEnd = run.globalStart + localSnap.end
-    if (gStart < gEnd) out.push({ start: gStart, end: gEnd })
+        const ov = getLineIntervalsOverlappingRun(
+          lineIntervals,
+          run.globalStart,
+          run.globalEnd
+        )
+        const localIntervals =
+          ov && ov.length > 0 ? ov : [[0, slice.length]]
+        const localA = clipStart - run.globalStart
+        const localB = clipEnd - run.globalStart
+        const segs = snapToWhitespaceInLineIntervals(slice, localA, localB, localIntervals)
+        for (const seg of segs) {
+          const gStart = run.globalStart + seg.start
+          const gEnd = run.globalStart + seg.end
+          if (gStart < gEnd) out.push({ start: gStart, end: gEnd })
+        }
+      } else {
+        if (clipStart < clipEnd) out.push({ start: clipStart, end: clipEnd })
+      }
+    }
   }
 
   return out
@@ -154,6 +273,104 @@ export function snapRangeToWhitespaceBoundaries(text, start, end) {
   while (s > 0 && /\S/.test(text[s - 1])) s--
   while (e < text.length && /\S/.test(text[e])) e++
   return { start: s, end: e }
+}
+
+/**
+ * Count <br> elements in the (half-open) DOM path from end of text node a to start of b.
+ * Used so a line break inside a <td> / paragraph acts like a hard boundary (like a space) for highlights.
+ */
+function countBrBetweenConsecutiveTextNodes(a, b, rootEl) {
+  if (!a || !b || a === b || !rootEl?.contains(a) || !rootEl?.contains(b)) return 0
+  try {
+    const doc = a.ownerDocument
+    if (!doc?.createRange) return 0
+    const alen = (a.textContent || '').length
+    const r = doc.createRange()
+    r.setStart(a, alen)
+    r.setEnd(b, 0)
+    if (r.collapsed) return 0
+    const frag = r.cloneContents()
+    if (frag && typeof frag.querySelectorAll === 'function') {
+      return frag.querySelectorAll('br').length
+    }
+  } catch {
+    return 0
+  }
+  return 0
+}
+
+/**
+ * Partition the concatenated `flat` string (text nodes, no <br> chars) into [start,end) line spans
+ * at each <br> between consecutive text nodes. One interval covers the full flat when there are
+ * no <br> boundaries.
+ */
+export function getLineCharIntervalsForTextNodes(textNodes, rootEl) {
+  if (!textNodes || textNodes.length === 0) return [[0, 0]]
+  const intervals = []
+  let at = 0
+  let lineStart = 0
+  for (let i = 0; i < textNodes.length; i++) {
+    at += (textNodes[i].textContent || '').length
+    if (i < textNodes.length - 1) {
+      const nBr = countBrBetweenConsecutiveTextNodes(textNodes[i], textNodes[i + 1], rootEl)
+      if (nBr > 0) {
+        intervals.push([lineStart, at])
+        lineStart = at
+      }
+    }
+  }
+  intervals.push([lineStart, at])
+  return intervals
+}
+
+function getLineIntervalsOverlappingRun(globalIntervals, runStart, runEnd) {
+  const out = []
+  for (const [L0, L1] of globalIntervals) {
+    const a = Math.max(L0, runStart)
+    const b = Math.min(L1, runEnd)
+    if (a < b) out.push([a - runStart, b - runStart])
+  }
+  return out
+}
+
+/**
+ * Word-snap in flat space, but <br> line boundaries act like a space: expansion stays on one line.
+ * A selection that spans a line may produce multiple ranges (one per line).
+ * @param {number[][]} lineIntervals - half-open [L0, L1) in the same `flat` coordinates as a, b
+ * @returns {{ start: number, end: number }[]}
+ */
+function snapToWhitespaceInLineIntervals(flat, a, b, lineIntervals) {
+  if (a == null || b == null || a > b) return []
+  a = Math.max(0, Math.min(a, flat.length))
+  b = Math.max(a, Math.min(b, flat.length))
+  if (a >= b) return []
+  if (!lineIntervals || lineIntervals.length === 0) {
+    return [snapRangeToWhitespaceBoundaries(flat, a, b)]
+  }
+  const result = []
+  let p = a
+  let guard = 0
+  while (p < b && guard++ < 2000) {
+    const line = lineIntervals.find(([L0, L1]) => p >= L0 && p < L1)
+    if (!line) {
+      const g = snapRangeToWhitespaceBoundaries(flat, p, b)
+      if (g.start < g.end) result.push(g)
+      break
+    }
+    const L0 = line[0]
+    const L1 = line[1]
+    const endSeg = Math.min(b, L1)
+    if (p >= endSeg) {
+      p = endSeg
+      continue
+    }
+    const sub = flat.slice(L0, L1)
+    const g0 = snapRangeToWhitespaceBoundaries(sub, p - L0, endSeg - L0)
+    const g = { start: L0 + g0.start, end: L0 + g0.end }
+    if (g.start < g.end) result.push(g)
+    p = endSeg
+  }
+  return result
 }
 
 /**

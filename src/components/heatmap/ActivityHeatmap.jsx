@@ -51,21 +51,21 @@ export default function ActivityHeatmap() {
 
   const loadActivityData = async () => {
     try {
-      const res = await authenticatedFetch(`${API_BASE}/qbank/activity/daily`, {
-        credentials: 'include',
-        headers: authHeaders(),
-      })
+      const tz = typeof Intl !== 'undefined' && Intl.DateTimeFormat
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : 'UTC'
+      const res = await authenticatedFetch(
+        `${API_BASE}/qbank/activity/daily?timezone=${encodeURIComponent(tz)}`,
+        { credentials: 'include', headers: authHeaders() }
+      )
       if (res.ok) {
         const data = await res.json()
-        console.log('Heatmap API response:', data)
         const dataMap = {}
         if (data.dates && Array.isArray(data.dates)) {
           data.dates.forEach(item => {
             dataMap[item.date] = item.count || 0
           })
         }
-        console.log('Heatmap data map:', dataMap)
-        console.log('Today UTC key:', formatDateKeyStatic(new Date()))
         setActivityData(dataMap)
       }
     } catch (e) {
@@ -75,11 +75,11 @@ export default function ActivityHeatmap() {
     }
   }
 
-  // Static version for logging (before component renders)
+  // Calendar day in the user's local timezone (must match /qbank/activity/daily keys)
   const formatDateKeyStatic = (date) => {
-    const year = date.getUTCFullYear()
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-    const day = String(date.getUTCDate()).padStart(2, '0')
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   }
 
@@ -178,9 +178,9 @@ const buildMonthWeeks = (monthStart) => {
 };
 
   const formatDateKey = (date) => {
-    const year = date.getUTCFullYear()
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-    const day = String(date.getUTCDate()).padStart(2, '0')
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   }
 
@@ -272,7 +272,10 @@ const buildMonthWeeks = (monthStart) => {
                   const count = activityData[dateKey] || 0
                   const intensity = getIntensity(count)
                   const isToday = formatDateKey(today) === dateKey
-                  const isFuture = date > today
+                  // Compare calendar days only (avoids time-of-day edge cases; still marks days after "today" as future)
+                  const d0 = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+                  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                  const isFuture = d0 > t0
 
                   if (isFuture) {
                     return (
