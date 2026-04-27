@@ -783,7 +783,6 @@ export default function TextbookTopic() {
               showColors={true}
               showNote={true}
               onSave={handlePopoverSave}
-              onDelete={() => handleDeleteHighlight(popoverHl.id)}
               onClose={() => setPopoverHl(null)}
             />
           )}

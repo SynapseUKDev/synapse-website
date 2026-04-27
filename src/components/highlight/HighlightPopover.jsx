@@ -11,7 +11,6 @@ const COLORS = ['yellow', 'green', 'pink', 'blue']
  *  - highlight: { id, note?, color?, text/quote? }
  *  - showColors: boolean (true for textbook, false for qbank)
  *  - onSave: ({ note, color }) => void
- *  - onDelete: () => void
  *  - onClose: () => void
  */
 export default function HighlightPopover({
@@ -20,13 +19,15 @@ export default function HighlightPopover({
   showColors = false,
   showNote = true,
   onSave,
-  onDelete,
   onClose,
 }) {
   const [note, setNote] = useState(highlight?.note || '')
   const [color, setColor] = useState(highlight?.color || 'yellow')
+  const [copyLabel, setCopyLabel] = useState('Copy')
   const popRef = useRef(null)
   const noteRef = useRef(null)
+
+  const highlightText = (highlight && (highlight.quote || highlight.text)) || ''
 
   // Position the popover relative to the viewport, but adjusted for scroll
   const [pos, setPos] = useState({ top: 0, left: 0 })
@@ -83,6 +84,10 @@ export default function HighlightPopover({
     }
   }, [showNote])
 
+  useEffect(() => {
+    setCopyLabel('Copy')
+  }, [highlight?.id])
+
   // Escape to close
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose() }
@@ -101,7 +106,29 @@ export default function HighlightPopover({
     }
   }
 
-  const quotePreview = highlight?.quote || highlight?.text || ''
+  const handleCopy = async () => {
+    const t = highlightText.trim()
+    if (!t) return
+    try {
+      await navigator.clipboard.writeText(t)
+    } catch {
+      try {
+        const el = document.createElement('textarea')
+        el.value = t
+        el.setAttribute('readonly', '')
+        el.style.position = 'fixed'
+        el.style.left = '-9999px'
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+      } catch {
+        return
+      }
+    }
+    setCopyLabel('Copied!')
+    setTimeout(() => setCopyLabel('Copy'), 2000)
+  }
 
   return (
     <>
@@ -141,8 +168,14 @@ export default function HighlightPopover({
         )}
 
         <div className="hl-popover__actions">
-          <button type="button" className="hl-popover__btn hl-popover__btn--delete" onClick={onDelete}>
-            Delete
+          <button
+            type="button"
+            className="hl-popover__btn hl-popover__btn--copy"
+            onClick={handleCopy}
+            disabled={!highlightText.trim()}
+            aria-label="Copy highlighted text"
+          >
+            {copyLabel}
           </button>
           <div style={{ flex: 1 }} />
           <button type="button" className="hl-popover__btn hl-popover__btn--close" onClick={onClose}>

@@ -104,11 +104,17 @@
   font-family: 'Urbanist', sans-serif;
 }
 
-.hl-popover__btn--delete {
-  background: #fef2f2;
-  color: #ef4444;
+.hl-popover__btn--copy {
+  background: #f1f5f9;
+  color: #334155;
 }
-.hl-popover__btn--delete:hover { background: #fee2e2; }
+.hl-popover__btn--copy:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+.hl-popover__btn--copy:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
 .hl-popover__btn--close {
   background: #f1f5f9;

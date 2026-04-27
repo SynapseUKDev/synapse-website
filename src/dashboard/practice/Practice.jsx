@@ -1259,7 +1259,6 @@ export default function Practice() {
                       })
                       setPopoverHl(null)
                     }}
-                    onDelete={() => removeHighlight(popoverHl.questionId, popoverHl.highlight.id)}
                     onClose={() => setPopoverHl(null)}
                   />
                 )}

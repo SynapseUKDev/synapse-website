@@ -436,7 +436,7 @@
   user-select: text;
   white-space: normal;
   line-height: 1.6;
-  color: #000;
+  color: var(--syn-navy-700);
   font-weight: 500;
 }
 
@@ -488,7 +488,7 @@
 
 .question-stem p {
   line-height: 1.6;
-  color: #000;
+  color: var(--syn-navy-700);
   margin-bottom: 8px;
 }
 
