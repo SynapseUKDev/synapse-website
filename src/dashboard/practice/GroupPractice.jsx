@@ -11,6 +11,7 @@ import HighlightPopover from '../../components/highlight/HighlightPopover'
 import {
   getFlatTextFromStem,
   mapFlatRangeToMarkdownRange,
+  padRangeWithBoundarySpaces,
   reconcileSelectionRangeToFlat,
   splitFlatRangeByTableCellsAndSnap,
 } from '../../utils/questionStemHighlight'
@@ -602,6 +603,8 @@ export default function GroupPractice() {
     }
 
     const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
+      .map((r) => padRangeWithBoundarySpaces(flat, r.start, r.end))
+      .filter((r) => r.end > r.start)
     if (snappedRanges.length === 0) return
 
     const isMd = hasMarkdown(stemText)
@@ -675,6 +678,8 @@ export default function GroupPractice() {
     if (rawStart === rawEnd) return
 
     const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
+      .map((r) => padRangeWithBoundarySpaces(flat, r.start, r.end))
+      .filter((r) => r.end > r.start)
     if (snappedRanges.length === 0) return
 
     const isMd = hasMarkdown(stemText)

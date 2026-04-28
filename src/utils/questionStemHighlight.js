@@ -276,6 +276,21 @@ export function snapRangeToWhitespaceBoundaries(text, start, end) {
 }
 
 /**
+ * After whitespace word-snapping, expand to include exactly one neighboring whitespace
+ * character on each side when present. Guarantees the highlight starts at a space
+ * (or BOL) and ends at a space (or EOL), so a mark never butts directly against a word.
+ */
+export function padRangeWithBoundarySpaces(text, start, end) {
+  if (text == null || start == null || end == null) return { start, end }
+  const snapped = snapRangeToWhitespaceBoundaries(text, start, end)
+  let s = snapped.start
+  let e = snapped.end
+  if (s > 0 && /\s/.test(text[s - 1])) s -= 1
+  if (e < text.length && /\s/.test(text[e])) e += 1
+  return { start: s, end: e }
+}
+
+/**
  * Count <br> elements in the (half-open) DOM path from end of text node a to start of b.
  * Used so a line break inside a <td> / paragraph acts like a hard boundary (like a space) for highlights.
  */

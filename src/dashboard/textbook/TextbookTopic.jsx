@@ -9,36 +9,6 @@ import { reconcileSelectionRangeToFlat, splitFlatRangeByTableCellsAndSnap } from
 
 // ---- Inline highlight injection into HTML ----
 
-function decodeHtmlEntities(html) {
-  const el = typeof document !== 'undefined' ? document.createElement('textarea') : null
-  if (!el) return html
-  el.innerHTML = html
-  return el.value
-}
-
-function getTextSegmentsFromHtml(html) {
-  const segments = []
-  let fullText = ''
-  let i = 0
-  while (i < html.length) {
-    if (html[i] === '<') {
-      const end = html.indexOf('>', i + 1)
-      i = end === -1 ? html.length : end + 1
-      continue
-    }
-    const start = i
-    let raw = ''
-    while (i < html.length && html[i] !== '<') { raw += html[i]; i++ }
-    if (raw.length > 0) {
-      const textStart = fullText.length
-      const decoded = decodeHtmlEntities(raw)
-      fullText += decoded
-      segments.push({ textStart, textEnd: fullText.length, htmlStart: start, htmlEnd: start + raw.length })
-    }
-  }
-  return { fullText, segments }
-}
-
 function findBestOffsets(blockText, h) {
   if (!blockText) return null
   const quote = h.quote != null ? String(h.quote) : ''
@@ -55,54 +25,130 @@ function findBestOffsets(blockText, h) {
   return null
 }
 
-function decodedOffsetToHtmlOffset(raw, decodedOffset) {
-  let dec = 0, i = 0
-  while (i < raw.length && dec < decodedOffset) {
-    if (raw[i] === '&') {
-      const semi = raw.indexOf(';', i)
-      if (semi !== -1) { dec++; i = semi + 1; continue }
-    }
-    dec++; i++
-  }
-  return i
-}
-
+/**
+ * Wrap each highlight in a single <mark> by parsing the block HTML into a real DOM and using
+ * Range.extractContents()/insertNode(). This handles ranges that partially intersect inline
+ * elements (b/i/strong/em/span/code) by splitting them at the boundary, so formatted text and
+ * surrounding plain text end up inside the same <mark> with one delete button at the end.
+ */
 function injectHighlightsIntoHtml(html, highlights) {
   if (!html || !highlights?.length) return html
-  const { fullText, segments } = getTextSegmentsFromHtml(html)
-  if (!fullText) return html
+  if (typeof document === 'undefined' || typeof DOMParser === 'undefined') return html
 
-  const insertions = []
-  for (const h of highlights) {
-    const offsets = findBestOffsets(fullText, h)
-    if (!offsets) continue
+  let doc
+  try {
+    doc = new DOMParser().parseFromString(`<!doctype html><body><div id="__tbroot">${html}</div>`, 'text/html')
+  } catch (e) {
+    return html
+  }
+  const root = doc.getElementById('__tbroot')
+  if (!root) return html
+
+  const collectTextNodes = () => {
+    const nodes = []
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => {
+        const p = n.parentNode
+        if (p && p.nodeType === Node.ELEMENT_NODE && p.closest && p.closest('[data-tb-ignore]')) {
+          return NodeFilter.FILTER_REJECT
+        }
+        return NodeFilter.FILTER_ACCEPT
+      },
+    })
+    let n
+    while ((n = walker.nextNode())) nodes.push(n)
+    return nodes
+  }
+
+  const buildIndex = () => {
+    const tns = collectTextNodes()
+    let fullText = ''
+    const map = []
+    for (const tn of tns) {
+      const start = fullText.length
+      fullText += tn.nodeValue || ''
+      map.push({ node: tn, start, end: fullText.length })
+    }
+    return { fullText, map }
+  }
+
+  const findBoundary = (map, idx, atEnd) => {
+    if (map.length === 0) return null
+    if (!atEnd) {
+      for (const e of map) if (idx >= e.start && idx < e.end) return { node: e.node, offset: idx - e.start }
+      const last = map[map.length - 1]
+      if (idx === last.end) return { node: last.node, offset: last.end - last.start }
+      return null
+    }
+    for (const e of map) if (idx > e.start && idx <= e.end) return { node: e.node, offset: idx - e.start }
+    const first = map[0]
+    if (idx === first.start) return { node: first.node, offset: 0 }
+    return null
+  }
+
+  // Apply right-to-left so earlier offsets remain valid as we mutate the DOM.
+  const ordered = highlights
+    .map((h) => ({ h, off: null }))
+    .map((x) => {
+      const { fullText } = buildIndex()
+      x.off = findBestOffsets(fullText, x.h)
+      return x
+    })
+    .filter((x) => x.off)
+    .sort((a, b) => b.off.start - a.off.start)
+
+  for (const { h } of ordered) {
+    const { fullText, map } = buildIndex()
+    const off = findBestOffsets(fullText, h)
+    if (!off || off.start >= off.end) continue
+    const a = findBoundary(map, off.start, false)
+    const b = findBoundary(map, off.end, true)
+    if (!a || !b) continue
+
+    const range = doc.createRange()
+    try {
+      range.setStart(a.node, a.offset)
+      range.setEnd(b.node, b.offset)
+    } catch (e) {
+      continue
+    }
+    if (range.collapsed) continue
+
     const color = (h.color && /^[a-z]+$/.test(h.color)) ? h.color : 'yellow'
-    const id = String(h.id || '').replace(/"/g, '&quot;')
-    const hasNote = h.note && h.note.trim()
-    const noteAttr = hasNote ? ` data-hl-note="1"` : ''
-    const openTag = `<mark class="hl-mark hl-mark--${color}${hasNote ? ' hl-mark--has-note' : ''} tb-user-mark" data-hl-id="${id}" style="cursor:pointer;"${noteAttr}>`
-    const deleteBtn = `<button type="button" class="hl-mark__delete" data-tb-ignore="true" data-hl-id="${id}" title="Delete highlight">&times;</button>`
-    const closeTag = `${deleteBtn}</mark>`
-    for (const seg of segments) {
-      const segStart = Math.max(seg.textStart, offsets.start)
-      const segEnd = Math.min(seg.textEnd, offsets.end)
-      if (segStart >= segEnd) continue
-      const rawSeg = html.slice(seg.htmlStart, seg.htmlEnd)
-      const htmlSegStart = seg.htmlStart + decodedOffsetToHtmlOffset(rawSeg, segStart - seg.textStart)
-      const htmlSegEnd = seg.htmlStart + decodedOffsetToHtmlOffset(rawSeg, segEnd - seg.textStart)
-      if (htmlSegStart >= htmlSegEnd) continue
-      const slice = fullText.slice(segStart, segEnd)
-      if (/^\s*$/.test(slice)) continue
-      insertions.push({ pos: htmlSegEnd, tag: closeTag })
-      insertions.push({ pos: htmlSegStart, tag: openTag })
+    const id = String(h.id || '')
+    const hasNote = !!(h.note && String(h.note).trim())
+
+    const mark = doc.createElement('mark')
+    mark.className = `hl-mark hl-mark--${color}${hasNote ? ' hl-mark--has-note' : ''} tb-user-mark`
+    mark.setAttribute('data-hl-id', id)
+    mark.setAttribute('style', 'cursor:pointer;')
+    if (hasNote) mark.setAttribute('data-hl-note', '1')
+
+    try {
+      const frag = range.extractContents()
+      mark.appendChild(frag)
+    } catch (e) {
+      continue
+    }
+
+    const btn = doc.createElement('button')
+    btn.setAttribute('type', 'button')
+    btn.className = 'hl-mark__delete'
+    btn.setAttribute('data-tb-ignore', 'true')
+    btn.setAttribute('data-hl-id', id)
+    btn.setAttribute('title', 'Delete highlight')
+    btn.innerHTML = '&times;'
+    mark.appendChild(btn)
+
+    try {
+      range.insertNode(mark)
+    } catch (e) {
+      // Fallback: if insertNode fails, drop this highlight.
+      continue
     }
   }
-  insertions.sort((a, b) => b.pos - a.pos)
-  let result = html
-  for (const ins of insertions) {
-    result = result.slice(0, ins.pos) + ins.tag + result.slice(ins.pos)
-  }
-  return result
+
+  return root.innerHTML
 }
 
 // ---- DOM selection helpers ----
