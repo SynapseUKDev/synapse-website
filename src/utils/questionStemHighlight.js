@@ -48,9 +48,32 @@ export function getHighlightRunKeyForTextNode(node, rootEl) {
 /**
  * Text nodes in document order (same traversal as flat text / selection offsets).
  */
+/**
+ * Returns true when a text node lives inside DOM that should be excluded from highlight
+ * offset accounting (e.g. the `×` delete button rendered inside each `<mark>`). Without
+ * this filter the `×` glyph would appear in `flat` but not in the markdown source, so any
+ * selection spanning across an existing highlight would fail to map back to markdown.
+ */
+function isIgnoredForHighlightOffsets(node) {
+  if (!node || !node.parentNode) return false
+  let el = node.parentNode
+  while (el && el.nodeType === 1 /* ELEMENT_NODE */) {
+    if (el.hasAttribute && el.hasAttribute('data-hl-ignore')) return true
+    if (el.classList && el.classList.contains('hl-mark__delete')) return true
+    el = el.parentNode
+  }
+  return false
+}
+
 export function collectTextNodesInOrder(rootEl) {
   if (!rootEl) return []
-  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null)
+  const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      return isIgnoredForHighlightOffsets(node)
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT
+    },
+  })
   const out = []
   let n = walker.nextNode()
   while (n) {
@@ -201,61 +224,34 @@ export function splitFlatRangeByTableCellsAndSnap(
   const runs = buildTextRunsForTableSplitFromTextNodes(nodes, rootEl)
   if (runs.length === 0) return []
 
-  const hasTableRun = runs.some(runTouchesTableCell)
-
   const lineIntervals = getLineCharIntervalsForTextNodes(nodes, rootEl)
 
-  let rangeChunks
-  if (!hasTableRun) {
-    if (skipGlobalWordSnap) {
-      if (trimmed.start >= trimmed.end) return []
-      rangeChunks = [{ start: trimmed.start, end: trimmed.end }]
-    } else {
-      rangeChunks = snapToWhitespaceInLineIntervals(
-        flat,
-        trimmed.start,
-        trimmed.end,
-        lineIntervals
-      )
-      if (rangeChunks.length === 0) return []
-    }
-  } else {
-    if (trimmed.start >= trimmed.end) return []
-    rangeChunks = [{ start: trimmed.start, end: trimmed.end }]
-  }
-
+  // Snap is performed per block-level run (`<p>`, `<li>`, table cell, …) so word expansion
+  // never bleeds across siblings: the flat string concatenates text nodes with no separator
+  // between adjacent `<p>` elements, so a global snap would walk into the next paragraph.
   const out = []
+  for (const run of runs) {
+    const clipStart = Math.max(trimmed.start, run.globalStart)
+    const clipEnd = Math.min(trimmed.end, run.globalEnd)
+    if (clipStart >= clipEnd) continue
 
-  for (const ch of rangeChunks) {
-    const rangeStart = ch.start
-    const rangeEnd = ch.end
-    for (const run of runs) {
-      const clipStart = Math.max(rangeStart, run.globalStart)
-      const clipEnd = Math.min(rangeEnd, run.globalEnd)
-      if (clipStart >= clipEnd) continue
+    if (skipGlobalWordSnap) {
+      out.push({ start: clipStart, end: clipEnd })
+      continue
+    }
 
-      if (hasTableRun) {
-        const slice = flat.slice(run.globalStart, run.globalEnd)
-        if (!slice.length) continue
+    const slice = flat.slice(run.globalStart, run.globalEnd)
+    if (!slice.length) continue
 
-        const ov = getLineIntervalsOverlappingRun(
-          lineIntervals,
-          run.globalStart,
-          run.globalEnd
-        )
-        const localIntervals =
-          ov && ov.length > 0 ? ov : [[0, slice.length]]
-        const localA = clipStart - run.globalStart
-        const localB = clipEnd - run.globalStart
-        const segs = snapToWhitespaceInLineIntervals(slice, localA, localB, localIntervals)
-        for (const seg of segs) {
-          const gStart = run.globalStart + seg.start
-          const gEnd = run.globalStart + seg.end
-          if (gStart < gEnd) out.push({ start: gStart, end: gEnd })
-        }
-      } else {
-        if (clipStart < clipEnd) out.push({ start: clipStart, end: clipEnd })
-      }
+    const ov = getLineIntervalsOverlappingRun(lineIntervals, run.globalStart, run.globalEnd)
+    const localIntervals = ov && ov.length > 0 ? ov : [[0, slice.length]]
+    const localA = clipStart - run.globalStart
+    const localB = clipEnd - run.globalStart
+    const segs = snapToWhitespaceInLineIntervals(slice, localA, localB, localIntervals)
+    for (const seg of segs) {
+      const gStart = run.globalStart + seg.start
+      const gEnd = run.globalStart + seg.end
+      if (gStart < gEnd) out.push({ start: gStart, end: gEnd })
     }
   }
 
@@ -276,15 +272,16 @@ export function snapRangeToWhitespaceBoundaries(text, start, end) {
 }
 
 /**
- * After whitespace word-snapping, expand to include exactly one neighboring whitespace
- * character on each side when present. Guarantees the highlight starts at a space
- * (or BOL) and ends at a space (or EOL), so a mark never butts directly against a word.
+ * Expand [start, end) by at most one neighbouring whitespace character on each side, *only*
+ * when that char is whitespace. Caller must have already snapped the range to word boundaries
+ * (e.g. via `splitFlatRangeByTableCellsAndSnap`); this helper does NOT walk past the first
+ * non-whitespace, so it cannot bleed across `<p>`/`<li>` boundaries (where flat string has no
+ * separator between adjacent blocks).
  */
 export function padRangeWithBoundarySpaces(text, start, end) {
   if (text == null || start == null || end == null) return { start, end }
-  const snapped = snapRangeToWhitespaceBoundaries(text, start, end)
-  let s = snapped.start
-  let e = snapped.end
+  let s = Math.max(0, Math.min(start, text.length))
+  let e = Math.max(s, Math.min(end, text.length))
   if (s > 0 && /\s/.test(text[s - 1])) s -= 1
   if (e < text.length && /\s/.test(text[e])) e += 1
   return { start: s, end: e }

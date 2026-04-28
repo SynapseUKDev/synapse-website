@@ -11,7 +11,6 @@ import HighlightPopover from '../../components/highlight/HighlightPopover'
 import {
   getFlatTextFromStem,
   mapFlatRangeToMarkdownRange,
-  padRangeWithBoundarySpaces,
   reconcileSelectionRangeToFlat,
   splitFlatRangeByTableCellsAndSnap,
 } from '../../utils/questionStemHighlight'
@@ -84,21 +83,60 @@ export default function GroupPractice() {
   const hasLoadedRef = useRef(false) // Prevent double-loading of session
 
   const getOffsetWithinStem = (targetNode, nodeOffset) => {
-    if (!stemRef.current) return null
+    if (!stemRef.current || !targetNode) return null
 
-    const walker = document.createTreeWalker(
-      stemRef.current,
-      NodeFilter.SHOW_TEXT,
-      null
-    )
+    // Match `getFlatTextFromStem` exactly: ignore text inside `.hl-mark__delete` (the `×`
+    // button rendered inside each existing highlight) so offsets stay in sync with `flat`.
+    const isIgnored = (n) => {
+      let el = n && n.parentNode
+      while (el && el.nodeType === 1) {
+        if (el.classList && el.classList.contains('hl-mark__delete')) return true
+        el = el.parentNode
+      }
+      return false
+    }
+    const walker = document.createTreeWalker(stemRef.current, NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        return isIgnored(n) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+      },
+    })
 
-    let pos = 0
-    let node = walker.nextNode()
+    if (targetNode.nodeType === Node.TEXT_NODE) {
+      let pos = 0
+      let node = walker.nextNode()
+      while (node) {
+        if (node === targetNode) return pos + nodeOffset
+        pos += node.textContent.length
+        node = walker.nextNode()
+      }
+      return null
+    }
 
-    while (node) {
-      if (node === targetNode) return pos + nodeOffset
-      pos += node.textContent.length
-      node = walker.nextNode()
+    // Range boundary on an element (common for big selections that end at a `<p>` / `<td>` edge):
+    // resolve to a text-node offset via Range.comparePoint.
+    if (targetNode.nodeType === Node.ELEMENT_NODE) {
+      const r = document.createRange()
+      try {
+        r.setStart(targetNode, nodeOffset)
+        r.collapse(true)
+      } catch (e) {
+        return null
+      }
+      let pos = 0
+      let node = walker.nextNode()
+      while (node) {
+        const nodeLen = (node.textContent || '').length
+        for (let i = 0; i <= nodeLen; i++) {
+          try {
+            if (r.comparePoint(node, i) === 0) return pos + i
+          } catch {
+            // not comparable; try next position/node
+          }
+        }
+        pos += nodeLen
+        node = walker.nextNode()
+      }
+      return null
     }
 
     return null
@@ -603,8 +641,6 @@ export default function GroupPractice() {
     }
 
     const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
-      .map((r) => padRangeWithBoundarySpaces(flat, r.start, r.end))
-      .filter((r) => r.end > r.start)
     if (snappedRanges.length === 0) return
 
     const isMd = hasMarkdown(stemText)
@@ -639,7 +675,7 @@ export default function GroupPractice() {
 
     setHighlights(prev => {
       const current = prev[currentQ.id] || []
-      const merged = mergeOverlappingHighlights([...current, ...newHighlights])
+      const merged = mergeOverlappingHighlights([...current, ...newHighlights], stemText)
       return { ...prev, [currentQ.id]: merged }
     })
 
@@ -678,8 +714,6 @@ export default function GroupPractice() {
     if (rawStart === rawEnd) return
 
     const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
-      .map((r) => padRangeWithBoundarySpaces(flat, r.start, r.end))
-      .filter((r) => r.end > r.start)
     if (snappedRanges.length === 0) return
 
     const isMd = hasMarkdown(stemText)
@@ -718,7 +752,7 @@ export default function GroupPractice() {
 
     setHighlights(prev => {
       const current = prev[currentQ.id] || []
-      const merged = mergeOverlappingHighlights([...current, ...newHighlights])
+      const merged = mergeOverlappingHighlights([...current, ...newHighlights], stemText)
       return { ...prev, [currentQ.id]: merged }
     })
 
@@ -732,31 +766,36 @@ export default function GroupPractice() {
     selection.removeAllRanges()
   }
 
-  // Merge overlapping or adjacent highlights
-  const mergeOverlappingHighlights = (highlights) => {
+  // Merge overlapping highlights, and also bridge highlights separated only by whitespace
+  // (or directly adjacent) on the SAME line in the stem source — so re-highlighting between two
+  // existing highlights joins all three into one continuous highlight.
+  const mergeOverlappingHighlights = (highlights, stemText = '') => {
     if (highlights.length <= 1) return highlights
 
-    // Sort by start position
     const sorted = [...highlights].sort((a, b) => a.start - b.start)
     const merged = []
     let current = sorted[0]
 
+    const canBridge = (a, b) => {
+      if (b.start <= a.end) return true
+      if (!stemText || b.start > stemText.length) return false
+      const between = stemText.slice(a.end, b.start)
+      if (/\n\n/.test(between)) return false
+      return /^\s*$/.test(between)
+    }
+
     for (let i = 1; i < sorted.length; i++) {
       const next = sorted[i]
-
-      // Check if current and next overlap or are adjacent
-      if (next.start < current.end) {
-        // Merge them
+      if (canBridge(current, next)) {
         current = {
           start: current.start,
           end: Math.max(current.end, next.end),
-          text: current.text, // Text will be derived from stem during render/save
+          text: current.text,
           id: current.id,
           note: current.note || next.note || '',
-          color: current.color || next.color || 'yellow'
+          color: current.color || next.color || 'yellow',
         }
       } else {
-        // No overlap, add current to merged and move to next
         merged.push(current)
         current = next
       }

@@ -26,10 +26,35 @@ function findBestOffsets(blockText, h) {
 }
 
 /**
- * Wrap each highlight in a single <mark> by parsing the block HTML into a real DOM and using
- * Range.extractContents()/insertNode(). This handles ranges that partially intersect inline
- * elements (b/i/strong/em/span/code) by splitting them at the boundary, so formatted text and
- * surrounding plain text end up inside the same <mark> with one delete button at the end.
+ * Block-level tags that must NOT live inside a `<mark>` (mark is phrasing content). When a
+ * highlight's range crosses one of these boundaries (e.g. across `<li>`, `<p>`, `<td>`, `<tr>`,
+ * etc.) we split the wrap into one `<mark>` per block segment. Without this, a single
+ * `<mark>` ends up containing block-level children which produces invalid HTML and visibly
+ * breaks layout (collapsed margins, broken table rows, list bullets shifting, etc.).
+ */
+const TB_BLOCK_TAGS = new Set([
+  'P', 'LI', 'TD', 'TH', 'TR', 'TABLE', 'UL', 'OL', 'DIV',
+  'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+  'BLOCKQUOTE', 'PRE', 'FIGURE', 'FIGCAPTION', 'CAPTION',
+  'THEAD', 'TBODY', 'TFOOT', 'COLGROUP', 'HR',
+])
+
+function blockAncestorWithin(node, root) {
+  let el = node && node.parentElement
+  while (el && el !== root && el !== root.parentElement) {
+    if (TB_BLOCK_TAGS.has(el.tagName)) return el
+    el = el.parentElement
+  }
+  return root
+}
+
+/**
+ * Wrap each highlight by parsing the block HTML into a real DOM and using
+ * Range.extractContents()/insertNode(). Within a single block (paragraph/cell/li) the entire
+ * range is wrapped in ONE `<mark>` so that ranges crossing inline elements (b/i/strong/em/
+ * span/code) end up inside one mark. When a highlight spans multiple block-level elements,
+ * we split into one `<mark>` per block segment so we never end up with `<mark>` containing
+ * `<p>`/`<li>`/`<td>`/etc. (invalid HTML that breaks layout in topics with tables/lists).
  */
 function injectHighlightsIntoHtml(html, highlights) {
   if (!html || !highlights?.length) return html
@@ -72,21 +97,7 @@ function injectHighlightsIntoHtml(html, highlights) {
     return { fullText, map }
   }
 
-  const findBoundary = (map, idx, atEnd) => {
-    if (map.length === 0) return null
-    if (!atEnd) {
-      for (const e of map) if (idx >= e.start && idx < e.end) return { node: e.node, offset: idx - e.start }
-      const last = map[map.length - 1]
-      if (idx === last.end) return { node: last.node, offset: last.end - last.start }
-      return null
-    }
-    for (const e of map) if (idx > e.start && idx <= e.end) return { node: e.node, offset: idx - e.start }
-    const first = map[0]
-    if (idx === first.start) return { node: first.node, offset: 0 }
-    return null
-  }
-
-  // Apply right-to-left so earlier offsets remain valid as we mutate the DOM.
+  // Apply highlights right-to-left so earlier offsets remain valid as we mutate the DOM.
   const ordered = highlights
     .map((h) => ({ h, off: null }))
     .map((x) => {
@@ -101,50 +112,79 @@ function injectHighlightsIntoHtml(html, highlights) {
     const { fullText, map } = buildIndex()
     const off = findBestOffsets(fullText, h)
     if (!off || off.start >= off.end) continue
-    const a = findBoundary(map, off.start, false)
-    const b = findBoundary(map, off.end, true)
-    if (!a || !b) continue
 
-    const range = doc.createRange()
-    try {
-      range.setStart(a.node, a.offset)
-      range.setEnd(b.node, b.offset)
-    } catch (e) {
-      continue
+    // Collect text-node segments overlapping [off.start, off.end), grouped by their nearest
+    // block-level ancestor. Each group becomes one `<mark>`.
+    const groups = []
+    let cur = null
+    for (const e of map) {
+      if (e.end <= off.start) continue
+      if (e.start >= off.end) break
+      const localStart = Math.max(e.start, off.start) - e.start
+      const localEnd = Math.min(e.end, off.end) - e.start
+      if (localEnd <= localStart) continue
+      const block = blockAncestorWithin(e.node, root)
+      if (cur && cur.block === block) {
+        cur.entries.push({ node: e.node, localStart, localEnd })
+      } else {
+        if (cur) groups.push(cur)
+        cur = { block, entries: [{ node: e.node, localStart, localEnd }] }
+      }
     }
-    if (range.collapsed) continue
+    if (cur) groups.push(cur)
+    if (groups.length === 0) continue
 
     const color = (h.color && /^[a-z]+$/.test(h.color)) ? h.color : 'yellow'
     const id = String(h.id || '')
     const hasNote = !!(h.note && String(h.note).trim())
 
-    const mark = doc.createElement('mark')
-    mark.className = `hl-mark hl-mark--${color}${hasNote ? ' hl-mark--has-note' : ''} tb-user-mark`
-    mark.setAttribute('data-hl-id', id)
-    mark.setAttribute('style', 'cursor:pointer;')
-    if (hasNote) mark.setAttribute('data-hl-note', '1')
+    // Process groups right-to-left so DOM mutations (text-node splits, extractContents)
+    // earlier in the document don't invalidate node references in groups not yet processed.
+    for (let gi = groups.length - 1; gi >= 0; gi--) {
+      const grp = groups[gi]
+      const first = grp.entries[0]
+      const last = grp.entries[grp.entries.length - 1]
 
-    try {
-      const frag = range.extractContents()
-      mark.appendChild(frag)
-    } catch (e) {
-      continue
-    }
+      const subRange = doc.createRange()
+      try {
+        subRange.setStart(first.node, first.localStart)
+        subRange.setEnd(last.node, last.localEnd)
+      } catch (e) {
+        continue
+      }
+      if (subRange.collapsed) continue
 
-    const btn = doc.createElement('button')
-    btn.setAttribute('type', 'button')
-    btn.className = 'hl-mark__delete'
-    btn.setAttribute('data-tb-ignore', 'true')
-    btn.setAttribute('data-hl-id', id)
-    btn.setAttribute('title', 'Delete highlight')
-    btn.innerHTML = '&times;'
-    mark.appendChild(btn)
+      const mark = doc.createElement('mark')
+      mark.className = `hl-mark hl-mark--${color}${hasNote ? ' hl-mark--has-note' : ''} tb-user-mark`
+      mark.setAttribute('data-hl-id', id)
+      mark.setAttribute('style', 'cursor:pointer;')
+      if (hasNote) mark.setAttribute('data-hl-note', '1')
 
-    try {
-      range.insertNode(mark)
-    } catch (e) {
-      // Fallback: if insertNode fails, drop this highlight.
-      continue
+      try {
+        const frag = subRange.extractContents()
+        mark.appendChild(frag)
+      } catch (e) {
+        continue
+      }
+
+      // Only render the `×` delete button on the LAST visual segment of the highlight so we
+      // don't sprinkle multiple `×` glyphs across a multi-block highlight.
+      if (gi === groups.length - 1) {
+        const btn = doc.createElement('button')
+        btn.setAttribute('type', 'button')
+        btn.className = 'hl-mark__delete'
+        btn.setAttribute('data-tb-ignore', 'true')
+        btn.setAttribute('data-hl-id', id)
+        btn.setAttribute('title', 'Delete highlight')
+        btn.innerHTML = '&times;'
+        mark.appendChild(btn)
+      }
+
+      try {
+        subRange.insertNode(mark)
+      } catch (e) {
+        continue
+      }
     }
   }
 
