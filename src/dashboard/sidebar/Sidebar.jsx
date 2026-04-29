@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX, LuLogOut } from 'react-icons/lu'
+import { LuChartLine, LuFolder, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX, LuLogOut, LuShield } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import './Sidebar.css'
 
@@ -18,10 +18,12 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
     }
   }, [location.pathname])
 
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
     { id: 'question-bank', label: 'Question Bank', icon: LuFolder, to: '/dashboard/question-bank' },
     { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: LuShield, to: '/dashboard/admin' }] : []),
     // { id: 'mock-exams', label: 'Mock Exams', icon: LuTimer, to: '/dashboard/mock-exams' },
   ]
 

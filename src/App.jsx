@@ -23,6 +23,7 @@ import Textbook from './dashboard/textbook/Textbook.jsx'
 import TextbookTopic from './dashboard/textbook/TextbookTopic.jsx'
 import TextbookSearch from './dashboard/textbook/TextbookSearch.jsx'
 import Settings from './dashboard/Settings.jsx'
+import Admin from './dashboard/admin/Admin.jsx'
 
 function HashRedirector() {
   const location = useLocation()
@@ -74,6 +75,7 @@ function App() {
           <Route path="textbook/search" element={<TextbookSearch />} />
           <Route path="textbook/specialty/:slug" element={<Textbook />} />
           <Route path="textbook/topic/:topicSlug" element={<TextbookTopic />} />
+          <Route path="admin" element={<Admin />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
