@@ -167,18 +167,17 @@ function injectHighlightsIntoHtml(html, highlights) {
         continue
       }
 
-      // Only render the `×` delete button on the LAST visual segment of the highlight so we
-      // don't sprinkle multiple `×` glyphs across a multi-block highlight.
-      if (gi === groups.length - 1) {
-        const btn = doc.createElement('button')
-        btn.setAttribute('type', 'button')
-        btn.className = 'hl-mark__delete'
-        btn.setAttribute('data-tb-ignore', 'true')
-        btn.setAttribute('data-hl-id', id)
-        btn.setAttribute('title', 'Delete highlight')
-        btn.innerHTML = '&times;'
-        mark.appendChild(btn)
-      }
+      // Render an `×` delete button on every segment so that hovering ANY visible part of the
+      // highlight reveals a deletable cross. All segments share the same `data-hl-id`, so a
+      // single click removes the entire highlight.
+      const btn = doc.createElement('button')
+      btn.setAttribute('type', 'button')
+      btn.className = 'hl-mark__delete'
+      btn.setAttribute('data-tb-ignore', 'true')
+      btn.setAttribute('data-hl-id', id)
+      btn.setAttribute('title', 'Delete highlight')
+      btn.innerHTML = '&times;'
+      mark.appendChild(btn)
 
       try {
         subRange.insertNode(mark)
@@ -556,12 +555,18 @@ function RenderBlockContent({ content, highlights = [], query = '', onHighlightC
               <button
                 className="hl-mark__delete"
                 data-tb-ignore="true"
+                title="Delete highlight"
+                onMouseDown={(e) => {
+                  // Block the document-level mouseup that creates highlights so the X click
+                  // is not eaten by a brand-new selection on the surrounding text.
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   onDeleteHighlight(p.id)
                 }}
-                title="Delete highlight"
               >
                 &times;
               </button>

@@ -801,12 +801,18 @@ export default function Practice() {
             // Custom renderer for span wrappers (highlights)
             span: ({ node, children, ...props }) => {
               if (props.className === 'highlight-wrapper') {
-                const highlightId = props['data-highlight-id'] || node?.properties?.['data-highlight-id']
+                // react-markdown (hast-util-to-jsx-runtime + property-information) camel-cases
+                // `data-highlight-id` to `dataHighlightId`; fall back to the kebab key/hast for safety.
+                const highlightId =
+                  props.dataHighlightId ??
+                  props['data-highlight-id'] ??
+                  node?.properties?.dataHighlightId ??
+                  node?.properties?.['data-highlight-id']
                 return (
                   <span
+                    {...props}
                     className="highlight-wrapper"
                     data-highlight-id={highlightId}
-                    {...props}
                     onClick={(e) => {
                       e.preventDefault()
                       const id = parseInt(highlightId)
@@ -823,12 +829,24 @@ export default function Practice() {
             // Custom renderer for mark elements (within highlights) to add delete button
             mark: ({ node, children, ...props }) => {
               if (props.className?.includes('hl-mark')) {
-                const highlightId = props['data-highlight-id']
+                const highlightId =
+                  props.dataHighlightId ??
+                  props['data-highlight-id'] ??
+                  node?.properties?.dataHighlightId ??
+                  node?.properties?.['data-highlight-id']
                 return (
                   <mark {...props}>
                     {children}
                     <button
                       className="hl-mark__delete"
+                      title="Delete highlight"
+                      onMouseDown={(e) => {
+                        // mousedown fires before the document-level mouseup that creates
+                        // highlights, so claim the click here to prevent the selection
+                        // pipeline from running.
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
@@ -954,14 +972,18 @@ export default function Practice() {
                 >
                   <mark className={`hl-mark hl-mark--${hlColor}${hasNoteClass}`}>
                     {part.text}
-                    <button 
+                    <button
                       className="hl-mark__delete"
+                      title="Delete highlight"
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
                       onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                         removeHighlight(currentQuestionId, part.highlightId)
                       }}
-                      title="Delete highlight"
                     >
                       &times;
                     </button>
