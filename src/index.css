@@ -406,6 +406,21 @@ html[data-theme="dark"] .qb-card__icon:not(:has(.qb-card__icon-img)) {
   border-color: rgba(78, 222, 163, 0.28);
 }
 
+/* Specialty PNGs: opaque white matte — see index.html #synapse-qb-specialty-remove-bg (RGBA matrix removes near-white via alpha without multiply colour drift). */
+html[data-theme="dark"] .qb-card__icon:has(.qb-card__icon-img) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+html[data-theme="dark"] .qb-card__icon:has(.qb-card__icon-img) .qb-card__icon-img {
+  display: block;
+  border-radius: 12px;
+  filter: url(#synapse-qb-specialty-remove-bg);
+}
+
 html[data-theme="dark"] .db-tab {
   background: var(--dm-surface-container-high);
 }
