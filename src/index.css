@@ -1057,3 +1057,19 @@ html[data-theme="dark"] mark.hl-mark--pink.hl-mark--has-note {
 html[data-theme="dark"] mark.hl-mark--blue.hl-mark--has-note {
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.4);
 }
+
+html[data-theme="dark"] mark.hl-mark--red.hl-mark--has-note {
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] mark.hl-mark--orange.hl-mark--has-note {
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.42);
+}
+
+html[data-theme="dark"] mark.hl-mark--purple.hl-mark--has-note {
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.42);
+}
+
+html[data-theme="dark"] mark.hl-mark--teal.hl-mark--has-note {
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.42);
+}

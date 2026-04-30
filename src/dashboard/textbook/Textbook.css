@@ -168,6 +168,22 @@ mark.tb-user-mark--blue {
   background: #cfe8ff;
 }
 
+mark.tb-user-mark--red {
+  background: #ffd4d4;
+}
+
+mark.tb-user-mark--orange {
+  background: #ffe2c4;
+}
+
+mark.tb-user-mark--purple {
+  background: #ead9ff;
+}
+
+mark.tb-user-mark--teal {
+  background: #c5f5ec;
+}
+
 /* Wrapper adds the removable "x" like Qbank */
 .tb-hl-wrap {
   position: relative;
@@ -1879,6 +1895,15 @@ html[data-theme='dark'] .tb-carousel__caption {
 .tb-user-mark--pink:hover   { background: #f9a8d4; }
 .tb-user-mark--blue   { background: #bfdbfe; }
 .tb-user-mark--blue:hover   { background: #93c5fd; }
+
+.tb-user-mark--red { background: #fecaca; }
+.tb-user-mark--red:hover { background: #fca5a5; }
+.tb-user-mark--orange { background: #fed7aa; }
+.tb-user-mark--orange:hover { background: #fdba74; }
+.tb-user-mark--purple { background: #e9d5ff; }
+.tb-user-mark--purple:hover { background: #d8b4fe; }
+.tb-user-mark--teal { background: #99f6e4; }
+.tb-user-mark--teal:hover { background: #5eead4; }
 
 /* Note indicator for highlights with notes */
 .tb-user-mark[data-hl-note="1"]::after {
