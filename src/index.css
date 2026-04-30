@@ -541,19 +541,32 @@ html[data-theme="dark"] .dash__content .pr__timer {
 }
 
 html[data-theme="dark"] .dash__content .qc-nav {
-  background: var(--dm-surface-container-high);
-  border-color: var(--syn-border);
-  color: var(--syn-navy-700);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  background: #0d1322;
+  border-color: rgba(173, 198, 255, 0.22);
+  color: var(--dm-primary);
+  box-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"] .dash__content .qc-nav:hover:not(:disabled) {
+  background: #131b31;
+  border-color: rgba(173, 198, 255, 0.35);
+  color: #eaf0ff;
 }
 
 html[data-theme="dark"] .dash__content .q-asset {
-  background: var(--surface-card);
-  border-color: var(--syn-border);
+  background: var(--dm-surface-container);
+  border-color: var(--dm-outline-variant);
 }
 
 html[data-theme="dark"] .dash__content .q-asset img {
-  background: var(--dm-surface-container-low);
+  background: transparent;
+}
+
+html[data-theme="dark"] .dash__content .q-carousel__viewport {
+  background: var(--dm-surface-container-high);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 html[data-theme="dark"] .dash__content .q-asset__cap {
@@ -918,6 +931,45 @@ html[data-theme="dark"] .tb-page--chapter .tb-md a {
 html[data-theme="dark"] .tb-page--chapter .tb-section,
 html[data-theme="dark"] .tb-page--chapter .tb-anchors {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+/*
+ * Textbook topic carousel (TextbookTopic.jsx → ImageCarousel, classes tb-carousel).
+ * Route is under DashboardLayout → .dash__content; native <button> styling can revert
+ * backgrounds to transparent/white. These rules win over UA + generic resets.
+ */
+.dash__content .tb-carousel button.tb-carousel__nav {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: #141b2d !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: rgba(243, 247, 255, 0.95) !important;
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.dash__content .tb-carousel button.tb-carousel__nav:hover:not(:disabled) {
+  background: #1c2640 !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .dash__content .tb-carousel button.tb-carousel__nav {
+  background: #0d1322 !important;
+  border-color: rgba(173, 198, 255, 0.22) !important;
+  color: var(--dm-primary) !important;
+  box-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+html[data-theme="dark"] .dash__content .tb-carousel button.tb-carousel__nav:hover:not(:disabled) {
+  background: #131b31 !important;
+  border-color: rgba(173, 198, 255, 0.35) !important;
+  color: #eaf0ff !important;
 }
 
 /* Practice: sidebar “Completed” and other uncolored stat values (e.g. 0/50) */
