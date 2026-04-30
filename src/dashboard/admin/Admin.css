@@ -43,8 +43,94 @@
 
 .admin-tabs {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.admin-tabs__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--syn-navy-700);
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-tabs__toggle input {
+  width: auto;
+  cursor: pointer;
+}
+
+.admin-issue-list__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-issue-pill {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.admin-issue-pill--open {
+  background: rgba(234, 88, 12, 0.12);
+  color: #c2410c;
+}
+
+.admin-issue-pill--done {
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+
+.admin-issue-summary__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.admin-issue-summary__head h2 {
+  margin: 0;
+}
+
+.admin-issue-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.admin-btn-issue {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  background: var(--syn-deep-navy);
+  color: #fff;
+}
+
+.admin-btn-issue:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.admin-btn-issue--ghost {
+  background: var(--surface-tint-blue);
+  color: var(--syn-navy-700);
 }
 
 .admin-tabs button,

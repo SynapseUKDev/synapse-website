@@ -41,10 +41,27 @@ export default function Admin() {
   const [questionIssues, setQuestionIssues] = useState([])
   const [topicIssues, setTopicIssues] = useState([])
   const [issuesLoading, setIssuesLoading] = useState(false)
+  const [includeCompleted, setIncludeCompleted] = useState(false)
   const [selectedQuestionIssue, setSelectedQuestionIssue] = useState(null)
   const [selectedTopicIssue, setSelectedTopicIssue] = useState(null)
 
+  const statusQuery = includeCompleted ? 'all' : 'ongoing'
+
   const activeIssues = activeTab === 'question-issues' ? questionIssues : topicIssues
+
+  /** After refresh, keep selection only if row still appears in the fetched list */
+  const reconcileSelections = useCallback((nextQuestion, nextTopic) => {
+    setSelectedQuestionIssue((curr) => {
+      if (!curr) return nextQuestion[0] || null
+      const found = nextQuestion.find((x) => x.id === curr.id)
+      return found ?? (nextQuestion[0] || null)
+    })
+    setSelectedTopicIssue((curr) => {
+      if (!curr) return nextTopic[0] || null
+      const found = nextTopic.find((x) => x.id === curr.id)
+      return found ?? (nextTopic[0] || null)
+    })
+  }, [])
 
   const selectedTopicPageId = useMemo(() => {
     if (!selectedTopicIssue) return null
@@ -77,9 +94,10 @@ export default function Admin() {
     setIssuesLoading(true)
     setError('')
     try {
+      const qs = `limit=100&status=${encodeURIComponent(statusQuery)}`
       const [questionRes, topicRes] = await Promise.all([
-        authenticatedFetch(`${API_BASE}/admin/question-issues?limit=100`, { cache: 'no-store' }),
-        authenticatedFetch(`${API_BASE}/admin/topic-issues?limit=100`, { cache: 'no-store' }),
+        authenticatedFetch(`${API_BASE}/admin/question-issues?${qs}`, { cache: 'no-store' }),
+        authenticatedFetch(`${API_BASE}/admin/topic-issues?${qs}`, { cache: 'no-store' }),
       ])
       if (!questionRes.ok) throw new Error(await readJsonError(questionRes))
       if (!topicRes.ok) throw new Error(await readJsonError(topicRes))
@@ -88,14 +106,30 @@ export default function Admin() {
       const nextTopicIssues = topicData.issues || []
       setQuestionIssues(nextQuestionIssues)
       setTopicIssues(nextTopicIssues)
-      setSelectedQuestionIssue((current) => current || nextQuestionIssues[0] || null)
-      setSelectedTopicIssue((current) => current || nextTopicIssues[0] || null)
+      reconcileSelections(nextQuestionIssues, nextTopicIssues)
     } catch (e) {
       setError(e.message || 'Could not load reported issues.')
     } finally {
       setIssuesLoading(false)
     }
-  }, [])
+  }, [API_BASE, statusQuery, reconcileSelections])
+
+  const patchIssueStatus = useCallback(
+    async (kind, issueId, status) => {
+      const path =
+        kind === 'question'
+          ? `${API_BASE}/admin/question-issues/${encodeURIComponent(String(issueId))}`
+          : `${API_BASE}/admin/topic-issues/${encodeURIComponent(String(issueId))}`
+      const res = await authenticatedFetch(path, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) throw new Error(await readJsonError(res))
+      await loadIssues()
+    },
+    [API_BASE, loadIssues]
+  )
 
   useEffect(() => {
     if (!serverAllowsAdmin) return
@@ -141,6 +175,14 @@ export default function Admin() {
         <button className={activeTab === 'topic-issues' ? 'is-active' : ''} onClick={() => setActiveTab('topic-issues')}>
           Textbook Issues
         </button>
+        <label className="admin-tabs__toggle">
+          <input
+            type="checkbox"
+            checked={includeCompleted}
+            onChange={(e) => setIncludeCompleted(e.target.checked)}
+          />
+          Include completed
+        </label>
         <button type="button" onClick={loadIssues} disabled={issuesLoading}>
           {issuesLoading ? 'Refreshing...' : 'Refresh'}
         </button>
@@ -151,7 +193,9 @@ export default function Admin() {
           {issuesLoading ? (
             <LoadingScreen message="Loading reported issues..." inline />
           ) : activeIssues.length === 0 ? (
-            <p className="admin__muted">No reported issues yet.</p>
+            <p className="admin__muted">
+              {includeCompleted ? 'No reported issues in the archive yet.' : 'No ongoing issues.'}
+            </p>
           ) : (
             <div className="admin-list admin-issue-list">
               {activeTab === 'question-issues' && questionIssues.map((issue) => (
@@ -161,7 +205,14 @@ export default function Admin() {
                   className={selectedQuestionIssue?.id === issue.id ? 'is-active' : ''}
                   onClick={() => setSelectedQuestionIssue(issue)}
                 >
-                  <span>{formatCategory(issue.category)}</span>
+                  <span className="admin-issue-list__title">
+                    <span>{formatCategory(issue.category)}</span>
+                    {(issue.status || 'ongoing') === 'complete' ? (
+                      <span className="admin-issue-pill admin-issue-pill--done">Done</span>
+                    ) : (
+                      <span className="admin-issue-pill admin-issue-pill--open">Ongoing</span>
+                    )}
+                  </span>
                   <small>{issue.topic?.name || 'No topic'} · {formatDate(issue.created_at)}</small>
                   <p>{issue.details || 'No details provided.'}</p>
                 </button>
@@ -173,7 +224,14 @@ export default function Admin() {
                   className={selectedTopicIssue?.id === issue.id ? 'is-active' : ''}
                   onClick={() => setSelectedTopicIssue(issue)}
                 >
-                  <span>{formatCategory(issue.category)}</span>
+                  <span className="admin-issue-list__title">
+                    <span>{formatCategory(issue.category)}</span>
+                    {(issue.status || 'ongoing') === 'complete' ? (
+                      <span className="admin-issue-pill admin-issue-pill--done">Done</span>
+                    ) : (
+                      <span className="admin-issue-pill admin-issue-pill--open">Ongoing</span>
+                    )}
+                  </span>
                   <small>{issue.topic?.name || issue.page?.title || 'No topic'} · {formatDate(issue.created_at)}</small>
                   <p>{issue.details || 'No details provided.'}</p>
                 </button>
@@ -184,48 +242,112 @@ export default function Admin() {
 
         <section className="admin-card">
           {activeTab === 'question-issues' && (
-            selectedQuestionIssue?.question_id ? (
+            selectedQuestionIssue ? (
               <>
                 <div className="admin-issue-summary">
-                  <h2>{formatCategory(selectedQuestionIssue.category)}</h2>
+                  <div className="admin-issue-summary__head">
+                    <h2>{formatCategory(selectedQuestionIssue.category)}</h2>
+                    <div className="admin-issue-actions">
+                      {(selectedQuestionIssue.status || 'ongoing') === 'complete' ? (
+                        <>
+                          <span className="admin-issue-pill admin-issue-pill--done">Complete</span>
+                          {includeCompleted && (
+                            <button
+                              type="button"
+                              className="admin-btn-issue admin-btn-issue--ghost"
+                              disabled={issuesLoading}
+                              onClick={() =>
+                                patchIssueStatus('question', selectedQuestionIssue.id, 'ongoing').catch((err) =>
+                                  setError(err?.message || 'Could not reopen issue.')
+                                )}
+                            >
+                              Re-open
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="admin-btn-issue"
+                          disabled={issuesLoading}
+                          onClick={() =>
+                            patchIssueStatus('question', selectedQuestionIssue.id, 'complete').catch((err) =>
+                              setError(err?.message || 'Could not complete issue.')
+                            )}
+                        >
+                          Mark complete
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <p>{selectedQuestionIssue.details || 'No details provided.'}</p>
                   {selectedQuestionIssue.question?.stem && <small>{selectedQuestionIssue.question.stem}</small>}
                 </div>
-                <AdminQuestionInlineEditor
-                  questionId={selectedQuestionIssue.question_id}
-                  initialQuestion={selectedQuestionIssue.question}
-                  API_BASE={API_BASE}
-                />
+                {selectedQuestionIssue.question_id ? (
+                  <AdminQuestionInlineEditor
+                    questionId={selectedQuestionIssue.question_id}
+                    initialQuestion={selectedQuestionIssue.question}
+                    API_BASE={API_BASE}
+                  />
+                ) : (
+                  <p className="admin__muted">This issue is not linked to a question row.</p>
+                )}
               </>
             ) : (
-              <p className="admin__muted">Select a question issue to edit its question.</p>
+              <p className="admin__muted">Select a question issue to inspect or edit.</p>
             )
           )}
 
           {activeTab === 'topic-issues' && (
-            selectedTopicPageId ? (
+            selectedTopicIssue ? (
               <>
                 <div className="admin-issue-summary">
-                  <h2>{formatCategory(selectedTopicIssue.category)}</h2>
+                  <div className="admin-issue-summary__head">
+                    <h2>{formatCategory(selectedTopicIssue.category)}</h2>
+                    <div className="admin-issue-actions">
+                      {(selectedTopicIssue.status || 'ongoing') === 'complete' ? (
+                        <>
+                          <span className="admin-issue-pill admin-issue-pill--done">Complete</span>
+                          {includeCompleted && (
+                            <button
+                              type="button"
+                              className="admin-btn-issue admin-btn-issue--ghost"
+                              disabled={issuesLoading}
+                              onClick={() =>
+                                patchIssueStatus('topic', selectedTopicIssue.id, 'ongoing').catch((err) =>
+                                  setError(err?.message || 'Could not reopen issue.')
+                                )}
+                            >
+                              Re-open
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="admin-btn-issue"
+                          disabled={issuesLoading}
+                          onClick={() =>
+                            patchIssueStatus('topic', selectedTopicIssue.id, 'complete').catch((err) =>
+                              setError(err?.message || 'Could not complete issue.')
+                            )}
+                        >
+                          Mark complete
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <p>{selectedTopicIssue.details || 'No details provided.'}</p>
                   <small>{selectedTopicIssue.topic?.name || selectedTopicIssue.page?.title || 'Textbook topic'}</small>
                 </div>
-                <AdminTextbookInlineEditor
-                  pageId={selectedTopicPageId}
-                  API_BASE={API_BASE}
-                />
+                {selectedTopicPageId ? (
+                  <AdminTextbookInlineEditor pageId={selectedTopicPageId} API_BASE={API_BASE} />
+                ) : (
+                  <p className="admin__muted">No textbook page linked to this topic.</p>
+                )}
               </>
             ) : (
-              <div>
-                <p className="admin__muted">Select a textbook issue with a linked page to edit it.</p>
-                {selectedTopicIssue && (
-                  <div className="admin-issue-summary">
-                    <h2>{formatCategory(selectedTopicIssue.category)}</h2>
-                    <p>{selectedTopicIssue.details || 'No details provided.'}</p>
-                    <small>{selectedTopicIssue.topic?.name || 'No linked topic'}</small>
-                  </div>
-                )}
-              </div>
+              <p className="admin__muted">Select a textbook issue to inspect or edit.</p>
             )
           )}
         </section>
