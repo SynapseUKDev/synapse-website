@@ -123,6 +123,14 @@ html[data-theme="dark"] {
   --hl-pink-hover: #b04b80;
   --hl-blue: #2f7ed4;
   --hl-blue-hover: #256cbd;
+  --hl-red: #dc4d48;
+  --hl-red-hover: #c53e39;
+  --hl-orange: #e07820;
+  --hl-orange-hover: #cb6a18;
+  --hl-purple: #9847e8;
+  --hl-purple-hover: #8639d4;
+  --hl-teal: #12948a;
+  --hl-teal-hover: #0e7f76;
   --hl-search: #b8921a;
   --hl-search-hover: #a17f0f;
 }
@@ -978,6 +986,50 @@ html[data-theme="dark"] mark.hl-mark--blue:hover,
 html[data-theme="dark"] mark.tb-user-mark--blue:hover,
 html[data-theme="dark"] .tb-user-mark--blue:hover {
   background: var(--hl-blue-hover) !important;
+}
+
+html[data-theme="dark"] mark.hl-mark--red,
+html[data-theme="dark"] mark.tb-user-mark--red,
+html[data-theme="dark"] .tb-user-mark--red {
+  background: var(--hl-red) !important;
+}
+html[data-theme="dark"] mark.hl-mark--red:hover,
+html[data-theme="dark"] mark.tb-user-mark--red:hover,
+html[data-theme="dark"] .tb-user-mark--red:hover {
+  background: var(--hl-red-hover) !important;
+}
+
+html[data-theme="dark"] mark.hl-mark--orange,
+html[data-theme="dark"] mark.tb-user-mark--orange,
+html[data-theme="dark"] .tb-user-mark--orange {
+  background: var(--hl-orange) !important;
+}
+html[data-theme="dark"] mark.hl-mark--orange:hover,
+html[data-theme="dark"] mark.tb-user-mark--orange:hover,
+html[data-theme="dark"] .tb-user-mark--orange:hover {
+  background: var(--hl-orange-hover) !important;
+}
+
+html[data-theme="dark"] mark.hl-mark--purple,
+html[data-theme="dark"] mark.tb-user-mark--purple,
+html[data-theme="dark"] .tb-user-mark--purple {
+  background: var(--hl-purple) !important;
+}
+html[data-theme="dark"] mark.hl-mark--purple:hover,
+html[data-theme="dark"] mark.tb-user-mark--purple:hover,
+html[data-theme="dark"] .tb-user-mark--purple:hover {
+  background: var(--hl-purple-hover) !important;
+}
+
+html[data-theme="dark"] mark.hl-mark--teal,
+html[data-theme="dark"] mark.tb-user-mark--teal,
+html[data-theme="dark"] .tb-user-mark--teal {
+  background: var(--hl-teal) !important;
+}
+html[data-theme="dark"] mark.hl-mark--teal:hover,
+html[data-theme="dark"] mark.tb-user-mark--teal:hover,
+html[data-theme="dark"] .tb-user-mark--teal:hover {
+  background: var(--hl-teal-hover) !important;
 }
 
 html[data-theme="dark"] .tb-search-mark,

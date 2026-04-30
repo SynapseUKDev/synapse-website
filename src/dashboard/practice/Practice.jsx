@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuEye } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
@@ -17,6 +17,7 @@ import {
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
+import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
 
 // Custom Rehype plugin to apply highlights to text nodes
 const rehypeHighlightPlugin = (options) => {
@@ -120,6 +121,8 @@ function useCountdown(initialSec = 1800) {
 export default function Practice() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { user } = useOutletContext() || {}
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
   const params = new URLSearchParams(location.search)
 
   // Check if we're in review mode (navigated from results page)
@@ -227,6 +230,7 @@ export default function Practice() {
   const [openGroupId, setOpenGroupId] = useState(null)
   // Image carousel state for question assets
   const [assetIdx, setAssetIdx] = useState(0)
+  const [adminEditorOpen, setAdminEditorOpen] = useState(false)
 
   // Current question state
   const [selected, setSelected] = useState(null)
@@ -251,6 +255,34 @@ export default function Practice() {
   const { display, running, toggle } = useCountdown(timerMinutes * 60)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+  const mergeAdminQuestion = useCallback((updatedQuestion) => {
+    if (!updatedQuestion?.id) return
+    setQuestions((prev) => prev.map((question) => {
+      if (String(question.id) !== String(updatedQuestion.id)) return question
+      const optionBodies = Array.isArray(updatedQuestion.options)
+        ? updatedQuestion.options.map((option) => {
+          if (typeof option === 'string') return option
+          return option?.body || option?.text || option?.label || ''
+        })
+        : []
+      return {
+        ...question,
+        ...updatedQuestion,
+        options: optionBodies.map((body, idx) => ({
+          id: idx,
+          label: String.fromCharCode(65 + idx),
+          body,
+        })),
+        explanations: {
+          ...(question.explanations || {}),
+          detailed: updatedQuestion.explanation_l2 || '',
+          eli5: updatedQuestion.explanation_eli5 || '',
+          points_by_option: updatedQuestion.explanation_points_by_option || null,
+        },
+      }
+    }))
+  }, [])
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -1351,7 +1383,7 @@ export default function Practice() {
                   <HighlightPopover
                     anchorRect={popoverHl.rect}
                     highlight={popoverHl.highlight}
-                    showColors={false}
+                    showColors={true}
                     showNote={false}
                     onSave={({ note, color }) => {
                       setHighlights(prev => {
@@ -1383,7 +1415,9 @@ export default function Practice() {
                         </button>
                         <figure key={cur.id} className="q-asset">
                           {cur.type === 'image' ? (
-                            <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+                            <div className="q-carousel__viewport">
+                              <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+                            </div>
                           ) : null}
                           {(cur.caption || cur.credit) && (
                             <figcaption className="q-asset__cap">
@@ -1481,6 +1515,15 @@ export default function Practice() {
                           return next
                         })
                       }}><LuFlag />{flagged.has(currentQuestionId) ? 'Flagged' : 'Flag'}</button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--icon admin-edit-trigger"
+                          onClick={() => setAdminEditorOpen((open) => !open)}
+                        >
+                          {adminEditorOpen ? 'Close editor' : 'Edit'}
+                        </button>
+                      )}
                       <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
                       {(highlights[currentQuestion.id]?.length > 0) && (
                         <button
@@ -1558,6 +1601,22 @@ export default function Practice() {
                   )}
                 </div>
               </div>
+              {isAdmin && adminEditorOpen && currentQuestionId && (
+                <div className="admin-card admin-inline-panel admin-inline-panel--question">
+                  <div className="admin-inline-panel__header">
+                    <div>
+                      <h2>Admin Edit</h2>
+                      <p className="admin__muted">Edit this question inline. Server admin permissions are rechecked on save.</p>
+                    </div>
+                  </div>
+                  <AdminQuestionInlineEditor
+                    questionId={currentQuestionId}
+                    initialQuestion={currentQuestion}
+                    API_BASE={API_BASE}
+                    onSaved={mergeAdminQuestion}
+                  />
+                </div>
+              )}
             </div>
           </div>
 

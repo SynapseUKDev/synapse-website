@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import './HighlightPopover.css'
 
-const COLORS = ['yellow', 'green', 'pink', 'blue']
+const COLORS = ['yellow', 'green', 'pink', 'blue', 'red', 'orange', 'purple', 'teal']
 
 /**
  * Shared highlight popover for both textbook and qbank.
@@ -150,7 +150,7 @@ export default function HighlightPopover({
                   setColor(c)
                   handleSave(c, note)
                 }}
-                aria-label={`${c} highlight`}
+                aria-label={`${c.charAt(0).toUpperCase() + c.slice(1)} highlight`}
               />
             ))}
           </div>

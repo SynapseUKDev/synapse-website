@@ -18,6 +18,7 @@ import { io } from 'socket.io-client'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
+import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
 
 // Server-synced countdown for group sessions
 function useCountdown(initialSec = 1800, serverEndTime = null) {
@@ -59,6 +60,7 @@ export default function GroupPractice() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useOutletContext()
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
   const params = new URLSearchParams(location.search)
   const roomCode = params.get('room_code')
   const studySetId = params.get('study_set_id')
@@ -157,6 +159,7 @@ export default function GroupPractice() {
   const [openGroupId, setOpenGroupId] = useState(null)
   // Image carousel state for question assets
   const [assetIdx, setAssetIdx] = useState(0)
+  const [adminEditorOpen, setAdminEditorOpen] = useState(false)
 
   // Current question state
   const [selected, setSelected] = useState(null)
@@ -182,6 +185,34 @@ export default function GroupPractice() {
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   const SOCKET_URL = API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, ':4000')
+
+  const mergeAdminQuestion = useCallback((updatedQuestion) => {
+    if (!updatedQuestion?.id) return
+    setQuestions((prev) => prev.map((question) => {
+      if (String(question.id) !== String(updatedQuestion.id)) return question
+      const optionBodies = Array.isArray(updatedQuestion.options)
+        ? updatedQuestion.options.map((option) => {
+          if (typeof option === 'string') return option
+          return option?.body || option?.text || option?.label || ''
+        })
+        : []
+      return {
+        ...question,
+        ...updatedQuestion,
+        options: optionBodies.map((body, idx) => ({
+          id: idx,
+          label: String.fromCharCode(65 + idx),
+          body,
+        })),
+        explanations: {
+          ...(question.explanations || {}),
+          detailed: updatedQuestion.explanation_l2 || '',
+          eli5: updatedQuestion.explanation_eli5 || '',
+          points_by_option: updatedQuestion.explanation_points_by_option || null,
+        },
+      }
+    }))
+  }, [])
 
   // Scroll to top on component mount
   useEffect(() => {
@@ -1570,7 +1601,7 @@ export default function GroupPractice() {
                   <HighlightPopover
                     anchorRect={popoverHl.rect}
                     highlight={popoverHl.highlight}
-                    showColors={false}
+                    showColors={true}
                     showNote={false}
                     onSave={({ note, color }) => {
                       setHighlights(prev => {
@@ -1602,7 +1633,9 @@ export default function GroupPractice() {
                         </button>
                         <figure key={cur.id} className="q-asset">
                           {cur.type === 'image' ? (
-                            <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+                            <div className="q-carousel__viewport">
+                              <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+                            </div>
                           ) : null}
                           {(cur.caption || cur.credit) && (
                             <figcaption className="q-asset__cap">
@@ -1866,7 +1899,32 @@ export default function GroupPractice() {
           )}
 
           <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
+            {isAdmin && (
+              <button
+                type="button"
+                className="btn btn--ghost btn--icon admin-edit-trigger"
+                onClick={() => setAdminEditorOpen((open) => !open)}
+              >
+                {adminEditorOpen ? 'Close editor' : 'Edit'}
+              </button>
+            )}
             <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
+            {isAdmin && adminEditorOpen && currentQuestion.id && (
+              <div className="admin-card admin-inline-panel admin-inline-panel--question">
+                <div className="admin-inline-panel__header">
+                  <div>
+                    <h2>Admin Edit</h2>
+                    <p className="admin__muted">Edit this question inline. Server admin permissions are rechecked on save.</p>
+                  </div>
+                </div>
+                <AdminQuestionInlineEditor
+                  questionId={currentQuestion.id}
+                  initialQuestion={currentQuestion}
+                  API_BASE={API_BASE}
+                  onSaved={mergeAdminQuestion}
+                />
+              </div>
+            )}
             {isSubmitted && (
               <DiscussionPanel questionId={currentQuestion.id} API_BASE={API_BASE} />
             )}

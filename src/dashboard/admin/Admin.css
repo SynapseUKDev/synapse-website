@@ -199,6 +199,61 @@
   margin-top: 12px;
 }
 
+.admin-inline-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-inline-editor__context {
+  margin-bottom: 4px;
+}
+
+.admin-inline-panel {
+  margin: 0 0 18px;
+}
+
+.admin-inline-panel--question {
+  margin-top: 16px;
+}
+
+.admin-inline-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.admin-inline-panel__header h2,
+.admin-issue-summary h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.admin-edit-trigger {
+  white-space: nowrap;
+}
+
+.admin-issue-list button p,
+.admin-issue-summary p {
+  margin: 8px 0 0;
+  color: var(--syn-navy-700);
+  white-space: pre-wrap;
+}
+
+.admin-issue-summary {
+  border-bottom: 1px solid var(--syn-border);
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+}
+
+.admin-issue-summary small {
+  display: block;
+  margin-top: 8px;
+  color: var(--syn-muted);
+}
+
 @media (max-width: 980px) {
   .admin-grid,
   .admin-editor-split {

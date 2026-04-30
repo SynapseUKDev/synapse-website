@@ -1,11 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { useNavigate, useParams, useLocation, useOutletContext } from 'react-router-dom'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { reconcileSelectionRangeToFlat, splitFlatRangeByTableCellsAndSnap } from '../../utils/questionStemHighlight'
+import {
+  InlinePageBar,
+  InlineSectionToolbar,
+  InlineEditableTitle,
+  InlineMarkdownBlock,
+  InlineNonMarkdownBlock,
+} from './TextbookInlineAdmin'
 
 // ---- Inline highlight injection into HTML ----
 
@@ -423,7 +430,9 @@ function ImageCarousel({ images }) {
         ‹
       </button>
       <figure className="tb-carousel__asset">
-        <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+        <div className="tb-carousel__viewport">
+          <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+        </div>
         {(cur.caption || cur.attribution) && (
           <figcaption className="tb-carousel__cap">
             {cur.caption && <div className="tb-carousel__caption">{cur.caption}</div>}
@@ -670,10 +679,51 @@ export default function TextbookTopic() {
   const navigate = useNavigate()
   const { topicSlug } = useParams()
   const location = useLocation()
+  const { user } = useOutletContext() || {}
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+  const [editMode, setEditMode] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // Pure fetch: returns the canonical chapter payload without applying it,
+  // so callers can decide when to swap the on-screen data.
+  const fetchChapterData = useCallback(async () => {
+    const res = await fetch(`${API_BASE}/textbook/${topicSlug}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    })
+    if (!res.ok) throw new Error(`Failed to load chapter: ${res.status}`)
+    return await res.json()
+  }, [API_BASE, topicSlug])
+
+  const loadChapter = useCallback(async () => {
+    const json = await fetchChapterData()
+    setData(json)
+    return json
+  }, [fetchChapterData])
+
+  // Async, awaitable refresh used after admin saves. Sequence:
+  //   1) Wait for the canonical GET to return (server has confirmed the Supabase
+  //      write before this fires, so we know the row is committed and queryable).
+  //   2) Hold for an extra "settle" window so any background sync can finish.
+  //   3) Hard-reload the page so the user sees a fully fresh render.
+  // The loader stays visible for the entire window.
+  const POST_SAVE_SETTLE_MS = 6000
+  const refreshChapter = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await fetchChapterData()
+    } catch (e) {
+      console.warn('Chapter refresh fetch failed:', e?.message || e)
+    }
+    await new Promise((r) => setTimeout(r, POST_SAVE_SETTLE_MS))
+    if (typeof window !== 'undefined') {
+      window.location.reload()
+    }
+  }, [fetchChapterData])
 
   const [navItems, setNavItems] = useState([])
   const [currentIdx, setCurrentIdx] = useState(-1)
@@ -692,10 +742,7 @@ export default function TextbookTopic() {
       try {
         setLoading(true)
         setError(null)
-        const res = await fetch(`${API_BASE}/textbook/${topicSlug}`, { credentials: 'include', headers: { 'Content-Type': 'application/json', ...authHeaders() } })
-        if (!res.ok) throw new Error(`Failed to load chapter: ${res.status}`)
-        const json = await res.json()
-        if (!cancelled) setData(json)
+        await loadChapter()
         if (!cancelled && topicSlug) {
           fetch(`${API_BASE}/textbook/record-read`, {
             method: 'POST',
@@ -712,7 +759,7 @@ export default function TextbookTopic() {
     }
     load()
     return () => { cancelled = true }
-  }, [topicSlug, API_BASE])
+  }, [API_BASE, topicSlug, loadChapter])
 
   useEffect(() => {
     const pageId = data?.page?.id
@@ -731,6 +778,7 @@ export default function TextbookTopic() {
 
   useEffect(() => {
     const onMouseUp = async (e) => {
+      if (editMode) return
       if (e?.target?.closest?.('.hl-popover') || e?.target?.closest?.('.hl-popover-backdrop')) return
       const clickedEl = e?.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e?.target
       if (clickedEl?.closest?.('mark.tb-user-mark')) return
@@ -857,7 +905,7 @@ export default function TextbookTopic() {
       document.removeEventListener('mouseup', onMouseUp, true)
       document.removeEventListener('touchend', onMouseUp, true)
     }
-  }, [data?.page?.id, API_BASE, highlights])
+  }, [data?.page?.id, API_BASE, highlights, editMode])
 
   const handleDeleteHighlight = async (hlId) => {
     try {
@@ -1023,6 +1071,15 @@ export default function TextbookTopic() {
           />
         </form>
         <div className="tb-header__actions">
+          {isAdmin && data.page?.id && (
+            <button
+              type="button"
+              className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
+              onClick={() => setEditMode((open) => !open)}
+            >
+              {editMode ? 'Close editor' : 'Edit'}
+            </button>
+          )}
           <button
             type="button"
             className={`tb-highlights-toggle ${highlightsOn ? 'is-on' : ''}`}
@@ -1036,7 +1093,25 @@ export default function TextbookTopic() {
         </div>
       </header>
 
-      <div className="tb-layout">
+      {isAdmin && editMode && data.page?.id && (
+        <InlinePageBar
+          page={data.page}
+          API_BASE={API_BASE}
+          onSaved={refreshChapter}
+        />
+      )}
+
+      {refreshing && (
+        <div className="tb-refresh-overlay" role="status" aria-live="polite">
+          <div className="tb-refresh-overlay__bar" />
+          <div className="tb-refresh-overlay__pill">
+            <span className="tb-refresh-overlay__spinner" aria-hidden="true" />
+            <span>Syncing changes with database… please wait</span>
+          </div>
+        </div>
+      )}
+
+      <div className={`tb-layout ${editMode ? 'tb-layout--admin-edit' : ''} ${refreshing ? 'tb-layout--refreshing' : ''}`}>
         <div className="tb-main" ref={mainRef}>
           {popoverHl && popoverRect && (
             <HighlightPopover
@@ -1051,15 +1126,25 @@ export default function TextbookTopic() {
 
           {topSections.map((s) => (
             <section key={s.id} id={`sec-${s.anchor_slug}`} className="tb-section">
-              <h2 className="tb-section__title">{s.title}</h2>
+              {isAdmin && editMode && (
+                <InlineSectionToolbar
+                  section={s}
+                  API_BASE={API_BASE}
+                  onSaved={refreshChapter}
+                />
+              )}
+              {isAdmin && editMode ? (
+                <InlineEditableTitle
+                  section={s}
+                  API_BASE={API_BASE}
+                  onSaved={refreshChapter}
+                />
+              ) : (
+                <h2 className="tb-section__title">{s.title}</h2>
+              )}
               <div className="tb-section__content">
-                {(blocksBySection[s.id] || []).map((b) => (
-                  <div
-                    key={b.id}
-                    className="tb-block"
-                    data-tb-block-id={b.id}
-                    data-tb-section-anchor={s.anchor_slug}
-                  >
+                {(blocksBySection[s.id] || []).map((b) => {
+                  const rendered = (
                     <RenderBlock
                       block={b}
                       query={topicQ}
@@ -1070,8 +1155,33 @@ export default function TextbookTopic() {
                       }}
                       onDeleteHighlight={handleDeleteHighlight}
                     />
-                  </div>
-                ))}
+                  )
+                  const wrapperProps = {
+                    key: b.id,
+                    className: 'tb-block',
+                    'data-tb-block-id': b.id,
+                    'data-tb-section-anchor': s.anchor_slug,
+                  }
+                  if (isAdmin && editMode) {
+                    if (b.block_type === 'markdown') {
+                      return (
+                        <div {...wrapperProps}>
+                          <InlineMarkdownBlock block={b} API_BASE={API_BASE} onSaved={refreshChapter}>
+                            {rendered}
+                          </InlineMarkdownBlock>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div {...wrapperProps}>
+                        <InlineNonMarkdownBlock block={b} API_BASE={API_BASE} onSaved={refreshChapter}>
+                          {rendered}
+                        </InlineNonMarkdownBlock>
+                      </div>
+                    )
+                  }
+                  return <div {...wrapperProps}>{rendered}</div>
+                })}
               </div>
             </section>
           ))}
