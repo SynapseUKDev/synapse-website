@@ -7,7 +7,7 @@ import { authHeaders } from '../../auth/token'
 
 const STATUS_LABELS = {
   not_read: 'Not read',
-  in_progress: 'In progress',
+  in_progress: 'Reading',
   completed: 'Completed',
 }
 
@@ -295,7 +295,7 @@ function ProgressHeader({ summary, sortBy, filterBy, onSortChange, onFilterChang
           <select className="tb-select" value={sortBy} onChange={(e) => onSortChange(e.target.value)}>
             <option value="default">Default</option>
             <option value="confidence">Lowest confidence</option>
-            <option value="in_progress">In progress</option>
+            <option value="in_progress">Reading</option>
             <option value="last_reviewed">Last reviewed</option>
           </select>
         </div>
@@ -305,7 +305,7 @@ function ProgressHeader({ summary, sortBy, filterBy, onSortChange, onFilterChang
             <option value="all">Show all</option>
             <option value="low">Low confidence</option>
             <option value="not_read">Not read</option>
-            <option value="in_progress">In progress</option>
+            <option value="in_progress">Reading</option>
           </select>
         </div>
       </div>

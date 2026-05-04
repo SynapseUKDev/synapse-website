@@ -14,6 +14,34 @@ import {
   InlineNonMarkdownBlock,
 } from './TextbookInlineAdmin'
 
+const HIGHLIGHT_COLORS = new Set(['yellow', 'green', 'pink', 'blue', 'red', 'orange', 'purple', 'teal'])
+const normalizeHighlightColor = (color) => HIGHLIGHT_COLORS.has(color) ? color : 'yellow'
+const HIGHLIGHT_COLOR_STORAGE_KEY = 'synapse-last-highlight-color'
+const getHighlightColorStorageKey = (userId) => userId ? `${HIGHLIGHT_COLOR_STORAGE_KEY}:${userId}` : HIGHLIGHT_COLOR_STORAGE_KEY
+const getStoredHighlightColor = (userId) => {
+  try {
+    return normalizeHighlightColor(localStorage.getItem(getHighlightColorStorageKey(userId)))
+  } catch {
+    return 'yellow'
+  }
+}
+const setStoredHighlightColor = (userId, color) => {
+  const normalized = normalizeHighlightColor(color)
+  try {
+    localStorage.setItem(getHighlightColorStorageKey(userId), normalized)
+  } catch {
+    /* ignore */
+  }
+  return normalized
+}
+const READING_STATUS_LABELS = {
+  not_read: 'Not read',
+  in_progress: 'Reading',
+  completed: 'Read',
+}
+const READING_STATUS_OPTIONS = ['not_read', 'in_progress', 'completed']
+const readingStatusClass = (status) => String(status || 'not_read').replace(/_/g, '-')
+
 // ---- Inline highlight injection into HTML ----
 
 function findBestOffsets(blockText, h) {
@@ -418,17 +446,23 @@ function ImageCarousel({ images }) {
   const prev = () => setIdx((j) => (n > 0 ? (j - 1 + n) % n : 0))
   const next = () => setIdx((j) => (n > 0 ? (j + 1) % n : 0))
   if (!cur) return null
+  const multi = n > 1
   return (
-    <div className="tb-carousel" role="region" aria-label="Image carousel">
-      <button
-        type="button"
-        className="tb-carousel__nav tb-carousel__prev"
-        onClick={prev}
-        aria-label="Previous image"
-        disabled={n <= 1}
-      >
-        ‹
-      </button>
+    <div
+      className={`tb-carousel${multi ? '' : ' tb-carousel--single'}`}
+      role="region"
+      aria-label={multi ? 'Image carousel' : 'Image'}
+    >
+      {multi && (
+        <button
+          type="button"
+          className="tb-carousel__nav tb-carousel__prev"
+          onClick={prev}
+          aria-label="Previous image"
+        >
+          ‹
+        </button>
+      )}
       <figure className="tb-carousel__asset">
         <div className="tb-carousel__viewport">
           <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
@@ -440,16 +474,17 @@ function ImageCarousel({ images }) {
           </figcaption>
         )}
       </figure>
-      <button
-        type="button"
-        className="tb-carousel__nav tb-carousel__next"
-        onClick={next}
-        aria-label="Next image"
-        disabled={n <= 1}
-      >
-        ›
-      </button>
-      {n > 1 && (
+      {multi && (
+        <button
+          type="button"
+          className="tb-carousel__nav tb-carousel__next"
+          onClick={next}
+          aria-label="Next image"
+        >
+          ›
+        </button>
+      )}
+      {multi && (
         <div className="tb-carousel__dots" role="tablist" aria-label="Image selector">
           {images.map((_, di) => (
             <button
@@ -464,6 +499,29 @@ function ImageCarousel({ images }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function ChapterReadingStatus({ status, saving, onChange }) {
+  return (
+    <div className="tb-chapter-status" aria-label="Reading progress for this topic">
+      <div className="tb-chapter-status__label">Reading status</div>
+      <div className="tb-chapter-status__options">
+        {READING_STATUS_OPTIONS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={`tb-chapter-status__btn tb-chapter-status__btn--${readingStatusClass(option)} ${status === option ? 'is-active' : ''}`}
+            onClick={() => onChange(option)}
+            disabled={saving}
+            aria-pressed={status === option}
+          >
+            {option !== 'not_read' && <span className="tb-chapter-status__dot" aria-hidden />}
+            {READING_STATUS_LABELS[option]}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -642,7 +700,7 @@ function RenderBlockContent({ content, highlights = [], query = '', onHighlightC
   return <div className="tb-md" dangerouslySetInnerHTML={{ __html: content }} />
 }
 
-function RenderBlock({ block, query, blockHighlights = [], onHighlightClick = () => { }, onDeleteHighlight = () => { } }) {
+function RenderBlock({ block, query, blockHighlights = [], onHighlightClick = () => { }, onDeleteHighlight = () => { }, isAdminEditing = false }) {
   if (block.block_type === 'image') {
     const data = block.data || {}
     const images = Array.isArray(data.images) && data.images.length > 0
@@ -658,6 +716,9 @@ function RenderBlock({ block, query, blockHighlights = [], onHighlightClick = ()
         : []
     if (images.length > 0) {
       return <ImageCarousel images={images} />
+    }
+    if (isAdminEditing) {
+      return <div className="tb-admin-image-placeholder">No images in this block yet. Use Edit images to add files from your device.</div>
     }
     return null
   }
@@ -705,25 +766,17 @@ export default function TextbookTopic() {
     return json
   }, [fetchChapterData])
 
-  // Async, awaitable refresh used after admin saves. Sequence:
-  //   1) Wait for the canonical GET to return (server has confirmed the Supabase
-  //      write before this fires, so we know the row is committed and queryable).
-  //   2) Hold for an extra "settle" window so any background sync can finish.
-  //   3) Hard-reload the page so the user sees a fully fresh render.
-  // The loader stays visible for the entire window.
-  const POST_SAVE_SETTLE_MS = 6000
+  // Async, awaitable refresh used after admin saves.
   const refreshChapter = useCallback(async () => {
     setRefreshing(true)
     try {
-      await fetchChapterData()
+      await loadChapter()
     } catch (e) {
       console.warn('Chapter refresh fetch failed:', e?.message || e)
+    } finally {
+      setRefreshing(false)
     }
-    await new Promise((r) => setTimeout(r, POST_SAVE_SETTLE_MS))
-    if (typeof window !== 'undefined') {
-      window.location.reload()
-    }
-  }, [fetchChapterData])
+  }, [loadChapter])
 
   const [navItems, setNavItems] = useState([])
   const [currentIdx, setCurrentIdx] = useState(-1)
@@ -735,6 +788,38 @@ export default function TextbookTopic() {
   const [highlightsOn, setHighlightsOn] = useState(true);
   const [popoverHl, setPopoverHl] = useState(null);
   const [popoverRect, setPopoverRect] = useState(null);
+  const [lastHighlightColor, setLastHighlightColor] = useState(() => getStoredHighlightColor(user?.id))
+  const [readingStatus, setReadingStatus] = useState('not_read')
+  const [savingReadingStatus, setSavingReadingStatus] = useState(false)
+
+  const currentProgressTarget = useMemo(() => {
+    if (data?.subtopic?.id) return { type: 'subtopic', id: data.subtopic.id }
+    if (data?.topic?.id) return { type: 'topic', id: data.topic.id }
+    return null
+  }, [data?.subtopic?.id, data?.topic?.id])
+
+  useEffect(() => {
+    setLastHighlightColor(getStoredHighlightColor(user?.id))
+  }, [user?.id])
+
+  useEffect(() => {
+    const specSlug = data?.topic?.specialties?.slug
+    if (!specSlug || !currentProgressTarget) return
+    let cancelled = false
+      ; (async () => {
+        try {
+          const res = await authenticatedFetch(`${API_BASE}/textbook/specialty/${specSlug}/progress`, { method: 'GET' })
+          if (!res.ok) return
+          const json = await res.json()
+          const progressMap = currentProgressTarget.type === 'subtopic'
+            ? json?.subtopic_progress
+            : json?.progress
+          const current = progressMap?.[currentProgressTarget.id]
+          if (!cancelled) setReadingStatus(current?.reading_status || 'not_read')
+        } catch { }
+      })()
+    return () => { cancelled = true }
+  }, [API_BASE, currentProgressTarget, data?.topic?.specialties?.slug])
 
   useEffect(() => {
     let cancelled = false
@@ -864,7 +949,7 @@ export default function TextbookTopic() {
           page_id: pageId,
           section_anchor: sectionAnchor,
           block_id: blockId,
-          color: 'yellow',
+          color: lastHighlightColor,
           quote: finalQuote.trim(),
           start_offset: finalStart,
           end_offset: finalEnd,
@@ -905,7 +990,7 @@ export default function TextbookTopic() {
       document.removeEventListener('mouseup', onMouseUp, true)
       document.removeEventListener('touchend', onMouseUp, true)
     }
-  }, [data?.page?.id, API_BASE, highlights, editMode])
+  }, [data?.page?.id, API_BASE, highlights, editMode, lastHighlightColor])
 
   const handleDeleteHighlight = async (hlId) => {
     try {
@@ -925,12 +1010,14 @@ export default function TextbookTopic() {
 
   const handlePopoverSave = useCallback(async ({ note, color }) => {
     if (!popoverHl) return
+    const nextColor = setStoredHighlightColor(user?.id, color)
     try {
       const res = await authenticatedFetch(`${API_BASE}/textbook/highlights/${popoverHl.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ color, note }),
+        body: JSON.stringify({ color: nextColor, note }),
       })
       if (res.ok) {
+        setLastHighlightColor(nextColor)
         const json = await res.json()
         if (json?.highlight) {
           setHighlights((arr) => arr.map((h) => (h.id === popoverHl.id ? json.highlight : h)))
@@ -938,7 +1025,29 @@ export default function TextbookTopic() {
       }
     } catch { }
     setPopoverHl(null)
-  }, [popoverHl, API_BASE])
+  }, [popoverHl, API_BASE, user?.id])
+
+  const handleReadingStatusChange = useCallback(async (nextStatus) => {
+    if (!currentProgressTarget || !READING_STATUS_OPTIONS.includes(nextStatus)) return
+    const previousStatus = readingStatus
+    setReadingStatus(nextStatus)
+    setSavingReadingStatus(true)
+    try {
+      const endpoint = currentProgressTarget.type === 'subtopic'
+        ? `${API_BASE}/textbook/subtopic/${currentProgressTarget.id}/progress`
+        : `${API_BASE}/textbook/topic/${currentProgressTarget.id}/progress`
+      const res = await authenticatedFetch(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify({ reading_status: nextStatus }),
+      })
+      if (!res.ok) throw new Error('Failed to update reading status')
+    } catch (e) {
+      console.error('Error updating reading status:', e)
+      setReadingStatus(previousStatus)
+    } finally {
+      setSavingReadingStatus(false)
+    }
+  }, [API_BASE, currentProgressTarget, readingStatus])
 
   useEffect(() => {
     if (!data) return
@@ -1149,6 +1258,7 @@ export default function TextbookTopic() {
                       block={b}
                       query={topicQ}
                       blockHighlights={highlightsOn ? highlights.filter((h) => String(h.block_id) === String(b.id)) : []}
+                      isAdminEditing={isAdmin && editMode}
                       onHighlightClick={(hl, rect) => {
                         setPopoverHl(hl)
                         setPopoverRect(rect)
@@ -1244,6 +1354,13 @@ export default function TextbookTopic() {
                 </button>
               )}
             </div>
+          )}
+          {currentProgressTarget && (
+            <ChapterReadingStatus
+              status={readingStatus}
+              saving={savingReadingStatus}
+              onChange={handleReadingStatusChange}
+            />
           )}
         </aside>
       </div>
