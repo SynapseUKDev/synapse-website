@@ -223,6 +223,11 @@
   background: #f0f9ff;
 }
 
+html[data-theme="dark"] .admin-list button.is-active {
+  border-color: var(--dm-primary-container);
+  background: var(--dm-surface-container-high);
+}
+
 .admin-list span {
   display: -webkit-box;
   -webkit-line-clamp: 2;

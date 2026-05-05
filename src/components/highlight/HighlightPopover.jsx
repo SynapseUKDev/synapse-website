@@ -163,7 +163,7 @@ export default function HighlightPopover({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Add a note… (Cmd+Enter to save)"
+            placeholder="Add a note…"
           />
         )}
 

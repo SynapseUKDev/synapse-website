@@ -447,58 +447,56 @@ function ImageCarousel({ images }) {
   const next = () => setIdx((j) => (n > 0 ? (j + 1) % n : 0))
   if (!cur) return null
   const multi = n > 1
+
+  const asset = (
+    <figure className="tb-carousel__asset">
+      <div className="tb-carousel__viewport">
+        <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
+      </div>
+      {(cur.caption || cur.attribution) && (
+        <figcaption className="tb-carousel__cap">
+          {cur.caption && <div className="tb-carousel__caption">{cur.caption}</div>}
+          {cur.attribution && (
+            <div className="tb-attr">
+              {cur.attribution}
+              {cur.license ? `, ${cur.license}` : ''}
+            </div>
+          )}
+        </figcaption>
+      )}
+    </figure>
+  )
+
+  if (!multi) {
+    return (
+      <div className="tb-img-block tb-img-block--single" role="region" aria-label="Illustration">
+        {asset}
+      </div>
+    )
+  }
+
   return (
-    <div
-      className={`tb-carousel${multi ? '' : ' tb-carousel--single'}`}
-      role="region"
-      aria-label={multi ? 'Image carousel' : 'Image'}
-    >
-      {multi && (
-        <button
-          type="button"
-          className="tb-carousel__nav tb-carousel__prev"
-          onClick={prev}
-          aria-label="Previous image"
-        >
-          ‹
-        </button>
-      )}
-      <figure className="tb-carousel__asset">
-        <div className="tb-carousel__viewport">
-          <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
-        </div>
-        {(cur.caption || cur.attribution) && (
-          <figcaption className="tb-carousel__cap">
-            {cur.caption && <div className="tb-carousel__caption">{cur.caption}</div>}
-            {cur.attribution && <div className="tb-attr">{cur.attribution}{cur.license ? `, ${cur.license}` : ''}</div>}
-          </figcaption>
-        )}
-      </figure>
-      {multi && (
-        <button
-          type="button"
-          className="tb-carousel__nav tb-carousel__next"
-          onClick={next}
-          aria-label="Next image"
-        >
-          ›
-        </button>
-      )}
-      {multi && (
-        <div className="tb-carousel__dots" role="tablist" aria-label="Image selector">
-          {images.map((_, di) => (
-            <button
-              key={di}
-              type="button"
-              role="tab"
-              className={`tb-carousel__dot ${di === i ? 'is-active' : ''}`}
-              aria-label={`Go to image ${di + 1}`}
-              aria-selected={di === i}
-              onClick={() => setIdx(di)}
-            />
-          ))}
-        </div>
-      )}
+    <div className="tb-carousel" role="region" aria-label="Image carousel">
+      <button type="button" className="tb-carousel__nav tb-carousel__prev" onClick={prev} aria-label="Previous image">
+        ‹
+      </button>
+      {asset}
+      <button type="button" className="tb-carousel__nav tb-carousel__next" onClick={next} aria-label="Next image">
+        ›
+      </button>
+      <div className="tb-carousel__dots" role="tablist" aria-label="Image selector">
+        {images.map((_, di) => (
+          <button
+            key={di}
+            type="button"
+            role="tab"
+            className={`tb-carousel__dot ${di === i ? 'is-active' : ''}`}
+            aria-label={`Go to image ${di + 1}`}
+            aria-selected={di === i}
+            onClick={() => setIdx(di)}
+          />
+        ))}
+      </div>
     </div>
   )
 }

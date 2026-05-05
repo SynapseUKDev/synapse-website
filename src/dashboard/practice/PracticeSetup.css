@@ -249,12 +249,24 @@
 .qty__input {
   width: 92px;
   height: 36px;
+  box-sizing: border-box;
   border: 1px solid var(--syn-border);
   border-radius: 10px;
   padding: 0 10px;
+  margin: 0;
   text-align: center;
   font-weight: 800;
+  font-size: 16px;
+  line-height: 34px;
   font-family: 'Urbanist', ui-sans-serif, system-ui;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.qty__input::-webkit-outer-spin-button,
+.qty__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .qty__chips {
