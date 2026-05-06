@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuChartLine, LuCircleHelp, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX, LuLogOut, LuShield } from 'react-icons/lu'
+import { LuChartLine, LuCircleHelp, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX, LuLogOut, LuShield, LuStethoscope } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import './Sidebar.css'
 
@@ -23,6 +23,7 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
     { id: 'question-bank', label: 'Question Bank', icon: LuCircleHelp, to: '/dashboard/question-bank' },
     { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },
+    { id: 'osce', label: 'OSCE Stations', icon: LuStethoscope, to: '/dashboard/osce' },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: LuShield, to: '/dashboard/admin' }] : []),
     // { id: 'mock-exams', label: 'Mock Exams', icon: LuTimer, to: '/dashboard/mock-exams' },
   ]
@@ -72,7 +73,11 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
           return (
             <button
               key={item.id}
-              className={`sidebar__item ${location.pathname === item.to ? 'sidebar__item--active' : ''}`}
+              className={`sidebar__item ${
+                item.to === '/dashboard'
+                  ? location.pathname === '/dashboard' ? 'sidebar__item--active' : ''
+                  : location.pathname.startsWith(item.to) ? 'sidebar__item--active' : ''
+              }`}
               onClick={() => handleNavigate(item.to)}
             >
               <IconComponent className="sidebar__icon" />

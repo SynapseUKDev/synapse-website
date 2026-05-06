@@ -24,6 +24,11 @@ import TextbookTopic from './dashboard/textbook/TextbookTopic.jsx'
 import TextbookSearch from './dashboard/textbook/TextbookSearch.jsx'
 import Settings from './dashboard/Settings.jsx'
 import Admin from './dashboard/admin/Admin.jsx'
+import OsceStations from './dashboard/osce/OsceStations.jsx'
+import OsceStationLanding from './dashboard/osce/OsceStationLanding.jsx'
+import OsceStationActive from './dashboard/osce/OsceStationActive.jsx'
+import OsceGroupSetup from './dashboard/osce/OsceGroupSetup.jsx'
+import OsceGroupResults from './dashboard/osce/OsceGroupResults.jsx'
 
 function HashRedirector() {
   const location = useLocation()
@@ -76,6 +81,12 @@ function App() {
           <Route path="textbook/specialty/:slug" element={<Textbook />} />
           <Route path="textbook/topic/:topicSlug" element={<TextbookTopic />} />
           <Route path="admin" element={<Admin />} />
+          <Route path="osce" element={<OsceStations />} />
+          <Route path="osce/station/:slug" element={<OsceStationLanding />} />
+          <Route path="osce/station/:slug/practice" element={<OsceStationActive />} />
+          <Route path="osce/group" element={<OsceGroupSetup />} />
+          <Route path="osce/group/:roomCode" element={<OsceGroupSetup />} />
+          <Route path="osce/group/:roomCode/results" element={<OsceGroupResults />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
