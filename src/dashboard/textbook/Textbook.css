@@ -1,6 +1,32 @@
 .tb-page {
   padding: 24px;
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  /*
+   * Unified illustration “frame” for all textbook images:
+   * <figure>, inline <p><img>, MediaWiki .thumb*, and admin carousel (.tb-carousel__asset).
+   * Theme via html[data-theme='dark'] on .tb-page below.
+   */
+  --tb-media-outer: min(18rem, min(94vw, 100%));
+  --tb-media-pad: 10px;
+  --tb-media-hmax: min(50vh, 340px);
+  --tb-media-radius: 14px;
+  --tb-media-border: 2px solid var(--syn-border);
+  --tb-media-surface: var(--surface-card);
+  --tb-media-viewport-bg: var(--dm-surface-container-low, #f1f5f9);
+  --tb-media-shadow: 0 6px 18px rgba(11, 22, 55, 0.09);
+  --tb-media-cap-pad-x: 16px;
+  --tb-media-cap-pad-y: 14px;
+  --tb-media-cap-align: center;
+}
+
+html[data-theme='dark'] .tb-page {
+  --tb-media-border: 2px solid var(--dm-surface-container-lowest);
+  --tb-media-surface: var(--dm-surface-container-high);
+  --tb-media-viewport-bg: var(--dm-surface-container-high);
+  --tb-media-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    0 16px 48px rgba(0, 0, 0, 0.35);
+  --tb-media-cap-align: left;
 }
 
 .tb-page>.loading--inline {
@@ -727,102 +753,110 @@ mark.tb-user-mark[data-note]:hover::after {
   background: var(--dm-surface-container-low, #fbfcff);
 }
 
-/* Image blocks — same shell + viewport math as admin carousel (.tb-carousel__asset / __viewport) */
-.tb-figure,
-.tb-md figure {
-  --tb-inline-figure-hmax: min(75vh, 520px);
-  --tb-inline-figure-wmax: min(22.5rem, 100%);
-  --tb-inline-figure-img-w: min(var(--tb-inline-figure-wmax), calc(var(--tb-inline-figure-hmax) * 3 / 4));
-  margin: 12px auto 16px;
-  width: min(22.5rem, 100%);
-  border: 1px solid var(--syn-border);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--surface-card);
-  box-shadow: 0 6px 16px rgba(11, 22, 55, 0.08);
+/* ---- Textbook illustrations: one frame (tokens on .tb-page: --tb-media-*) ---- */
+/* !important: CMS/wiki HTML uses inline style="" (background, width); must lose to these rules. */
+
+.tb-page .tb-figure,
+.tb-page .tb-md figure {
+  margin: 12px auto 16px !important;
+  width: min(var(--tb-media-outer), 100%) !important;
+  max-width: 100% !important;
+  padding: var(--tb-media-pad) !important;
+  box-sizing: border-box !important;
+  border: var(--tb-media-border) !important;
+  border-radius: var(--tb-media-radius) !important;
+  overflow: hidden !important;
+  background: var(--tb-media-surface) !important;
+  box-shadow: var(--tb-media-shadow) !important;
 }
 
-.tb-figure img:first-of-type,
-.tb-md figure img:first-of-type {
-  display: block;
-  width: var(--tb-inline-figure-img-w);
-  height: calc(var(--tb-inline-figure-img-w) * 4 / 3);
-  max-width: 100%;
-  max-height: var(--tb-inline-figure-hmax);
-  margin: 0 auto;
-  object-fit: contain;
-  background: var(--dm-surface-container-low, #f1f5f9);
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
+.tb-page .tb-md figure > :not(figcaption) {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.tb-figure figcaption,
-.tb-md figure figcaption {
-  margin: 0;
-  padding: 12px 14px;
-  border-top: 1px solid var(--syn-border);
-  background: var(--surface-card);
-  text-align: center;
+.tb-page .tb-md figure > :not(figcaption) * {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.tb-page .tb-figure img:first-of-type,
+.tb-page .tb-md figure img:first-of-type {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  aspect-ratio: 3 / 4 !important;
+  max-height: var(--tb-media-hmax) !important;
+  height: auto !important;
+  object-fit: contain !important;
+  margin: 0 auto !important;
+  background: var(--tb-media-viewport-bg) !important;
+  border: none !important;
+  border-radius: max(4px, calc(var(--tb-media-radius) - var(--tb-media-pad))) !important;
+  box-shadow: none !important;
+}
+
+.tb-page .tb-md figure img:not(:first-of-type) {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.tb-page .tb-figure figcaption,
+.tb-page .tb-md figure figcaption {
+  width: calc(100% + 2 * var(--tb-media-pad)) !important;
+  margin-left: calc(-1 * var(--tb-media-pad)) !important;
+  margin-right: calc(-1 * var(--tb-media-pad)) !important;
+  margin-bottom: calc(-1 * var(--tb-media-pad)) !important;
+  margin-top: var(--tb-media-pad) !important;
+  padding: var(--tb-media-cap-pad-y) var(--tb-media-cap-pad-x) !important;
+  border-top: var(--tb-media-border) !important;
+  box-sizing: border-box !important;
+  background: var(--tb-media-surface) !important;
+  text-align: var(--tb-media-cap-align) !important;
   color: var(--syn-navy-700);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.45;
 }
 
-/* Single <img> not in <figure> (e.g. CMS/Wiki) — same card + viewport as figure / tb-carousel--single */
-.tb-md p:has(> img:only-child),
-.tb-md p:has(> a:only-child > img:only-child) {
-  --tb-inline-figure-hmax: min(75vh, 520px);
-  --tb-inline-figure-wmax: min(22.5rem, 100%);
-  --tb-inline-figure-img-w: min(var(--tb-inline-figure-wmax), calc(var(--tb-inline-figure-hmax) * 3 / 4));
+/* Inline-only <img> (CMS/Wiki): same --tb-media-* frame */
+.tb-page .tb-md p:has(> img:only-child),
+.tb-page .tb-md p:has(> a:only-child > img:only-child) {
   margin: 12px auto 16px !important;
-  width: min(22.5rem, 100%);
-  max-width: 100%;
-  border: 1px solid var(--syn-border);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--surface-card);
-  box-shadow: 0 6px 16px rgba(11, 22, 55, 0.08);
-  box-sizing: border-box;
-  padding: 0;
+  width: min(var(--tb-media-outer), 100%) !important;
+  max-width: 100% !important;
+  padding: var(--tb-media-pad) !important;
+  box-sizing: border-box !important;
+  border: var(--tb-media-border) !important;
+  border-radius: var(--tb-media-radius) !important;
+  overflow: hidden !important;
+  background: var(--tb-media-surface) !important;
+  box-shadow: var(--tb-media-shadow) !important;
 }
 
-.tb-md > img:only-child {
-  --tb-inline-figure-hmax: min(75vh, 520px);
-  --tb-inline-figure-wmax: min(22.5rem, 100%);
-  --tb-inline-figure-img-w: min(var(--tb-inline-figure-wmax), calc(var(--tb-inline-figure-hmax) * 3 / 4));
-  display: block;
-  margin: 12px auto 16px;
-  padding: 0;
-  width: var(--tb-inline-figure-img-w);
-  max-width: min(22.5rem, 100%);
-  height: calc(var(--tb-inline-figure-img-w) * 4 / 3);
-  max-height: var(--tb-inline-figure-hmax);
-  border: 1px solid var(--syn-border);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--dm-surface-container-low, #f1f5f9);
-  box-shadow: 0 6px 16px rgba(11, 22, 55, 0.08);
-  box-sizing: border-box;
-  object-fit: contain;
+.tb-page .tb-md p:has(> img:only-child) > img {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  aspect-ratio: 3 / 4 !important;
+  max-height: var(--tb-media-hmax) !important;
+  height: auto !important;
+  object-fit: contain !important;
+  margin: 0 auto !important;
+  background: var(--tb-media-viewport-bg) !important;
+  border: none !important;
+  border-radius: max(4px, calc(var(--tb-media-radius) - var(--tb-media-pad))) !important;
+  box-shadow: none !important;
 }
 
-.tb-md p:has(> img:only-child) > img {
-  display: block;
-  width: var(--tb-inline-figure-img-w);
-  height: calc(var(--tb-inline-figure-img-w) * 4 / 3);
-  max-width: 100%;
-  max-height: var(--tb-inline-figure-hmax);
-  margin: 0 auto;
-  object-fit: contain;
-  background: var(--dm-surface-container-low, #f1f5f9);
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.tb-md p:has(> a:only-child > img:only-child) > a {
+.tb-page .tb-md p:has(> a:only-child > img:only-child) > a {
   display: block;
   margin: 0;
   padding: 0;
@@ -832,18 +866,93 @@ mark.tb-user-mark[data-note]:hover::after {
   text-decoration: none;
 }
 
-.tb-md p:has(> a:only-child > img:only-child) > a > img {
-  display: block;
-  width: var(--tb-inline-figure-img-w);
-  height: calc(var(--tb-inline-figure-img-w) * 4 / 3);
-  max-width: 100%;
-  max-height: var(--tb-inline-figure-hmax);
-  margin: 0 auto;
-  object-fit: contain;
-  background: var(--dm-surface-container-low, #f1f5f9);
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
+.tb-page .tb-md p:has(> a:only-child > img:only-child) > a > img {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  aspect-ratio: 3 / 4 !important;
+  max-height: var(--tb-media-hmax) !important;
+  height: auto !important;
+  object-fit: contain !important;
+  margin: 0 auto !important;
+  background: var(--tb-media-viewport-bg) !important;
+  border: none !important;
+  border-radius: max(4px, calc(var(--tb-media-radius) - var(--tb-media-pad))) !important;
+  box-shadow: none !important;
+}
+
+.tb-page .tb-md > img:only-child {
+  display: block !important;
+  margin: 12px auto 16px !important;
+  width: min(var(--tb-media-outer), 100%) !important;
+  max-width: 100% !important;
+  padding: var(--tb-media-pad) !important;
+  box-sizing: border-box !important;
+  aspect-ratio: 3 / 4 !important;
+  max-height: var(--tb-media-hmax) !important;
+  height: auto !important;
+  object-fit: contain !important;
+  border: var(--tb-media-border) !important;
+  border-radius: var(--tb-media-radius) !important;
+  overflow: hidden !important;
+  background: var(--tb-media-viewport-bg) !important;
+  box-shadow: var(--tb-media-shadow) !important;
+}
+
+/* MediaWiki .thumb / .thumbinner */
+.tb-page .tb-md .thumb .thumbinner,
+.tb-page .tb-md .thumbinner {
+  margin: 12px auto 16px !important;
+  width: min(var(--tb-media-outer), 100%) !important;
+  max-width: 100% !important;
+  padding: var(--tb-media-pad) !important;
+  box-sizing: border-box !important;
+  border: var(--tb-media-border) !important;
+  border-radius: var(--tb-media-radius) !important;
+  background: var(--tb-media-surface) !important;
+  box-shadow: var(--tb-media-shadow) !important;
+  overflow: hidden !important;
+}
+
+.tb-page .tb-md .thumbinner > :not(.thumbcaption) {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.tb-page .tb-md .thumbinner > :not(.thumbcaption) * {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.tb-page .tb-md .thumbinner img {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: var(--tb-media-hmax) !important;
+  object-fit: contain !important;
+  margin: 0 auto !important;
+  border-radius: max(4px, calc(var(--tb-media-radius) - var(--tb-media-pad))) !important;
+}
+
+.tb-page .tb-md .thumbcaption {
+  margin-top: var(--tb-media-pad);
+  padding: var(--tb-media-cap-pad-y) var(--tb-media-cap-pad-x) !important;
+  border-top: var(--tb-media-border) !important;
+  background: var(--tb-media-surface) !important;
+  text-align: var(--tb-media-cap-align);
+  color: var(--syn-navy-700);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  box-sizing: border-box;
 }
 
 .tb-attr {
@@ -855,23 +964,17 @@ mark.tb-user-mark[data-note]:hover::after {
   opacity: 0.9;
 }
 
-/* Textbook image carousel (React component) — portrait frame 3:4, all slides same outer box */
+/* Admin carousel + multi-image blocks (same tokens) */
 .tb-carousel {
   position: relative;
   display: grid;
-  /* Centre column fits portrait card + nav gutters */
-  grid-template-columns: 40px minmax(0, min(100%, 24rem)) 40px;
+  grid-template-columns: 40px minmax(0, var(--tb-media-outer)) 40px;
   align-items: center;
   gap: 10px;
   margin: 12px auto 16px;
   justify-content: center;
-  /* Max width & height for image area; width derived so 3:4 fits both caps */
-  --tb-carousel-hmax: min(75vh, 520px);
-  --tb-carousel-wmax: min(22.5rem, 100%);
-  --tb-carousel-img-w: min(var(--tb-carousel-wmax), calc(var(--tb-carousel-hmax) * 3 / 4));
 }
 
-/* Single admin image block — same asset markup as carousel, without carousel chrome */
 .tb-img-block--single {
   display: flex;
   justify-content: center;
@@ -883,7 +986,6 @@ mark.tb-user-mark[data-note]:hover::after {
   margin-inline: auto;
 }
 
-/* Use `button` in selector so UA / resets on <button> don’t revert to transparent/white */
 .tb-carousel button.tb-carousel__nav,
 .tb-carousel__nav {
   -webkit-appearance: none;
@@ -937,26 +1039,29 @@ mark.tb-user-mark[data-note]:hover::after {
 .tb-carousel__asset {
   grid-column: 2;
   margin: 0 auto;
-  width: fit-content;
+  width: min(var(--tb-media-outer), 100%);
   max-width: 100%;
-  border: 1px solid var(--syn-border);
-  border-radius: 12px;
+  padding: var(--tb-media-pad);
+  box-sizing: border-box;
+  border: var(--tb-media-border);
+  border-radius: var(--tb-media-radius);
   overflow: hidden;
-  background: var(--surface-card);
-  box-shadow: 0 6px 16px rgba(11, 22, 55, 0.08);
+  background: var(--tb-media-surface);
+  box-shadow: var(--tb-media-shadow);
 }
 
-/* Fixed portrait 3:4 — every image letterboxes inside this box */
 .tb-carousel__viewport {
   position: relative;
-  width: var(--tb-carousel-img-w);
-  height: calc(var(--tb-carousel-img-w) * 4 / 3);
-  max-height: var(--tb-carousel-hmax);
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: var(--tb-media-hmax);
   margin-inline: auto;
-  background: var(--dm-surface-container-low, #f1f5f9);
+  background: var(--tb-media-viewport-bg);
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: max(4px, calc(var(--tb-media-radius) - var(--tb-media-pad)));
+  overflow: hidden;
 }
 
 .tb-carousel__asset img {
@@ -969,9 +1074,16 @@ mark.tb-user-mark[data-note]:hover::after {
 }
 
 .tb-carousel__cap {
-  padding: 12px 14px;
-  border-top: 1px solid var(--syn-border);
-  background: var(--surface-card);
+  width: calc(100% + 2 * var(--tb-media-pad));
+  margin-left: calc(-1 * var(--tb-media-pad));
+  margin-right: calc(-1 * var(--tb-media-pad));
+  margin-bottom: calc(-1 * var(--tb-media-pad));
+  margin-top: var(--tb-media-pad);
+  padding: var(--tb-media-cap-pad-y) var(--tb-media-cap-pad-x);
+  border-top: var(--tb-media-border);
+  box-sizing: border-box;
+  background: var(--tb-media-surface);
+  text-align: var(--tb-media-cap-align);
 }
 
 .tb-carousel__caption {
@@ -1031,169 +1143,105 @@ html[data-theme='dark'] .tb-carousel__nav:hover:not(:disabled) {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-html[data-theme='dark'] .tb-carousel__asset {
-  background: var(--dm-surface-container-high);
-  border: 1px solid var(--dm-surface-container-lowest);
-  border-radius: 14px;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    0 16px 48px rgba(0, 0, 0, 0.35);
-}
-
-html[data-theme='dark'] .tb-carousel__viewport {
-  background: var(--dm-surface-container-high);
-  box-shadow: none;
-}
-
-html[data-theme='dark'] .tb-carousel__cap {
-  background: var(--dm-surface-container-high);
-  border-top: 1px solid var(--dm-surface-container-lowest);
-  padding: 16px 18px;
-  text-align: left;
-}
-
-html[data-theme='dark'] .tb-figure,
-html[data-theme='dark'] .tb-md figure {
-  background: var(--dm-surface-container-high);
-  border: 1px solid var(--dm-surface-container-lowest);
-  border-radius: 14px;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    0 16px 48px rgba(0, 0, 0, 0.35);
-}
-
-/* Strip light borders/outlines from pasted wiki/CMS wrappers inside figures */
-html[data-theme='dark'] .tb-md figure > a,
-html[data-theme='dark'] .tb-md figure > div {
+/* Pasted HTML under dashboard: strip nested frames; outer uses --tb-media-* */
+.dash__content .tb-md figure > :not(figcaption) {
   border: none !important;
   box-shadow: none !important;
-  outline: none;
+  background-color: transparent !important;
+  background-image: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.dash__content .tb-md figure > :not(figcaption) * {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.dash__content .tb-md figure {
+  background: var(--tb-media-surface) !important;
+  width: min(var(--tb-media-outer), 100%) !important;
+  max-width: 100% !important;
+  padding: var(--tb-media-pad) !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  border: var(--tb-media-border) !important;
+  border-radius: var(--tb-media-radius) !important;
+  box-shadow: var(--tb-media-shadow) !important;
+}
+
+.dash__content .tb-md figure figcaption {
+  border-top: var(--tb-media-border) !important;
+  background: var(--tb-media-surface) !important;
+}
+
+.dash__content .tb-carousel__asset > :not(figcaption) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.dash__content .tb-carousel__asset > :not(figcaption) * {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.dash__content .tb-carousel__asset {
+  background: var(--tb-media-surface) !important;
+  border: var(--tb-media-border) !important;
+  border-radius: var(--tb-media-radius) !important;
+  box-shadow: var(--tb-media-shadow) !important;
+}
+
+.dash__content .tb-carousel__cap {
+  border-top: var(--tb-media-border) !important;
+}
+
+.dash__content .tb-md .thumb .thumbinner,
+.dash__content .tb-md .thumbinner {
+  border: var(--tb-media-border) !important;
+  border-radius: var(--tb-media-radius) !important;
+  box-shadow: var(--tb-media-shadow) !important;
+  background: var(--tb-media-surface) !important;
+  width: min(var(--tb-media-outer), 100%) !important;
+  max-width: 100% !important;
 }
 
 html[data-theme='dark'] .tb-md figure img,
 html[data-theme='dark'] .tb-md figure a img,
 html[data-theme='dark'] .tb-figure img {
-  border: none !important;
   outline: none;
-  box-shadow: none !important;
 }
 
 html[data-theme='dark'] .tb-figure img:first-of-type,
 html[data-theme='dark'] .tb-md figure img:first-of-type {
   background: transparent;
-  box-shadow: none;
 }
 
 html[data-theme='dark'] .tb-figure figcaption,
 html[data-theme='dark'] .tb-md figure figcaption {
-  background: var(--dm-surface-container-high);
-  border-top: 1px solid var(--dm-surface-container-lowest);
   color: var(--dm-on-surface);
-  padding: 16px 18px;
-  text-align: left;
-}
-
-html[data-theme='dark'] .tb-md p:has(> img:only-child),
-html[data-theme='dark'] .tb-md p:has(> a:only-child > img:only-child) {
-  background: var(--dm-surface-container-high);
-  border: 1px solid var(--dm-surface-container-lowest);
-  border-radius: 14px;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    0 16px 48px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] .tb-md p:has(> img:only-child) > img,
 html[data-theme='dark'] .tb-md p:has(> a:only-child > img:only-child) > a > img {
   background: transparent;
-  border: none !important;
-  outline: none;
-  box-shadow: none !important;
 }
 
 html[data-theme='dark'] .tb-md p:has(> a:only-child > img:only-child) > a {
-  border: none !important;
   outline: none;
-  box-shadow: none !important;
 }
 
 html[data-theme='dark'] .tb-md > img:only-child {
-  background: var(--dm-surface-container-high);
-  border: 1px solid var(--dm-surface-container-lowest) !important;
-  border-radius: 14px;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    0 16px 48px rgba(0, 0, 0, 0.35);
   outline: none;
 }
 
-/*
- * Topic pages render under DashboardLayout (.dash__content). Pasted wiki/HTML often sets
- * thick light borders inline on <figure> or inner wrappers — reset descendants then
- * re-apply a single dark-blue frame so e.g. /textbook/topic/acne-vulgaris matches design.
- */
-html[data-theme='dark'] .dash__content .tb-md figure * {
-  border: none !important;
-  box-shadow: none !important;
-}
-
-html[data-theme='dark'] .dash__content .tb-md figure {
-  border: 1px solid var(--dm-surface-container-lowest) !important;
-  border-radius: 14px !important;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    0 16px 48px rgba(0, 0, 0, 0.35) !important;
-}
-
-html[data-theme='dark'] .dash__content .tb-md figure figcaption {
-  border-top: 1px solid var(--dm-surface-container-lowest) !important;
-}
-
-html[data-theme='dark'] .dash__content .tb-carousel__asset * {
-  border: none !important;
-  box-shadow: none !important;
-}
-
-html[data-theme='dark'] .dash__content .tb-carousel__asset {
-  border: 1px solid var(--dm-surface-container-lowest) !important;
-  border-radius: 14px !important;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    0 16px 48px rgba(0, 0, 0, 0.35) !important;
-}
-
-html[data-theme='dark'] .dash__content .tb-carousel__viewport {
-  box-shadow: none !important;
-}
-
-html[data-theme='dark'] .dash__content .tb-carousel__cap {
-  border-top: 1px solid var(--dm-surface-container-lowest) !important;
-}
-
-/* MediaWiki-style thumbnail markup (exported HTML may omit <figure>) */
-html[data-theme='dark'] .dash__content .tb-md .thumb .thumbinner,
-html[data-theme='dark'] .dash__content .tb-md .thumbinner {
-  border: 1px solid var(--dm-surface-container-lowest) !important;
-  border-radius: 14px !important;
-  background: var(--dm-surface-container-high) !important;
-  overflow: hidden;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    0 16px 48px rgba(0, 0, 0, 0.35) !important;
-}
-
-html[data-theme='dark'] .dash__content .tb-md .thumb .thumbinner *,
-html[data-theme='dark'] .dash__content .tb-md .thumbinner * {
-  border: none !important;
-  box-shadow: none !important;
-}
-
-html[data-theme='dark'] .dash__content .tb-md .thumbcaption {
-  border-top: 1px solid var(--dm-surface-container-lowest) !important;
-  background: var(--dm-surface-container-high) !important;
+html[data-theme='dark'] .tb-page .tb-md .thumbcaption {
   color: var(--dm-on-surface);
-  padding: 16px 18px;
-  text-align: left;
 }
 
 html[data-theme='dark'] .tb-carousel__cap .tb-attr {
