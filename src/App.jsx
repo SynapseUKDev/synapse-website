@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from
 import Landing from './landing/Landing.jsx'
 import Auth from './auth/Auth.jsx'
 import Dashboard from './dashboard/Dashboard.jsx'
+import Analytics from './dashboard/analytics/Analytics.jsx'
 import Callback from './auth/Callback.jsx'
 import Subscribe from './auth/Subscribe.jsx'
 import ResetPassword from './auth/ResetPassword.jsx'
@@ -67,6 +68,7 @@ function App() {
         <Route path="/subscribe" element={<Subscribe />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="question-bank" element={<QuestionBank />} />
           <Route path="question-bank/create-set" element={<CreateStudySet />} />
           <Route path="study-sets" element={<StudySets />} />
