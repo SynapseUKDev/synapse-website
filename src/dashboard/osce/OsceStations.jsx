@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { LuTimer, LuUsers, LuStethoscope, LuTarget, LuListCheck, LuSearch, LuShuffle, LuBookOpen } from 'react-icons/lu'
+import { LuTimer, LuUsers, LuStethoscope, LuTarget, LuListCheck, LuSearch, LuShuffle, LuBookOpen, LuPencil } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import './Osce.css'
@@ -34,6 +34,7 @@ const TYPE_EMOJIS = {
 export default function OsceStations() {
   const navigate = useNavigate()
   const { user } = useOutletContext()
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
   const [stations, setStations] = useState([])
   const [progress, setProgress] = useState([])
   const [loading, setLoading] = useState(true)
@@ -94,8 +95,20 @@ export default function OsceStations() {
 
   return (
     <div className="osce">
-      <h1 className="osce__title">OSCE Stations</h1>
-      <p className="osce__subtitle">Practice clinical examinations following the UKMLA specification</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="osce__title">OSCE Stations</h1>
+          <p className="osce__subtitle">Practice clinical examinations following the UKMLA specification</p>
+        </div>
+        {isAdmin && (
+          <button 
+            className="osce-btn osce-btn--secondary osce-btn--sm" 
+            onClick={() => navigate('/dashboard/admin/osce')}
+          >
+            <LuPencil size={16} /> Manage Stations
+          </button>
+        )}
+      </div>
 
       {/* Stat cards */}
       <div className="osce__stats">

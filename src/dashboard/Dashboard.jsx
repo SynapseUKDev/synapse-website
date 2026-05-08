@@ -14,7 +14,7 @@ import {
   renderQuestionsChart,
   renderAccuracyChartByWeekday,
   renderTimeChartByWeekday,
-} from './analytics/dashboardAnalyticsCharts.jsx'
+} from './insights/dashboardAnalyticsCharts.jsx'
 
 export default function Dashboard() {
   const navigate = useNavigate()

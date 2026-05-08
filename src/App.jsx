@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from
 import Landing from './landing/Landing.jsx'
 import Auth from './auth/Auth.jsx'
 import Dashboard from './dashboard/Dashboard.jsx'
-import Analytics from './dashboard/analytics/Analytics.jsx'
+import Analytics from './dashboard/insights/Insights.jsx'
 import Callback from './auth/Callback.jsx'
 import Subscribe from './auth/Subscribe.jsx'
 import ResetPassword from './auth/ResetPassword.jsx'
@@ -30,6 +30,8 @@ import OsceStationLanding from './dashboard/osce/OsceStationLanding.jsx'
 import OsceStationActive from './dashboard/osce/OsceStationActive.jsx'
 import OsceGroupSetup from './dashboard/osce/OsceGroupSetup.jsx'
 import OsceGroupResults from './dashboard/osce/OsceGroupResults.jsx'
+import OsceAdminPanel from './dashboard/osce/OsceAdminPanel.jsx'
+import OsceAdminStationEditor from './dashboard/osce/OsceAdminStationEditor.jsx'
 
 function HashRedirector() {
   const location = useLocation()
@@ -89,6 +91,8 @@ function App() {
           <Route path="osce/group" element={<OsceGroupSetup />} />
           <Route path="osce/group/:roomCode" element={<OsceGroupSetup />} />
           <Route path="osce/group/:roomCode/results" element={<OsceGroupResults />} />
+          <Route path="admin/osce" element={<OsceAdminPanel />} />
+          <Route path="admin/osce/station/:id" element={<OsceAdminStationEditor />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

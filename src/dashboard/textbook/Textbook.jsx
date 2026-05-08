@@ -334,7 +334,7 @@ function ChapterCard({ specialty, onClick, priority = false, topicsRead = 0 }) {
             sizes="(max-width: 640px) 90vw, (max-width: 900px) 45vw, 220px"
             alt=""
             loading={priority ? 'eager' : 'lazy'}
-            fetchpriority={priority ? 'high' : 'auto'}
+            fetchPriority={priority ? 'high' : 'auto'}
             decoding="async"
           />
         )}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
-import { LuChevronLeft, LuUsers, LuUser, LuClock, LuStethoscope, LuClipboardList, LuEye } from 'react-icons/lu'
+import { LuChevronLeft, LuUsers, LuUser, LuClock, LuStethoscope, LuClipboardList, LuEye, LuPencil } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import './Osce.css'
 
@@ -22,6 +22,8 @@ const TYPE_LABELS = {
 export default function OsceStationLanding() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const { user } = useOutletContext()
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
 
   const [station, setStation] = useState(null)
   const [sections, setSections] = useState([])
@@ -85,10 +87,23 @@ export default function OsceStationLanding() {
   return (
     <div className="osce-group osce-group--full">
       <div className="osce-group__header">
-        <button className="osce-station__back" onClick={() => navigate('/dashboard/osce')}>
-          <LuChevronLeft size={16} /> Back to OSCE Stations
-        </button>
-        <h1 className="osce-group__page-title">{station.title}</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <button className="osce-station__back" onClick={() => navigate('/dashboard/osce')}>
+              <LuChevronLeft size={16} /> Back to OSCE Stations
+            </button>
+            <h1 className="osce-group__page-title">{station.title}</h1>
+          </div>
+          {isAdmin && (
+            <button 
+              className="osce-btn osce-btn--secondary osce-btn--sm" 
+              onClick={() => navigate(`/dashboard/admin/osce/station/${station.id}`)}
+              style={{ marginTop: 8 }}
+            >
+              <LuPencil size={16} /> Edit Station
+            </button>
+          )}
+        </div>
         <div className="osce-station__meta" style={{ marginTop: 12 }}>
           <span className="osce__tag osce__tag--type">
             {TYPE_LABELS[station.station_type] || station.station_type}
