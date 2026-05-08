@@ -25,6 +25,9 @@ export default function OsceAdminStationEditor() {
   const [refreshing, setRefreshing] = useState(false)
   const [currentTab, setCurrentTab] = useState('examiner')
   const [promptData, setPromptData] = useState(null)
+  
+  const [addingSection, setAddingSection] = useState(false)
+  const [addingBlock, setAddingBlock] = useState(null)
 
   const [station, setStation] = useState(null)
   const [sections, setSections] = useState([])
@@ -90,6 +93,7 @@ export default function OsceAdminStationEditor() {
           defaultVisibleTo = ['candidate', 'examiner', 'patient', 'observer']
         }
 
+        setAddingSection(true)
         try {
           const res = await authenticatedFetch(`${API_BASE}/admin/osce/stations/${id}/sections`, {
             method: 'POST',
@@ -105,18 +109,21 @@ export default function OsceAdminStationEditor() {
           await refreshData()
         } catch (e) {
           alert('Error creating section: ' + e.message)
+        } finally {
+          setAddingSection(false)
         }
       }
     })
   }
 
   async function handleAddBlock(sectionId) {
+    setAddingBlock(sectionId)
     try {
       const res = await authenticatedFetch(`${API_BASE}/admin/osce/sections/${sectionId}/blocks`, {
         method: 'POST',
         body: JSON.stringify({ 
           block_type: 'markdown', 
-          content: { text: 'New content block...' },
+          content: { text: '' },
           position: blocks.filter(b => b.section_id === sectionId).length + 1
         })
       })
@@ -124,6 +131,8 @@ export default function OsceAdminStationEditor() {
       await refreshData()
     } catch (e) {
       alert('Error creating block: ' + e.message)
+    } finally {
+      setAddingBlock(null)
     }
   }
 
@@ -159,7 +168,7 @@ export default function OsceAdminStationEditor() {
       <div className="osce-station__header" style={{ marginBottom: 32 }}>
         <h1 className="osce-station__title">{station.title}</h1>
         <div className="osce-station__meta">
-          <span className="osce__tag osce__tag--type">{station.station_type}</span>
+          <span className="osce__tag osce__tag--type">{station.station_type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
           {station.difficulty && <span className="osce__tag osce__tag--difficulty" data-diff={station.difficulty}>{station.difficulty}</span>}
         </div>
       </div>
@@ -183,7 +192,7 @@ export default function OsceAdminStationEditor() {
           {filteredSections.map(section => {
             const sectionBlocks = blocks.filter(b => b.section_id === section.id).sort((a, b) => a.position - b.position)
             return (
-              <OsceInlineSection key={section.id} section={section} API_BASE={API_BASE} onSaved={refreshData} onAddBlock={handleAddBlock}>
+              <OsceInlineSection key={section.id} section={section} API_BASE={API_BASE} onSaved={refreshData} onAddBlock={handleAddBlock} isAddingBlock={addingBlock === section.id}>
                 <div className="osce-section__header" style={{ borderBottom: '1px solid var(--syn-border)' }}>
                   <div className="osce-section__title">
                     {section.title}
@@ -205,8 +214,8 @@ export default function OsceAdminStationEditor() {
           })}
           
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-            <button className="osce-btn osce-btn--secondary" onClick={handleAddSection}>
-              <LuPlus size={16}/> Add New Section to {currentTab === 'all' ? 'Station' : currentTab}
+            <button className="osce-btn osce-btn--secondary" onClick={handleAddSection} disabled={addingSection}>
+              <LuPlus size={16}/> {addingSection ? 'Adding...' : `Add New Section to ${currentTab === 'all' ? 'Station' : currentTab}`}
             </button>
           </div>
         </div>

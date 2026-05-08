@@ -127,15 +127,15 @@ function CalloutBlock({ content }) {
 /* ── Image ─────────────────────────────────────────── */
 
 function ImageBlock({ content }) {
-  const images = content?.images || (content?.url ? [content] : [])
+  const url = content?.url
+  if (!url) return null
+  const width = content?.width || 100
   return (
-    <div className="osce-block--image">
-      {images.map((img, idx) => (
-        <figure key={idx}>
-          <img src={img.url} alt={img.alt || ''} loading="lazy" />
-          {img.caption && <figcaption>{img.caption}</figcaption>}
-        </figure>
-      ))}
+    <div className="osce-block--image" style={{ textAlign: 'center' }}>
+      <figure style={{ display: 'inline-block', width: `${width}%`, maxWidth: '100%' }}>
+        <img src={url} alt={content.caption || ''} loading="lazy" style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
+        {content.caption && <figcaption style={{ marginTop: 8, fontSize: '0.9em', color: 'var(--syn-muted)' }}>{content.caption}</figcaption>}
+      </figure>
     </div>
   )
 }

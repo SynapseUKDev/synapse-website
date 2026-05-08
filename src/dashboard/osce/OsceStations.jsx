@@ -188,7 +188,7 @@ export default function OsceStations() {
             </div>
           </div>
           <div className="osce-feature__actions">
-            <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => navigate('/dashboard/textbook')}>Read Textbook</button>
+            <button className="osce-btn osce-btn--secondary osce-btn--sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>Coming Soon</button>
           </div>
         </div>
       </div>
