@@ -3,6 +3,7 @@ import { LuPlus, LuMinus, LuTrash2, LuPencil, LuChevronDown, LuX, LuSave, LuEye,
 import MDEditor from '@uiw/react-md-editor'
 import { authenticatedFetch } from '../../auth/token'
 import OsceBlockRenderer from './OsceBlockRenderer'
+import { SortableList, DragHandle } from './OsceSortable'
 
 const STATION_TYPES = [
   'history_taking', 'examination', 'communication', 'procedural', 'emergency',
@@ -148,7 +149,7 @@ export function OsceInlinePageBar({ station, API_BASE, onSaved }) {
 // ==========================================
 // INLINE SECTION TOOLBAR
 // ==========================================
-export function OsceInlineSection({ section, API_BASE, onSaved, children, onAddBlock, isAddingBlock }) {
+export function OsceInlineSection({ section, API_BASE, onSaved, children, onAddBlock, isAddingBlock, dragHandleProps }) {
   const [form, setForm] = useState({ title: section.title, position: section.position, visible_to: section.visible_to || [], initially_hidden: section.initially_hidden })
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(false)
@@ -187,7 +188,10 @@ export function OsceInlineSection({ section, API_BASE, onSaved, children, onAddB
     <div style={{ position: 'relative', marginBottom: 16 }}>
       {/* Admin Toolbar overlaying the section */}
       <div style={{ background: 'var(--surface-app)', border: '1px solid var(--syn-border)', borderBottom: 'none', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: '8px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--syn-muted)' }}>Admin: Section Controls</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, fontWeight: 700, color: 'var(--syn-muted)' }}>
+          <DragHandle props={dragHandleProps} />
+          Admin: Section Controls
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="osce-btn osce-btn--secondary" style={{ padding: '4px 12px', height: 28, fontSize: 13 }} onClick={() => setOpen(!open)}>{open ? 'Close Settings' : 'Section Settings'}</button>
           <button className="osce-btn osce-btn--secondary" style={{ padding: '4px 12px', height: 28, fontSize: 13 }} onClick={() => onAddBlock(section.id)} disabled={isAddingBlock}>
@@ -237,7 +241,7 @@ export function OsceInlineSection({ section, API_BASE, onSaved, children, onAddB
 // ==========================================
 // INLINE BLOCK EDITOR
 // ==========================================
-export function OsceInlineBlock({ block, API_BASE, onSaved }) {
+export function OsceInlineBlock({ block, API_BASE, onSaved, dragHandleProps }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -304,85 +308,98 @@ export function OsceInlineBlock({ block, API_BASE, onSaved }) {
           </div>
         )
       case 'checklist':
-        const items = content.items || []
+        const checklistItems = (content.items || []).map((it, i) => ({ 
+          id: `it-${i}`, 
+          label: typeof it === 'string' ? it : it.label, 
+          required: typeof it === 'string' ? false : !!it.required 
+        }))
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {items.map((item, idx) => {
-              const label = typeof item === 'string' ? item : item?.label || ''
-              const required = typeof item === 'string' ? false : item?.required || false
-              return (
-                <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input className="osce-group__input" style={{ marginBottom: 0, flex: 1, height: 36, padding: '0 12px' }} placeholder="New checklist item..." value={label} onChange={e => {
-                    const newItems = [...items]
-                    newItems[idx] = { label: e.target.value, required }
-                    handleContentChange({ items: newItems })
+            <SortableList
+              items={checklistItems}
+              onReorder={newIt => handleContentChange({ ...content, items: newIt })}
+              renderItem={(item, itemDragProps) => (
+                <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <DragHandle props={itemDragProps} />
+                  <input className="osce-group__input" style={{ marginBottom: 0, flex: 1, height: 36, padding: '0 12px' }} placeholder="New checklist item..." value={item.label} onChange={e => {
+                    const newItems = [...checklistItems]
+                    const idx = newItems.findIndex(i => i.id === item.id)
+                    newItems[idx] = { ...item, label: e.target.value }
+                    handleContentChange({ ...content, items: newItems })
                   }} />
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }}><input style={{ width: 16, height: 16 }} type="checkbox" checked={required} onChange={e => {
-                    const newItems = [...items]
-                    newItems[idx] = { label, required: e.target.checked }
-                    handleContentChange({ items: newItems })
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }}><input style={{ width: 16, height: 16 }} type="checkbox" checked={item.required} onChange={e => {
+                    const newItems = [...checklistItems]
+                    const idx = newItems.findIndex(i => i.id === item.id)
+                    newItems[idx] = { ...item, required: e.target.checked }
+                    handleContentChange({ ...content, items: newItems })
                   }} /> Required</label>
                   <button type="button" className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => {
-                    const newItems = items.filter((_, i) => i !== idx)
-                    handleContentChange({ items: newItems })
+                    const newItems = checklistItems.filter(i => i.id !== item.id)
+                    handleContentChange({ ...content, items: newItems })
                   }}><LuTrash2 size={16} /></button>
                 </div>
-              )
-            })}
-            <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ items: [...items, { label: '', required: false }] })}><LuPlus size={14} /> Add Item</button>
+              )}
+            />
+            <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ ...content, items: [...checklistItems, { id: `new-${Date.now()}`, label: '', required: false }] })}><LuPlus size={14} /> Add Item</button>
           </div>
         )
       case 'key_value':
-        const pairs = content.pairs || []
+        const pairs = (content.pairs || []).map((p, i) => ({ id: `p-${i}`, key: p.key || '', value: p.value || '' }))
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {pairs.map((pair, idx) => {
-              const key = pair?.key || ''
-              const val = pair?.value || ''
-              return (
-                <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input className="osce-group__input" style={{ marginBottom: 0, width: 200, height: 36, padding: '0 12px' }} placeholder="Key" value={key} onChange={e => {
+            <SortableList
+              items={pairs}
+              onReorder={newP => handleContentChange({ ...content, pairs: newP })}
+              renderItem={(pair, pDragProps) => (
+                <div key={pair.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <DragHandle props={pDragProps} />
+                  <input className="osce-group__input" style={{ marginBottom: 0, width: 200, height: 36, padding: '0 12px' }} placeholder="Key" value={pair.key} onChange={e => {
                     const newPairs = [...pairs]
-                    newPairs[idx] = { key: e.target.value, value: val }
-                    handleContentChange({ pairs: newPairs })
+                    const idx = newPairs.findIndex(p => p.id === pair.id)
+                    newPairs[idx] = { ...pair, key: e.target.value }
+                    handleContentChange({ ...content, pairs: newPairs })
                   }} />
-                  <input className="osce-group__input" style={{ marginBottom: 0, flex: 1, height: 36, padding: '0 12px' }} placeholder="Value" value={val} onChange={e => {
+                  <input className="osce-group__input" style={{ marginBottom: 0, flex: 1, height: 36, padding: '0 12px' }} placeholder="Value" value={pair.value} onChange={e => {
                     const newPairs = [...pairs]
-                    newPairs[idx] = { key, value: e.target.value }
-                    handleContentChange({ pairs: newPairs })
+                    const idx = newPairs.findIndex(p => p.id === pair.id)
+                    newPairs[idx] = { ...pair, value: e.target.value }
+                    handleContentChange({ ...content, pairs: newPairs })
                   }} />
                   <button type="button" className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => {
-                    const newPairs = pairs.filter((_, i) => i !== idx)
-                    handleContentChange({ pairs: newPairs })
+                    const newPairs = pairs.filter(p => p.id !== pair.id)
+                    handleContentChange({ ...content, pairs: newPairs })
                   }}><LuTrash2 size={16} /></button>
                 </div>
-              )
-            })}
-            <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ pairs: [...pairs, { key: '', value: '' }] })}><LuPlus size={14} /> Add Pair</button>
+              )}
+            />
+            <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ ...content, pairs: [...pairs, { id: `new-${Date.now()}`, key: '', value: '' }] })}><LuPlus size={14} /> Add Pair</button>
           </div>
         )
       case 'list':
-        const listItems = content.items || []
+        const listItems = (content.items || []).map((it, i) => ({ id: `li-${i}`, val: typeof it === 'string' ? it : it.label }))
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}><input style={{ width: 16, height: 16 }} type="checkbox" checked={content.ordered || false} onChange={e => handleContentChange({ ...content, ordered: e.target.checked })} /> Ordered List</label>
-            {listItems.map((item, idx) => {
-              const val = typeof item === 'string' ? item : (item?.label || '')
-              return (
-                <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input className="osce-group__input" style={{ marginBottom: 0, flex: 1, height: 36, padding: '0 12px' }} placeholder="New list item..." value={val} onChange={e => {
+            <SortableList
+              items={listItems}
+              onReorder={newIt => handleContentChange({ ...content, items: newIt.map(i => i.val) })}
+              renderItem={(item, liDragProps) => (
+                <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <DragHandle props={liDragProps} />
+                  <input className="osce-group__input" style={{ marginBottom: 0, flex: 1, height: 36, padding: '0 12px' }} placeholder="New list item..." value={item.val} onChange={e => {
                     const newItems = [...listItems]
-                    newItems[idx] = e.target.value
-                    handleContentChange({ ...content, items: newItems })
+                    const idx = newItems.findIndex(i => i.id === item.id)
+                    newItems[idx] = { ...item, val: e.target.value }
+                    handleContentChange({ ...content, items: newItems.map(i => i.val) })
                   }} />
                   <button type="button" className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => {
-                    const newItems = listItems.filter((_, i) => i !== idx)
-                    handleContentChange({ ...content, items: newItems })
+                    const newItems = listItems.filter(i => i.id !== item.id)
+                    handleContentChange({ ...content, items: newItems.map(i => i.val) })
                   }}><LuTrash2 size={16} /></button>
                 </div>
-              )
-            })}
-            <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ ...content, items: [...listItems, ''] })}><LuPlus size={14} /> Add List Item</button>
+              )}
+            />
+            <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ ...content, items: [...(content.items || []), ''] })}><LuPlus size={14} /> Add List Item</button>
           </div>
         )
       case 'table':
@@ -582,6 +599,9 @@ export function OsceInlineBlock({ block, API_BASE, onSaved }) {
         className="tb-admin-hover-outline"
         onClick={() => setEditing(true)}
       >
+        <div style={{ position: 'absolute', top: 10, left: -24, zIndex: 10 }}>
+           <DragHandle props={dragHandleProps} />
+        </div>
         <div className="tb-admin-edit-hover-btn" style={{ position: 'absolute', top: -14, right: -14, display: 'flex', gap: 6, zIndex: 10, opacity: 0, transition: 'opacity 0.2s' }}>
           <button style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: 99, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} onClick={(e) => { e.stopPropagation(); setEditing(true) }}>
             <LuPencil size={14} />
@@ -630,9 +650,13 @@ export function OsceInlineBlock({ block, API_BASE, onSaved }) {
 // INLINE MARKS
 // ==========================================
 export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }) {
-  const [editingDomain, setEditingDomain] = useState(null)
   const [editingItem, setEditingItem] = useState(null)
   const [promptData, setPromptData] = useState(null)
+  const [localDomains, setLocalDomains] = useState(domains)
+  const [localItems, setLocalItems] = useState(items)
+
+  useEffect(() => { setLocalDomains(domains) }, [domains])
+  useEffect(() => { setLocalItems(items) }, [items])
 
   async function handleAddDomain() {
     setPromptData({
@@ -641,7 +665,7 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
         setPromptData(null)
         try {
           await authenticatedFetch(`${API_BASE}/admin/osce/stations/${stationId}/domains`, {
-            method: 'POST', body: JSON.stringify({ title, max_marks: 10, position: domains.length + 1 })
+            method: 'POST', body: JSON.stringify({ title, max_marks: 10, position: localDomains.length + 1 })
           })
           if (onSaved) await onSaved()
         } catch (e) { alert(e.message) }
@@ -658,13 +682,14 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
   }
 
   async function handleAddItem(domainId) {
+    const domainItems = localItems.filter(i => i.domain_id === domainId)
     setPromptData({
       title: 'Add Mark Scheme Item', placeholder: 'e.g. Washes hands',
       onConfirm: async (desc) => {
         setPromptData(null)
         try {
           await authenticatedFetch(`${API_BASE}/admin/osce/domains/${domainId}/items`, {
-            method: 'POST', body: JSON.stringify({ description: desc, marks: 1, is_critical: false, position: 99 })
+            method: 'POST', body: JSON.stringify({ description: desc, marks: 1, is_critical: false, position: domainItems.length + 1 })
           })
           if (onSaved) await onSaved()
         } catch (e) { alert(e.message) }
@@ -689,6 +714,31 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
     } catch (e) { alert(e.message) }
   }
 
+  async function handleReorderDomains(newDomains) {
+    setLocalDomains(newDomains)
+    try {
+      await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
+        method: 'PATCH', body: JSON.stringify({ type: 'domains', ids: newDomains.map(d => d.id) })
+      })
+    } catch (e) {
+      alert(e.message)
+      setLocalDomains(domains)
+    }
+  }
+
+  async function handleReorderItems(domainId, newDomainItems) {
+    const otherItems = localItems.filter(i => i.domain_id !== domainId)
+    setLocalItems([...otherItems, ...newDomainItems])
+    try {
+      await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
+        method: 'PATCH', body: JSON.stringify({ type: 'items', ids: newDomainItems.map(i => i.id) })
+      })
+    } catch (e) {
+      alert(e.message)
+      setLocalItems(items)
+    }
+  }
+
   return (
     <>
       <OsceAdminPrompt isOpen={!!promptData} title={promptData?.title} placeholder={promptData?.placeholder} onConfirm={promptData?.onConfirm} onCancel={() => setPromptData(null)} />
@@ -698,51 +748,61 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
           <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAddDomain}><LuPlus size={14} /> Add Domain</button>
         </div>
 
-        {domains.sort((a, b) => a.position - b.position).map(domain => {
-          const domainItems = items.filter(i => i.domain_id === domain.id).sort((a, b) => a.position - b.position)
-          return (
-            <div key={domain.id} className="osce-marks__domain" style={{ marginBottom: 24 }}>
-              <div className="osce-marks__domain-header" style={{ background: 'var(--surface-tint-cyan)', padding: '8px 12px', borderRadius: 8 }}>
-                <div className="osce-marks__domain-title">{domain.title}</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="osce-btn osce-btn--secondary" style={{ padding: '2px 8px', height: 24, fontSize: 12, width: 'auto' }} onClick={() => handleAddItem(domain.id)}>+ Item</button>
-                  <button className="osce-btn osce-btn--secondary" style={{ padding: '2px 8px', height: 24, color: '#dc2626', width: 'auto' }} onClick={() => handleDeleteDomain(domain.id)}><LuTrash2 size={12} /></button>
+        <SortableList
+          items={localDomains}
+          onReorder={handleReorderDomains}
+          renderItem={(domain, domainDragProps) => {
+            const domainItems = localItems.filter(i => i.domain_id === domain.id).sort((a, b) => a.position - b.position)
+            return (
+              <div key={domain.id} className="osce-marks__domain" style={{ marginBottom: 24 }}>
+                <div className="osce-marks__domain-header" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-tint-cyan)', padding: '8px 12px', borderRadius: 8 }}>
+                  <DragHandle props={domainDragProps} />
+                  <div className="osce-marks__domain-title" style={{ flex: 1 }}>{domain.title}</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="osce-btn osce-btn--secondary" style={{ padding: '2px 8px', height: 24, fontSize: 12, width: 'auto' }} onClick={() => handleAddItem(domain.id)}>+ Item</button>
+                    <button className="osce-btn osce-btn--secondary" style={{ padding: '2px 8px', height: 24, color: '#dc2626', width: 'auto' }} onClick={() => handleDeleteDomain(domain.id)}><LuTrash2 size={12} /></button>
+                  </div>
+                </div>
+                <div style={{ paddingLeft: 12, marginTop: 8 }}>
+                  <SortableList
+                    items={domainItems}
+                    onReorder={(next) => handleReorderItems(domain.id, next)}
+                    renderItem={(item, itemDragProps) => (
+                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--syn-border)' }}>
+                        <DragHandle props={itemDragProps} />
+                        {editingItem === item.id ? (
+                          <div style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
+                            <input className="osce-group__input" style={{ marginBottom: 0, height: 36, padding: '0 12px', flex: 1, fontSize: 14 }} defaultValue={item.description} id={`desc-${item.id}`} />
+                            <input type="number" className="osce-group__input" style={{ marginBottom: 0, height: 36, padding: '0 12px', width: 70, fontSize: 14 }} defaultValue={item.marks} id={`marks-${item.id}`} />
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              <input type="checkbox" defaultChecked={item.is_critical} id={`crit-${item.id}`} style={{ width: 16, height: 16 }} /> Crit
+                            </label>
+                            <button className="osce-btn osce-btn--sm" style={{ height: 36, padding: '0 16px' }} onClick={() => {
+                              handleSaveItem(item.id, {
+                                description: document.getElementById(`desc-${item.id}`).value,
+                                marks: Number(document.getElementById(`marks-${item.id}`).value),
+                                is_critical: document.getElementById(`crit-${item.id}`).checked
+                              })
+                            }}>Save</button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className={`osce-marks__item ${item.is_critical ? 'osce-marks__item--critical' : ''}`} style={{ flex: 1 }}>
+                              {item.description} {item.is_critical && <span style={{ color: '#f87171', fontSize: 11 }}>(Critical)</span>}
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--syn-muted)', width: 60, textAlign: 'right', flexShrink: 0 }}>{item.marks} marks</div>
+                            <button className="osce-admin-icon-btn" onClick={() => setEditingItem(item.id)}><LuPencil size={14} /></button>
+                            <button className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => handleDeleteItem(item.id)}><LuTrash2 size={14} /></button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  />
                 </div>
               </div>
-              <div style={{ paddingLeft: 12, marginTop: 8 }}>
-                {domainItems.map(item => (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--syn-border)' }}>
-                    {editingItem === item.id ? (
-                      <div style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
-                        <input className="osce-group__input" style={{ marginBottom: 0, height: 36, padding: '0 12px', flex: 1, fontSize: 14 }} defaultValue={item.description} id={`desc-${item.id}`} />
-                        <input type="number" className="osce-group__input" style={{ marginBottom: 0, height: 36, padding: '0 12px', width: 70, fontSize: 14 }} defaultValue={item.marks} id={`marks-${item.id}`} />
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                          <input type="checkbox" defaultChecked={item.is_critical} id={`crit-${item.id}`} style={{ width: 16, height: 16 }} /> Crit
-                        </label>
-                        <button className="osce-btn osce-btn--sm" style={{ height: 36, padding: '0 16px' }} onClick={() => {
-                          handleSaveItem(item.id, {
-                            description: document.getElementById(`desc-${item.id}`).value,
-                            marks: Number(document.getElementById(`marks-${item.id}`).value),
-                            is_critical: document.getElementById(`crit-${item.id}`).checked
-                          })
-                        }}>Save</button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className={`osce-marks__item ${item.is_critical ? 'osce-marks__item--critical' : ''}`} style={{ flex: 1 }}>
-                          {item.description} {item.is_critical && <span style={{ color: '#f87171', fontSize: 11 }}>(Critical)</span>}
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--syn-muted)', width: 60, textAlign: 'right', flexShrink: 0 }}>{item.marks} marks</div>
-                        <button className="osce-admin-icon-btn" onClick={() => setEditingItem(item.id)}><LuPencil size={14} /></button>
-                        <button className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => handleDeleteItem(item.id)}><LuTrash2 size={14} /></button>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
+            )
+          }}
+        />
       </div>
     </>
   )
@@ -754,6 +814,9 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
 export function OsceInlineFails({ stationId, fails, API_BASE, onSaved }) {
   const [promptData, setPromptData] = useState(null)
   const [editing, setEditing] = useState(null)
+  const [items, setItems] = useState(fails)
+
+  useEffect(() => { setItems(fails) }, [fails])
 
   async function handleAdd() {
     setPromptData({
@@ -788,6 +851,20 @@ export function OsceInlineFails({ stationId, fails, API_BASE, onSaved }) {
     } catch (e) { alert(e.message) }
   }
 
+  async function handleReorder(newItems) {
+    setItems(newItems)
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
+        method: 'PATCH',
+        body: JSON.stringify({ type: 'fails', ids: newItems.map(f => f.id) })
+      })
+      if (!res.ok) throw new Error('Reorder failed')
+    } catch (e) {
+      alert(e.message)
+      setItems(fails)
+    }
+  }
+
   return (
     <>
       <OsceAdminPrompt isOpen={!!promptData} title={promptData?.title} placeholder={promptData?.placeholder} onConfirm={promptData?.onConfirm} onCancel={() => setPromptData(null)} />
@@ -796,29 +873,35 @@ export function OsceInlineFails({ stationId, fails, API_BASE, onSaved }) {
           <h3 className="osce-marks__title" style={{ margin: 0 }}>Automatic Fail Criteria</h3>
           <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAdd}><LuPlus size={14} /> Add Criteria</button>
         </div>
-        <ul style={{ paddingLeft: '1.2rem', margin: 0, listStyleType: 'disc', color: 'var(--syn-navy-700)' }}>
-          {fails.map((c) => (
-            <li key={c.id} style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-              {editing === c.id ? (
-                <div style={{ display: 'flex', gap: 12, marginTop: 4, marginBottom: 8, width: '100%', alignItems: 'center' }}>
-                  <input className="osce-group__input" style={{ marginBottom: 0, height: 36, padding: '0 12px', flex: 1, fontSize: 14 }} defaultValue={c.description} id={`fail-${c.id}`} />
-                  <button className="osce-btn osce-btn--sm" style={{ height: 36, padding: '0 16px' }} onClick={() => {
-                    handleSave(c.id, { description: document.getElementById(`fail-${c.id}`).value })
-                  }}>Save</button>
-                  <button className="osce-btn osce-btn--secondary osce-btn--sm" style={{ height: 36, padding: '0 16px' }} onClick={() => setEditing(null)}>Cancel</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 14 }}>{c.description}</span>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="osce-admin-icon-btn" onClick={() => setEditing(c.id)}><LuPencil size={16} /></button>
-                    <button className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => handleDelete(c.id)}><LuX size={16} /></button>
+        <SortableList
+          items={items}
+          onReorder={handleReorder}
+          className="osce-sortable-list"
+          renderItem={(c, dragHandleProps) => (
+            <div key={c.id} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: '0.5rem' }}>
+              <DragHandle props={dragHandleProps} />
+              <div style={{ flex: 1, color: 'var(--syn-navy-700)' }}>
+                {editing === c.id ? (
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <input className="osce-group__input" style={{ marginBottom: 0, height: 36, padding: '0 12px', flex: 1, fontSize: 14 }} defaultValue={c.description} id={`fail-${c.id}`} />
+                    <button className="osce-btn osce-btn--sm" style={{ height: 36, padding: '0 16px' }} onClick={() => {
+                      handleSave(c.id, { description: document.getElementById(`fail-${c.id}`).value })
+                    }}>Save</button>
+                    <button className="osce-btn osce-btn--secondary osce-btn--sm" style={{ height: 36, padding: '0 16px' }} onClick={() => setEditing(null)}>Cancel</button>
                   </div>
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 14 }}>{c.description}</span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="osce-admin-icon-btn" onClick={() => setEditing(c.id)}><LuPencil size={16} /></button>
+                      <button className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => handleDelete(c.id)}><LuX size={16} /></button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        />
       </div>
     </>
   )
@@ -830,6 +913,9 @@ export function OsceInlineFails({ stationId, fails, API_BASE, onSaved }) {
 export function OsceInlineViva({ stationId, vivas, API_BASE, onSaved }) {
   const [editing, setEditing] = useState(null)
   const [promptData, setPromptData] = useState(null)
+  const [items, setItems] = useState(vivas)
+
+  useEffect(() => { setItems(vivas) }, [vivas])
 
   async function handleAdd() {
     setPromptData({
@@ -838,7 +924,7 @@ export function OsceInlineViva({ stationId, vivas, API_BASE, onSaved }) {
         setPromptData(null)
         try {
           await authenticatedFetch(`${API_BASE}/admin/osce/stations/${stationId}/viva-questions`, {
-            method: 'POST', body: JSON.stringify({ question_text: question, position: vivas.length + 1 })
+            method: 'POST', body: JSON.stringify({ question_text: question, position: items.length + 1 })
           })
           if (onSaved) await onSaved()
         } catch (e) { alert(e.message) }
@@ -864,6 +950,20 @@ export function OsceInlineViva({ stationId, vivas, API_BASE, onSaved }) {
     } catch (e) { alert(e.message) }
   }
 
+  async function handleReorder(newItems) {
+    setItems(newItems)
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
+        method: 'PATCH',
+        body: JSON.stringify({ type: 'viva', ids: newItems.map(f => f.id) })
+      })
+      if (!res.ok) throw new Error('Reorder failed')
+    } catch (e) {
+      alert(e.message)
+      setItems(vivas)
+    }
+  }
+
   return (
     <>
       <OsceAdminPrompt isOpen={!!promptData} title={promptData?.title} placeholder={promptData?.placeholder} onConfirm={promptData?.onConfirm} onCancel={() => setPromptData(null)} />
@@ -872,36 +972,43 @@ export function OsceInlineViva({ stationId, vivas, API_BASE, onSaved }) {
           <h3 className="osce-marks__title" style={{ margin: 0 }}>Viva Questions (Edit Mode)</h3>
           <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAdd}><LuPlus size={14} /> Add Viva</button>
         </div>
-        {vivas.sort((a, b) => a.position - b.position).map((q, i) => (
-          <div key={q.id} style={{ display: 'flex', flexDirection: 'column', padding: '16px 0', borderBottom: i === vivas.length - 1 ? 'none' : '1px solid var(--syn-border)' }}>
-            {editing === q.id ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <input className="osce-group__input" style={{ marginBottom: 0, height: 36 }} defaultValue={q.question_text} id={`vq-${q.id}`} placeholder="Question" />
-                <textarea className="osce-group__input" style={{ minHeight: 60, resize: 'vertical', marginBottom: 0 }} defaultValue={q.answer_text || ''} id={`va-${q.id}`} placeholder="Expected Answer (Markdown)" />
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => setEditing(null)}>Cancel</button>
-                  <button className="osce-btn osce-btn--sm" onClick={() => {
-                    handleSave(q.id, {
-                      question_text: document.getElementById(`vq-${q.id}`).value,
-                      answer_text: document.getElementById(`va-${q.id}`).value
-                    })
-                  }}>Save</button>
-                </div>
+        <SortableList
+          items={items}
+          onReorder={handleReorder}
+          renderItem={(q, dragHandleProps) => (
+            <div key={q.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '16px 0', borderBottom: '1px solid var(--syn-border)' }}>
+              <DragHandle props={dragHandleProps} style={{ marginTop: 4 }} />
+              <div style={{ flex: 1 }}>
+                {editing === q.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input className="osce-group__input" style={{ marginBottom: 0, height: 36 }} defaultValue={q.question_text} id={`vq-${q.id}`} placeholder="Question" />
+                    <textarea className="osce-group__input" style={{ minHeight: 60, resize: 'vertical', marginBottom: 0 }} defaultValue={q.answer_text || ''} id={`va-${q.id}`} placeholder="Expected Answer (Markdown)" />
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => setEditing(null)}>Cancel</button>
+                      <button className="osce-btn osce-btn--sm" onClick={() => {
+                        handleSave(q.id, {
+                          question_text: document.getElementById(`vq-${q.id}`).value,
+                          answer_text: document.getElementById(`va-${q.id}`).value
+                        })
+                      }}>Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: 'var(--syn-navy-700)', fontSize: '15px', fontWeight: 700 }}>{q.question_text}</div>
+                      {q.answer_text && <div style={{ marginTop: 8, fontSize: 14, color: 'var(--syn-muted)' }}>{q.answer_text}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="osce-admin-icon-btn" onClick={() => setEditing(q.id)}><LuPencil size={16} /></button>
+                      <button className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => handleDelete(q.id)}><LuTrash2 size={16} /></button>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: 'var(--syn-navy-700)', fontSize: '15px', fontWeight: 700 }}>{q.question_text}</div>
-                  {q.answer_text && <div style={{ marginTop: 8, fontSize: 14, color: 'var(--syn-muted)' }}>{q.answer_text}</div>}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="osce-admin-icon-btn" onClick={() => setEditing(q.id)}><LuPencil size={16} /></button>
-                  <button className="osce-admin-icon-btn osce-admin-icon-btn--danger" style={{ color: '#dc2626' }} onClick={() => handleDelete(q.id)}><LuTrash2 size={16} /></button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+            </div>
+          )}
+        />
       </div>
     </>
   )

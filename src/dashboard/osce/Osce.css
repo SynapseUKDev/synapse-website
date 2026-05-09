@@ -316,3 +316,25 @@ html[data-theme="dark"] .osce-admin-btn--ghost:hover { background: var(--dm-surf
   .osce-station__grid { grid-template-columns: 1fr; }
   .osce-group__form { padding: 20px; }
 }
+
+/* --- Drag and Drop --- */
+.osce-drag-handle {
+  opacity: 0.4;
+  transition: opacity 0.2s, color 0.2s;
+}
+.osce-drag-handle:hover {
+  opacity: 1;
+  color: var(--syn-primary);
+}
+
+.osce-sortable-list {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-color-mode='dark'] .osce-drag-handle {
+  color: var(--syn-muted);
+}
+[data-color-mode='dark'] .osce-drag-handle:hover {
+  color: var(--syn-cyan);
+}

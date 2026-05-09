@@ -12,6 +12,7 @@ import {
   OsceInlineViva,
   OsceAdminPrompt
 } from './OsceInlineAdmin'
+import { SortableList, DragHandle } from './OsceSortable'
 import './Osce.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -136,6 +137,31 @@ export default function OsceAdminStationEditor() {
     }
   }
 
+  async function handleReorderSections(newSections) {
+    setSections(newSections)
+    try {
+      await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
+        method: 'PATCH', body: JSON.stringify({ type: 'sections', ids: newSections.map(s => s.id) })
+      })
+    } catch (e) {
+      alert(e.message)
+      await refreshData()
+    }
+  }
+
+  async function handleReorderBlocks(sectionId, newBlocks) {
+    const otherBlocks = blocks.filter(b => b.section_id !== sectionId)
+    setBlocks([...otherBlocks, ...newBlocks])
+    try {
+      await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
+        method: 'PATCH', body: JSON.stringify({ type: 'blocks', ids: newBlocks.map(b => b.id) })
+      })
+    } catch (e) {
+      alert(e.message)
+      await refreshData()
+    }
+  }
+
   if (loading) return <div style={{ padding: 32 }}><LoadingScreen message="Loading station..." inline /></div>
   if (error || !station) return <div style={{ padding: 32, color: 'red' }}>{error || 'Station not found'}</div>
 
@@ -189,29 +215,37 @@ export default function OsceAdminStationEditor() {
 
       <div className="osce-station__grid" style={{ gridTemplateColumns: hasSidebar ? '1fr 1fr' : '1fr', maxWidth: hasSidebar ? '100%' : '800px', margin: hasSidebar ? 0 : '0 auto' }}>
         <div className="osce-station__main">
-          {filteredSections.map(section => {
-            const sectionBlocks = blocks.filter(b => b.section_id === section.id).sort((a, b) => a.position - b.position)
-            return (
-              <OsceInlineSection key={section.id} section={section} API_BASE={API_BASE} onSaved={refreshData} onAddBlock={handleAddBlock} isAddingBlock={addingBlock === section.id}>
-                <div className="osce-section__header" style={{ borderBottom: '1px solid var(--syn-border)' }}>
-                  <div className="osce-section__title">
-                    {section.title}
-                    {section.initially_hidden && <span className="osce-section__hidden-badge">Hidden by default</span>}
-                  </div>
-                </div>
-                <div className="osce-section__body" style={{ paddingTop: 20 }}>
-                  {sectionBlocks.map(block => (
-                    <OsceInlineBlock key={block.id} block={block} API_BASE={API_BASE} onSaved={refreshData} />
-                  ))}
-                  {sectionBlocks.length === 0 && (
-                    <div style={{ padding: 16, textAlign: 'center', color: 'var(--syn-muted)', fontSize: 13 }}>
-                      No blocks in this section. Click "Add Block" above.
+          <SortableList
+            items={filteredSections}
+            onReorder={handleReorderSections}
+            renderItem={(section, sectionDragProps) => {
+              const sectionBlocks = blocks.filter(b => b.section_id === section.id).sort((a, b) => a.position - b.position)
+              return (
+                <OsceInlineSection key={section.id} section={section} API_BASE={API_BASE} onSaved={refreshData} onAddBlock={handleAddBlock} isAddingBlock={addingBlock === section.id} dragHandleProps={sectionDragProps}>
+                  <div className="osce-section__header" style={{ borderBottom: '1px solid var(--syn-border)' }}>
+                    <div className="osce-section__title">
+                      {section.title}
+                      {section.initially_hidden && <span className="osce-section__hidden-badge">Hidden by default</span>}
                     </div>
-                  )}
-                </div>
-              </OsceInlineSection>
-            )
-          })}
+                  </div>
+                  <div className="osce-section__body" style={{ paddingTop: 20 }}>
+                    <SortableList
+                      items={sectionBlocks}
+                      onReorder={(next) => handleReorderBlocks(section.id, next)}
+                      renderItem={(block, blockDragProps) => (
+                        <OsceInlineBlock key={block.id} block={block} API_BASE={API_BASE} onSaved={refreshData} dragHandleProps={blockDragProps} />
+                      )}
+                    />
+                    {sectionBlocks.length === 0 && (
+                      <div style={{ padding: 16, textAlign: 'center', color: 'var(--syn-muted)', fontSize: 13 }}>
+                        No blocks in this section. Click "Add Block" above.
+                      </div>
+                    )}
+                  </div>
+                </OsceInlineSection>
+              )
+            }}
+          />
           
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
             <button className="osce-btn osce-btn--secondary" onClick={handleAddSection} disabled={addingSection}>
