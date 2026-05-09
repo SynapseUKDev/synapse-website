@@ -30,8 +30,13 @@ export function getResolvedTheme() {
 
 export function applyTheme(theme) {
   if (typeof document === 'undefined') return
-  document.documentElement.setAttribute('data-theme', theme)
-  document.documentElement.style.colorScheme = theme
+  
+  // Only allow dark mode on dashboard routes
+  const isDashboard = typeof window !== 'undefined' && window.location.pathname.startsWith('/dashboard')
+  const effectiveTheme = isDashboard ? theme : 'light'
+
+  document.documentElement.setAttribute('data-theme', effectiveTheme)
+  document.documentElement.style.colorScheme = effectiveTheme
 }
 
 /** @param {'light' | 'dark'} preference */

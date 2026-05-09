@@ -8,6 +8,7 @@ import Callback from './auth/Callback.jsx'
 import Subscribe from './auth/Subscribe.jsx'
 import ResetPassword from './auth/ResetPassword.jsx'
 import SetupAccount from './auth/SetupAccount.jsx'
+import { getResolvedTheme, applyTheme } from './theme'
 import './App.css'
 import './components/loading/LoadingScreen.css'
 import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
@@ -57,10 +58,19 @@ function HashRedirector() {
   return null
 }
 
+function ThemeWatcher() {
+  const location = useLocation()
+  useEffect(() => {
+    applyTheme(getResolvedTheme())
+  }, [location])
+  return null
+}
+
 function App() {
   return (
     <BrowserRouter>
       <HashRedirector />
+      <ThemeWatcher />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Auth />} />
