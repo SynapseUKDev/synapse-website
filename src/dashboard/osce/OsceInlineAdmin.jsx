@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { LuPlus, LuMinus, LuTrash2, LuPencil, LuChevronDown, LuX, LuSave, LuEye, LuEyeOff } from 'react-icons/lu'
+import { LuPlus, LuMinus, LuTrash2, LuPencil, LuChevronDown, LuX, LuSave, LuEye, LuEyeOff, LuBrain } from 'react-icons/lu'
 import MDEditor from '@uiw/react-md-editor'
 import { authenticatedFetch } from '../../auth/token'
 import OsceBlockRenderer from './OsceBlockRenderer'
 import { SortableList, DragHandle } from './OsceSortable'
+import OsceImportModal from './OsceImportModal'
 
 const STATION_TYPES = [
   'history_taking', 'examination', 'communication', 'procedural', 'emergency',
@@ -69,8 +70,27 @@ export function OsceInlinePageBar({ station, API_BASE, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(false)
   const [savedFlash, flashSaved] = useSaveFlash()
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   useEffect(() => { setForm({ ...station }) }, [station])
+
+  async function handleImport(data) {
+    setSaving(true);
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/osce/stations/${station.id}/import`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Import failed');
+      setIsImportOpen(false);
+      if (onSaved) await onSaved();
+      alert('Import successful!');
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -109,8 +129,17 @@ export function OsceInlinePageBar({ station, API_BASE, onSaved }) {
           }}>
             {form.status}
           </span>
+          <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => setIsImportOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--syn-primary)', color: 'var(--syn-primary)' }}>
+            <LuBrain size={14} /> Import
+          </button>
         </div>
       </div>
+      <OsceImportModal 
+        isOpen={isImportOpen} 
+        type="full" 
+        onClose={() => setIsImportOpen(false)} 
+        onImport={handleImport} 
+      />
       {open && (
         <div className="tb-admin-page-bar__fields" style={{ padding: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -149,10 +178,11 @@ export function OsceInlinePageBar({ station, API_BASE, onSaved }) {
 // ==========================================
 // INLINE SECTION TOOLBAR
 // ==========================================
-export function OsceInlineSection({ section, API_BASE, onSaved, children, onAddBlock, isAddingBlock, dragHandleProps }) {
+export function OsceInlineSection({ stationId, section, API_BASE, onSaved, children, onAddBlock, isAddingBlock, dragHandleProps }) {
   const [form, setForm] = useState({ title: section.title, position: section.position, visible_to: section.visible_to || [], initially_hidden: section.initially_hidden })
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   useEffect(() => { setForm({ title: section.title, position: section.position, visible_to: section.visible_to || [], initially_hidden: section.initially_hidden }) }, [section])
 
@@ -193,12 +223,36 @@ export function OsceInlineSection({ section, API_BASE, onSaved, children, onAddB
           Admin: Section Controls
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="osce-btn osce-btn--secondary" style={{ padding: '4px 12px', height: 28, fontSize: 13 }} onClick={() => setIsImportOpen(true)}>
+            <LuBrain size={14} /> Import
+          </button>
           <button className="osce-btn osce-btn--secondary" style={{ padding: '4px 12px', height: 28, fontSize: 13 }} onClick={() => setOpen(!open)}>{open ? 'Close Settings' : 'Section Settings'}</button>
           <button className="osce-btn osce-btn--secondary" style={{ padding: '4px 12px', height: 28, fontSize: 13 }} onClick={() => onAddBlock(section.id)} disabled={isAddingBlock}>
             <LuPlus size={14} /> {isAddingBlock ? 'Adding...' : 'Add Block'}
           </button>
         </div>
       </div>
+
+      <OsceImportModal 
+        isOpen={isImportOpen} 
+        type={section.title === 'Patient Script' ? 'patient' : 'section'} 
+        onClose={() => setIsImportOpen(false)} 
+        onImport={async (parsedData) => {
+          try {
+            const blocks = parsedData.sections?.[0]?.blocks || [];
+            if (blocks.length === 0) return setIsImportOpen(false);
+            
+            const res = await authenticatedFetch(`${API_BASE}/admin/osce/sections/${section.id}/blocks/bulk`, {
+              method: 'POST',
+              body: JSON.stringify({ blocks })
+            });
+            if (!res.ok) throw new Error('Failed to bulk import blocks');
+            
+            setIsImportOpen(false);
+            if (onSaved) await onSaved();
+          } catch (e) { alert(e.message); }
+        }} 
+      />
 
       {open && (
         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--syn-border)', borderBottom: 'none', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -654,6 +708,7 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
   const [promptData, setPromptData] = useState(null)
   const [localDomains, setLocalDomains] = useState(domains)
   const [localItems, setLocalItems] = useState(items)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   useEffect(() => { setLocalDomains(domains) }, [domains])
   useEffect(() => { setLocalItems(items) }, [items])
@@ -745,8 +800,27 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
       <div className="osce-marks" style={{ margin: '0 0 16px 0', border: '2px dashed var(--syn-cyan)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--syn-border)' }}>
           <h3 className="osce-marks__title" style={{ margin: 0 }}>Mark Scheme (Edit Mode)</h3>
-          <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAddDomain}><LuPlus size={14} /> Add Domain</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => setIsImportOpen(true)}><LuBrain size={14} /> Import</button>
+            <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAddDomain}><LuPlus size={14} /> Add Domain</button>
+          </div>
         </div>
+
+        <OsceImportModal 
+          isOpen={isImportOpen} 
+          type="marks" 
+          onClose={() => setIsImportOpen(false)} 
+          onImport={async (parsedDomains) => {
+            try {
+              await authenticatedFetch(`${API_BASE}/admin/osce/stations/${stationId}/import`, {
+                method: 'POST',
+                body: JSON.stringify({ domains: parsedDomains })
+              });
+              setIsImportOpen(false);
+              if (onSaved) await onSaved();
+            } catch (e) { alert(e.message); }
+          }} 
+        />
 
         <SortableList
           items={localDomains}
@@ -815,6 +889,7 @@ export function OsceInlineFails({ stationId, fails, API_BASE, onSaved }) {
   const [promptData, setPromptData] = useState(null)
   const [editing, setEditing] = useState(null)
   const [items, setItems] = useState(fails)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   useEffect(() => { setItems(fails) }, [fails])
 
@@ -871,8 +946,27 @@ export function OsceInlineFails({ stationId, fails, API_BASE, onSaved }) {
       <div className="osce-marks" style={{ margin: '0 0 16px 0', border: '2px dashed #dc2626' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--syn-border)' }}>
           <h3 className="osce-marks__title" style={{ margin: 0 }}>Automatic Fail Criteria</h3>
-          <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAdd}><LuPlus size={14} /> Add Criteria</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => setIsImportOpen(true)}><LuBrain size={14} /> Import</button>
+            <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAdd}><LuPlus size={14} /> Add Criteria</button>
+          </div>
         </div>
+        <OsceImportModal 
+          isOpen={isImportOpen} 
+          type="fails" 
+          onClose={() => setIsImportOpen(false)} 
+          onImport={async (parsedFails) => {
+            if (!window.confirm('This will clear existing fail criteria. Continue?')) return;
+            try {
+              await authenticatedFetch(`${API_BASE}/admin/osce/stations/${stationId}/import`, {
+                method: 'POST',
+                body: JSON.stringify({ fail_criteria: parsedFails })
+              });
+              setIsImportOpen(false);
+              if (onSaved) await onSaved();
+            } catch (e) { alert(e.message); }
+          }} 
+        />
         <SortableList
           items={items}
           onReorder={handleReorder}
@@ -914,6 +1008,7 @@ export function OsceInlineViva({ stationId, vivas, API_BASE, onSaved }) {
   const [editing, setEditing] = useState(null)
   const [promptData, setPromptData] = useState(null)
   const [items, setItems] = useState(vivas)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   useEffect(() => { setItems(vivas) }, [vivas])
 
@@ -970,8 +1065,26 @@ export function OsceInlineViva({ stationId, vivas, API_BASE, onSaved }) {
       <div className="osce-marks" style={{ padding: 24, margin: '0 0 16px 0', border: '2px dashed var(--syn-cyan)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--syn-border)' }}>
           <h3 className="osce-marks__title" style={{ margin: 0 }}>Viva Questions (Edit Mode)</h3>
-          <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAdd}><LuPlus size={14} /> Add Viva</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => setIsImportOpen(true)}><LuBrain size={14} /> Import</button>
+            <button className="osce-btn osce-btn--secondary osce-btn--sm" onClick={handleAdd}><LuPlus size={14} /> Add Viva</button>
+          </div>
         </div>
+        <OsceImportModal 
+          isOpen={isImportOpen} 
+          type="viva" 
+          onClose={() => setIsImportOpen(false)} 
+          onImport={async (parsedViva) => {
+            try {
+              await authenticatedFetch(`${API_BASE}/admin/osce/stations/${stationId}/import`, {
+                method: 'POST',
+                body: JSON.stringify({ viva_questions: parsedViva })
+              });
+              setIsImportOpen(false);
+              if (onSaved) await onSaved();
+            } catch (e) { alert(e.message); }
+          }} 
+        />
         <SortableList
           items={items}
           onReorder={handleReorder}

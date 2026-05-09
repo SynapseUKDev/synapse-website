@@ -81,15 +81,15 @@ export default function OsceAdminStationEditor() {
         
         // Smart defaults based on title and current tab
         if (lowerTitle.includes('candidate')) {
-          defaultVisibleTo = ['candidate']
+          defaultVisibleTo = ['candidate', 'observer']
         } else if (lowerTitle.includes('patient') || lowerTitle.includes('actor')) {
-          defaultVisibleTo = ['patient', 'examiner']
+          defaultVisibleTo = ['patient', 'examiner', 'observer']
         } else if (currentTab === 'candidate') {
-          defaultVisibleTo = ['candidate']
+          defaultVisibleTo = ['candidate', 'observer']
         } else if (currentTab === 'patient') {
-          defaultVisibleTo = ['patient', 'examiner']
+          defaultVisibleTo = ['patient', 'examiner', 'observer']
         } else if (currentTab === 'examiner') {
-          defaultVisibleTo = ['examiner']
+          defaultVisibleTo = ['examiner', 'observer']
         } else {
           defaultVisibleTo = ['candidate', 'examiner', 'patient', 'observer']
         }
@@ -221,7 +221,7 @@ export default function OsceAdminStationEditor() {
             renderItem={(section, sectionDragProps) => {
               const sectionBlocks = blocks.filter(b => b.section_id === section.id).sort((a, b) => a.position - b.position)
               return (
-                <OsceInlineSection key={section.id} section={section} API_BASE={API_BASE} onSaved={refreshData} onAddBlock={handleAddBlock} isAddingBlock={addingBlock === section.id} dragHandleProps={sectionDragProps}>
+                <OsceInlineSection key={section.id} stationId={station.id} section={section} API_BASE={API_BASE} onSaved={refreshData} onAddBlock={handleAddBlock} isAddingBlock={addingBlock === section.id} dragHandleProps={sectionDragProps}>
                   <div className="osce-section__header" style={{ borderBottom: '1px solid var(--syn-border)' }}>
                     <div className="osce-section__title">
                       {section.title}

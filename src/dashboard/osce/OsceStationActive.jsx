@@ -263,12 +263,12 @@ export default function OsceStationActive() {
   }, 0)
   const maxMarks = items.reduce((sum, i) => sum + (i.marks || 0), 0)
 
-  const renderSections = (titleFilter) => {
-    return sections.filter(s => s.title === titleFilter).map((section) => {
+  const renderSections = (roleFilter) => {
+    return sections.filter(s => s.visible_to && s.visible_to.includes(roleFilter)).map((section) => {
       const sectionBlocks = blocks
         .filter((b) => b.section_id === section.id)
         .sort((a, b) => a.position - b.position)
-      const isForceExpanded = role === 'patient' && section.title === 'Patient Script'
+      const isForceExpanded = (role === 'patient' && section.visible_to.includes('patient')) || (role === 'candidate' && section.visible_to.includes('candidate'))
       const isCollapsed = isForceExpanded ? false : collapsed[section.id]
       const isHidden = role === 'all' ? (section.initially_hidden && !revealed[section.id]) : false
 
@@ -363,25 +363,57 @@ export default function OsceStationActive() {
 
       <div className="osce-station__grid">
         <div className="osce-station__main">
-          {/* CANDIDATE VIEW */}
+          {/* ROLE-SPECIFIC SECTIONS */}
+          {role !== 'all' ? (
+            renderSections(role)
+          ) : (
+            // In 'All' view, show every section once
+            sections.sort((a,b) => a.position - b.position).map(section => {
+              const sectionBlocks = blocks.filter(b => b.section_id === section.id).sort((a,b) => a.position - b.position)
+              const isCollapsed = collapsed[section.id]
+              const isHidden = section.initially_hidden && !revealed[section.id]
+              return (
+                <div key={section.id} className="osce-section">
+                  <div className="osce-section__header" onClick={() => { if (!isHidden) toggleSection(section.id) }} style={{ borderBottom: !isCollapsed && !isHidden ? '1px solid var(--syn-border)' : 'none', cursor: 'pointer' }}>
+                    <div className="osce-section__title">
+                      {section.title}
+                      {section.initially_hidden && !revealed[section.id] && <span className="osce-section__hidden-badge">Hidden</span>}
+                      <span style={{ fontSize: 10, color: 'var(--syn-muted)', marginLeft: 8, fontWeight: 400 }}>
+                        ({section.visible_to?.join(', ')})
+                      </span>
+                    </div>
+                    {isHidden ? (
+                      <button className="osce-timer__btn" onClick={(e) => { e.stopPropagation(); revealSection(section.id) }} style={{ fontSize: '0.75rem' }}><LuEye size={14} /> Reveal</button>
+                    ) : (
+                      <LuChevronDown size={18} className={`osce-section__toggle ${!isCollapsed ? 'osce-section__toggle--open' : ''}`} />
+                    )}
+                  </div>
+                  {!isCollapsed && !isHidden && (
+                    <div className="osce-section__body" style={{ paddingTop: 20 }}>
+                      {sectionBlocks.map(block => <OsceBlockRenderer key={block.id} block={block} interactive />)}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+
+          {/* CANDIDATE NOTES */}
           {(role === 'candidate' || role === 'all') && (
-            <>
-              {renderSections('Candidate Instructions')}
-              <div className="osce-section">
-                <div className="osce-section__header" style={{ borderBottom: '1px solid var(--syn-border)' }}>
-                  <div className="osce-section__title">My Notes</div>
-                </div>
-                <div className="osce-section__body" style={{ padding: '20px' }}>
-                  <textarea
-                    className="osce-group__input"
-                    style={{ minHeight: 150, resize: 'vertical', margin: 0, padding: '16px' }}
-                    placeholder="Jot down your notes, differential diagnosis, and management plan here..."
-                    value={candidateNotes}
-                    onChange={(e) => setCandidateNotes(e.target.value)}
-                  />
-                </div>
+            <div className="osce-section">
+              <div className="osce-section__header" style={{ borderBottom: '1px solid var(--syn-border)' }}>
+                <div className="osce-section__title">My Notes</div>
               </div>
-            </>
+              <div className="osce-section__body" style={{ padding: '20px' }}>
+                <textarea
+                  className="osce-group__input"
+                  style={{ minHeight: 150, resize: 'vertical', margin: 0, padding: '16px' }}
+                  placeholder="Jot down your notes, differential diagnosis, and management plan here..."
+                  value={candidateNotes}
+                  onChange={(e) => setCandidateNotes(e.target.value)}
+                />
+              </div>
+            </div>
           )}
 
           {/* EXAMINER VIEW */}
@@ -509,12 +541,7 @@ export default function OsceStationActive() {
             </>
           )}
 
-          {/* PATIENT VIEW (and Examiner at the bottom) */}
-          {(role === 'patient' || role === 'examiner' || role === 'all') && (
-            <>
-              {renderSections('Patient Script')}
-            </>
-          )}
+          {/* PATIENT VIEW handled by generic renderSections above */}
         </div>
 
         <div className="osce-station__sidebar">

@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { LuPlus, LuPencil, LuTrash2, LuEye, LuEyeOff, LuChevronLeft, LuStethoscope, LuCircleCheck } from 'react-icons/lu'
+import { LuPlus, LuPencil, LuTrash2, LuEye, LuEyeOff, LuChevronLeft, LuStethoscope, LuCircleCheck, LuBrain } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import OsceImportModal from './OsceImportModal'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -40,6 +41,7 @@ export default function OsceAdminPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [typeFilter, setTypeFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
@@ -97,6 +99,45 @@ export default function OsceAdminPanel() {
     finally { setCreating(false) }
   }
 
+  async function handleImportCreate(parsedData) {
+    setCreating(true);
+    setCreateError('');
+    try {
+      // 1. Create the station with metadata from parsedData
+      const metadata = parsedData.station_updates || {};
+      const title = metadata.title || 'New Imported Station';
+      const body = {
+        title,
+        slug: slugify(title) + '-' + Date.now().toString().slice(-4),
+        station_type: metadata.station_type || 'history_taking',
+        difficulty: metadata.difficulty || 'medium',
+        time_minutes: 8,
+        status: 'draft',
+        summary: metadata.summary || null,
+        actual_diagnosis: metadata.actual_diagnosis || null,
+      };
+
+      const res = await authenticatedFetch(`${API_BASE}/admin/osce/stations`, {
+        method: 'POST', body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Failed to create station');
+      const d = await res.json();
+
+      // 2. Import the rest of the data
+      const impRes = await authenticatedFetch(`${API_BASE}/admin/osce/stations/${d.station.id}/import`, {
+        method: 'POST', body: JSON.stringify(parsedData),
+      });
+      if (!impRes.ok) throw new Error('Failed to import content');
+
+      setShowImport(false);
+      navigate(`/dashboard/admin/osce/station/${d.station.id}`);
+    } catch (e) {
+      setCreateError(e.message);
+    } finally {
+      setCreating(false);
+    }
+  }
+
   async function handleDelete(station, e) {
     e.stopPropagation()
     if (!window.confirm(`Delete "${station.title}"? This cannot be undone.`)) return
@@ -146,10 +187,23 @@ export default function OsceAdminPanel() {
           <h1 className="osce-admin-panel__title">Manage OSCE Stations</h1>
           <p className="osce-admin-panel__subtitle">Create, edit, and publish OSCE stations for all station types.</p>
         </div>
-        <button className="osce-admin-btn osce-admin-btn--primary" onClick={() => setShowCreate(true)}>
-          <LuPlus size={18} /> New Station
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button className="osce-admin-btn osce-admin-btn--secondary" onClick={() => setShowImport(true)}>
+            <LuBrain size={18} /> Import Station
+          </button>
+          <button className="osce-admin-btn osce-admin-btn--primary" onClick={() => setShowCreate(true)}>
+            <LuPlus size={18} /> New Station
+          </button>
+        </div>
       </div>
+
+      <OsceImportModal 
+        isOpen={showImport} 
+        type="full" 
+        onClose={() => setShowImport(false)} 
+        onImport={handleImportCreate} 
+        isNew={true}
+      />
 
       {error && <div className="osce-admin-alert">{error}</div>}
 
@@ -322,6 +376,9 @@ export default function OsceAdminPanel() {
 
               <div className="osce-admin-form__actions">
                 <button type="button" className="osce-admin-btn osce-admin-btn--ghost" onClick={() => setShowCreate(false)}>Cancel</button>
+                <button type="button" className="osce-admin-btn osce-admin-btn--secondary" onClick={() => { setShowCreate(false); setShowImport(true); }}>
+                  <LuBrain size={16} /> Import instead?
+                </button>
                 <button type="submit" className="osce-admin-btn osce-admin-btn--primary" disabled={creating}>
                   {creating ? 'Creating...' : <><LuCircleCheck size={16} /> Create & Edit</>}
                 </button>
