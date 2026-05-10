@@ -116,7 +116,6 @@ export default function Analytics() {
       .sort((a, b) => (b.attempted_questions ?? 0) - (a.attempted_questions ?? 0))
     const topTopic = withAttempts[0]
     const days = trend || []
-    const totalQuestions = days.reduce((s, d) => s + (d.questions_answered ?? 0), 0)
     const accDays = days.filter((d) => d.accuracy_pct != null)
     const avgAcc =
       accDays.length > 0
@@ -134,7 +133,7 @@ export default function Analytics() {
     const prev7q = prev7.length ? sumQ(prev7) : null
     const weekDelta = prev7q != null && prev7q > 0 ? formatDeltaPct(last7q, prev7q) : null
     return {
-      totalQuestions,
+      weekTotalQuestions: last7q,
       avgAcc,
       qDelta,
       weekDelta,
@@ -283,19 +282,24 @@ export default function Analytics() {
               <h2 id="analytics-volume-title" className="analytics-card__title">
                 Practice volume
               </h2>
-              <p className="analytics-card__sub">Questions answered across the days in your current trend window</p>
+              <p className="analytics-card__sub">Questions answered each calendar day in the past 7 days of your trend</p>
             </div>
-            {periodStats.qDelta != null && (
-              <span className={`analytics-pill ${periodStats.qDelta >= 0 ? 'analytics-pill--up' : 'analytics-pill--down'}`}>
+            {(periodStats.weekDelta != null || periodStats.qDelta != null) && (
+              <span
+                className={`analytics-pill ${
+                  (periodStats.weekDelta ?? periodStats.qDelta) >= 0 ? 'analytics-pill--up' : 'analytics-pill--down'
+                }`}
+              >
                 <LuTrendingUp size={14} aria-hidden />
-                {periodStats.qDelta >= 0 ? '+' : ''}
-                {periodStats.qDelta}% vs first half of period
+                {(periodStats.weekDelta ?? periodStats.qDelta) >= 0 ? '+' : ''}
+                {periodStats.weekDelta ?? periodStats.qDelta}%{' '}
+                {periodStats.weekDelta != null ? 'vs prior week' : 'vs first half of period'}
               </span>
             )}
           </div>
           <div className="analytics-volume__big">
-            <span className="analytics-volume__num">{periodStats.totalQuestions.toLocaleString()}</span>
-            <span className="analytics-volume__suffix">questions</span>
+            <span className="analytics-volume__num">{periodStats.weekTotalQuestions.toLocaleString()}</span>
+            <span className="analytics-volume__suffix">questions this week</span>
           </div>
           <div className="analytics-bar-strip" role="img" aria-label="Last seven days question counts">
             {periodStats.last7Days.map((d) => {

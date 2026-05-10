@@ -5,7 +5,9 @@
   background: #fff; 
   border-radius: 20px; 
   box-shadow: 0 40px 80px rgba(21, 35, 66, 0.12), 0 8px 24px rgba(21, 35, 66, 0.08); 
-  padding: 42px 40px 42px; 
+  padding: 42px 40px 42px;
+  /* Always dark text on white card (body uses light --syn-navy-700 in dark site theme) */
+  color: #0b1637;
 }
 
 .auth-panel__tabs-container {
@@ -140,6 +142,7 @@
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
   transition: all 0.2s ease;
   width: 100%;
+  color: #0b1637;
 }
 
 .auth-panel__input-wrapper .auth-panel__input {
@@ -155,6 +158,14 @@
 
 .auth-panel__input::placeholder {
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+  color: #66708a;
+  opacity: 1;
+}
+
+.auth-panel__input:-webkit-autofill,
+.auth-panel__input:-webkit-autofill:hover,
+.auth-panel__input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0b1637;
 }
 
 .auth-panel__eye-btn {

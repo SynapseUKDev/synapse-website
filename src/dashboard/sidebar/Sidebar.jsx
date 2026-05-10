@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuChartLine, LuCircleHelp, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX, LuLogOut, LuShield, LuStethoscope } from 'react-icons/lu'
+import { LuChartLine, LuCircleHelp, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX, LuLogOut, LuShield, LuStethoscope, LuTrendingUp } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import './Sidebar.css'
 
 function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [isCollapsed, setIsCollapsed] = useState(true)
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   // Auto-collapse sidebar when entering practice pages
   useEffect(() => {
@@ -21,6 +21,7 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
   const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
+    { id: 'analytics', label: 'Analytics', icon: LuTrendingUp, to: '/dashboard/analytics' },
     { id: 'question-bank', label: 'Question Bank', icon: LuCircleHelp, to: '/dashboard/question-bank' },
     { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },
     { id: 'osce', label: 'OSCE Stations', icon: LuStethoscope, to: '/dashboard/osce' },
@@ -70,17 +71,21 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
       <nav className="sidebar__menu">
         {menuItems.map((item) => {
           const IconComponent = item.icon
+          const isDashboard = item.to === '/dashboard'
+          const isActive = isDashboard
+            ? location.pathname === '/dashboard' || location.pathname === '/dashboard/'
+            : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
           return (
             <button
               key={item.id}
-              className={`sidebar__item ${
-                item.to === '/dashboard'
-                  ? location.pathname === '/dashboard' ? 'sidebar__item--active' : ''
-                  : location.pathname.startsWith(item.to) ? 'sidebar__item--active' : ''
-              }`}
+              type="button"
+              className={`sidebar__item ${isActive ? 'sidebar__item--active' : ''}`}
+              title={item.label}
+              aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
               onClick={() => handleNavigate(item.to)}
             >
-              <IconComponent className="sidebar__icon" />
+              <IconComponent className="sidebar__icon" aria-hidden />
               <span className="sidebar__text">{item.label}</span>
             </button>
           )

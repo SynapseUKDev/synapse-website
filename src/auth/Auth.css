@@ -14,6 +14,8 @@
   display: grid;
   place-items: center;
   padding: 24px;
+  /* Dark text: in site dark theme, --syn-navy-700 maps to a light color — don't inherit it here */
+  color: #0b1637;
 }
 
 .auth__leftContent { 

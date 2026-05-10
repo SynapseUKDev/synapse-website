@@ -122,7 +122,7 @@ function Subscribe() {
   }, [location.search])
 
   const benefits = useMemo(() => ([
-    { title: 'Full Question Bank', desc: '10,000+ exam-style questions with detailed explanations', icon: 'book', bg: 'var(--surface-tint-cyan)', border: '#b6f6fc', color: 'var(--syn-navy-700)' },
+    { title: 'Full Question Bank', desc: '10,000+ exam-style questions with detailed explanations', icon: 'book', bg: 'var(--surface-tint-cyan)', border: '#b6f6fc', color: '#0b1637' },
     { title: 'Smart Analytics', desc: 'Track progress, identify weak areas, and improve faster', icon: 'activity', bg: 'var(--surface-tint-gold)', border: '#ffe7cc', color: '#a15d00' },
     { title: 'Textbook Access', desc: 'Curated high-yield content aligned to UKMLA topics', icon: 'file', bg: 'var(--surface-tint-purple)', border: '#e6d6ff', color: '#5b23a6' },
     { title: 'Visual Learning', desc: 'Diagrams, tables, and illustrations to solidify concepts', icon: 'image', bg: 'var(--surface-tint-green)', border: '#cbf6da', color: '#0e8a4b' },
@@ -186,7 +186,7 @@ function Subscribe() {
   }
 
   return (
-    <section className="auth" style={{ color: 'var(--syn-navy-700)' }}>
+    <section className="auth" style={{ color: '#0b1637' }}>
       <div className="auth__split auth__split--left">
         <div style={{ width: '100%', display: 'grid', placeItems: 'center', padding: '24px 0' }}>
           <div className="auth__panel" style={{ maxWidth: 520, width: '100%' }}>
@@ -194,16 +194,16 @@ function Subscribe() {
               <div>
                 <h2 className="auth__headline" style={{ fontSize: 30, margin: 0 }}>Continue your learning journey</h2>
                 {daysLeft !== null && daysLeft > 0 && (
-                  <div style={{ fontSize: 14, color: 'var(--syn-muted)', marginTop: 4 }}>
+                  <div style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>
                     Your trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
                   </div>
                 )}
               </div>
               {user && (
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 12, color: 'var(--syn-muted)' }}>Signed in as</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>Signed in as</div>
                   <div style={{ fontWeight: 800 }}>{user.username || user.email}</div>
-                  <button onClick={handleLogout} className="qb-btn qb-btn--sm" style={{ marginTop: 6, background: '#fff', color: 'var(--syn-navy-700)', border: '1px solid var(--syn-border)', boxShadow: 'none' }}>Sign out</button>
+                  <button onClick={handleLogout} className="qb-btn qb-btn--sm" style={{ marginTop: 6, background: '#fff', color: '#0b1637', border: '1px solid var(--syn-border)', boxShadow: 'none' }}>Sign out</button>
                 </div>
               )}
             </div>
@@ -234,14 +234,14 @@ function Subscribe() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 800, color: th.accent, marginBottom: 2 }}>{th.title}</div>
-                    <div style={{ color: 'var(--syn-navy-700)', lineHeight: 1.5 }}>{banner.text}</div>
+                    <div style={{ color: '#0b1637', lineHeight: 1.5 }}>{banner.text}</div>
                   </div>
                   <button onClick={() => setBanner({ type: '', text: '' })} aria-label="Dismiss" style={{ background: 'transparent', border: 0, color: '#64748b', cursor: 'pointer' }}>×</button>
                 </div>
               )
             })()}
 
-            <p className="auth__subtitle" style={{ marginBottom: 18, color: 'var(--syn-muted)' }}>
+            <p className="auth__subtitle" style={{ marginBottom: 18, color: '#64748b' }}>
               Subscribe now for £15 per 6 months. Cancel anytime.
             </p>
 
@@ -264,7 +264,7 @@ function Subscribe() {
                   <div style={{ fontWeight: 800, color: '#0ea5b5', marginBottom: 4 }}>
                     {daysLeft > 0 ? 'Your free trial is ending soon' : 'Your free trial has ended'}
                   </div>
-                  <div style={{ color: 'var(--syn-navy-700)', lineHeight: 1.5, fontSize: 14 }}>
+                  <div style={{ color: '#0b1637', lineHeight: 1.5, fontSize: 14 }}>
                     {daysLeft > 0
                       ? `Subscribe now to continue learning after your trial ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`
                       : 'Subscribe now to regain access to all features and continue your learning journey.'
@@ -345,13 +345,13 @@ function Subscribe() {
               {processing ? 'Preparing checkout…' : access?.has_active_access ? 'Already subscribed' : 'Subscribe now'}
             </button>
 
-            <p style={{ marginTop: 12, fontSize: 12, opacity: 0.8, textAlign: 'center', color: 'var(--syn-muted)' }}>
+            <p style={{ marginTop: 12, fontSize: 12, opacity: 0.8, textAlign: 'center', color: '#64748b' }}>
               Secure payments handled by Stripe. No commitment—cancel anytime.
             </p>
 
             <div style={{ marginTop: 20, background: 'var(--surface-card)', border: '1px solid var(--syn-border)', borderRadius: 16, padding: 16 }}>
               <div style={{ fontWeight: 800, marginBottom: 8 }}>What you get</div>
-              <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.6, color: 'var(--syn-navy-700)' }}>
+              <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.6, color: '#0b1637' }}>
                 <li>Unlimited access to the full Question Bank and explanations</li>
                 <li>Personalised analytics dashboard and study streak tracking</li>
                 <li>Complete textbook with sections, visuals and citations</li>
