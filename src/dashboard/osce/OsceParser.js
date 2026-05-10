@@ -19,7 +19,7 @@ export function parseFullStation(text) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    if (!line) continue;
+    if (!line || line === '---') continue;
 
     // --- Station Metadata ---
     if (line.startsWith('# Station:')) {
@@ -99,7 +99,9 @@ export function parseFullStation(text) {
         if (lastBlock.block_type === 'checklist') {
           lastBlock.content.items.push({ label: line.replace(/^\s*([-*]|\d+\.)\s+/, '').trim(), required: false });
         } else if (lastBlock.block_type === 'key_value') {
-          const [k, v] = line.replace(/^\s*([-*]|\d+\.)\s+/, '').split(':');
+          const parts = line.replace(/^\s*([-*]|\d+\.)\s+/, '').split(':');
+          const k = parts[0];
+          const v = parts.slice(1).join(':');
           lastBlock.content.pairs.push({ key: k?.trim() || '', value: v?.trim() || '' });
         } else if (lastBlock.block_type === 'markdown') {
            lastBlock.content.text += '\n' + line;
@@ -115,7 +117,7 @@ export function parseFullStation(text) {
 
     if (currentContext === 'mark_scheme') {
       if (line.startsWith('Domain:')) {
-        const match = line.match(/Domain:\s*(.*?)(?:\s*\((\d+)\))?$/);
+        const match = line.match(/Domain:\s*(.*?)(?:\s*\((\d+)\s*(?:marks?)?\))?$/i);
         currentDomain = {
           title: match?.[1]?.trim() || 'Domain',
           max_marks: parseInt(match?.[2] || '10'),
