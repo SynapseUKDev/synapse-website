@@ -38,11 +38,9 @@ Key-Value:
 Markdown:
 ### Red Flags
 Candidate MUST identify:
-- Non-blanching rash
-- Reduced consciousness
-- Neck stiffness / photophobia
-- Seizures
-- Signs of sepsis
+- Red flag 1
+- Red flag  2
+- etc.
 
 Markdown:
 ### ICE
@@ -107,11 +105,9 @@ Key-Value:
 Markdown:
 ### Red Flags
 Candidate MUST identify:
-- Non-blanching rash
-- Reduced consciousness
-- Neck stiffness / photophobia
-- Seizures
-- Signs of sepsis
+- Red flag 1
+- Red flag  2
+- etc.
 
 Markdown:
 ### ICE
@@ -179,13 +175,13 @@ export default function OsceImportModal({ isOpen, type, onImport, onClose, isNew
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 13, color: 'var(--syn-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Paste the text generated below.</span>
-              <button 
+              <button
                 onClick={handleCopyTemplate}
                 className={`osce-btn osce-btn--sm ${copied ? '' : 'osce-btn--secondary'}`}
-                style={{ 
+                style={{
                   height: 32,
                   padding: '0 12px',
-                  background: copied ? 'var(--syn-green)' : undefined, 
+                  background: copied ? 'var(--syn-green)' : undefined,
                   borderColor: copied ? 'var(--syn-green)' : undefined,
                   color: copied ? 'white' : undefined,
                   gap: 6
@@ -242,9 +238,9 @@ export default function OsceImportModal({ isOpen, type, onImport, onClose, isNew
           {!preview ? (
             <button className="osce-btn" onClick={handlePreview} disabled={!text.trim()}>Preview Import</button>
           ) : (
-            <button 
-              className="osce-btn" 
-              style={{ background: type === 'full' ? '#dc2626' : undefined }} 
+            <button
+              className="osce-btn"
+              style={{ background: type === 'full' ? '#dc2626' : undefined }}
               disabled={importing}
               onClick={async () => {
                 setImporting(true);
