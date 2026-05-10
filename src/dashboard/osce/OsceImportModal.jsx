@@ -34,6 +34,21 @@ Key-Value:
 - Social History: 
 
 Markdown:
+### Red Flags and Escalation Points
+Candidate MUST identify:
+- Non-blanching rash
+- Reduced consciousness
+- Neck stiffness / photophobia
+- Seizures
+- Signs of sepsis
+
+Markdown:
+### Escalation:
+- Immediate senior review
+- Consider sepsis pathway
+- Urgent hospital admission
+
+Markdown:
 ### ICE
 - Ideas: 
 - Concerns: 
@@ -86,6 +101,21 @@ Key-Value:
 - Drug History: 
 - Family History: 
 - Social History: 
+
+Markdown:
+### Red Flags and Escalation Points
+Candidate MUST identify:
+- Non-blanching rash
+- Reduced consciousness
+- Neck stiffness / photophobia
+- Seizures
+- Signs of sepsis
+
+Markdown:
+### Escalation:
+- Immediate senior review
+- Consider sepsis pathway
+- Urgent hospital admission
 
 Markdown:
 ### ICE
