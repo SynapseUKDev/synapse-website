@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { LuBrain, LuCircleAlert, LuCheck, LuX, LuCopy } from 'react-icons/lu';
 
 const PROMPT_TEMPLATES = {
-  full: `# Station: [Title]
+  full: `[IMPORTANT: NEVER INCLUDE THE DIAGNOSIS IN THE STATION TITLE, SUMMARY, OR CANDIDATE INSTRUCTIONS SECTION. KEEP IT HIDDEN FROM THE CANDIDATE.]
+
+# Station: [Generic Title, e.g., "Shortness of Breath"]
 Type: [history_taking | examination | communication | procedural | emergency | data_interpretation | prescribing | documentation | paeds_obs_gynae]
 Difficulty: [easy | medium | hard]
-Summary: [Short description]
-Diagnosis: [Diagnosis]
+Summary: [General description of the presentation]
+Diagnosis: [The actual diagnosis - this will be hidden from the candidate]
 
 ## Section: Instructions [Role: candidate, observer]
 Markdown:
@@ -34,19 +36,13 @@ Key-Value:
 - Social History: 
 
 Markdown:
-### Red Flags and Escalation Points
+### Red Flags
 Candidate MUST identify:
 - Non-blanching rash
 - Reduced consciousness
 - Neck stiffness / photophobia
 - Seizures
 - Signs of sepsis
-
-Markdown:
-### Escalation:
-- Immediate senior review
-- Consider sepsis pathway
-- Urgent hospital admission
 
 Markdown:
 ### ICE
@@ -61,7 +57,9 @@ Domain: [Domain Name] (Max Marks)
 
 ## Viva Questions
 1. [Question]?
-Answer: [Answer]
+Answer: 
+- [Point 1]
+- [Point 2]
 
 ## Fail Criteria
 - [Reason 1]
@@ -71,7 +69,9 @@ Answer: [Answer]
 - [Item Description] (1)
 ...`,
   viva: `1. [Question]?
-Answer: [Expected Answer]
+Answer: 
+- [Expected Point 1]
+- [Expected Point 2]
 ...`,
   fails: `- [Description of automatic failure reason]
 - [Description 2]
@@ -82,7 +82,9 @@ Answer: [Expected Answer]
 Checklist:
 - [Item 1]
 - [Item 2]`,
-  patient: `Markdown:
+  patient: `[IMPORTANT: NEVER INCLUDE THE DIAGNOSIS IN THIS SECTION IF IT IS VISIBLE TO THE CANDIDATE.]
+
+Markdown:
 ### Opening Statement
 "..."
 
@@ -103,19 +105,13 @@ Key-Value:
 - Social History: 
 
 Markdown:
-### Red Flags and Escalation Points
+### Red Flags
 Candidate MUST identify:
 - Non-blanching rash
 - Reduced consciousness
 - Neck stiffness / photophobia
 - Seizures
 - Signs of sepsis
-
-Markdown:
-### Escalation:
-- Immediate senior review
-- Consider sepsis pathway
-- Urgent hospital admission
 
 Markdown:
 ### ICE
@@ -129,6 +125,7 @@ export default function OsceImportModal({ isOpen, type, onImport, onClose, isNew
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -245,8 +242,20 @@ export default function OsceImportModal({ isOpen, type, onImport, onClose, isNew
           {!preview ? (
             <button className="osce-btn" onClick={handlePreview} disabled={!text.trim()}>Preview Import</button>
           ) : (
-            <button className="osce-btn" style={{ background: type === 'full' ? '#dc2626' : undefined }} onClick={() => onImport(preview)}>
-              <LuCheck size={16} /> Confirm & Import
+            <button 
+              className="osce-btn" 
+              style={{ background: type === 'full' ? '#dc2626' : undefined }} 
+              disabled={importing}
+              onClick={async () => {
+                setImporting(true);
+                try {
+                  await onImport(preview);
+                } finally {
+                  setImporting(false);
+                }
+              }}
+            >
+              {importing ? 'Importing...' : <><LuCheck size={16} /> Confirm & Import</>}
             </button>
           )}
         </div>

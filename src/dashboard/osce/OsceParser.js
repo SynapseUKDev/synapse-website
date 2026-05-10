@@ -18,7 +18,8 @@ export function parseFullStation(text) {
   let currentViva = null;
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
+    const rawLine = lines[i];
+    const line = rawLine.trim();
     if (!line || line === '---') continue;
 
     // --- Station Metadata ---
@@ -104,13 +105,15 @@ export function parseFullStation(text) {
           const v = parts.slice(1).join(':');
           lastBlock.content.pairs.push({ key: k?.trim() || '', value: v?.trim() || '' });
         } else if (lastBlock.block_type === 'markdown') {
-           lastBlock.content.text += '\n' + line;
+           const text = lastBlock.content.text;
+           lastBlock.content.text = (text ? text + '\n' : '') + rawLine;
         }
       } else if (currentSection.blocks.length > 0) {
         // Assume continuing markdown
         const lastBlock = currentSection.blocks[currentSection.blocks.length - 1];
         if (lastBlock.block_type === 'markdown') {
-          lastBlock.content.text += '\n' + line;
+          const text = lastBlock.content.text;
+          lastBlock.content.text = (text ? text + '\n' : '') + rawLine;
         }
       }
     }

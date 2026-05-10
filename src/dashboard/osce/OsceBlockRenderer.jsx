@@ -39,33 +39,61 @@ function MarkdownBlock({ content }) {
 
 function simpleMarkdown(text) {
   if (!text) return ''
-  let html = text
-    // Escape HTML
+  
+  // 1. Split into lines to handle block-level elements
+  const lines = text.split('\n')
+  let inList = false
+  let result = []
+
+  lines.forEach(line => {
+    const trimmed = line.trim()
+    
+    // Headings - Should be their own blocks
+    if (trimmed.startsWith('### ')) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(`<h3>${trimmed.replace('### ', '')}</h3>`)
+      return
+    }
+    if (trimmed.startsWith('## ')) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(`<h2>${trimmed.replace('## ', '')}</h2>`)
+      return
+    }
+    if (trimmed.startsWith('# ')) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(`<h1>${trimmed.replace('# ', '')}</h1>`)
+      return
+    }
+
+    // Lists
+    const listMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/)
+    if (listMatch) {
+      if (!inList) { result.push('<ul style="margin-top: 4px; margin-bottom: 4px;">'); inList = true; }
+      const indent = listMatch[1].length
+      const content = listMatch[3]
+      // Simple indentation support via padding
+      result.push(`<li style="margin-left: ${indent * 12}px; margin-bottom: 2px;">${inlineMarkdown(content)}</li>`)
+      return
+    }
+
+    // Paragraph/Text
+    if (inList) { result.push('</ul>'); inList = false; }
+    if (trimmed) {
+      result.push(`<p style="margin: 4px 0;">${inlineMarkdown(line)}</p>`)
+    }
+  })
+
+  if (inList) result.push('</ul>')
+  return result.join('')
+}
+
+function inlineMarkdown(text) {
+  return text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    // Headings (### → h3, ## → h2, # → h1)
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // Bold & italic
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Unordered lists (lines starting with - )
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    // Numbered lists (lines starting with 1. 2. etc)
-    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-    // Links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    // Line breaks
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br/>')
-
-  // Wrap consecutive <li> in <ul>
-  html = html.replace(/(<li>.*?<\/li>(\s*<br\/>)?)+/g, (match) => {
-    return '<ul>' + match.replace(/<br\/>/g, '') + '</ul>'
-  })
-
-  return '<p>' + html + '</p>'
 }
 
 /* ── Checklist ─────────────────────────────────────── */
@@ -129,11 +157,11 @@ function CalloutBlock({ content }) {
 function ImageBlock({ content }) {
   const url = content?.url
   if (!url) return null
-  const width = content?.width || 100
+  const width = content?.width || 50
   return (
-    <div className="osce-block--image" style={{ textAlign: 'center' }}>
-      <figure style={{ display: 'inline-block', width: `${width}%`, maxWidth: '100%' }}>
-        <img src={url} alt={content.caption || ''} loading="lazy" style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
+    <div className="osce-block--image" style={{ textAlign: 'center', margin: '12px 0', maxWidth: '100%' }}>
+      <figure style={{ display: 'inline-block', width: `${width}%`, maxWidth: '100%', margin: 0 }}>
+        <img src={url} alt={content.caption || ''} loading="lazy" style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }} />
         {content.caption && <figcaption style={{ marginTop: 8, fontSize: '0.9em', color: 'var(--syn-muted)' }}>{content.caption}</figcaption>}
       </figure>
     </div>

@@ -102,9 +102,9 @@
 .tb-admin-hover-outline:hover .tb-admin-edit-hover-btn { opacity: 1 !important; }
 
 .osce-block--markdown { font-size: 15px; line-height: 1.7; color: var(--syn-navy-700); }
-.osce-block--markdown h1,.osce-block--markdown h2,.osce-block--markdown h3 { color: var(--syn-navy-700); margin: 16px 0 8px; }
-.osce-block--markdown p { margin: 8px 0; }
-.osce-block--markdown ul,.osce-block--markdown ol { padding-left: 24px; margin: 8px 0; }
+.osce-block--markdown h1,.osce-block--markdown h2,.osce-block--markdown h3 { color: var(--syn-navy-700); margin: 12px 0 4px; }
+.osce-block--markdown p { margin: 4px 0; }
+.osce-block--markdown ul,.osce-block--markdown ol { padding-left: 24px; margin: 4px 0; }
 .osce-block--markdown strong { font-weight: 800; }
 
 .osce-block--checklist { list-style: none; padding: 0; margin: 0; }

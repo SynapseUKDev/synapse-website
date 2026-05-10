@@ -623,8 +623,8 @@ export function OsceInlineBlock({ block, API_BASE, onSaved, dragHandleProps }) {
               </label>
               <label style={{ width: 160, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>Width (%)
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 36 }}>
-                  <input type="range" min="10" max="100" step="5" value={content.width || 100} onChange={e => handleContentChange({ ...content, width: Number(e.target.value) })} style={{ flex: 1, width: '100%' }} />
-                  <span style={{ fontSize: 12, width: 32, flexShrink: 0 }}>{content.width || 100}%</span>
+                  <input type="range" min="10" max="100" step="5" value={content.width || 50} onChange={e => handleContentChange({ ...content, width: Number(e.target.value) })} style={{ flex: 1, width: '100%' }} />
+                  <span style={{ fontSize: 12, width: 32, flexShrink: 0 }}>{content.width || 50}%</span>
                 </div>
               </label>
             </div>
