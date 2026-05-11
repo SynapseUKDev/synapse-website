@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../sidebar/Sidebar'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
+import MobileNavModal from './MobileNavModal'
 import '../Dashboard.css'
 import { authHeaders, clearTokens, authenticatedFetch } from '../../auth/token'
 import { LuMenu } from 'react-icons/lu'
@@ -18,17 +19,17 @@ function DashboardLayout() {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     try {
       console.log('Fetching user from:', `${API_BASE}/me`)
-      const res = await authenticatedFetch(`${API_BASE}/me`, { 
+      const res = await authenticatedFetch(`${API_BASE}/me`, {
         cache: 'no-store',
       })
       console.log('User fetch response status:', res.status)
-      
+
       if (res.status === 401) {
         console.log('User not authenticated, redirecting to login')
         navigate('/')
         return
       }
-      
+
       if (!res.ok) {
         console.error('Failed to fetch user:', res.status, res.statusText)
         const errorText = await res.text()
@@ -36,7 +37,7 @@ function DashboardLayout() {
         navigate('/')
         return
       }
-      
+
       const data = await res.json()
       console.log('User data received:', data.user?.id)
       const hasAccess = !!data?.access?.has_active_access
@@ -54,12 +55,18 @@ function DashboardLayout() {
     }
   }, [navigate])
 
-  useEffect(() => { fetchUser() }, [fetchUser])
+  useEffect(() => {
+    fetchUser()
+  }, [fetchUser])
   useEffect(() => {
     const handler = () => fetchUser()
     window.addEventListener('auth:changed', handler)
     return () => window.removeEventListener('auth:changed', handler)
   }, [fetchUser])
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
 
   const handleLogout = async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -73,35 +80,29 @@ function DashboardLayout() {
 
   return (
     <div className="dash">
-      {/* Mobile Header */}
       <div className="dash__mobile-header">
         <div className="dash__mobile-header-content">
           <img src={logoImg} alt="Synapse UK" className="dash__mobile-logo" />
-          <button 
-            className="dash__mobile-burger" 
+          <button
+            type="button"
+            className="dash__mobile-burger"
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open menu"
+            aria-expanded={mobileMenuOpen}
           >
             <LuMenu size={24} />
           </button>
         </div>
       </div>
 
-      {/* Overlay for mobile menu */}
-      {mobileMenuOpen && (
-        <div 
-          className="dash__overlay" 
-          onClick={() => setMobileMenuOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      <Sidebar 
-        user={user} 
-        onLogout={handleLogout} 
-        mobileMenuOpen={mobileMenuOpen}
-        onCloseMobileMenu={() => setMobileMenuOpen(false)}
+      <MobileNavModal
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        user={user}
+        onLogout={handleLogout}
       />
+
+      <Sidebar user={user} onLogout={handleLogout} />
       <main className="dash__content">
         <Outlet context={{ user, location }} />
       </main>
@@ -110,5 +111,3 @@ function DashboardLayout() {
 }
 
 export default DashboardLayout
-
-

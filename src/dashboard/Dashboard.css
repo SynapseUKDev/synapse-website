@@ -58,37 +58,12 @@
   border-color: rgba(32,229,246,0.45);
 }
 
-.dash__overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @media (max-width: 768px) {
   .dash {
     flex-direction: column;
   }
 
   .dash__mobile-header {
-    display: block;
-  }
-
-  .dash__overlay {
     display: block;
   }
 

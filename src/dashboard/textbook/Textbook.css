@@ -641,6 +641,8 @@ mark.tb-user-mark[data-note]:hover::after {
   padding: 14px;
   box-shadow: 0 8px 18px rgba(11, 22, 55, 0.06);
   margin-bottom: 14px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .tb-section__title {
@@ -652,6 +654,11 @@ mark.tb-user-mark[data-note]:hover::after {
 
 .tb-section__content {
   color: var(--syn-navy-700);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 /* Markdown-ish content */
@@ -660,6 +667,8 @@ mark.tb-user-mark[data-note]:hover::after {
   font-size: 15px;
   line-height: 1.65;
   white-space: normal;
+  min-width: 0;
+  max-width: 100%;
   /* let HTML flow naturally */
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 }
@@ -736,9 +745,13 @@ mark.tb-user-mark[data-note]:hover::after {
 
 /* Table styling (for clinical features etc.) */
 .tb-md table {
-  width: 100%;
   border-collapse: collapse;
   margin: 8px 0 12px 0;
+  /* At least full width of the scroll container; grow for many columns */
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .tb-md thead th {
@@ -752,10 +765,64 @@ mark.tb-user-mark[data-note]:hover::after {
   border: 1px solid var(--syn-border);
   padding: 8px 10px;
   vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .tb-md tbody tr:nth-child(even) {
   background: var(--dm-surface-container-low, #fbfcff);
+}
+
+@media (max-width: 640px) {
+  .tb-md th,
+  .tb-md td {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .tb-page {
+    padding: 16px 12px;
+  }
+}
+
+/* Long code / wiki blocks: don’t blow past the viewport */
+.tb-page .tb-md pre,
+.dash__content .tb-md pre {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  padding: 12px 14px;
+  margin: 8px 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--syn-border);
+  background: var(--dm-surface-container-low, #f1f5f9);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre;
+  word-break: normal;
+}
+
+html[data-theme='dark'] .tb-page .tb-md pre,
+html[data-theme='dark'] .dash__content .tb-md pre {
+  background: var(--dm-surface-container);
+  border-color: var(--dm-outline-variant);
+}
+
+/* Pasted dashboard textbook: same containment */
+.dash__content .tb-md {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.tb-block {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ---- Textbook illustrations: one frame (tokens on .tb-page: --tb-media-*) ---- */
@@ -1527,6 +1594,9 @@ html[data-theme='dark'] .tb-page--chapter .tb-figure figcaption a {
 /* References styling */
 .tb-section--refs {
   padding: 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 
 .tb-refs {
@@ -1534,22 +1604,27 @@ html[data-theme='dark'] .tb-page--chapter .tb-figure figcaption a {
   padding-left: 20px;
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .tb-ref {
   color: var(--syn-navy-700);
+  min-width: 0;
 }
 
 .tb-ref__row {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
 }
 
 .tb-ref__label {
   color: var(--dm-primary-container, #2E2CC4);
   text-decoration: none;
   font-weight: 700;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .tb-ref__label:hover {

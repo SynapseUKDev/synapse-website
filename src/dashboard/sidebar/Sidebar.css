@@ -411,95 +411,9 @@
   border-color: rgba(32, 229, 246, 0.45);
 }
 
-/* Responsive design */
+/* Mobile: primary nav uses full-screen modal (MobileNavModal) — hide rail */
 @media (max-width: 768px) {
   .sidebar {
-    position: fixed;
-    z-index: 1001;
-    transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    width: 280px;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .sidebar--mobile-open {
-    transform: translateX(0);
-  }
-
-  .sidebar--collapsed {
-    width: 280px;
-  }
-
-  .sidebar__mobile-close {
-    display: flex;
-  }
-
-  .sidebar__burger {
-    display: none;
-  }
-
-  /* Make menu scrollable on mobile with flexible height */
-  .sidebar__menu {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  /* Ensure brand and user sections don't shrink */
-  .sidebar__brand {
-    flex-shrink: 0;
-  }
-
-  .sidebar__user {
-    flex-shrink: 0;
-  }
-
-  /* Always show text and user section on mobile */
-  .sidebar--collapsed .sidebar__text {
-    opacity: 1;
-  }
-
-  /* On mobile, always show logo even when collapsed */
-  .sidebar--collapsed .sidebar__logo {
-    opacity: 1;
-    width: 45px;
-    height: 45px;
-  }
-
-  /* On mobile, always show text labels even when collapsed */
-  .sidebar--collapsed .sidebar__text {
-    display: inline;
-    opacity: 1;
-    width: auto;
-    overflow: visible;
-  }
-
-  /* On mobile, always show expanded layout even when technically "collapsed" */
-  .sidebar__user--collapsed {
-    padding: 16px;
-    display: block;
-  }
-
-  .sidebar__user-compact {
     display: none !important;
-  }
-
-  .sidebar__user--collapsed .sidebar__user-expanded {
-    display: block;
-  }
-
-  /* Full width nav items on mobile */
-  .sidebar--collapsed .sidebar__item {
-    justify-content: flex-start;
-    padding: 0 12px;
-    width: 100%;
-    margin: 0;
-  }
-
-  /* Hide desktop collapse button on mobile */
-  .sidebar__footer {
-    display: none;
   }
 }

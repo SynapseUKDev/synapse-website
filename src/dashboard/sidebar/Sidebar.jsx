@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuChartLine, LuCircleHelp, LuBookOpen, LuTimer, LuMenu, LuSettings, LuX, LuLogOut, LuShield, LuStethoscope, LuTrendingUp } from 'react-icons/lu'
+import { LuMenu, LuSettings, LuLogOut } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
+import { getDashboardNavItems } from './dashboardNavConfig'
 import './Sidebar.css'
 
-function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
+function Sidebar({ user, onLogout }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -18,16 +19,7 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
     }
   }, [location.pathname])
 
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
-    { id: 'analytics', label: 'Analytics', icon: LuTrendingUp, to: '/dashboard/analytics' },
-    { id: 'question-bank', label: 'Question Bank', icon: LuCircleHelp, to: '/dashboard/question-bank' },
-    { id: 'mock-exams', label: 'Mock exams', icon: LuTimer, to: '/dashboard/mock-exams' },
-    { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },
-    { id: 'osce', label: 'OSCE Stations', icon: LuStethoscope, to: '/dashboard/osce' },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: LuShield, to: '/dashboard/admin' }] : []),
-  ]
+  const menuItems = getDashboardNavItems(user)
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -38,33 +30,20 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
 
   const handleNavigate = (to) => {
     navigate(to)
-    // Close mobile menu after navigation
-    if (onCloseMobileMenu) {
-      onCloseMobileMenu()
-    }
   }
 
   return (
-    <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''} ${mobileMenuOpen ? 'sidebar--mobile-open' : ''}`}>
+    <aside className={`sidebar ${isCollapsed ? 'sidebar--collapsed' : ''}`}>
       <div className="sidebar__brand">
         <img src={logoImg} alt="Synapse UK" className="sidebar__logo" />
 
-        {/* Burger menu button for desktop */}
         <button
+          type="button"
           className="sidebar__burger"
           onClick={toggleSidebar}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <LuMenu size={24} />
-        </button>
-
-        {/* Mobile close button */}
-        <button
-          className="sidebar__mobile-close"
-          onClick={onCloseMobileMenu}
-          aria-label="Close menu"
-        >
-          <LuX size={24} />
         </button>
       </div>
 
@@ -112,7 +91,6 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
               className="sidebar__action-btn sidebar__action-btn--logout"
               onClick={() => {
                 onLogout()
-                if (onCloseMobileMenu) onCloseMobileMenu()
               }}
               title="Logout"
             >
@@ -136,10 +114,14 @@ function Sidebar({ user, onLogout, mobileMenuOpen, onCloseMobileMenu }) {
           </div>
           <div className="sidebar__user-actions">
             <button className="sidebar__settings" onClick={() => handleNavigate('/dashboard/settings')}>Settings</button>
-            <button className="sidebar__logout" onClick={() => {
-              onLogout()
-              if (onCloseMobileMenu) onCloseMobileMenu()
-            }}>Logout</button>
+            <button
+              className="sidebar__logout"
+              onClick={() => {
+                onLogout()
+              }}
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>
