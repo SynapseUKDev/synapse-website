@@ -1011,6 +1011,55 @@ html[data-theme='dark'] .tb-page .tb-md .thumbcaption a {
   text-decoration-color: rgba(173, 198, 255, 0.35);
 }
 
+/*
+ * Embedded cyclic carousels (ff-cyclic-carousel): content ships a <style> with a padded light card
+ * (.ff-panel). That reads as a second “overlay” inside .tb-section — strip panel chrome so only
+ * the slides/images sit on the section surface. (Still cannot remove the embed <style> from CSS.)
+ */
+.tb-page .ff-cyclic-carousel,
+.tb-md .ff-cyclic-carousel {
+  max-width: min(var(--tb-media-outer), 100%) !important;
+  width: 100% !important;
+}
+
+:is(.tb-page, .tb-md) .ff-cyclic-carousel .ff-panel {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel figcaption {
+  color: var(--dm-on-surface-variant) !important;
+}
+
+html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel .ff-arrow {
+  background: rgba(13, 19, 34, 0.92) !important;
+  box-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(173, 198, 255, 0.22) !important;
+  color: var(--dm-primary) !important;
+}
+
+html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel .ff-arrow:hover {
+  background: rgba(19, 27, 49, 0.96) !important;
+  border-color: rgba(173, 198, 255, 0.35) !important;
+  color: #eaf0ff !important;
+}
+
+html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel .ff-dots label.ff-dot {
+  background: var(--dm-outline-variant) !important;
+}
+
+html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-of-type(1):checked) .ff-dots label:nth-of-type(1),
+html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-of-type(2):checked) .ff-dots label:nth-of-type(2),
+html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-of-type(3):checked) .ff-dots label:nth-of-type(3),
+html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-of-type(4):checked) .ff-dots label:nth-of-type(4) {
+  background: var(--dm-primary-container) !important;
+}
+
 /* Admin carousel + multi-image blocks (same tokens) */
 .tb-carousel {
   position: relative;
