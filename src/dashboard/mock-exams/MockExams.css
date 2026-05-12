@@ -686,6 +686,116 @@ html[data-theme='dark'] .mock-exam-tracker-hint {
   color: var(--syn-muted);
 }
 
+.me-results__options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.me-results__opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--syn-border);
+  background: var(--dm-surface-container-low, #f8fafc);
+  text-align: left;
+}
+
+.me-results__opt-label {
+  flex-shrink: 0;
+  font-weight: 800;
+  color: var(--syn-navy-700);
+  min-width: 1.5rem;
+}
+
+.me-results__opt-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.me-results__opt-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--syn-text, #0f172a);
+}
+
+.me-results__opt-body p {
+  margin: 0 0 0.5em;
+}
+
+.me-results__opt-body p:last-child {
+  margin-bottom: 0;
+}
+
+.me-results__opt-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.me-results__opt-pill {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.me-results__opt-pill--correct {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.me-results__opt-pill--yours {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.me-results__opt--correct {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.me-results__opt--incorrect {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+html[data-theme='dark'] .me-results__opt {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme='dark'] .me-results__opt--correct {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+html[data-theme='dark'] .me-results__opt--incorrect {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+html[data-theme='dark'] .me-results__opt-pill--correct {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+html[data-theme='dark'] .me-results__opt-pill--yours {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
 .me-results__explain {
   margin-top: 14px;
   padding-top: 14px;

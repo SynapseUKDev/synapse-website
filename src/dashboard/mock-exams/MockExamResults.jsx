@@ -152,18 +152,39 @@ export default function MockExamResults() {
                 {q.stem}
               </ReactMarkdown>
             </div>
-            {!q.skipped && q.selected_option_index != null && q.correct_option_index != null && (
-              <p className="me-results__letters">
-                Your answer: <strong>{String.fromCharCode(65 + q.selected_option_index)}</strong>
-                {' · '}
-                Correct: <strong>{String.fromCharCode(65 + q.correct_option_index)}</strong>
-              </p>
-            )}
-            {q.skipped && q.correct_option_index != null && (
-              <p className="me-results__letters">
-                Correct answer: <strong>{String.fromCharCode(65 + q.correct_option_index)}</strong>
-              </p>
-            )}
+            {Array.isArray(q.options) && q.options.length > 0 ? (
+              <div className="me-results__options" role="list" aria-label="Answer choices">
+                {q.options.map((o) => {
+                  const idx = o.id
+                  const isCorrect = q.correct_option_index != null && idx === q.correct_option_index
+                  const isUserPick =
+                    !q.skipped && q.selected_option_index != null && idx === q.selected_option_index
+                  const parts = ['me-results__opt']
+                  if (isCorrect) parts.push('me-results__opt--correct')
+                  if (isUserPick && !isCorrect) parts.push('me-results__opt--incorrect')
+                  return (
+                    <div key={String(idx)} className={parts.join(' ')} role="listitem">
+                      <span className="me-results__opt-label">{o.label}.</span>
+                      <div className="me-results__opt-main">
+                        <div className="me-results__opt-body">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                            {o.body || ''}
+                          </ReactMarkdown>
+                        </div>
+                        <div className="me-results__opt-meta">
+                          {isCorrect ? (
+                            <span className="me-results__opt-pill me-results__opt-pill--correct">Correct</span>
+                          ) : null}
+                          {isUserPick ? (
+                            <span className="me-results__opt-pill me-results__opt-pill--yours">Your answer</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : null}
             {(q.explanations?.detailed || q.explanations?.eli5) && (
               <div className="me-results__explain">
                 {q.explanations?.eli5 && (
