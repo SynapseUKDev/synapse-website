@@ -140,6 +140,8 @@ export default function Practice() {
   const includeIncorrect =
     (params.get('include_incorrect') === '1' || params.get('incorrect_only') === '1') && !includeAttempted
 
+  const compactStudySidebar = !!studySetId && !isReviewMode
+
   // Session state
   const [loading, setLoading] = useState(!isReviewMode) // Don't show loading in review mode
   const [questions, setQuestions] = useState(reviewModeData?.questions || []) // Pre-populate in review mode
@@ -1457,7 +1459,7 @@ export default function Practice() {
                   <div style={{ display: 'grid', gap: 8 }}>
                     {currentQuestion.options.map((o) => {
                       // In review mode, always show correct/incorrect styling
-                      const showResult = isReviewMode || result
+                      const showResult = (isReviewMode || result) && !compactStudySidebar
                       const isCorrectOption = currentQuestion.correct_answer === o.id
                       const userSelected = userAnswers[currentQuestionId]?.selected === o.id
                       const isSelectedIncorrect = userSelected && !isCorrectOption
@@ -1738,6 +1740,8 @@ export default function Practice() {
                     </div>
                   ) : (
                     <>
+                      {!compactStudySidebar && (
+                      <>
                       <div className="progress-stats-row">
                         <div className="progress-stat">
                           <div className="progress-stat__value">{sessionAnswered}/{questions.length}</div>
@@ -1753,6 +1757,8 @@ export default function Practice() {
                         </div>
                       </div>
                       <div className="progress__bar" style={{ marginTop: 12 }}><div className="progress__fill" style={{ width: `${Math.round((sessionAnswered / questions.length) * 100)}%` }} /></div>
+                      </>
+                      )}
                     </>
                   )}
                 </div>
@@ -1818,6 +1824,12 @@ export default function Practice() {
                     </div>
                   </div>
 
+                  {compactStudySidebar && !isReviewMode && (
+                    <p className="study-set-tracker-hint">
+                      Answered vs not yet. Use the grid to jump back; scoring stays on your session until you finish.
+                    </p>
+                  )}
+
                   {/* Filter chips - different for review mode */}
                   <div className="trk-filters">
                     {isReviewMode ? (
@@ -1846,7 +1858,7 @@ export default function Practice() {
                           {f}
                         </button>
                       ))
-                    ) : (
+                    ) : compactStudySidebar ? null : (
                       ['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((f) => (
                         <button key={f} className={`chip ${trkFilter === f ? 'is-active' : ''}`} onClick={() => setTrkFilter(f)}>{f}</button>
                       ))
@@ -1869,18 +1881,25 @@ export default function Practice() {
                             const isCurrent = idx === currentIndex
                             const isFlag = flagged.has(qid)
                             let status = 'Unanswered'
-                            if (ua?.submitted) status = ua.isCorrect ? 'Correct' : 'Wrong'
+                            if (compactStudySidebar && !isReviewMode) {
+                              if (ua?.submitted) status = 'Answered'
+                            } else if (ua?.submitted) {
+                              status = ua.isCorrect ? 'Correct' : 'Wrong'
+                            }
 
                             // Filter logic differs for review mode
                             let matchesFilter
                             if (isReviewMode) {
                               const reviewStatus = ua?.submitted ? (ua.isCorrect ? 'Correct' : 'Incorrect') : 'Skipped'
                               matchesFilter = reviewFilter === 'All' || reviewFilter === reviewStatus
+                            } else if (compactStudySidebar) {
+                              matchesFilter = true
                             } else {
                               matchesFilter = trkFilter === 'All' || (trkFilter === 'Flagged' ? isFlag : trkFilter === status)
                             }
 
-                            const classes = `seg seg--${status.toLowerCase()} ${isCurrent ? 'seg--current' : ''} ${isFlag && !isReviewMode ? 'seg--flagged' : ''} ${matchesFilter ? '' : 'seg--dim'}`
+                            const statusClass = status.toLowerCase()
+                            const classes = `seg seg--${statusClass} ${isCurrent ? 'seg--current' : ''} ${isFlag && !isReviewMode && !compactStudySidebar ? 'seg--flagged' : ''} ${matchesFilter ? '' : 'seg--dim'}`
                             return (
                               <button
                                 key={qid}
@@ -1899,7 +1918,7 @@ export default function Practice() {
                     })()}
                   </div>
 
-                  {!isReviewMode && Array.from(flagged).length > 0 && (
+                  {!isReviewMode && !compactStudySidebar && Array.from(flagged).length > 0 && (
                     <div className="trk-flagged-rail">
                       <div className="trk-rail__label">Flagged</div>
                       <div className="trk-rail__list">
@@ -1915,11 +1934,21 @@ export default function Practice() {
                   )}
 
                   <div className="trk-legend">
-                    <span className="legend-item"><span className="legend-swatch swatch--correct" /> Correct</span>
-                    <span className="legend-item"><span className="legend-swatch swatch--wrong" /> {isReviewMode ? 'Incorrect' : 'Wrong'}</span>
-                    <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> {isReviewMode ? 'Skipped' : 'Unanswered'}</span>
-                    <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
-                    {!isReviewMode && <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>}
+                    {compactStudySidebar && !isReviewMode ? (
+                      <>
+                        <span className="legend-item"><span className="legend-swatch swatch--attempted" /> Answered</span>
+                        <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> Not yet</span>
+                        <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="legend-item"><span className="legend-swatch swatch--correct" /> Correct</span>
+                        <span className="legend-item"><span className="legend-swatch swatch--wrong" /> {isReviewMode ? 'Incorrect' : 'Wrong'}</span>
+                        <span className="legend-item"><span className="legend-swatch swatch--unanswered" /> {isReviewMode ? 'Skipped' : 'Unanswered'}</span>
+                        <span className="legend-item"><span className="legend-swatch swatch--current" /> Current</span>
+                        {!isReviewMode && <span className="legend-item"><span className="legend-swatch swatch--flagged" /> Flagged</span>}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

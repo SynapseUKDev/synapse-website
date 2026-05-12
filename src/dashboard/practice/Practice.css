@@ -2100,6 +2100,18 @@ input:checked+.toggle-slider:before {
   border-color: #3b82f6;
 }
 
+.swatch--attempted {
+  background: #cbd5e1;
+  border-color: #94a3b8;
+}
+
+.study-set-tracker-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
 /* ============================== */
 /* Review Mode Styles */
 /* ============================== */

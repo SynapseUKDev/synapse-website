@@ -35,6 +35,8 @@ import OsceAdminPanel from './dashboard/osce/OsceAdminPanel.jsx'
 import OsceAdminStationEditor from './dashboard/osce/OsceAdminStationEditor.jsx'
 import MockExams from './dashboard/mock-exams/MockExams.jsx'
 import MockExamBegin from './dashboard/mock-exams/MockExamBegin.jsx'
+import MockExamPractice from './dashboard/mock-exams/MockExamPractice.jsx'
+import MockExamResults from './dashboard/mock-exams/MockExamResults.jsx'
 
 function HashRedirector() {
   const location = useLocation()
@@ -93,6 +95,8 @@ function App() {
           <Route path="question-bank/group-leaderboard" element={<GroupLeaderboard />} />
           <Route path="question-bank/results" element={<PracticeResults />} />
           <Route path="mock-exams" element={<MockExams />} />
+          <Route path="mock-exams/practice" element={<MockExamPractice />} />
+          <Route path="mock-exams/results" element={<MockExamResults />} />
           <Route path="mock-exams/:examId" element={<MockExamBegin />} />
           <Route path="textbook" element={<Textbook />} />
           <Route path="textbook/search" element={<TextbookSearch />} />
