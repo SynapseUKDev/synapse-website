@@ -138,10 +138,11 @@ export default function OsceAdminStationEditor() {
   }
 
   async function handleReorderSections(newSections) {
-    setSections(newSections)
+    const updated = newSections.map((s, i) => ({ ...s, position: i }))
+    setSections(updated)
     try {
       await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
-        method: 'PATCH', body: JSON.stringify({ type: 'sections', ids: newSections.map(s => s.id) })
+        method: 'PATCH', body: JSON.stringify({ type: 'sections', ids: updated.map(s => s.id) })
       })
     } catch (e) {
       alert(e.message)
@@ -150,11 +151,12 @@ export default function OsceAdminStationEditor() {
   }
 
   async function handleReorderBlocks(sectionId, newBlocks) {
+    const updatedBlocks = newBlocks.map((b, i) => ({ ...b, position: i }))
     const otherBlocks = blocks.filter(b => b.section_id !== sectionId)
-    setBlocks([...otherBlocks, ...newBlocks])
+    setBlocks([...otherBlocks, ...updatedBlocks])
     try {
       await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
-        method: 'PATCH', body: JSON.stringify({ type: 'blocks', ids: newBlocks.map(b => b.id) })
+        method: 'PATCH', body: JSON.stringify({ type: 'blocks', ids: updatedBlocks.map(b => b.id) })
       })
     } catch (e) {
       alert(e.message)

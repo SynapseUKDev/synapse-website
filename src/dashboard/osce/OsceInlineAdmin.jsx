@@ -770,10 +770,11 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
   }
 
   async function handleReorderDomains(newDomains) {
-    setLocalDomains(newDomains)
+    const updated = newDomains.map((d, i) => ({ ...d, position: i }))
+    setLocalDomains(updated)
     try {
       await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
-        method: 'PATCH', body: JSON.stringify({ type: 'domains', ids: newDomains.map(d => d.id) })
+        method: 'PATCH', body: JSON.stringify({ type: 'domains', ids: updated.map(d => d.id) })
       })
     } catch (e) {
       alert(e.message)
@@ -782,11 +783,12 @@ export function OsceInlineMarks({ stationId, domains, items, API_BASE, onSaved }
   }
 
   async function handleReorderItems(domainId, newDomainItems) {
+    const updatedItems = newDomainItems.map((item, i) => ({ ...item, position: i }))
     const otherItems = localItems.filter(i => i.domain_id !== domainId)
-    setLocalItems([...otherItems, ...newDomainItems])
+    setLocalItems([...otherItems, ...updatedItems])
     try {
       await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
-        method: 'PATCH', body: JSON.stringify({ type: 'items', ids: newDomainItems.map(i => i.id) })
+        method: 'PATCH', body: JSON.stringify({ type: 'items', ids: updatedItems.map(i => i.id) })
       })
     } catch (e) {
       alert(e.message)
@@ -927,11 +929,12 @@ export function OsceInlineFails({ stationId, fails, API_BASE, onSaved }) {
   }
 
   async function handleReorder(newItems) {
-    setItems(newItems)
+    const updated = newItems.map((item, i) => ({ ...item, position: i }))
+    setItems(updated)
     try {
       const res = await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
         method: 'PATCH',
-        body: JSON.stringify({ type: 'fails', ids: newItems.map(f => f.id) })
+        body: JSON.stringify({ type: 'fails', ids: updated.map(f => f.id) })
       })
       if (!res.ok) throw new Error('Reorder failed')
     } catch (e) {
@@ -1046,11 +1049,12 @@ export function OsceInlineViva({ stationId, vivas, API_BASE, onSaved }) {
   }
 
   async function handleReorder(newItems) {
-    setItems(newItems)
+    const updated = newItems.map((item, i) => ({ ...item, position: i }))
+    setItems(updated)
     try {
       const res = await authenticatedFetch(`${API_BASE}/admin/osce/reorder`, {
         method: 'PATCH',
-        body: JSON.stringify({ type: 'viva', ids: newItems.map(f => f.id) })
+        body: JSON.stringify({ type: 'viva', ids: updated.map(f => f.id) })
       })
       if (!res.ok) throw new Error('Reorder failed')
     } catch (e) {
