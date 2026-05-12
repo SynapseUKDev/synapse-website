@@ -185,7 +185,21 @@
 
 .osce-group__form { background: var(--surface-card); border: 1px solid var(--syn-border); border-radius: 16px; padding: 32px; }
 .osce-group__label { display: block; font-size: 13px; font-weight: 700; color: var(--syn-navy-700); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
-.osce-group__input { width: 100%; padding: 16px; height: 48px; border: 1px solid var(--syn-border); border-radius: 12px; background: var(--surface-card); color: var(--syn-navy-700); font-size: 15px; font-family: 'Urbanist',sans-serif; box-sizing: border-box; margin-bottom: 24px; transition: all 0.2s; }
+.osce-group__input { 
+  width: 100%; 
+  padding: 10px 16px; 
+  height: 54px; 
+  border: 1px solid var(--syn-border); 
+  border-radius: 12px; 
+  background: var(--surface-card); 
+  color: var(--syn-navy-700); 
+  font-size: 15px; 
+  font-family: 'Urbanist', sans-serif; 
+  box-sizing: border-box; 
+  margin-bottom: 24px; 
+  transition: all 0.2s;
+  appearance: none;
+}
 .osce-group__input--code { font-family: 'SF Mono','Monaco','Roboto Mono',monospace; letter-spacing: 2px; text-transform: uppercase; }
 .osce-group__input:focus { border-color: var(--syn-cyan); outline: none; box-shadow: 0 0 0 3px rgba(32,229,246,.1); }
 

@@ -150,7 +150,13 @@ export default function OsceGroupSetup() {
     if (!selectedStation) { setError('Select a station'); return }
     setError(''); setCreating(true)
     try {
-      const res = await authenticatedFetch(`${API_BASE}/osce/group-session/create`, { method: 'POST', body: JSON.stringify({ station_id: selectedStation }) })
+      const res = await authenticatedFetch(`${API_BASE}/osce/group-session/create`, { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          station_id: selectedStation,
+          role: selectedRole
+        }) 
+      })
       if (res.ok) { 
         const d = await res.json();
         navigate(`/dashboard/osce/group/${d.room_code}`);
@@ -270,7 +276,7 @@ export default function OsceGroupSetup() {
                                 {ROLES.map(r => {
                                   const isTaken = r.id !== 'observer' && createdRoom.participants.some(participant => participant.role === r.id && participant.user_id !== p.user_id);
                                   return (
-                                    <option key={r.id} value={r.id} disabled={isTaken}>
+                                    <option key={r.id} value={r.id}>
                                       {r.name} {isTaken ? '(Taken)' : ''}
                                     </option>
                                   );
@@ -343,10 +349,13 @@ export default function OsceGroupSetup() {
             {tab === 'create' && (
               <>
                 <label className="osce-group__label">Select Station</label>
-                <select className="osce-group__input" value={selectedStation} onChange={(e) => setSelectedStation(e.target.value)} style={{ appearance: 'auto' }}>
-                  <option value="">Choose a station...</option>
-                  {stations.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                </select>
+                <div style={{ position: 'relative' }}>
+                  <select className="osce-group__input" value={selectedStation} onChange={(e) => setSelectedStation(e.target.value)}>
+                    <option value="">Choose a station...</option>
+                    {stations.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                  </select>
+                  <LuChevronDown size={20} style={{ position: 'absolute', right: 18, top: '26px', transform: 'translateY(-50%)', color: 'var(--syn-muted)', pointerEvents: 'none' }} />
+                </div>
 
                 <label className="osce-group__label">Your Role</label>
                 <div className="osce-roles">
