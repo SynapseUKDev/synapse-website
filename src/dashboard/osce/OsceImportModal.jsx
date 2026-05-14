@@ -74,8 +74,25 @@ Answer:
   fails: `- [Description of automatic failure reason]
 - [Description 2]
 ...`,
-  section: `Markdown:
+  section: `## Section: [Title] [Role: candidate, examiner, patient, observer]
+Markdown:
 [Content text]
+
+Table:
+| Header 1 | Header 2 |
+|---|---|
+| Row 1 Col 1 | Row 1 Col 2 |
+
+Callout: info Tips for the candidate
+Remember to check the airway.
+
+Image: https://example.com/image.png
+Caption: Clinical finding
+Width: 50
+
+List: ordered
+- First step
+- Second step
 
 Checklist:
 - [Item 1]

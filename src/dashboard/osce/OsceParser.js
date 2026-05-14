@@ -94,6 +94,34 @@ export function parseFullStation(text) {
           content: { pairs: [] },
           position: currentSection.blocks.length
         });
+      } else if (line.startsWith('Table:')) {
+        currentSection.blocks.push({
+          block_type: 'table',
+          content: { headers: [], rows: [] },
+          position: currentSection.blocks.length
+        });
+      } else if (line.startsWith('Callout:')) {
+        const parts = line.replace('Callout:', '').trim().split(' ');
+        const variant = ['info', 'tip', 'warning', 'danger'].includes(parts[0]) ? parts[0] : 'info';
+        const title = parts.slice(1).join(' ').trim();
+        currentSection.blocks.push({
+          block_type: 'callout',
+          content: { variant, title, text: '' },
+          position: currentSection.blocks.length
+        });
+      } else if (line.startsWith('Image:')) {
+        currentSection.blocks.push({
+          block_type: 'image',
+          content: { url: line.replace('Image:', '').trim(), caption: '', width: 50 },
+          position: currentSection.blocks.length
+        });
+      } else if (line.startsWith('List:')) {
+        const ordered = line.toLowerCase().includes('ordered') && !line.toLowerCase().includes('unordered');
+        currentSection.blocks.push({
+          block_type: 'list',
+          content: { items: [], ordered },
+          position: currentSection.blocks.length
+        });
       } else if (line.match(/^\s*([-*]|\d+\.)\s+/) && currentSection.blocks.length > 0) {
         // Append to last block if it's a list type
         const lastBlock = currentSection.blocks[currentSection.blocks.length - 1];
@@ -104,9 +132,29 @@ export function parseFullStation(text) {
           const k = parts[0];
           const v = parts.slice(1).join(':');
           lastBlock.content.pairs.push({ key: k?.trim() || '', value: v?.trim() || '' });
+        } else if (lastBlock.block_type === 'table') {
+          if (line.includes('|')) {
+            const cells = line.split('|').map(c => c.trim()).filter((c, i, arr) => i > 0 && i < arr.length - 1);
+            if (cells.length > 0) {
+              if (line.includes('---')) {
+                // Skip separator row
+              } else if (lastBlock.content.headers.length === 0) {
+                lastBlock.content.headers = cells;
+              } else {
+                lastBlock.content.rows.push(cells);
+              }
+            }
+          }
+        } else if (lastBlock.block_type === 'callout') {
+          lastBlock.content.text = (lastBlock.content.text ? lastBlock.content.text + '\n' : '') + rawLine;
+        } else if (lastBlock.block_type === 'image') {
+          if (line.startsWith('Caption:')) lastBlock.content.caption = line.replace('Caption:', '').trim();
+          if (line.startsWith('Width:')) lastBlock.content.width = parseInt(line.replace('Width:', '')) || 50;
+        } else if (lastBlock.block_type === 'list') {
+          lastBlock.content.items.push(line.replace(/^\s*([-*]|\d+\.)\s+/, '').trim());
         } else if (lastBlock.block_type === 'markdown') {
-           const text = lastBlock.content.text;
-           lastBlock.content.text = (text ? text + '\n' : '') + rawLine;
+          const text = lastBlock.content.text;
+          lastBlock.content.text = (text ? text + '\n' : '') + rawLine;
         }
       } else if (currentSection.blocks.length > 0) {
         // Assume continuing markdown
