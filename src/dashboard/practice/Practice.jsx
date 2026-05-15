@@ -9,6 +9,10 @@ import ReportIssueButton from './ReportIssueButton'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import {
+  clearStudySetQuestionIdsPrefetch,
+  getStudySetQuestionIdsPrefetch,
+} from '../question-bank/studySetPrefetchStore'
+import {
   getFlatTextFromStem,
   mapFlatRangeToMarkdownRange,
   reconcileSelectionRangeToFlat,
@@ -324,23 +328,50 @@ export default function Practice() {
   const loadSession = async () => {
     try {
       setLoading(true)
-      let url = `${API_BASE}/qbank/practice/session?num_questions=${numQuestions}&include_attempted=${includeAttempted ? '1' : '0'}`
-      if (includeIncorrect) url += '&include_incorrect=1'
+      const pref = studySetId ? getStudySetQuestionIdsPrefetch(studySetId) : null
+      const usePrefetch = !!(pref?.ready && pref.ids?.length)
 
-      if (studySetId) {
-        url += `&study_set_id=${studySetId}`
-      } else {
-        url += `&specialty_id=${specialtyId}`
-        if (topicIds) {
-          url += `&topic_ids=${topicIds}`
+      let qRes
+      if (usePrefetch) {
+        qRes = await fetch(`${API_BASE}/qbank/practice/session`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            ...authHeaders(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            study_set_id: studySetId,
+            study_set_question_ids: pref.ids,
+            num_questions: numQuestions,
+            include_attempted: includeAttempted,
+            include_incorrect: includeIncorrect,
+          }),
+        })
+        if (qRes.status === 409) {
+          clearStudySetQuestionIdsPrefetch(studySetId)
+          console.warn('Stale study set prefetch; falling back to full session fetch')
+          let url = `${API_BASE}/qbank/practice/session?num_questions=${numQuestions}&include_attempted=${includeAttempted ? '1' : '0'}`
+          if (includeIncorrect) url += '&include_incorrect=1'
+          url += `&study_set_id=${studySetId}`
+          qRes = await fetch(url, { credentials: 'include', headers: authHeaders() })
         }
+      } else {
+        let url = `${API_BASE}/qbank/practice/session?num_questions=${numQuestions}&include_attempted=${includeAttempted ? '1' : '0'}`
+        if (includeIncorrect) url += '&include_incorrect=1'
+
+        if (studySetId) {
+          url += `&study_set_id=${studySetId}`
+        } else {
+          url += `&specialty_id=${specialtyId}`
+          if (topicIds) {
+            url += `&topic_ids=${topicIds}`
+          }
+        }
+        qRes = await fetch(url, { credentials: 'include', headers: authHeaders() })
       }
 
-      // Load questions and reference ranges in parallel
-      const [qRes, rRes] = await Promise.all([
-        fetch(url, { credentials: 'include', headers: authHeaders() }),
-        fetch(`${API_BASE}/reference-ranges`, { credentials: 'include', headers: authHeaders() })
-      ])
+      const rRes = await fetch(`${API_BASE}/reference-ranges`, { credentials: 'include', headers: authHeaders() })
 
       if (!qRes.ok) {
         let errorMessage = 'Failed to load session'
@@ -402,6 +433,10 @@ export default function Practice() {
       loadCurrentQuestion(0, data.questions)
       setQuestionStartTime(Date.now())
       setRefRanges(Array.isArray(rData?.groups) ? rData.groups : [])
+
+      if (studySetId) {
+        clearStudySetQuestionIdsPrefetch(studySetId)
+      }
 
       // Debug: Log first question to check textbook_slug
       if (data.questions && data.questions[0]) {

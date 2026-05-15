@@ -4,6 +4,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft, LuPlay } from 'react-icons/lu'
 import './PracticeSetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
+import {
+  clearStudySetQuestionIdsPrefetch,
+  setStudySetQuestionIdsPrefetch,
+} from '../question-bank/studySetPrefetchStore'
 
 export default function PracticeSetup() {
   const navigate = useNavigate()
@@ -14,6 +18,7 @@ export default function PracticeSetup() {
   const studySetName = searchParams.get('study_set_name') || 'Unknown Set'
 
   const [loading, setLoading] = useState(true)
+  const [studySetError, setStudySetError] = useState(null)
   const [topics, setTopics] = useState([])
   const [selectedTopics, setSelectedTopics] = useState(new Set())
   const [numQuestions, setNumQuestions] = useState(25)
@@ -27,6 +32,12 @@ export default function PracticeSetup() {
     )
   })
   const [studySetData, setStudySetData] = useState(null)
+  const [studySetPrefetch, setStudySetPrefetch] = useState({
+    /** idle = not started, loading = fetching pages, ready = all ids in store, error = soft-fail (session still works) */
+    status: 'idle',
+    loaded: 0,
+    error: null,
+  })
   const [specialtyAttemptedCount, setSpecialtyAttemptedCount] = useState(null)
   const [specialtyTotalQuestions, setSpecialtyTotalQuestions] = useState(null)
 
@@ -34,6 +45,7 @@ export default function PracticeSetup() {
 
   useEffect(() => {
     if (studySetId) {
+      clearStudySetQuestionIdsPrefetch(studySetId)
       loadStudySet()
     } else if (specialtyId) {
       loadTopics()
@@ -43,14 +55,24 @@ export default function PracticeSetup() {
   }, [specialtyId, studySetId])
 
   const loadStudySet = async () => {
+    setStudySetError(null)
+    setStudySetData(null)
+    clearStudySetQuestionIdsPrefetch(studySetId)
+    setStudySetPrefetch({ status: 'idle', loaded: 0, error: null })
     try {
-      const res = await authenticatedFetch(`${API_BASE}/qbank/sets/${studySetId}`, {
+      const res = await authenticatedFetch(`${API_BASE}/qbank/sets/${encodeURIComponent(studySetId)}`, {
         credentials: 'include',
         headers: authHeaders(),
       })
-      if (!res.ok) throw new Error('Failed to load study set')
+      if (!res.ok) {
+        const t = await res.text()
+        throw new Error(t || 'Failed to load study set')
+      }
       const data = await res.json()
       const set = data.set
+      if (!set || typeof set.total_questions !== 'number') {
+        throw new Error('Could not load question counts for this study set. Try again or update the app.')
+      }
       setStudySetData(set)
 
       const paramIncAtt = searchParams.get('include_attempted') === '1'
@@ -89,10 +111,79 @@ export default function PracticeSetup() {
       }
     } catch (error) {
       console.error('Error loading study set:', error)
+      setStudySetError(error?.message || 'Failed to load study set')
+      setStudySetData(null)
     } finally {
       setLoading(false)
     }
   }
+
+  /** Background: paginate all question ids for this study set while user adjusts settings. */
+  useEffect(() => {
+    if (!studySetId || studySetData == null) return
+    if (typeof studySetData.total_questions !== 'number') return
+
+    const setId = String(studySetId)
+    let cancelled = false
+    const total = studySetData.total_questions
+
+    setStudySetPrefetch({ status: 'loading', loaded: 0, error: null })
+
+    ;(async () => {
+      const ids = []
+      try {
+        let offset = 0
+        const limit = 500
+        let iterations = 0
+        const maxIterations = Math.min(200, Math.ceil((total || 5000) / limit) + 5)
+        while (!cancelled && iterations < maxIterations) {
+          iterations += 1
+          const res = await authenticatedFetch(
+            `${API_BASE}/qbank/sets/${encodeURIComponent(setId)}/question-ids-chunk?offset=${offset}&limit=${limit}`,
+            { credentials: 'include', headers: authHeaders() }
+          )
+          if (!res.ok) {
+            const errText = await res.text()
+            throw new Error(errText || 'Prefetch failed')
+          }
+          const j = await res.json()
+          const chunk = Array.isArray(j.ids) ? j.ids : []
+          ids.push(...chunk)
+          if (!cancelled) {
+            setStudySetPrefetch({ status: 'loading', loaded: ids.length, error: null })
+          }
+          const complete = j.complete === true || chunk.length < limit
+          if (complete) break
+          offset += chunk.length
+        }
+        if (cancelled) return
+        if (iterations >= maxIterations) {
+          throw new Error('Prefetch stopped after too many pages (contact support).')
+        }
+        if (total > 0 && ids.length !== total) {
+          console.warn(
+            `Study set prefetch count mismatch: loaded ${ids.length}, expected ${total} (continuing with loaded ids)`
+          )
+        }
+        setStudySetQuestionIdsPrefetch(setId, ids)
+        setStudySetPrefetch({ status: 'ready', loaded: ids.length, error: null })
+      } catch (e) {
+        console.error('Study set question prefetch:', e)
+        if (!cancelled) {
+          clearStudySetQuestionIdsPrefetch(setId)
+          setStudySetPrefetch({
+            status: 'error',
+            loaded: ids.length,
+            error: e?.message || 'Prefetch failed',
+          })
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [studySetId, studySetData])
 
   const loadTopics = async () => {
     try {
@@ -229,7 +320,49 @@ export default function PracticeSetup() {
   }
 
   if (loading) {
-    return <LoadingScreen message="Loading practice setup..." />
+    return (
+      <LoadingScreen
+        message={
+          studySetId
+            ? 'Loading your study set and counting questions…'
+            : 'Loading practice setup…'
+        }
+      />
+    )
+  }
+
+  if (studySetId && studySetError) {
+    return (
+      <div className="setup">
+        <div className="setup__header">
+          <button type="button" className="setup__back" onClick={() => navigate('/dashboard/question-bank')}>
+            <LuChevronLeft />
+            Back to Question Bank
+          </button>
+          <div className="setup__title-section">
+            <h1 className="setup__title">{studySetName}</h1>
+            <p className="setup__subtitle">Could not open practice setup</p>
+          </div>
+        </div>
+        <div className="setup__content" style={{ padding: '24px 0' }}>
+          <p style={{ marginBottom: 16 }}>{studySetError}</p>
+          <button
+            type="button"
+            className="setup__start-btn"
+            onClick={() => {
+              setLoading(true)
+              loadStudySet()
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (studySetId && !studySetData) {
+    return <LoadingScreen message="Loading your study set…" />
   }
 
   const totalAvailable = getTotalQuestions()
@@ -253,7 +386,9 @@ export default function PracticeSetup() {
             <p className="setup__subtitle">
               {!studySetId && specialtyAttemptedCount !== null && specialtyTotalQuestions !== null
                 ? `${specialtyAttemptedCount}/${specialtyTotalQuestions} attempted in this specialty • Configure your session`
-                : 'Configure your study session'}
+                : studySetId && studySetData
+                  ? `${studySetData.total_questions} question${studySetData.total_questions === 1 ? '' : 's'} in this set • Configure your session`
+                  : 'Configure your study session'}
             </p>
           </div>
         </div>
@@ -504,6 +639,25 @@ export default function PracticeSetup() {
               <div className="setup__summary-label">Questions:</div>
               <div className="setup__summary-value">{numQuestions}</div>
             </div>
+
+            {studySetId && (
+              <div className="setup__summary-item">
+                <div className="setup__summary-label">Bank load:</div>
+                <div className="setup__summary-value">
+                  {studySetPrefetch.status === 'error'
+                    ? `Will load when you start (${studySetPrefetch.error || 'prefetch failed'})`
+                    : studySetPrefetch.status === 'ready'
+                      ? `Ready (${studySetPrefetch.loaded})`
+                      : studySetPrefetch.status === 'idle'
+                        ? '…'
+                        : `Loading… ${studySetPrefetch.loaded}${
+                            typeof studySetData?.total_questions === 'number'
+                              ? ` / ${studySetData.total_questions}`
+                              : ''
+                          }`}
+                </div>
+              </div>
+            )}
 
             <div className="setup__summary-item">
               <div className="setup__summary-label">Time:</div>
