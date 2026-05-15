@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authHeaders } from '../../auth/token'
-import { LuChevronLeft, LuClock, LuPause, LuPlay } from 'react-icons/lu'
+import { LuChevronLeft, LuClock, LuPause, LuPlay, LuFlag } from 'react-icons/lu'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
@@ -59,6 +59,7 @@ export default function MockExamPractice() {
   const [finishing, setFinishing] = useState(false)
   const [selectedRangeIdx, setSelectedRangeIdx] = useState(0)
   const [loadTick, setLoadTick] = useState(0)
+  const [flagged, setFlagged] = useState(() => new Set())
   const timeUpRef = useRef(false)
   const prevSecondsRef = useRef(-1)
   const secondsRef = useRef(0)
@@ -112,6 +113,7 @@ export default function MockExamPractice() {
         }
       }
       setSaved(map)
+      setFlagged(new Set())
       setLoadTick((t) => t + 1)
     } catch (e) {
       setError(e.message || 'Failed to load exam')
@@ -449,7 +451,26 @@ export default function MockExamPractice() {
               </div>
             </div>
             <div className="controls">
-              <div className="controls__left" />
+              <div className="controls__left">
+                {currentQ ? (
+                  <button
+                    type="button"
+                    className={`btn btn--ghost btn--icon ${flagged.has(String(currentQ.id)) ? 'is-flagged' : ''}`}
+                    onClick={() => {
+                      const id = String(currentQ.id)
+                      setFlagged((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(id)) next.delete(id)
+                        else next.add(id)
+                        return next
+                      })
+                    }}
+                  >
+                    <LuFlag />
+                    {flagged.has(String(currentQ.id)) ? 'Flagged' : 'Flag'}
+                  </button>
+                ) : null}
+              </div>
               <div className="controls__right">
                 <button type="button" onClick={goPrev} disabled={currentIndex <= 0} className="btn btn--ghost btn--icon">
                   <LuChevronLeft />
@@ -503,7 +524,8 @@ export default function MockExamPractice() {
               <div className="track-section">
                 <p className="mock-exam-tracker-hint">
                   Navigate questions. You can change your saved choice anytime before you finish the exam. Correct answers
-                  are shown only after you finish.
+                  are shown only after you finish. Use <strong>Flag</strong> below the question to mark items to revisit—the
+                  sidebar highlights them and lists them under Flagged.
                 </p>
                 <div className="trk-top-row">
                   {(() => {
@@ -536,14 +558,15 @@ export default function MockExamPractice() {
                         const idx = selectedRangeIdx * QUESTIONS_PER_PAGE + localIdx
                         const st = gridStatus(q)
                         const isCurrent = idx === currentIndex
-                        const classes = `seg seg--${st} ${isCurrent ? 'seg--current' : ''}`
+                        const isFlag = flagged.has(String(q.id))
+                        const classes = `seg seg--${st} ${isCurrent ? 'seg--current' : ''} ${isFlag ? 'seg--flagged' : ''}`
                         return (
                           <button
                             key={q.id}
                             type="button"
                             className={classes}
-                            aria-label={`Question ${idx + 1}`}
-                            title={`Q${idx + 1}`}
+                            aria-label={`Question ${idx + 1}${isFlag ? ', flagged' : ''}`}
+                            title={`Q${idx + 1}${isFlag ? ' • flagged' : ''}`}
                             onClick={() => {
                               setCurrentIndex(idx)
                               setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0)
@@ -553,6 +576,29 @@ export default function MockExamPractice() {
                       })}
                   </div>
                 </div>
+                {flagged.size > 0 ? (
+                  <div className="trk-flagged-rail">
+                    <div className="trk-rail__label">Flagged</div>
+                    <div className="trk-rail__list">
+                      {questions.map((q, idx) =>
+                        flagged.has(String(q.id)) ? (
+                          <button
+                            key={q.id}
+                            type="button"
+                            className="pill"
+                            onClick={() => {
+                              setCurrentIndex(idx)
+                              setSelectedRangeIdx(Math.floor(idx / QUESTIONS_PER_PAGE))
+                              setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0)
+                            }}
+                          >
+                            {idx + 1}
+                          </button>
+                        ) : null,
+                      )}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="trk-legend">
                   <span className="legend-item">
                     <span className="legend-swatch legend-swatch--answered" /> Answered
@@ -565,6 +611,9 @@ export default function MockExamPractice() {
                   </span>
                   <span className="legend-item">
                     <span className="legend-swatch swatch--current" /> Current
+                  </span>
+                  <span className="legend-item">
+                    <span className="legend-swatch swatch--flagged" /> Flagged
                   </span>
                 </div>
                 <button
