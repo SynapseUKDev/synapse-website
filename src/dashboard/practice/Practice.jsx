@@ -144,7 +144,10 @@ export default function Practice() {
   const includeIncorrect =
     (params.get('include_incorrect') === '1' || params.get('incorrect_only') === '1') && !includeAttempted
 
-  const compactStudySidebar = !!studySetId && !isReviewMode
+  // Study sets use the same practice UI as specialty sessions (immediate correct/wrong styling,
+  // explanations after submit, sidebar stats, and full tracker filters/legend). Mock-style
+  // "answered vs not yet" mode was removed after it was confused with mock papers.
+  const compactStudySidebar = false
 
   // Session state
   const [loading, setLoading] = useState(!isReviewMode) // Don't show loading in review mode
@@ -1382,6 +1385,32 @@ export default function Practice() {
           </div>
         </div>
         <div className="pr__top-right">
+          {!isReviewMode && questions.length > 0 && (
+            <div
+              className="pr__session-stats-inline"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                marginRight: '0.5rem',
+                fontSize: '0.875rem',
+                color: '#64748b',
+              }}
+              aria-label="Session progress"
+            >
+              <span title="Questions answered in this session">
+                <strong style={{ color: '#0f172a' }}>{sessionAnswered}</strong>
+                <span> / {questions.length}</span>
+                <span style={{ marginLeft: '0.25rem' }}>done</span>
+              </span>
+              <span title="Accuracy on answered questions">
+                <strong style={{ color: '#0f172a' }}>
+                  {sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%
+                </strong>
+                <span style={{ marginLeft: '0.25rem' }}>accuracy</span>
+              </span>
+            </div>
+          )}
           {!isReviewMode && timerMinutes > 0 && (
             <div className="pr__timer">
               <div className="pr__time">{display}</div>

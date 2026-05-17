@@ -98,17 +98,48 @@ export default function PracticeSetup() {
       setIncludeAttempted(effectiveAttempted)
       setIncludeIncorrect(effectiveIncorrect)
 
+      // "new only" → only unattempted questions are available.
+      // Do NOT fall back to total_questions — if remaining is 0 (all done), the correct answer IS 0.
       const totalAvailable =
         effectiveIncorrect && !effectiveAttempted
           ? (set.remaining_questions ?? 0) + (set.incorrect_questions ?? 0)
           : effectiveAttempted
-            ? (set.total_questions || 0)
-            : (set.remaining_questions ?? set.total_questions ?? 0)
-      if (totalAvailable > 0) {
-        setNumQuestions(Math.min(totalAvailable, 25))
-      } else {
-        setNumQuestions(0)
-      }
+            ? (set.total_questions ?? 0)
+            : (set.remaining_questions ?? 0)
+
+      const tot = set.total_questions ?? 0
+      const rem = set.remaining_questions ?? 0
+      const inc = set.incorrect_questions ?? 0
+      const attemptedInSet = Math.max(0, tot - rem)
+      const initialSessionSize = totalAvailable > 0 ? Math.min(totalAvailable, 25) : 0
+
+      console.log('[practice-setup] study set counts (first fetch after Start Set)', {
+        study_set_id: studySetId,
+        study_set_name: studySetName,
+        from_api: {
+          total_questions: tot,
+          remaining_questions: rem,
+          incorrect_questions: inc,
+        },
+        derived: {
+          attempted_in_pool: attemptedInSet,
+          new_unattempted: rem,
+        },
+        default_scope: {
+          practice_scope_default: set.practice_scope_default,
+          incorrect_only_legacy: set.incorrect_only,
+        },
+        toggles_applied: {
+          include_previously_answered: effectiveAttempted,
+          include_incorrect_with_new: effectiveIncorrect,
+        },
+        ui: {
+          total_available_for_mode: totalAvailable,
+          initial_num_questions_input: initialSessionSize,
+        },
+      })
+
+      setNumQuestions(initialSessionSize)
     } catch (error) {
       console.error('Error loading study set:', error)
       setStudySetError(error?.message || 'Failed to load study set')
@@ -269,20 +300,19 @@ export default function PracticeSetup() {
   }
 
   const getTotalQuestions = () => {
-    if (includeIncorrect && !includeAttempted) {
-      if (studySetId) {
+    if (studySetId) {
+      if (includeAttempted) return studySetData?.total_questions ?? 0
+      if (includeIncorrect) {
+        // new + incorrectly-answered-but-never-correct
         return (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
       }
+      // "new only" — strictly unattempted; NEVER fall back to total
+      return studySetData?.remaining_questions ?? 0
+    }
+    if (includeIncorrect && !includeAttempted) {
       return topics
         .filter(t => selectedTopics.has(t.id))
         .reduce((sum, t) => sum + (t.remaining_count || 0) + (t.incorrect_count || 0), 0)
-    }
-    if (studySetId) {
-      if (includeAttempted) {
-        return studySetData?.total_questions || 0
-      }
-      // When "new only", use remaining (unattempted) count
-      return studySetData?.remaining_questions ?? studySetData?.total_questions ?? 0
     }
     return topics
       .filter(t => selectedTopics.has(t.id))
@@ -387,7 +417,13 @@ export default function PracticeSetup() {
               {!studySetId && specialtyAttemptedCount !== null && specialtyTotalQuestions !== null
                 ? `${specialtyAttemptedCount}/${specialtyTotalQuestions} attempted in this specialty • Configure your session`
                 : studySetId && studySetData
-                  ? `${studySetData.total_questions} question${studySetData.total_questions === 1 ? '' : 's'} in this set • Configure your session`
+                  ? (() => {
+                      const rem = studySetData.remaining_questions ?? 0
+                      const tot = studySetData.total_questions ?? 0
+                      const inc = studySetData.incorrect_questions ?? 0
+                      const attempted = tot - rem
+                      return `${tot} question${tot === 1 ? '' : 's'} in this set • ${attempted} attempted, ${rem} new${inc > 0 ? `, ${inc} incorrect` : ''}`
+                    })()
                   : 'Configure your study session'}
             </p>
           </div>
@@ -497,10 +533,10 @@ export default function PracticeSetup() {
                           setIncludeAttempted(next)
                           if (studySetId && studySetData) {
                             const newMax = next
-                              ? (studySetData.total_questions || 0)
+                              ? (studySetData.total_questions ?? 0)
                               : includeIncorrect
                                 ? (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
-                                : (studySetData.remaining_questions ?? studySetData.total_questions ?? 0)
+                                : (studySetData.remaining_questions ?? 0)  // new-only: never fall back to total
                             if (newMax === 0) {
                               setNumQuestions(0)
                             } else if (numQuestions === oldMax || numQuestions > newMax) {
@@ -541,14 +577,14 @@ export default function PracticeSetup() {
                           setIncludeIncorrect(next)
                           const newMax = includeAttempted
                             ? (studySetId
-                              ? (studySetData?.total_questions || 0)
+                              ? (studySetData?.total_questions ?? 0)
                               : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.question_count || 0), 0))
                             : next
                               ? (studySetId
                                 ? (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
                                 : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0) + (t.incorrect_count || 0), 0))
                               : (studySetId
-                                ? (studySetData?.remaining_questions ?? studySetData?.total_questions ?? 0)
+                                ? (studySetData?.remaining_questions ?? 0)  // new-only: never fall back to total
                                 : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0), 0))
                           if (newMax === 0) setNumQuestions(0)
                           else setNumQuestions((n) => (n === 0 || n > newMax ? newMax : Math.min(n, newMax)))
@@ -567,6 +603,11 @@ export default function PracticeSetup() {
                   {includeIncorrect && !includeAttempted && (
                     <p className="setup__section-subtitle" style={{ marginTop: 12, marginBottom: 0 }}>
                       Unattempted questions are mixed with ones you have not yet answered correctly. If none are left unattempted, only incorrect questions are used.
+                    </p>
+                  )}
+                  {isDisabled && studySetId && !includeAttempted && !includeIncorrect && (
+                    <p className="setup__section-subtitle" style={{ marginTop: 12, marginBottom: 0, color: 'var(--color-warning, #d97706)' }}>
+                      You have attempted all questions in this set. Turn on <strong>Include previously answered</strong> to review the full bank, or <strong>Include incorrectly answered</strong> to focus on questions you have not yet got right.
                     </p>
                   )}
 
