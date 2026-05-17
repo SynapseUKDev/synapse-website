@@ -73,6 +73,27 @@ export default function PracticeSetup() {
       if (!set || typeof set.total_questions !== 'number') {
         throw new Error('Could not load question counts for this study set. Try again or update the app.')
       }
+
+      const poolScopeItems = (set.items || []).map((i) =>
+        i.topic_id
+          ? {
+              scope: 'topic',
+              topic_name: i.topic_name ?? i.topic_id,
+              specialty_name: i.specialty_name ?? i.specialty_id ?? null,
+            }
+          : {
+              scope: 'whole_specialty',
+              specialty_name: i.specialty_name ?? i.specialty_id ?? null,
+              note: 'All active questions under this specialty are in the pool',
+            }
+      )
+      console.log('[practice-setup] study set question pool — topics / specialties we fetch', {
+        study_set_id: studySetId,
+        study_set_name: studySetName,
+        item_count: poolScopeItems.length,
+        items: poolScopeItems,
+      })
+
       setStudySetData(set)
 
       const paramIncAtt = searchParams.get('include_attempted') === '1'
