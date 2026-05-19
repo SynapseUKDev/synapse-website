@@ -34,6 +34,16 @@ export default function Admin() {
   const { user } = useOutletContext()
   const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
   const [activeTab, setActiveTab] = useState('question-issues')
+
+  const [mockSlug, setMockSlug] = useState('')
+  const [mockTitle, setMockTitle] = useState('')
+  const [mockDescription, setMockDescription] = useState('')
+  const [mockDurationMinutes, setMockDurationMinutes] = useState(180)
+  const [mockReplaceExisting, setMockReplaceExisting] = useState(true)
+  const [mockStudentFile, setMockStudentFile] = useState(null)
+  const [mockKeyFile, setMockKeyFile] = useState(null)
+  const [mockImportBusy, setMockImportBusy] = useState(false)
+  const [mockImportMsg, setMockImportMsg] = useState('')
   const [checking, setChecking] = useState(true)
   const [serverAllowsAdmin, setServerAllowsAdmin] = useState(false)
   const [error, setError] = useState('')
@@ -131,10 +141,66 @@ export default function Admin() {
     [API_BASE, loadIssues]
   )
 
+  const submitMockPaperImport = useCallback(async () => {
+    setMockImportMsg('')
+    if (!mockSlug.trim() || !mockTitle.trim()) {
+      setMockImportMsg('Slug and title are required.')
+      return
+    }
+    if (!mockStudentFile || !mockKeyFile) {
+      setMockImportMsg('Choose both JSON files: student paper and answer key.')
+      return
+    }
+    setMockImportBusy(true)
+    try {
+      let student
+      let answer_key
+      try {
+        student = JSON.parse(await mockStudentFile.text())
+      } catch {
+        throw new Error('Student file is not valid JSON.')
+      }
+      try {
+        answer_key = JSON.parse(await mockKeyFile.text())
+      } catch {
+        throw new Error('Answer key file is not valid JSON.')
+      }
+      const res = await authenticatedFetch(`${API_BASE}/admin/mock-papers/import`, {
+        method: 'POST',
+        body: JSON.stringify({
+          slug: mockSlug.trim().toLowerCase(),
+          title: mockTitle.trim(),
+          description: mockDescription.trim() || null,
+          duration_minutes: mockDurationMinutes,
+          replace_existing: mockReplaceExisting,
+          student,
+          answer_key,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || res.statusText || 'Import failed')
+      setMockImportMsg(`Created mock paper "${data.slug}" with ${data.questionCount} questions (id: ${data.mockPaperId}).`)
+    } catch (e) {
+      setMockImportMsg(e.message || 'Import failed')
+    } finally {
+      setMockImportBusy(false)
+    }
+  }, [
+    API_BASE,
+    mockSlug,
+    mockTitle,
+    mockDescription,
+    mockDurationMinutes,
+    mockReplaceExisting,
+    mockStudentFile,
+    mockKeyFile,
+  ])
+
   useEffect(() => {
     if (!serverAllowsAdmin) return
+    if (activeTab === 'mock-papers') return
     loadIssues()
-  }, [serverAllowsAdmin, loadIssues])
+  }, [serverAllowsAdmin, loadIssues, activeTab])
 
   if (checking) {
     return (
@@ -160,34 +226,135 @@ export default function Admin() {
     <div className="admin">
       <div className="admin__header">
         <div>
-          <h1 className="admin__title">Admin Issues</h1>
-          <p className="admin__muted">Review user-reported issues, then edit the related question or textbook page.</p>
+          <h1 className="admin__title">
+            {activeTab === 'mock-papers' ? 'Import mock exam' : 'Admin Issues'}
+          </h1>
+          <p className="admin__muted">
+            {activeTab === 'mock-papers'
+              ? 'Upload the same JSON pair used by the backend seed script (student stems/options + answer key). Creates catalog row, questions, and solutions.'
+              : 'Review user-reported issues, then edit the related question or textbook page.'}
+          </p>
         </div>
         <div className="admin-badge">Admin</div>
       </div>
 
-      {error && <div className="admin-alert">{error}</div>}
+      {error && activeTab !== 'mock-papers' && <div className="admin-alert">{error}</div>}
 
       <div className="admin-tabs">
-        <button className={activeTab === 'question-issues' ? 'is-active' : ''} onClick={() => setActiveTab('question-issues')}>
+        <button type="button" className={activeTab === 'question-issues' ? 'is-active' : ''} onClick={() => setActiveTab('question-issues')}>
           Question Issues
         </button>
-        <button className={activeTab === 'topic-issues' ? 'is-active' : ''} onClick={() => setActiveTab('topic-issues')}>
+        <button type="button" className={activeTab === 'topic-issues' ? 'is-active' : ''} onClick={() => setActiveTab('topic-issues')}>
           Textbook Issues
         </button>
-        <label className="admin-tabs__toggle">
-          <input
-            type="checkbox"
-            checked={includeCompleted}
-            onChange={(e) => setIncludeCompleted(e.target.checked)}
-          />
-          Include completed
-        </label>
-        <button type="button" onClick={loadIssues} disabled={issuesLoading}>
-          {issuesLoading ? 'Refreshing...' : 'Refresh'}
+        <button type="button" className={activeTab === 'mock-papers' ? 'is-active' : ''} onClick={() => setActiveTab('mock-papers')}>
+          Mock papers
         </button>
+        {activeTab !== 'mock-papers' && (
+          <>
+            <label className="admin-tabs__toggle">
+              <input
+                type="checkbox"
+                checked={includeCompleted}
+                onChange={(e) => setIncludeCompleted(e.target.checked)}
+              />
+              Include completed
+            </label>
+            <button type="button" onClick={loadIssues} disabled={issuesLoading}>
+              {issuesLoading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </>
+        )}
       </div>
 
+      {activeTab === 'mock-papers' && (
+        <section className="admin-card admin-mock-import">
+          <h2 className="admin-mock-import__h2">Required files</h2>
+          <ul className="admin-mock-import__list">
+            <li>
+              <strong>Student paper JSON</strong> — Array of objects: <code>number</code> (question index, 1-based),{' '}
+              <code>stem</code> (string), <code>options</code> (object with keys <code>A</code>–<code>E</code>, string values).
+            </li>
+            <li>
+              <strong>Answer key JSON</strong> — Array of objects with matching <code>number</code> for each question;{' '}
+              <code>correct_answer</code> must be <code>A</code>, <code>B</code>, <code>C</code>, <code>D</code>, or <code>E</code>.
+              Optional fields stored as explanations/metadata: <code>rationale</code> → detailed explanation (L2),{' '}
+              <code>simplified_explanation</code> → ELI5, plus <code>clinical_context</code>, <code>guideline_anchor</code>,{' '}
+              <code>exam_tip</code>, <code>topic_id</code>, <code>topic_name</code>, <code>specialty</code>, etc.
+            </li>
+            <li>
+              Every question <code>number</code> must appear in <em>both</em> files. Same format as{' '}
+              <code>synapse-backend/mock_paper_001_student.json</code> and{' '}
+              <code>synapse-backend/mock_paper_001_answer_key.json</code>.
+            </li>
+          </ul>
+
+          <div className="admin-mock-import__grid">
+            <label className="admin-mock-import__field">
+              <span>URL slug</span>
+              <input
+                type="text"
+                value={mockSlug}
+                onChange={(e) => setMockSlug(e.target.value)}
+                placeholder="e.g. mock-paper-002"
+                autoComplete="off"
+              />
+              <small className="admin__muted">Lowercase letters, numbers, hyphens only. Used in /dashboard/mock-exams/&lt;slug&gt;</small>
+            </label>
+            <label className="admin-mock-import__field">
+              <span>Title</span>
+              <input type="text" value={mockTitle} onChange={(e) => setMockTitle(e.target.value)} placeholder="Exam title shown in catalog" />
+            </label>
+            <label className="admin-mock-import__field admin-mock-import__field--full">
+              <span>Description (optional)</span>
+              <textarea value={mockDescription} onChange={(e) => setMockDescription(e.target.value)} rows={3} placeholder="Short blurb for the mock exams list" />
+            </label>
+            <label className="admin-mock-import__field">
+              <span>Duration (minutes)</span>
+              <input
+                type="number"
+                min={1}
+                max={1440}
+                value={mockDurationMinutes}
+                onChange={(e) => setMockDurationMinutes(parseInt(e.target.value, 10) || 180)}
+              />
+            </label>
+            <label className="admin-mock-import__field admin-mock-import__checkbox">
+              <input
+                type="checkbox"
+                checked={mockReplaceExisting}
+                onChange={(e) => setMockReplaceExisting(e.target.checked)}
+              />
+              <span>Replace existing paper with this slug (deletes previous mock paper + questions)</span>
+            </label>
+            <label className="admin-mock-import__field">
+              <span>Student paper (.json)</span>
+              <input
+                type="file"
+                accept=".json,application/json"
+                onChange={(e) => setMockStudentFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <label className="admin-mock-import__field">
+              <span>Answer key (.json)</span>
+              <input type="file" accept=".json,application/json" onChange={(e) => setMockKeyFile(e.target.files?.[0] ?? null)} />
+            </label>
+          </div>
+
+          <div className="admin-mock-import__actions">
+            <button type="button" className="admin-btn-issue" disabled={mockImportBusy} onClick={submitMockPaperImport}>
+              {mockImportBusy ? 'Importing…' : 'Create mock paper in database'}
+            </button>
+          </div>
+          {mockImportMsg && (
+            <div className={mockImportMsg.startsWith('Created') ? 'admin-alert admin-alert--success' : 'admin-alert'}>
+              {mockImportMsg}
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab !== 'mock-papers' && (
       <div className="admin-grid">
         <section className="admin-card">
           {issuesLoading ? (
@@ -352,6 +519,7 @@ export default function Admin() {
           )}
         </section>
       </div>
+      )}
     </div>
   )
 }

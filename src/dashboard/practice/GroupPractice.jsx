@@ -1752,20 +1752,33 @@ export default function GroupPractice() {
               <div className="controls">
                 <div className="controls__left">
                   {/* <button className="btn btn--ghost btn--icon"><LuSave />Save</button> */}
-                  <button className={`btn btn--ghost btn--icon ${flagged.has(questionId) ? 'is-flagged' : ''}`} onClick={() => {
-                    setFlagged(prev => {
-                      const next = new Set(prev)
-                      if (next.has(questionId)) next.delete(questionId); else next.add(questionId)
-                      return next
-                    })
-                  }}><LuFlag />{flagged.has(questionId) ? 'Flagged' : 'Flag'}</button>
+                  <button
+                    type="button"
+                    className={`btn btn--ghost btn--icon ${flagged.has(questionId) ? 'is-flagged' : ''}`}
+                    onClick={() => {
+                      setFlagged((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(questionId)) next.delete(questionId)
+                        else next.add(questionId)
+                        return next
+                      })
+                    }}
+                    title={flagged.has(questionId) ? 'Unflag question' : 'Flag question'}
+                    aria-label={flagged.has(questionId) ? 'Unflag question' : 'Flag question'}
+                  >
+                    <LuFlag aria-hidden />
+                    <span className="practice-action-label">{flagged.has(questionId) ? 'Flagged' : 'Flag'}</span>
+                  </button>
                   {(highlights[currentQuestion.id]?.length > 0) && (
                     <button
+                      type="button"
                       className="btn btn--ghost btn--icon"
                       onClick={() => clearHighlights(currentQuestion.id)}
                       title="Clear all highlights"
+                      aria-label="Clear all highlights"
                     >
-                      <LuEraser />Clear Highlights
+                      <LuEraser aria-hidden />
+                      <span className="practice-action-label">Clear Highlights</span>
                     </button>
                   )}
                 </div>

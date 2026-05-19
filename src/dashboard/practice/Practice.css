@@ -502,6 +502,77 @@ html[data-theme='dark'] .q-carousel .q-asset {
   color: #dc2626;
 }
 
+/* Dark theme: option rows + radios — visible dark control fill (not default light OS chrome) */
+html[data-theme='dark'] .option {
+  background: var(--dm-surface-container);
+  border-color: var(--dm-outline-variant);
+  color: var(--dm-on-surface);
+}
+
+html[data-theme='dark'] .option--selected {
+  background: rgba(173, 198, 255, 0.1);
+  border-color: rgba(173, 198, 255, 0.4);
+}
+
+html[data-theme='dark'] .option--correct {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(74, 222, 128, 0.45);
+  color: #bbf7d0;
+}
+
+html[data-theme='dark'] .option--incorrect {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+html[data-theme='dark'] .option--struck {
+  background: var(--dm-surface-container-low);
+}
+
+html[data-theme='dark'] .option-strike-btn {
+  background: var(--dm-surface-container-high);
+  border-color: var(--dm-outline-variant);
+  color: var(--dm-on-surface-variant);
+}
+
+html[data-theme='dark'] .option-strike-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+html[data-theme='dark'] .option-strike-btn.is-active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+html[data-theme='dark'] .option input[type='radio'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--dm-outline);
+  background: var(--dm-surface-container-highest);
+  flex-shrink: 0;
+  cursor: pointer;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html[data-theme='dark'] .option input[type='radio']:checked {
+  border-color: var(--dm-secondary);
+  background-color: var(--dm-surface-container-highest);
+  background-image: radial-gradient(circle, var(--dm-secondary) 45%, transparent 46%);
+}
+
+html[data-theme='dark'] .option input[type='radio']:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Question stem highlighting */
 /* ============================= */
 /* Question Stem – FINAL CLEAN */
@@ -1531,13 +1602,48 @@ input:checked+.toggle-slider:before {
     gap: 12px;
   }
 
-  .controls__left,
-  .controls__right {
+  /* Toolbar under stem: icon-only / compact on phones */
+  .controls__left {
     width: 100%;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-start;
+    align-items: center;
+    row-gap: 8px;
+  }
+
+  .controls__left .practice-action-label {
+    display: none;
+  }
+
+  .controls__left .report-trigger-text {
+    display: none;
+  }
+
+  .controls__left > .btn {
+    height: 36px;
+    min-height: 36px;
+    padding: 0 8px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .controls__left > .btn.btn--icon {
+    gap: 0;
+    justify-content: center;
+    min-width: 40px;
+  }
+
+  .controls__left > .report-trigger-btn.btn {
+    min-width: 40px;
+    padding: 0 8px;
+    gap: 0;
+    justify-content: center;
   }
 
   .controls__right {
+    width: 100%;
+    justify-content: space-between;
     flex-direction: column;
   }
 

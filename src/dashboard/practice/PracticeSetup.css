@@ -461,6 +461,24 @@
   cursor: pointer;
 }
 
+/* Dark theme: toggle track + knob match dashboard (dark circle, not bright white pill) */
+html[data-theme='dark'] .setup__toggle-slider {
+  background-color: var(--dm-surface-container-high);
+}
+
+html[data-theme='dark'] .setup__toggle-slider::before {
+  background-color: var(--dm-surface-container-lowest);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme='dark'] .setup__toggle-input:checked + .setup__toggle-slider::before {
+  background-color: var(--dm-surface-container-lowest);
+}
+
+html[data-theme='dark'] .setup__toggle-input:checked + .setup__toggle-slider {
+  background-color: var(--syn-cyan);
+}
+
 .setup__timer-setting {
   margin-top: 16px;
 }

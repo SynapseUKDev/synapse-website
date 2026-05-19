@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
-import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuEye } from 'react-icons/lu'
+import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuEye, LuPencil } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
@@ -1385,32 +1385,6 @@ export default function Practice() {
           </div>
         </div>
         <div className="pr__top-right">
-          {!isReviewMode && questions.length > 0 && (
-            <div
-              className="pr__session-stats-inline"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                marginRight: '0.5rem',
-                fontSize: '0.875rem',
-                color: '#64748b',
-              }}
-              aria-label="Session progress"
-            >
-              <span title="Questions answered in this session">
-                <strong style={{ color: '#0f172a' }}>{sessionAnswered}</strong>
-                <span> / {questions.length}</span>
-                <span style={{ marginLeft: '0.25rem' }}>done</span>
-              </span>
-              <span title="Accuracy on answered questions">
-                <strong style={{ color: '#0f172a' }}>
-                  {sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%
-                </strong>
-                <span style={{ marginLeft: '0.25rem' }}>accuracy</span>
-              </span>
-            </div>
-          )}
           {!isReviewMode && timerMinutes > 0 && (
             <div className="pr__timer">
               <div className="pr__time">{display}</div>
@@ -1574,30 +1548,46 @@ export default function Practice() {
                 <div className="controls__left">
                   {!isReviewMode && (
                     <>
-                      <button className={`btn btn--ghost btn--icon ${flagged.has(currentQuestionId) ? 'is-flagged' : ''}`} onClick={() => {
-                        setFlagged(prev => {
-                          const next = new Set(prev)
-                          if (next.has(currentQuestionId)) next.delete(currentQuestionId); else next.add(currentQuestionId)
-                          return next
-                        })
-                      }}><LuFlag />{flagged.has(currentQuestionId) ? 'Flagged' : 'Flag'}</button>
+                      <button
+                        type="button"
+                        className={`btn btn--ghost btn--icon ${flagged.has(currentQuestionId) ? 'is-flagged' : ''}`}
+                        onClick={() => {
+                          setFlagged((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(currentQuestionId)) next.delete(currentQuestionId)
+                            else next.add(currentQuestionId)
+                            return next
+                          })
+                        }}
+                        title={flagged.has(currentQuestionId) ? 'Unflag question' : 'Flag question'}
+                        aria-label={flagged.has(currentQuestionId) ? 'Unflag question' : 'Flag question'}
+                      >
+                        <LuFlag aria-hidden />
+                        <span className="practice-action-label">{flagged.has(currentQuestionId) ? 'Flagged' : 'Flag'}</span>
+                      </button>
                       {isAdmin && (
                         <button
                           type="button"
                           className="btn btn--ghost btn--icon admin-edit-trigger"
                           onClick={() => setAdminEditorOpen((open) => !open)}
+                          title={adminEditorOpen ? 'Close editor' : 'Edit question'}
+                          aria-label={adminEditorOpen ? 'Close editor' : 'Edit question'}
                         >
-                          {adminEditorOpen ? 'Close editor' : 'Edit'}
+                          <LuPencil aria-hidden />
+                          <span className="practice-action-label">{adminEditorOpen ? 'Close editor' : 'Edit'}</span>
                         </button>
                       )}
                       <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
                       {(highlights[currentQuestion.id]?.length > 0) && (
                         <button
+                          type="button"
                           className="btn btn--ghost btn--icon"
                           onClick={() => clearHighlights(currentQuestion.id)}
                           title="Clear all highlights"
+                          aria-label="Clear all highlights"
                         >
-                          <LuEraser />Clear Highlights
+                          <LuEraser aria-hidden />
+                          <span className="practice-action-label">Clear Highlights</span>
                         </button>
                       )}
                     </>
