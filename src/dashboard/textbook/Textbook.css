@@ -1290,9 +1290,9 @@ html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-
 
 html[data-theme='dark'] .tb-carousel button.tb-carousel__nav,
 html[data-theme='dark'] .tb-carousel__nav {
-  background: #0d1322;
+  background: var(--dm-surface-container-high);
   background-image: none;
-  border-color: rgba(173, 198, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.12);
   color: var(--dm-primary);
   box-shadow:
     0 2px 14px rgba(0, 0, 0, 0.55),
@@ -1301,10 +1301,10 @@ html[data-theme='dark'] .tb-carousel__nav {
 
 html[data-theme='dark'] .tb-carousel button.tb-carousel__nav:hover:not(:disabled),
 html[data-theme='dark'] .tb-carousel__nav:hover:not(:disabled) {
-  background: #131b31;
+  background: var(--dm-surface-container-highest);
   background-image: none;
-  border-color: rgba(173, 198, 255, 0.35);
-  color: #eaf0ff;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--dm-on-surface);
   box-shadow:
     0 4px 18px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);

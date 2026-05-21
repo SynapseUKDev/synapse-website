@@ -290,8 +290,8 @@
 }
 
 html[data-theme='dark'] .qc-nav {
-  background: #0d1322;
-  border-color: rgba(173, 198, 255, 0.22);
+  background: var(--dm-surface-container-high);
+  border-color: rgba(255, 255, 255, 0.12);
   color: var(--dm-primary);
   box-shadow:
     0 2px 14px rgba(0, 0, 0, 0.55),
@@ -299,9 +299,9 @@ html[data-theme='dark'] .qc-nav {
 }
 
 html[data-theme='dark'] .qc-nav:hover:not(:disabled) {
-  background: #131b31;
-  border-color: rgba(173, 198, 255, 0.35);
-  color: #eaf0ff;
+  background: var(--dm-surface-container-highest);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--dm-on-surface);
   box-shadow:
     0 4px 18px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);

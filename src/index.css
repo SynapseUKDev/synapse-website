@@ -51,19 +51,19 @@ a { color: inherit; }
 html[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Raw tokens (optional hooks for future components) */
-  --dm-surface: #0b1326;
-  --dm-surface-dim: #0b1326;
-  --dm-surface-bright: #31394d;
-  --dm-surface-container-lowest: #060e20;
-  --dm-surface-container-low: #131b2e;
-  --dm-surface-container: #171f33;
-  --dm-surface-container-high: #222a3d;
-  --dm-surface-container-highest: #2d3449;
-  --dm-on-surface: #dae2fd;
-  --dm-on-surface-variant: #c2c6d6;
-  --dm-outline: #8c909f;
-  --dm-outline-variant: #424754;
+  /* Neutral black surfaces (no blue tint) — accents stay mint/blue/orange via primary/secondary */
+  --dm-surface: #000000;
+  --dm-surface-dim: #000000;
+  --dm-surface-bright: #2a2a2a;
+  --dm-surface-container-lowest: #000000;
+  --dm-surface-container-low: #0c0c0c;
+  --dm-surface-container: #141414;
+  --dm-surface-container-high: #1c1c1c;
+  --dm-surface-container-highest: #252525;
+  --dm-on-surface: #e8e9ec;
+  --dm-on-surface-variant: #a8abb3;
+  --dm-outline: #8f939c;
+  --dm-outline-variant: #3a3d42;
   --dm-surface-tint: #adc6ff;
   --dm-primary: #adc6ff;
   --dm-on-primary: #002e6a;
@@ -78,9 +78,9 @@ html[data-theme="dark"] {
   --dm-on-tertiary: #472a00;
   --dm-tertiary-container: #ca8100;
   --dm-on-tertiary-container: #3e2400;
-  --dm-background: #0b1326;
-  --dm-on-background: #dae2fd;
-  --dm-surface-variant: #2d3449;
+  --dm-background: #000000;
+  --dm-on-background: #e8e9ec;
+  --dm-surface-variant: #2a2a2a;
   /* Icon accent (secondary mint green) — sidebar / QB; dashboard hero icons use yellow/red below */
   --dm-icon-accent: var(--dm-secondary);
   --dm-dashboard-icon-yellow: #ffe14a;
@@ -548,8 +548,8 @@ html[data-theme="dark"] .dash__content .pr__timer {
 }
 
 html[data-theme="dark"] .dash__content .qc-nav {
-  background: #0d1322;
-  border-color: rgba(173, 198, 255, 0.22);
+  background: var(--dm-surface-container-high);
+  border-color: rgba(255, 255, 255, 0.12);
   color: var(--dm-primary);
   box-shadow:
     0 2px 14px rgba(0, 0, 0, 0.55),
@@ -557,9 +557,9 @@ html[data-theme="dark"] .dash__content .qc-nav {
 }
 
 html[data-theme="dark"] .dash__content .qc-nav:hover:not(:disabled) {
-  background: #131b31;
-  border-color: rgba(173, 198, 255, 0.35);
-  color: #eaf0ff;
+  background: var(--dm-surface-container-highest);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--dm-on-surface);
 }
 
 html[data-theme="dark"] .dash__content .q-asset {
@@ -965,8 +965,8 @@ html[data-theme="dark"] .tb-page--chapter .tb-anchors {
 }
 
 html[data-theme="dark"] .dash__content .tb-carousel button.tb-carousel__nav {
-  background: #0d1322 !important;
-  border-color: rgba(173, 198, 255, 0.22) !important;
+  background: var(--dm-surface-container-high) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   color: var(--dm-primary) !important;
   box-shadow:
     0 2px 14px rgba(0, 0, 0, 0.55),
@@ -974,9 +974,9 @@ html[data-theme="dark"] .dash__content .tb-carousel button.tb-carousel__nav {
 }
 
 html[data-theme="dark"] .dash__content .tb-carousel button.tb-carousel__nav:hover:not(:disabled) {
-  background: #131b31 !important;
-  border-color: rgba(173, 198, 255, 0.35) !important;
-  color: #eaf0ff !important;
+  background: var(--dm-surface-container-highest) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: var(--dm-on-surface) !important;
 }
 
 /* Practice: sidebar “Completed” and other uncolored stat values (e.g. 0/50) */
