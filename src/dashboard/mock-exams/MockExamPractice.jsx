@@ -171,7 +171,7 @@ export default function MockExamPractice() {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ remaining_seconds: v }),
         keepalive: true,
-      }).catch(() => {})
+      }).catch(() => { })
     }
   }, [attemptId])
 

@@ -1620,7 +1620,7 @@ input:checked+.toggle-slider:before {
     display: none;
   }
 
-  .controls__left > .btn {
+  .controls__left>.btn {
     height: 36px;
     min-height: 36px;
     padding: 0 8px;
@@ -1628,13 +1628,13 @@ input:checked+.toggle-slider:before {
     flex-shrink: 0;
   }
 
-  .controls__left > .btn.btn--icon {
+  .controls__left>.btn.btn--icon {
     gap: 0;
     justify-content: center;
     min-width: 40px;
   }
 
-  .controls__left > .report-trigger-btn.btn {
+  .controls__left>.report-trigger-btn.btn {
     min-width: 40px;
     padding: 0 8px;
     gap: 0;
