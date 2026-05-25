@@ -35,13 +35,15 @@ export default function Admin() {
   const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
   const [activeTab, setActiveTab] = useState('question-issues')
 
-  const [mockSlug, setMockSlug] = useState('')
-  const [mockTitle, setMockTitle] = useState('')
-  const [mockDescription, setMockDescription] = useState('')
-  const [mockDurationMinutes, setMockDurationMinutes] = useState(180)
   const [mockReplaceExisting, setMockReplaceExisting] = useState(true)
-  const [mockStudentFile, setMockStudentFile] = useState(null)
-  const [mockKeyFile, setMockKeyFile] = useState(null)
+  // New 3-file upload state
+  const [csvFile, setCsvFile] = useState(null)
+  const [keyFile, setKeyFile] = useState(null)
+  const [manifestFile, setManifestFile] = useState(null)
+  const [parsedManifest, setParsedManifest] = useState(null)
+  const [csvDrag, setCsvDrag] = useState(false)
+  const [keyDrag, setKeyDrag] = useState(false)
+  const [manifestDrag, setManifestDrag] = useState(false)
   const [mockImportBusy, setMockImportBusy] = useState(false)
   const [mockImportMsg, setMockImportMsg] = useState('')
   const [checking, setChecking] = useState(true)
@@ -141,45 +143,74 @@ export default function Admin() {
     [API_BASE, loadIssues]
   )
 
+  /** Handle manifest file selection — parse it immediately for the preview card.
+   * Security: JSON.parse is safe here; we only read string/number fields from
+   * the parsed object and render them as React text nodes (no innerHTML). */
+  const handleManifestSelect = useCallback((file) => {
+    setManifestFile(file)
+    setParsedManifest(null)
+    if (!file) return
+    file.text().then((text) => {
+      try {
+        const m = JSON.parse(text)
+        setParsedManifest(m)
+      } catch {
+        setParsedManifest(null)
+      }
+    }).catch(() => setParsedManifest(null))
+  }, [])
+
   const submitMockPaperImport = useCallback(async () => {
     setMockImportMsg('')
-    if (!mockSlug.trim() || !mockTitle.trim()) {
-      setMockImportMsg('Slug and title are required.')
-      return
-    }
-    if (!mockStudentFile || !mockKeyFile) {
-      setMockImportMsg('Choose both JSON files: student paper and answer key.')
+    if (!csvFile || !keyFile || !manifestFile) {
+      setMockImportMsg('Please select all three files before importing.')
       return
     }
     setMockImportBusy(true)
     try {
-      let student
+      let csvText
       let answer_key
+      let manifest
       try {
-        student = JSON.parse(await mockStudentFile.text())
+        csvText = await csvFile.text()
       } catch {
-        throw new Error('Student file is not valid JSON.')
+        throw new Error('Could not read the questions CSV file.')
       }
       try {
-        answer_key = JSON.parse(await mockKeyFile.text())
+        answer_key = JSON.parse(await keyFile.text())
       } catch {
         throw new Error('Answer key file is not valid JSON.')
       }
-      const res = await authenticatedFetch(`${API_BASE}/admin/mock-papers/import`, {
+      try {
+        manifest = JSON.parse(await manifestFile.text())
+      } catch {
+        throw new Error('Manifest file is not valid JSON.')
+      }
+      if (!Array.isArray(answer_key)) {
+        throw new Error('Answer key must be a JSON array.')
+      }
+      if (!manifest?.paper_id) {
+        throw new Error('Manifest must have a paper_id field.')
+      }
+      const res = await authenticatedFetch(`${API_BASE}/admin/mock-papers/import-csv`, {
         method: 'POST',
         body: JSON.stringify({
-          slug: mockSlug.trim().toLowerCase(),
-          title: mockTitle.trim(),
-          description: mockDescription.trim() || null,
-          duration_minutes: mockDurationMinutes,
-          replace_existing: mockReplaceExisting,
-          student,
+          csv: csvText,
           answer_key,
+          manifest,
+          replace_existing: mockReplaceExisting,
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || res.statusText || 'Import failed')
-      setMockImportMsg(`Created mock paper "${data.slug}" with ${data.questionCount} questions (id: ${data.mockPaperId}).`)
+      setMockImportMsg(
+        `✓ Created "${data.slug}" with ${data.questionCount} questions (id: ${data.mockPaperId}).`
+      )
+      // Reset file inputs on success
+      setCsvFile(null)
+      setKeyFile(null)
+      setManifestFile(null)
+      setParsedManifest(null)
     } catch (e) {
       setMockImportMsg(e.message || 'Import failed')
     } finally {
@@ -187,14 +218,12 @@ export default function Admin() {
     }
   }, [
     API_BASE,
-    mockSlug,
-    mockTitle,
-    mockDescription,
-    mockDurationMinutes,
+    csvFile,
+    keyFile,
+    manifestFile,
     mockReplaceExisting,
-    mockStudentFile,
-    mockKeyFile,
   ])
+
 
   useEffect(() => {
     if (!serverAllowsAdmin) return
@@ -231,7 +260,7 @@ export default function Admin() {
           </h1>
           <p className="admin__muted">
             {activeTab === 'mock-papers'
-              ? 'Upload the same JSON pair used by the backend seed script (student stems/options + answer key). Creates catalog row, questions, and solutions.'
+              ? 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'
               : 'Review user-reported issues, then edit the related question or textbook page.'}
           </p>
         </div>
@@ -268,91 +297,172 @@ export default function Admin() {
       </div>
 
       {activeTab === 'mock-papers' && (
-        <section className="admin-card admin-mock-import">
-          <h2 className="admin-mock-import__h2">Required files</h2>
-          <ul className="admin-mock-import__list">
-            <li>
-              <strong>Student paper JSON</strong> — Array of objects: <code>number</code> (question index, 1-based),{' '}
-              <code>stem</code> (string), <code>options</code> (object with keys <code>A</code>–<code>E</code>, string values).
-            </li>
-            <li>
-              <strong>Answer key JSON</strong> — Array of objects with matching <code>number</code> for each question;{' '}
-              <code>correct_answer</code> must be <code>A</code>, <code>B</code>, <code>C</code>, <code>D</code>, or <code>E</code>.
-              Optional fields stored as explanations/metadata: <code>rationale</code> → detailed explanation (L2),{' '}
-              <code>simplified_explanation</code> → ELI5, plus <code>clinical_context</code>, <code>guideline_anchor</code>,{' '}
-              <code>exam_tip</code>, <code>topic_id</code>, <code>topic_name</code>, <code>specialty</code>, etc.
-            </li>
-            <li>
-              Every question <code>number</code> must appear in <em>both</em> files. Same format as{' '}
-              <code>synapse-backend/mock_paper_001_student.json</code> and{' '}
-              <code>synapse-backend/mock_paper_001_answer_key.json</code>.
-            </li>
-          </ul>
+        <section className="admin-card">
+          <div className="admin-upload-section">
 
-          <div className="admin-mock-import__grid">
-            <label className="admin-mock-import__field">
-              <span>URL slug</span>
-              <input
-                type="text"
-                value={mockSlug}
-                onChange={(e) => setMockSlug(e.target.value)}
-                placeholder="e.g. mock-paper-002"
-                autoComplete="off"
-              />
-              <small className="admin__muted">Lowercase letters, numbers, hyphens only. Used in /dashboard/mock-exams/&lt;slug&gt;</small>
-            </label>
-            <label className="admin-mock-import__field">
-              <span>Title</span>
-              <input type="text" value={mockTitle} onChange={(e) => setMockTitle(e.target.value)} placeholder="Exam title shown in catalog" />
-            </label>
-            <label className="admin-mock-import__field admin-mock-import__field--full">
-              <span>Description (optional)</span>
-              <textarea value={mockDescription} onChange={(e) => setMockDescription(e.target.value)} rows={3} placeholder="Short blurb for the mock exams list" />
-            </label>
-            <label className="admin-mock-import__field">
-              <span>Duration (minutes)</span>
-              <input
-                type="number"
-                min={1}
-                max={1440}
-                value={mockDurationMinutes}
-                onChange={(e) => setMockDurationMinutes(parseInt(e.target.value, 10) || 180)}
-              />
-            </label>
-            <label className="admin-mock-import__field admin-mock-import__checkbox">
-              <input
-                type="checkbox"
-                checked={mockReplaceExisting}
-                onChange={(e) => setMockReplaceExisting(e.target.checked)}
-              />
-              <span>Replace existing paper with this slug (deletes previous mock paper + questions)</span>
-            </label>
-            <label className="admin-mock-import__field">
-              <span>Student paper (.json)</span>
-              <input
-                type="file"
-                accept=".json,application/json"
-                onChange={(e) => setMockStudentFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
-            <label className="admin-mock-import__field">
-              <span>Answer key (.json)</span>
-              <input type="file" accept=".json,application/json" onChange={(e) => setMockKeyFile(e.target.files?.[0] ?? null)} />
-            </label>
-          </div>
-
-          <div className="admin-mock-import__actions">
-            <button type="button" className="admin-btn-issue" disabled={mockImportBusy} onClick={submitMockPaperImport}>
-              {mockImportBusy ? 'Importing…' : 'Create mock paper in database'}
-            </button>
-          </div>
-          {mockImportMsg && (
-            <div className={mockImportMsg.startsWith('Created') ? 'admin-alert admin-alert--success' : 'admin-alert'}>
-              {mockImportMsg}
+            {/* Step 1 — file pickers */}
+            <div>
+              <p className="admin-upload-section__title">Upload the three generator output files</p>
+              <p className="admin-upload-section__sub">
+                Drop or click each zone. The manifest is read instantly to show a preview.
+              </p>
             </div>
-          )}
+
+            <div className="admin-upload-zones">
+
+              {/* CSV drop zone */}
+              <div
+                className={`admin-drop-zone ${csvFile ? 'admin-drop-zone--filled' : ''} ${csvDrag ? 'admin-drop-zone--drag' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setCsvDrag(true) }}
+                onDragLeave={() => setCsvDrag(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setCsvDrag(false)
+                  const f = e.dataTransfer.files?.[0]
+                  if (f) setCsvFile(f)
+                }}
+              >
+                <input
+                  id="mock-csv-input"
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
+                />
+                <span className="admin-drop-zone__icon">{csvFile ? '✅' : '📄'}</span>
+                <span className="admin-drop-zone__label">Questions CSV</span>
+                {csvFile
+                  ? <span className="admin-drop-zone__filename">{csvFile.name}</span>
+                  : <span className="admin-drop-zone__hint">*_questions.csv</span>
+                }
+              </div>
+
+              {/* Answer key drop zone */}
+              <div
+                className={`admin-drop-zone ${keyFile ? 'admin-drop-zone--filled' : ''} ${keyDrag ? 'admin-drop-zone--drag' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setKeyDrag(true) }}
+                onDragLeave={() => setKeyDrag(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setKeyDrag(false)
+                  const f = e.dataTransfer.files?.[0]
+                  if (f) setKeyFile(f)
+                }}
+              >
+                <input
+                  id="mock-key-input"
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={(e) => setKeyFile(e.target.files?.[0] ?? null)}
+                />
+                <span className="admin-drop-zone__icon">{keyFile ? '✅' : '🔑'}</span>
+                <span className="admin-drop-zone__label">Answer Key JSON</span>
+                {keyFile
+                  ? <span className="admin-drop-zone__filename">{keyFile.name}</span>
+                  : <span className="admin-drop-zone__hint">*_answer_key.json</span>
+                }
+              </div>
+
+              {/* Manifest drop zone */}
+              <div
+                className={`admin-drop-zone ${manifestFile ? 'admin-drop-zone--filled' : ''} ${manifestDrag ? 'admin-drop-zone--drag' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setManifestDrag(true) }}
+                onDragLeave={() => setManifestDrag(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setManifestDrag(false)
+                  const f = e.dataTransfer.files?.[0]
+                  if (f) handleManifestSelect(f)
+                }}
+              >
+                <input
+                  id="mock-manifest-input"
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={(e) => handleManifestSelect(e.target.files?.[0] ?? null)}
+                />
+                <span className="admin-drop-zone__icon">{manifestFile ? '✅' : '📋'}</span>
+                <span className="admin-drop-zone__label">Manifest JSON</span>
+                {manifestFile
+                  ? <span className="admin-drop-zone__filename">{manifestFile.name}</span>
+                  : <span className="admin-drop-zone__hint">*_manifest.json</span>
+                }
+              </div>
+
+            </div>
+
+            {/* Step 2 — manifest preview (shown once manifest is parsed) */}
+            {parsedManifest && (
+              <div className="admin-manifest-preview">
+                <p className="admin-manifest-preview__title">
+                  📋 Manifest detected
+                </p>
+                <div className="admin-manifest-preview__meta">
+                  <span className="admin-manifest-chip">
+                    🆔 Slug: {String(parsedManifest.paper_id ?? '').replace(/_/g, '-').toLowerCase()}
+                  </span>
+                  {(parsedManifest.accepted_questions ?? parsedManifest.blueprint_summary?.total) != null && (
+                    <span className="admin-manifest-chip">
+                      ❓ {parsedManifest.accepted_questions ?? parsedManifest.blueprint_summary?.total} questions
+                    </span>
+                  )}
+                  {parsedManifest.blueprint_summary?.by_difficulty && (
+                    Object.entries(parsedManifest.blueprint_summary.by_difficulty).map(([level, count]) => (
+                      <span key={level} className="admin-manifest-chip">
+                        {level}: {count}
+                      </span>
+                    ))
+                  )}
+                </div>
+                {parsedManifest.blueprint_summary?.by_specialty && (
+                  <p className="admin-manifest-preview__specialties">
+                    <strong>Specialties covered</strong>
+                    {Object.entries(parsedManifest.blueprint_summary.by_specialty)
+                      .map(([spec, n]) => `${spec} (${n})`)
+                      .join(' · ')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Step 3 — import options */}
+            <div className="admin-import-options">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={mockReplaceExisting}
+                  onChange={(e) => setMockReplaceExisting(e.target.checked)}
+                />
+                Replace existing paper with same slug
+              </label>
+            </div>
+
+            {/* Step 4 — submit */}
+            <div className="admin-import-row">
+              <button
+                type="button"
+                className="admin-import-btn"
+                disabled={mockImportBusy || !csvFile || !keyFile || !manifestFile}
+                onClick={submitMockPaperImport}
+              >
+                {mockImportBusy ? '⏳ Importing…' : '🚀 Import mock paper'}
+              </button>
+              {(!csvFile || !keyFile || !manifestFile) && !mockImportMsg && (
+                <span style={{ fontSize: 13, color: 'var(--syn-muted)' }}>
+                  Upload all three files to enable import
+                </span>
+              )}
+            </div>
+
+            {mockImportMsg && (
+              <div className={mockImportMsg.startsWith('✓') ? 'admin-alert admin-alert--success' : 'admin-alert'}>
+                {mockImportMsg}
+              </div>
+            )}
+
+          </div>
         </section>
       )}
+
 
       {activeTab !== 'mock-papers' && (
       <div className="admin-grid">
