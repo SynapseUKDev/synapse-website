@@ -33,6 +33,7 @@ import OsceGroupSetup from './dashboard/osce/OsceGroupSetup.jsx'
 import OsceGroupResults from './dashboard/osce/OsceGroupResults.jsx'
 import OsceAdminPanel from './dashboard/osce/OsceAdminPanel.jsx'
 import OsceAdminStationEditor from './dashboard/osce/OsceAdminStationEditor.jsx'
+import Flashcards from './dashboard/osce/Flashcards.jsx'
 import MockExams from './dashboard/mock-exams/MockExams.jsx'
 import MockExamBegin from './dashboard/mock-exams/MockExamBegin.jsx'
 import MockExamPractice from './dashboard/mock-exams/MockExamPractice.jsx'
@@ -104,6 +105,7 @@ function App() {
           <Route path="textbook/topic/:topicSlug" element={<TextbookTopic />} />
           <Route path="admin" element={<Admin />} />
           <Route path="osce" element={<OsceStations />} />
+          <Route path="osce/flashcards" element={<Flashcards />} />
           <Route path="osce/station/:slug" element={<OsceStationLanding />} />
           <Route path="osce/station/:slug/practice" element={<OsceStationActive />} />
           <Route path="osce/group" element={<OsceGroupSetup />} />
