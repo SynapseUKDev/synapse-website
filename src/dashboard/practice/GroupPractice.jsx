@@ -446,7 +446,8 @@ export default function GroupPractice() {
       })
 
       if (!res.ok) {
-        throw new Error('Failed to load group session')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || errorData.message || 'Failed to load group session')
       }
 
       const data = await res.json()
@@ -486,7 +487,7 @@ export default function GroupPractice() {
       setLoading(false)
     } catch (error) {
       console.error('Error loading group session:', error)
-      alert('Failed to load group session')
+      alert(error.message || 'Failed to load group session')
       navigate('/dashboard/question-bank')
     }
   }
