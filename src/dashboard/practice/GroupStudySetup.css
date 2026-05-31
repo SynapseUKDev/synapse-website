@@ -32,6 +32,7 @@
   text-transform: uppercase;
   letter-spacing: 2px;
   color: var(--syn-navy-700);
+  background: var(--surface-card);
 }
 
 .group-join__input:focus {
@@ -194,7 +195,7 @@
 }
 
 .group-waiting__room-code {
-  background: #f8fafc;
+  background: var(--surface-tint-cyan);
   border: 1px solid var(--syn-border);
   border-radius: 16px;
   padding: 24px;
@@ -215,7 +216,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: #fff;
+  background: var(--surface-card);
   border: 2px solid var(--syn-cyan);
   border-radius: 12px;
   padding: 16px 20px;
@@ -278,15 +279,15 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--surface-tint-cyan);
   border: 1px solid var(--syn-border);
   border-radius: 12px;
   transition: all 0.2s;
 }
 
 .participant-item:hover {
-  background: var(--surface-tint-cyan);
-  border-color: #b6f6fc;
+  background: var(--surface-tint-blue);
+  border-color: var(--syn-cyan);
 }
 
 .participant-item__avatar {
@@ -378,5 +379,24 @@
   .group-join__btn {
     width: 100%;
   }
+}
+
+/* Dark Theme Specific Overrides */
+html[data-theme='dark'] .group-summary-hint,
+html[data-theme='dark'] .group-waiting__icon,
+html[data-theme='dark'] .room-code__copy {
+  border-color: rgba(78, 222, 163, 0.3);
+}
+
+html[data-theme='dark'] .participant-item__avatar {
+  border-color: rgba(255, 185, 95, 0.3);
+  color: var(--syn-gold);
+}
+
+html[data-theme='dark'] .group-join__btn:disabled,
+html[data-theme='dark'] .setup__start-btn:disabled {
+  background: var(--dm-surface-container-high);
+  color: var(--dm-on-surface-variant);
+  opacity: 0.5;
 }
 

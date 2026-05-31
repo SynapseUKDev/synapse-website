@@ -252,9 +252,24 @@ export default function GroupStudySetup() {
       
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.message || 'Failed to join session')
+        throw new Error(error.error || error.message || 'Failed to join session')
       }
       const data = await res.json()
+      
+      // If the session has already started, navigate directly to practice!
+      if (data.status === 'active') {
+        const params = new URLSearchParams({
+          room_code: joinCode.toUpperCase(),
+          study_set_id: data.study_set_id || '',
+          study_set_name: data.study_set_name || '',
+          num_questions: data.num_questions.toString(),
+          timer_minutes: data.timer_minutes.toString(),
+          include_attempted: data.include_attempted ? '1' : '0',
+          include_incorrect: data.incorrect_only ? '1' : '0'
+        })
+        navigate(`/dashboard/question-bank/group-practice?${params.toString()}`)
+        return
+      }
       
       setRoomCode(joinCode.toUpperCase())
       setSessionCreated(true)
