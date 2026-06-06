@@ -16,6 +16,8 @@ jspm_packages/
 
 # Local env files
 .env.local
+.env
+*.env
 
 # Editor directories and files
 .idea/

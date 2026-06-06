@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Turnstile } from '@marsidev/react-turnstile'
 import './AuthPanel.css'
 import { setTokens } from '../token'
 
@@ -19,6 +20,8 @@ function AuthPanel() {
   const [warning, setWarning] = useState('')
   const [step, setStep] = useState('form') // 'form' | 'check-email'
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const turnstileRef = useRef(null)
 
   // Check URL parameters on component mount
   useEffect(() => {
@@ -103,12 +106,14 @@ function AuthPanel() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ email, password, username })
+                body: JSON.stringify({ email, password, username, captchaToken })
               })
               console.log('Signup response status:', res.status)
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
                 console.error('Signup error:', data)
+                turnstileRef.current?.reset()
+                setCaptchaToken(null)
                 if (res.status === 409) {
                   setWarning(data?.error || 'An account with this email already exists. Please sign in instead.')
                   return
@@ -122,12 +127,14 @@ function AuthPanel() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ email, password, remember })
+                body: JSON.stringify({ email, password, remember, captchaToken })
               })
               console.log('Signin response status:', res.status)
               if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
                 console.error('Signin error:', data)
+                turnstileRef.current?.reset()
+                setCaptchaToken(null)
                 throw new Error(data?.error || `Sign in failed (${res.status})`)
               }
               const data = await res.json().catch(() => ({}))
@@ -295,10 +302,12 @@ function AuthPanel() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ email })
+                    body: JSON.stringify({ email, captchaToken })
                   })
                   if (!res.ok) {
                     const data = await res.json().catch(() => ({}))
+                    turnstileRef.current?.reset()
+                    setCaptchaToken(null)
                     throw new Error(data?.error || 'Failed to send reset email')
                   }
                   setStep('check-email')
@@ -337,19 +346,30 @@ function AuthPanel() {
         )}
 
         {!forgotPasswordMode && (
-          <button
-            className="auth-panel__cta"
-            type="submit"
-            disabled={loading || (mode === 'signup' && step === 'check-email')}
-          >
-            {loading
-              ? 'Please wait...'
-              : mode === 'signin'
-                ? 'Sign In'
-                : step === 'check-email'
-                  ? 'Verification sent'
-                  : 'Create account'}
-          </button>
+          <>
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
+              options={{ theme: 'auto', size: 'normal' }}
+              style={{ marginBottom: '12px' }}
+            />
+            <button
+              className="auth-panel__cta"
+              type="submit"
+              disabled={loading || !captchaToken || (mode === 'signup' && step === 'check-email')}
+            >
+              {loading
+                ? 'Please wait...'
+                : mode === 'signin'
+                  ? 'Sign In'
+                  : step === 'check-email'
+                    ? 'Verification sent'
+                    : 'Create account'}
+            </button>
+          </>
         )}
 
         {warning && (
