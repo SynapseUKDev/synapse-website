@@ -1331,13 +1331,12 @@ export default function GroupPractice() {
       setSessionCorrect(prev => prev + (isCorrect ? 1 : 0))
       setSessionTotalMs(prev => prev + timeTaken)
 
-      // Submit to backend for tracking
+      // Submit to backend for tracking (is_correct is computed server-side, not sent from client)
       const payload = {
         question_id: questionId,
         selected_option_id: currentQuestion.type === 'MCQ' ? selected : undefined,
         text_answer: currentQuestion.type === 'SAQ' ? saqText : undefined,
         time_taken_ms: timeTaken,
-        is_correct: isCorrect
       }
 
       // Don't await this - let it happen in background
