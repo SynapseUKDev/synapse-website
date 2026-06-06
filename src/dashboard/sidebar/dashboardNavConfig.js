@@ -17,7 +17,7 @@ export function getDashboardNavItems(user) {
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
     { id: 'question-bank', label: 'Question Bank', icon: LuCircleHelp, to: '/dashboard/question-bank' },
     { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },
-    { id: 'osce', label: 'OSCE Stations', icon: LuStethoscope, to: '/dashboard/osce' },
+    { id: 'osce', label: 'OSCEs', icon: LuStethoscope, to: '/dashboard/osce' },
     { id: 'mock-exams', label: 'Mock exams', icon: LuTimer, to: '/dashboard/mock-exams' },
     { id: 'analytics', label: 'Analytics', icon: LuTrendingUp, to: '/dashboard/analytics' },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: LuShield, to: '/dashboard/admin' }] : []),
