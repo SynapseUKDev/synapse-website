@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { authHeaders } from '../../auth/token'
+import { authHeaders, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
 import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuArrowLeft, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuUsers } from 'react-icons/lu'
@@ -287,6 +287,14 @@ export default function GroupPractice() {
 
     socketRef.current = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
+      auth: { 
+        token: getAccessToken(),
+        refreshToken: getRefreshToken()
+      }
+    })
+
+    socketRef.current.on('token-refreshed', (data) => {
+      setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
     })
 
     socketRef.current.on('connect', () => {

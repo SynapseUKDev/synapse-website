@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext, useSearchParams, useParams } from 'react-router-dom'
 import { LuChevronLeft, LuUsers, LuCopy, LuCheck, LuCrown, LuUser, LuChevronDown } from 'react-icons/lu'
-import { authenticatedFetch } from '../../auth/token'
+import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import { io } from 'socket.io-client'
 import './Osce.css'
@@ -49,7 +49,17 @@ export default function OsceGroupSetup() {
       loadSession(paramRoomCode)
       
       const SOCKET_URL = API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, ':4000')
-      const s = io(SOCKET_URL, { transports: ['websocket', 'polling'] })
+      const s = io(SOCKET_URL, {
+        transports: ['websocket', 'polling'],
+        auth: { 
+          token: getAccessToken(),
+          refreshToken: getRefreshToken()
+        }
+      })
+      
+      s.on('token-refreshed', (data) => {
+        setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
+      })
       
       s.on('connect', () => {
         s.emit('join-osce-session', { 

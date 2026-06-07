@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { authHeaders, authenticatedFetch } from '../../auth/token'
+import { authHeaders, authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router-dom'
 import { LuChevronLeft, LuUsers, LuCopy, LuCheck, LuPlay, LuCrown, LuUser } from 'react-icons/lu'
 import './PracticeSetup.css'
@@ -85,6 +85,14 @@ export default function GroupStudySetup() {
 
     socketRef.current = io(SOCKET_URL, {
       transports: ['websocket', 'polling'], 
+      auth: { 
+        token: getAccessToken(),
+        refreshToken: getRefreshToken()
+      }
+    })
+
+    socketRef.current.on('token-refreshed', (data) => {
+      setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
     })
 
     socketRef.current.on('connect', () => {

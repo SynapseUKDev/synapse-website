@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft, LuChevronDown, LuPlay, LuPause, LuSquare, LuEye, LuEyeOff, LuMinus, LuPlus, LuRotateCcw } from 'react-icons/lu'
 import { io } from 'socket.io-client'
-import { authenticatedFetch } from '../../auth/token'
+import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import OsceBlockRenderer from './OsceBlockRenderer'
 import './Osce.css'
@@ -76,7 +76,17 @@ export default function OsceStationActive() {
   useEffect(() => {
     if (roomCode && user) {
       const SOCKET_URL = API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, ':4000')
-      const s = io(SOCKET_URL, { transports: ['websocket', 'polling'] })
+      const s = io(SOCKET_URL, {
+        transports: ['websocket', 'polling'],
+        auth: { 
+          token: getAccessToken(),
+          refreshToken: getRefreshToken()
+        }
+      })
+      
+      s.on('token-refreshed', (data) => {
+        setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
+      })
       
       s.on('connect', () => {
         s.emit('join-osce-session', { 
