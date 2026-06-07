@@ -106,16 +106,10 @@ export default function GroupStudySetup() {
           setSelectedSpecialtyId(qSpecialtyId)
           await fetchTopicsList(qSpecialtyId, searchParams.get('topic_ids'))
         } else {
-          // Default selection if no search query
+          // Default selection if no search query (keep empty so it's disabled at first)
           setSessionSource('set')
-          if (sets.length > 0) {
-            setSelectedStudySetId(sets[0].id)
-            await fetchSetDetails(sets[0].id)
-          } else if (specs.length > 0) {
-            setSessionSource('specialty')
-            setSelectedSpecialtyId(specs[0].id)
-            await fetchTopicsList(specs[0].id)
-          }
+          setSelectedStudySetId('')
+          setSelectedSpecialtyId('')
         }
       } catch (err) {
         console.error('Error loading group session setup data:', err)
@@ -199,6 +193,7 @@ export default function GroupStudySetup() {
   }
 
   const getSpecialtyQuestionsCount = () => {
+    if (!selectedSpecialtyId || selectedTopics.size === 0) return 0
     if (includeIncorrect && !includeAttempted) {
       return topics
         .filter(t => selectedTopics.has(t.id))
@@ -210,7 +205,7 @@ export default function GroupStudySetup() {
   }
 
   const getStudySetQuestionsCount = () => {
-    if (!studySetData) return 0
+    if (!selectedStudySetId || !studySetData) return 0
     if (includeIncorrect && !includeAttempted) {
       return (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
     }
@@ -223,6 +218,10 @@ export default function GroupStudySetup() {
   const maxQuestions = totalAvailable
   const stepperMin = totalAvailable > 0 ? 1 : 0
   const isDisabled = totalAvailable === 0
+
+  const isCreateDisabled = sessionSource === 'set'
+    ? (!selectedStudySetId || totalAvailable === 0)
+    : (!selectedSpecialtyId || selectedTopics.size === 0 || totalAvailable === 0)
 
   useEffect(() => {
     if (mode === 'join') return
@@ -625,24 +624,11 @@ export default function GroupStudySetup() {
                 </h2>
                 <p className="setup__section-subtitle">Choose how questions are selected for your group study session</p>
 
-                <div className="qb-segmented-control" style={{ display: 'flex', gap: '12px', marginTop: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                <div className="qb-segmented-control">
                   <button
                     type="button"
                     className={`qb-segmented-btn ${sessionSource === 'set' ? 'active' : ''}`}
                     onClick={() => setSessionSource('set')}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      fontWeight: 600,
-                      background: sessionSource === 'set' ? 'var(--primary-color, #0ea5e9)' : 'transparent',
-                      color: sessionSource === 'set' ? '#fff' : 'var(--text-color)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
                   >
                     <LuBookOpen size={16} />
                     Custom Study Set
@@ -651,19 +637,6 @@ export default function GroupStudySetup() {
                     type="button"
                     className={`qb-segmented-btn ${sessionSource === 'specialty' ? 'active' : ''}`}
                     onClick={() => setSessionSource('specialty')}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      fontWeight: 600,
-                      background: sessionSource === 'specialty' ? 'var(--primary-color, #0ea5e9)' : 'transparent',
-                      color: sessionSource === 'specialty' ? '#fff' : 'var(--text-color)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
                   >
                     <LuLayers size={16} />
                     Specialty & Topics
@@ -680,26 +653,13 @@ export default function GroupStudySetup() {
                         className="setup__select"
                         value={selectedStudySetId}
                         onChange={(e) => handleStudySetChange(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--border-color)',
-                          background: 'var(--card-bg)',
-                          color: 'var(--text-color)',
-                          fontSize: '16px',
-                          outline: 'none'
-                        }}
                       >
-                        {studySets.length === 0 ? (
-                          <option value="">No custom study sets found</option>
-                        ) : (
-                          studySets.map(s => (
-                            <option key={s.id} value={s.id}>
-                              {s.name} ({s.total_questions} questions)
-                            </option>
-                          ))
-                        )}
+                        <option value="">Select a study set...</option>
+                        {studySets.map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.item_count} {s.item_count === 1 ? 'item' : 'items'})
+                          </option>
+                        ))}
                       </select>
                     </div>
                   ) : (
@@ -711,46 +671,33 @@ export default function GroupStudySetup() {
                         className="setup__select"
                         value={selectedSpecialtyId}
                         onChange={(e) => handleSpecialtyChange(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--border-color)',
-                          background: 'var(--card-bg)',
-                          color: 'var(--text-color)',
-                          fontSize: '16px',
-                          outline: 'none',
-                          marginBottom: '20px'
-                        }}
+                        style={{ marginBottom: '20px' }}
                       >
-                        {specialties.length === 0 ? (
-                          <option value="">No specialties found</option>
-                        ) : (
-                          specialties.map(s => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))
-                        )}
+                        <option value="">Select a specialty...</option>
+                        {specialties.map(s => (
+                          <option key={s.specialty_id} value={s.specialty_id}>
+                            {s.specialty_name}
+                          </option>
+                        ))}
                       </select>
 
                       {selectedSpecialtyId && (
                         <div className="setup__topics-list" style={{ marginTop: '16px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <span style={{ fontWeight: 600 }}>Select Topics ({selectedTopics.size} / {topics.length})</span>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                          <div className="setup__topics-header">
+                            <span className="setup__topics-title">Select Topics ({selectedTopics.size} / {topics.length})</span>
+                            <div className="setup__topics-actions">
                               <button
                                 type="button"
                                 onClick={() => setSelectedTopics(new Set(topics.map(t => t.id)))}
-                                style={{ border: 'none', background: 'transparent', color: 'var(--primary-color, #0ea5e9)', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                                className="setup__topics-action-btn"
                               >
                                 Select All
                               </button>
-                              <span style={{ color: 'var(--border-color)' }}>|</span>
+                              <span className="setup__topics-divider">|</span>
                               <button
                                 type="button"
                                 onClick={() => setSelectedTopics(new Set())}
-                                style={{ border: 'none', background: 'transparent', color: 'var(--text-muted, #64748b)', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                                className="setup__topics-action-btn setup__topics-action-btn--deselect"
                               >
                                 Deselect All
                               </button>
@@ -760,34 +707,13 @@ export default function GroupStudySetup() {
                           {topicsLoading ? (
                             <div style={{ padding: '16px 0', color: 'var(--text-muted)' }}>Loading topics...</div>
                           ) : (
-                            <div className="topics-grid" style={{
-                              display: 'grid',
-                              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                              gap: '12px',
-                              maxHeight: '280px',
-                              overflowY: 'auto',
-                              padding: '4px',
-                              border: '1px solid var(--border-color)',
-                              borderRadius: '8px',
-                              backgroundColor: 'var(--card-bg-alt, rgba(0,0,0,0.02))'
-                            }}>
+                            <div className="topics-grid">
                               {topics.map(t => {
                                 const isChecked = selectedTopics.has(t.id)
                                 return (
                                   <label
                                     key={t.id}
                                     className={`topic-checkbox-label ${isChecked ? 'checked' : ''}`}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '10px',
-                                      padding: '8px 12px',
-                                      borderRadius: '6px',
-                                      cursor: 'pointer',
-                                      border: isChecked ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid var(--border-color)',
-                                      backgroundColor: isChecked ? 'rgba(14, 165, 233, 0.05)' : 'transparent',
-                                      transition: 'all 0.15s ease'
-                                    }}
                                   >
                                     <input
                                       type="checkbox"
@@ -803,7 +729,7 @@ export default function GroupStudySetup() {
                                     <div style={{ flex: 1, fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                       {t.name}
                                     </div>
-                                    <span style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)' }}>
+                                    <span style={{ fontSize: '12px', color: 'var(--syn-muted)' }}>
                                       ({includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)})
                                     </span>
                                   </label>
@@ -818,23 +744,7 @@ export default function GroupStudySetup() {
                 </div>
               </div>
 
-              {/* Create session actions */}
-              <div className="setup__section">
-                <h2 className="setup__section-title">Create Session</h2>
-                <p className="setup__section-subtitle">Configure your settings below and create a new group session</p>
-                
-                <div className="group-create" style={{ marginTop: 24 }}>
-                  <button 
-                    className="group-create__btn"
-                    onClick={createSession}
-                    disabled={isDisabled}
-                  >
-                    <LuUsers size={20} />
-                    Create New Session
-                  </button>
-                  <p className="group-create__hint">You'll be the host and can invite others with a room code</p>
-                </div>
-              </div>
+              {/* Create session card removed - Moved button to sidebar */}
 
               {/* Question Settings - Only show if creating (not join mode) */}
               <div className="setup__section">
@@ -989,6 +899,16 @@ export default function GroupStudySetup() {
               </div>
 
               <div className="setup__summary-divider"></div>
+
+              <button 
+                className="setup__start-btn"
+                onClick={createSession}
+                disabled={isCreateDisabled}
+                style={{ marginBottom: '16px' }}
+              >
+                <LuUsers size={20} />
+                Create Group Session
+              </button>
 
               <div className="group-summary-hint">
                 <LuUsers size={16} />
