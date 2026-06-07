@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useOutletContext } from 'react-router-dom'
-import { authHeaders } from '../auth/token'
-import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon } from 'react-icons/lu'
+import { useOutletContext, useNavigate } from 'react-router-dom'
+import { authHeaders, clearTokens } from '../auth/token'
+import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuTrash2, LuLoader } from 'react-icons/lu'
 import { getStoredPreference, setPreference } from '../theme'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
@@ -9,6 +9,7 @@ import LoadingScreen from '../components/loading/LoadingScreen'
 
 export default function Settings() {
   const { user } = useOutletContext()
+  const navigate = useNavigate()
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
   const [loading, setLoading] = useState(true)
@@ -21,6 +22,49 @@ export default function Settings() {
   const [targetMessage, setTargetMessage] = useState({ type: '', text: '' })
   const [portalLoading, setPortalLoading] = useState(false)
   const [appearance, setAppearance] = useState(() => getStoredPreference())
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteUnderstand, setDeleteUnderstand] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
+  useEffect(() => {
+    if (!deleteModalOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [deleteModalOpen])
+
+  const handleDeleteAccount = async (e) => {
+    e?.preventDefault()
+    if (deleteConfirmText.toLowerCase() !== 'delete my account' || !deleteUnderstand || deleting) return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      const res = await fetch(`${API_BASE}/me`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { ...authHeaders() }
+      })
+      if (res.ok) {
+        clearTokens()
+        window.dispatchEvent(new Event('auth:changed'))
+        setDeleteModalOpen(false)
+        navigate('/', { replace: true })
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setDeleteError(json?.error || 'Failed to delete account. Please try again.')
+        setDeleting(false)
+      }
+    } catch (err) {
+      console.error(err)
+      setDeleteError('A connection error occurred. Please check your internet and try again.')
+      setDeleting(false)
+    }
+  }
 
   const fetchData = useCallback(async () => {
     try {
@@ -231,7 +275,7 @@ export default function Settings() {
                 style={{ width: '100%' }}
               />
             </div>
-            
+
             <div style={{ marginTop: 20 }}>
               <button type="submit" className="qb-btn qb-btn--sm" style={{ width: 'auto' }} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Changes'}
@@ -292,7 +336,7 @@ export default function Settings() {
                 Set your personal daily targets to track your progress on the dashboard.
               </p>
             </div>
-            
+
             <div style={{ marginTop: 20 }}>
               <button type="submit" className="qb-btn qb-btn--sm" style={{ width: 'auto' }} disabled={savingTargets}>
                 {savingTargets ? 'Saving...' : 'Update Goals'}
@@ -375,7 +419,140 @@ export default function Settings() {
             )}
           </div>
         </div>
+
+        {/* Delete Account (Danger Zone) card */}
+        <div className="qb-card settings-danger-card">
+          <div className="qb-card__head">
+            <div className="qb-card__titlewrap">
+              <div className="qb-card__icon settings-danger-icon">
+                <LuTrash2 size={20} />
+              </div>
+              <div>
+                <div className="qb-card__title">Delete Account</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+            <p style={{ fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5, flex: 1 }}>
+              Permanently delete your account and all associated data, including progress history, subscription details, and mock attempts. This action is irreversible.
+            </p>
+            <div>
+              <button
+                type="button"
+                className="qb-btn qb-btn--sm qb-btn--danger"
+                style={{ marginTop: 8, width: 'auto' }}
+                onClick={() => {
+                  setDeleteConfirmText('')
+                  setDeleteUnderstand(false)
+                  setDeleteError('')
+                  setDeleteModalOpen(true)
+                }}
+              >
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Account Deletion Confirmation Modal */}
+      {deleteModalOpen && (
+        <div className="delete-confirm-overlay">
+          <div className="delete-confirm-backdrop" onClick={() => !deleting && setDeleteModalOpen(false)} />
+          <div className="delete-confirm-container">
+            <div className="delete-confirm-card">
+              <div className="delete-confirm-icon-wrapper">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <h2 className="delete-confirm-title">Permanently Delete Account?</h2>
+
+              <p className="delete-confirm-text">
+                This action is <strong>irreversible</strong> and will permanently wipe:
+                <span style={{ display: 'block', margin: '8px 0 0 12px', lineHeight: '1.6' }}>
+                  • Your user profile and login credentials<br />
+                  • Active Stripe subscriptions (billing will cease)<br />
+                  • Question attempts, reading history, & progress stats<br />
+                  • Highlights, study sets, & exam mock attempts
+                </span>
+              </p>
+
+              <form onSubmit={handleDeleteAccount} className="delete-confirm-form">
+                {deleteError && (
+                  <div className="consent-modal-error-box" style={{ margin: '0 0 4px 0' }}>
+                    <span>{deleteError}</span>
+                  </div>
+                )}
+
+                <div className="delete-confirm-field">
+                  <label className="delete-confirm-input-label">
+                    To confirm, type <strong>delete my account</strong> below:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="delete my account"
+                    className="delete-confirm-input"
+                    disabled={deleting}
+                    autoFocus
+                  />
+                </div>
+
+                <label className={`delete-confirm-checkbox-label ${deleteUnderstand ? 'is-checked' : ''}`}>
+                  <div className="delete-confirm-checkbox-wrapper">
+                    <input
+                      type="checkbox"
+                      checked={deleteUnderstand}
+                      onChange={(e) => setDeleteUnderstand(e.target.checked)}
+                      disabled={deleting}
+                      className="delete-confirm-hidden-checkbox"
+                    />
+                    <div className="delete-confirm-custom-checkbox">
+                      {deleteUnderstand && (
+                        <svg className="delete-confirm-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="delete-confirm-checkbox-text">
+                    I understand that my subscriptions will be cancelled immediately and all my data will be permanently deleted.
+                  </span>
+                </label>
+
+                <div className="delete-confirm-actions">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalOpen(false)}
+                    disabled={deleting}
+                    className="delete-confirm-btn-cancel"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={deleteConfirmText.toLowerCase() !== 'delete my account' || !deleteUnderstand || deleting}
+                    className="delete-confirm-btn-danger"
+                  >
+                    {deleting ? (
+                      <>
+                        <LuLoader className="consent-modal-spinner" size={16} />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete Account'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
