@@ -31,8 +31,37 @@ function Footer() {
 
           <p className="footer__opt">Opt-out at any time</p>
 
+          <div className="footer__legal">
+            <a
+              href="https://www.synapseuk.org/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer__legal-link"
+            >
+              Privacy Policy
+            </a>
+            <span className="footer__legal-sep">·</span>
+            <a
+              href="https://www.synapseuk.org/terms-and-conditions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer__legal-link"
+            >
+              Terms &amp; Conditions
+            </a>
+            <span className="footer__legal-sep">·</span>
+            <a
+              href="https://www.synapseuk.org/safeguarding"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer__legal-link"
+            >
+              Safeguarding
+            </a>
+          </div>
+
           <div className="footer__copy">
-            © 2025 SynapseUK Ltd. All rights reserved. SynapseUK® is a registered trademark.
+            © 2025 SynapseUK Ltd · ICO Reg: ZB907329 · All rights reserved.
           </div>
         </div>
       </div>

@@ -81,6 +81,33 @@
 
 .footer__copy { color: #aeb6f0; margin-top: 6px; font-size: 0.92rem; }
 
+.footer__legal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 4px;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.footer__legal-link {
+  color: #b9c2f8;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.footer__legal-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.footer__legal-sep {
+  color: #555d9b;
+  font-size: 0.88rem;
+  user-select: none;
+}
+
 @media (min-width: 900px) {
   .footer__container {
     grid-template-columns: 260px 1fr;

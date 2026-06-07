@@ -15,6 +15,7 @@ function AuthPanel() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [username, setUsername] = useState('')
   const [remember, setRemember] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
@@ -106,7 +107,7 @@ function AuthPanel() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ email, password, username, captchaToken })
+                body: JSON.stringify({ email, password, username, captchaToken, termsAccepted })
               })
               console.log('Signup response status:', res.status)
               if (!res.ok) {
@@ -345,6 +346,38 @@ function AuthPanel() {
           </>
         )}
 
+        {!forgotPasswordMode && mode === 'signup' && (
+          <label className="auth-panel__consent" id="terms-consent-label">
+            <input
+              type="checkbox"
+              id="terms-consent"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              required
+            />
+            <span>
+              I agree to the{' '}
+              <a
+                href="https://www.synapseuk.org/terms-and-conditions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="auth-panel__consent-link"
+              >
+                Terms &amp; Conditions
+              </a>
+              {' '}and have read the{' '}
+              <a
+                href="https://www.synapseuk.org/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="auth-panel__consent-link"
+              >
+                Privacy Policy
+              </a>
+            </span>
+          </label>
+        )}
+
         {!forgotPasswordMode && (
           <>
             <Turnstile
@@ -359,7 +392,7 @@ function AuthPanel() {
             <button
               className="auth-panel__cta"
               type="submit"
-              disabled={loading || !captchaToken || (mode === 'signup' && step === 'check-email')}
+              disabled={loading || !captchaToken || (mode === 'signup' && (!termsAccepted || step === 'check-email'))}
             >
               {loading
                 ? 'Please wait...'

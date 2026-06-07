@@ -304,3 +304,36 @@
   background: #FFEDEE;
   border-color: #FFC8CD;
 }
+
+/* Consent checkbox (sign-up) */
+.auth-panel__consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: #4b5673;
+  line-height: 1.5;
+  cursor: pointer;
+  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+.auth-panel__consent input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #1B4DE7;
+  cursor: pointer;
+}
+
+.auth-panel__consent-link {
+  color: #1B4DE7;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.auth-panel__consent-link:hover {
+  color: #061A86;
+}
