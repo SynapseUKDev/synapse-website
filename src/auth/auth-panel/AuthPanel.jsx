@@ -407,7 +407,7 @@ function AuthPanel() {
             <button
               className="auth-panel__cta"
               type="submit"
-              disabled={loading || !captchaToken || (mode === 'signup' && (!termsAccepted || step === 'check-email'))}
+              disabled={loading || !captchaToken || (mode === 'signup' && step === 'check-email')}
             >
               {loading
                 ? 'Please wait...'
