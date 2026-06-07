@@ -12,18 +12,18 @@ export default function GroupStudySetup() {
   const { user } = useOutletContext()
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode') // 'join' or null (create mode)
-  
+
   const [loading, setLoading] = useState(true)
   const [studySetData, setStudySetData] = useState(null)
-  
+
   // Question source choices
   const [sessionSource, setSessionSource] = useState('set') // 'set' or 'specialty'
-  
+
   // Lists
   const [studySets, setStudySets] = useState([])
   const [specialties, setSpecialties] = useState([])
   const [topics, setTopics] = useState([])
-  
+
   // Selections
   const [selectedStudySetId, setSelectedStudySetId] = useState('')
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState('')
@@ -36,7 +36,7 @@ export default function GroupStudySetup() {
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [includeAttempted, setIncludeAttempted] = useState(false)
   const [includeIncorrect, setIncludeIncorrect] = useState(false)
-  
+
   // Group session state
   const [roomCode, setRoomCode] = useState('')
   const [isHost, setIsHost] = useState(false)
@@ -45,7 +45,7 @@ export default function GroupStudySetup() {
   const [copied, setCopied] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
-  
+
   const socketRef = useRef(null)
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   const SOCKET_URL = API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, ':4000')
@@ -59,7 +59,7 @@ export default function GroupStudySetup() {
     const loadInitialData = async () => {
       try {
         setLoading(true)
-        
+
         // Fetch custom study sets and specialties
         const [setsRes, specsRes] = await Promise.all([
           authenticatedFetch(`${API_BASE}/qbank/sets`, { headers: authHeaders() }),
@@ -126,7 +126,7 @@ export default function GroupStudySetup() {
     if (sessionCreated && roomCode) {
       connectSocket()
     }
-    
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect()
@@ -237,8 +237,8 @@ export default function GroupStudySetup() {
     const username = user.username || user.email || 'Anonymous'
 
     socketRef.current = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'], 
-      auth: { 
+      transports: ['websocket', 'polling'],
+      auth: {
         token: getAccessToken(),
         refreshToken: getRefreshToken()
       }
@@ -287,11 +287,11 @@ export default function GroupStudySetup() {
       if (data.study_set_id) {
         params.append('study_set_id', data.study_set_id)
       }
-      
+
       if (data.timer_end_time) {
         sessionStorage.setItem('group_timer_end', data.timer_end_time.toString())
       }
-      
+
       navigate(`/dashboard/question-bank/group-practice?${params.toString()}`)
     })
 
@@ -342,13 +342,13 @@ export default function GroupStudySetup() {
         },
         body: JSON.stringify(body)
       })
-      
+
       if (!res.ok) throw new Error('Failed to create session')
       const data = await res.json()
-      
+
       setRoomCode(data.room_code)
       setIsHost(true)
-      
+
       setParticipants([{ id: data.host_id, name: data.host_name, is_host: true }])
       setSessionCreated(true)
 
@@ -364,7 +364,7 @@ export default function GroupStudySetup() {
       alert('Please enter a room code')
       return
     }
-    
+
     try {
       setIsJoining(true)
       const res = await authenticatedFetch(`${API_BASE}/qbank/group-session/join`, {
@@ -378,13 +378,13 @@ export default function GroupStudySetup() {
           room_code: joinCode.toUpperCase()
         })
       })
-      
+
       if (!res.ok) {
         const error = await res.json()
         throw new Error(error.error || error.message || 'Failed to join session')
       }
       const data = await res.json()
-      
+
       if (data.status === 'active') {
         const params = new URLSearchParams({
           room_code: joinCode.toUpperCase(),
@@ -400,7 +400,7 @@ export default function GroupStudySetup() {
         navigate(`/dashboard/question-bank/group-practice?${params.toString()}`)
         return
       }
-      
+
       setRoomCode(joinCode.toUpperCase())
       setSessionCreated(true)
       setParticipants(data.participants || [])
@@ -450,7 +450,7 @@ export default function GroupStudySetup() {
     return (
       <div className="setup">
         <div className="setup__header">
-          <button 
+          <button
             className="setup__back"
             onClick={() => navigate('/dashboard/question-bank')}
           >
@@ -484,7 +484,7 @@ export default function GroupStudySetup() {
                 <div className="room-code__label">Room Code</div>
                 <div className="room-code__display">
                   <span className="room-code__text">{roomCode}</span>
-                  <button 
+                  <button
                     className="room-code__copy"
                     onClick={copyRoomCode}
                     title="Copy room code"
@@ -517,7 +517,7 @@ export default function GroupStudySetup() {
               </div>
 
               {isHost && (
-                <button 
+                <button
                   className="setup__start-btn"
                   onClick={startGroupSession}
                   disabled={participants.length < 1}
@@ -532,17 +532,17 @@ export default function GroupStudySetup() {
           <div className="group-waiting__sidebar">
             <div className="setup__summary">
               <h3 className="setup__summary-title">Session Details</h3>
-              
+
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Question Source:</div>
                 <div className="setup__summary-value">{studySetData?.name}</div>
               </div>
-              
+
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Questions:</div>
                 <div className="setup__summary-value">{numQuestions}</div>
               </div>
-              
+
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Time Limit:</div>
                 <div className="setup__summary-value">
@@ -565,7 +565,7 @@ export default function GroupStudySetup() {
   return (
     <div className="setup">
       <div className="setup__header">
-        <button 
+        <button
           className="setup__back"
           onClick={() => navigate('/dashboard/question-bank')}
         >
@@ -591,7 +591,7 @@ export default function GroupStudySetup() {
             <div className="setup__section">
               <h2 className="setup__section-title">Enter Room Code</h2>
               <p className="setup__section-subtitle">Get the 6-character code from your study group host</p>
-              
+
               <div className="group-join" style={{ marginTop: 24 }}>
                 <div className="group-join__input-group">
                   <input
@@ -604,7 +604,7 @@ export default function GroupStudySetup() {
                     maxLength={6}
                     autoFocus
                   />
-                  <button 
+                  <button
                     className="group-join__btn"
                     onClick={joinSession}
                     disabled={!joinCode.trim() || isJoining}
@@ -759,7 +759,7 @@ export default function GroupStudySetup() {
                       </label>
                       <div className="setup__qty">
                         <div className="qty__control">
-                          <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={()=> setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
+                          <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={() => setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
                           <input
                             type="number"
                             className="qty__input"
@@ -767,60 +767,60 @@ export default function GroupStudySetup() {
                             min={stepperMin}
                             max={maxQuestions}
                             disabled={isDisabled}
-                            onChange={(e)=>{
+                            onChange={(e) => {
                               const v = parseInt(e.target.value || '0', 10)
                               if (Number.isNaN(v)) return
                               setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
                             }}
                           />
-                          <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={()=> setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
+                          <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={() => setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
                         </div>
                         <div className="qty__chips">
-                          {[10,25,50,100].filter(n => n <= maxQuestions).map(n => (
-                            <button key={n} className={`chip ${numQuestions===n ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(n)}>{n}</button>
+                          {[10, 25, 50, 100].filter(n => n <= maxQuestions).map(n => (
+                            <button key={n} className={`chip ${numQuestions === n ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(n)}>{n}</button>
                           ))}
-                          <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
+                          <button className={`chip ${numQuestions === maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(maxQuestions)}>Max</button>
                         </div>
                       </div>
                       {!includeIncorrect && (
-                      <div className="setup__toggle-row" style={{ marginTop: 20 }}>
-                        <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
-                        <div className="setup__toggle-container">
-                          <input
-                            type="checkbox"
-                            id="include-toggle"
-                            checked={includeAttempted}
-                            onChange={(e) => {
-                              const v = e.target.checked
-                              if (v) setIncludeIncorrect(false)
-                              setIncludeAttempted(v)
-                            }}
-                            className="setup__toggle-input"
-                          />
-                          <label htmlFor="include-toggle" className="setup__toggle-slider"></label>
+                        <div className="setup__toggle-row" style={{ marginTop: 20 }}>
+                          <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
+                          <div className="setup__toggle-container">
+                            <input
+                              type="checkbox"
+                              id="include-toggle"
+                              checked={includeAttempted}
+                              onChange={(e) => {
+                                const v = e.target.checked
+                                if (v) setIncludeIncorrect(false)
+                                setIncludeAttempted(v)
+                              }}
+                              className="setup__toggle-input"
+                            />
+                            <label htmlFor="include-toggle" className="setup__toggle-slider"></label>
+                          </div>
+                          <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
                         </div>
-                        <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
-                      </div>
                       )}
                       {!includeAttempted && (
-                      <div className="setup__toggle-row" style={{ marginTop: 20 }}>
-                        <label htmlFor="g-incorrect-toggle" className="setup__toggle-label">Include incorrectly answered (host)</label>
-                        <div className="setup__toggle-container">
-                          <input
-                            type="checkbox"
-                            id="g-incorrect-toggle"
-                            checked={includeIncorrect}
-                            onChange={(e) => setIncludeIncorrect(e.target.checked)}
-                            className="setup__toggle-input"
-                          />
-                          <label htmlFor="g-incorrect-toggle" className="setup__toggle-slider"></label>
+                        <div className="setup__toggle-row" style={{ marginTop: 20 }}>
+                          <label htmlFor="g-incorrect-toggle" className="setup__toggle-label">Include incorrectly answered (host)</label>
+                          <div className="setup__toggle-container">
+                            <input
+                              type="checkbox"
+                              id="g-incorrect-toggle"
+                              checked={includeIncorrect}
+                              onChange={(e) => setIncludeIncorrect(e.target.checked)}
+                              className="setup__toggle-input"
+                            />
+                            <label htmlFor="g-incorrect-toggle" className="setup__toggle-slider"></label>
+                          </div>
+                          <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeIncorrect ? 'On' : 'Off'}</span>
                         </div>
-                        <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeIncorrect ? 'On' : 'Off'}</span>
-                      </div>
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="qs-col">
                     <div className="setup__setting">
                       <div className="setup__toggle-row">
@@ -851,7 +851,7 @@ export default function GroupStudySetup() {
                             value={timerMinutes}
                             onChange={(e) => setTimerMinutes(parseInt(e.target.value))}
                             className={`setup__slider ${!timerEnabled ? 'setup__slider--disabled' : ''}`}
-                            style={{'--progress': `${updateSliderProgress(timerMinutes, 10, 120)}%`}}
+                            style={{ '--progress': `${updateSliderProgress(timerMinutes, 10, 120)}%` }}
                             disabled={!timerEnabled}
                           />
                           <div className="setup__slider-labels-new">
@@ -873,24 +873,24 @@ export default function GroupStudySetup() {
           <div className="setup__sidebar">
             <div className="setup__summary">
               <h3 className="setup__summary-title">Session Summary</h3>
-              
+
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Type:</div>
                 <div className="setup__summary-value">Group Study</div>
               </div>
-              
+
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Question Source:</div>
                 <div className="setup__summary-value" style={{ maxWidth: '180px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                   {getSessionDisplayName()}
                 </div>
               </div>
-              
+
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Questions:</div>
                 <div className="setup__summary-value">{numQuestions}</div>
               </div>
-              
+
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Time:</div>
                 <div className="setup__summary-value">
@@ -900,20 +900,14 @@ export default function GroupStudySetup() {
 
               <div className="setup__summary-divider"></div>
 
-              <button 
+              <button
                 className="setup__start-btn"
                 onClick={createSession}
                 disabled={isCreateDisabled}
-                style={{ marginBottom: '16px' }}
               >
                 <LuUsers size={20} />
                 Create Group Session
               </button>
-
-              <div className="group-summary-hint">
-                <LuUsers size={16} />
-                <span>Configure settings above, then create a session to invite others</span>
-              </div>
             </div>
           </div>
         )}
