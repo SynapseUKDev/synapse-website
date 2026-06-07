@@ -555,7 +555,7 @@
 .db-friends__collapse-toggle {
   font-size: 12px;
   font-weight: 800;
-  color: #0ea5b5;
+  color: var(--syn-cyan);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

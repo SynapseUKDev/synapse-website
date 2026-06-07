@@ -475,6 +475,33 @@ html[data-theme="dark"] .db-select {
   background-position: right 12px center;
 }
 
+html[data-theme="dark"] .db-friends__collapsible-header {
+  background: var(--dm-surface-container-low);
+  border-color: var(--syn-border);
+}
+
+html[data-theme="dark"] .db-friends__collapsible-header:hover {
+  background: var(--dm-surface-container-high);
+  border-color: var(--dm-outline);
+}
+
+html[data-theme="dark"] .db-leaderboard__toggle-btn:hover {
+  background: var(--dm-surface-container-high);
+  border-color: var(--dm-secondary);
+  color: var(--dm-secondary);
+}
+
+html[data-theme="dark"] .db-list__item--friend {
+  background: rgba(78, 222, 163, 0.1);
+  border-color: rgba(78, 222, 163, 0.3);
+}
+
+html[data-theme="dark"] .db-friend-badge {
+  background: rgba(78, 222, 163, 0.15);
+  border-color: rgba(78, 222, 163, 0.35);
+  color: var(--dm-secondary);
+}
+
 /* Dashboard stats: first icon yellow, others bright red; white icon box outline */
 html[data-theme="dark"] .db-stats > .qb-stat:nth-child(1) .qb-stat__icon {
   background: rgba(255, 225, 80, 0.12);
