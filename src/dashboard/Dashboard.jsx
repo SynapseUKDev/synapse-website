@@ -84,6 +84,8 @@ export default function Dashboard() {
   const [isEditingTargets, setIsEditingTargets] = useState(null) // 'time' | 'questions' | null
   const [tempTargets, setTempTargets] = useState({ questions: 30, time_minutes: 180 })
   const editRef = useRef(null)
+  const [isLeaderboardExpanded, setIsLeaderboardExpanded] = useState(false)
+  const [isFriendsListExpanded, setIsFriendsListExpanded] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -516,47 +518,62 @@ export default function Dashboard() {
                         }
                       })
 
-                      return sorted.map((entry, index) => {
-                        const isCurrentUser = entry.user_id === user?.id
-                        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
+                      const displayed = isLeaderboardExpanded ? sorted : sorted.slice(0, 3)
 
-                        // Determine what to show on the right based on sort
-                        let scoreValue, scoreLabel
-                        if (sortBy === 'accuracy_pct') {
-                          scoreValue = entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'
-                          scoreLabel = 'accuracy'
-                        } else if (sortBy === 'correct') {
-                          scoreValue = entry.correct || 0
-                          scoreLabel = 'correct'
-                        } else {
-                          scoreValue = entry.total_answered || 0
-                          scoreLabel = 'total'
-                        }
+                      return (
+                        <>
+                          {displayed.map((entry, index) => {
+                            const isCurrentUser = entry.user_id === user?.id
+                            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
 
-                        return (
-                          <div
-                            key={entry.user_id}
-                            className={`db-leaderboard__item ${isCurrentUser ? 'db-leaderboard__item--self' : ''}`}
-                          >
-                            <div className="db-leaderboard__rank">
-                              {medal || `#${index + 1}`}
-                            </div>
-                            <div className="db-leaderboard__user">
-                              <div className="db-leaderboard__username">
-                                {entry.username || entry.email?.split('@')[0] || 'User'}
-                                {isCurrentUser && <span className="db-leaderboard__you">(You)</span>}
+                            // Determine what to show on the right based on sort
+                            let scoreValue, scoreLabel
+                            if (sortBy === 'accuracy_pct') {
+                              scoreValue = entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'
+                              scoreLabel = 'accuracy'
+                            } else if (sortBy === 'correct') {
+                              scoreValue = entry.correct || 0
+                              scoreLabel = 'correct'
+                            } else {
+                              scoreValue = entry.total_answered || 0
+                              scoreLabel = 'total'
+                            }
+
+                            return (
+                              <div
+                                key={entry.user_id}
+                                className={`db-leaderboard__item ${isCurrentUser ? 'db-leaderboard__item--self' : ''}`}
+                              >
+                                <div className="db-leaderboard__rank">
+                                  {medal || `#${index + 1}`}
+                                </div>
+                                <div className="db-leaderboard__user">
+                                  <div className="db-leaderboard__username">
+                                    {entry.username || entry.email?.split('@')[0] || 'User'}
+                                    {isCurrentUser && <span className="db-leaderboard__you">(You)</span>}
+                                  </div>
+                                  <div className="db-leaderboard__stats">
+                                    {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
+                                  </div>
+                                </div>
+                                <div className="db-leaderboard__score">
+                                  <div className="db-leaderboard__score-num">{scoreValue}</div>
+                                  <div className="db-leaderboard__score-label">{scoreLabel}</div>
+                                </div>
                               </div>
-                              <div className="db-leaderboard__stats">
-                                {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
-                              </div>
-                            </div>
-                            <div className="db-leaderboard__score">
-                              <div className="db-leaderboard__score-num">{scoreValue}</div>
-                              <div className="db-leaderboard__score-label">{scoreLabel}</div>
-                            </div>
-                          </div>
-                        )
-                      })
+                            )
+                          })}
+                          {sorted.length > 3 && (
+                            <button
+                              type="button"
+                              className="db-leaderboard__toggle-btn"
+                              onClick={() => setIsLeaderboardExpanded(!isLeaderboardExpanded)}
+                            >
+                              {isLeaderboardExpanded ? 'Show Less' : `Show More (${sorted.length - 3} more)`}
+                            </button>
+                          )}
+                        </>
+                      )
                     })()}
                   </div>
                 )}
@@ -616,6 +633,11 @@ export default function Dashboard() {
               <div className="db-friends__title">
                 <LuUserPlus size={18} />
                 Friends
+                {friendRequests.inbox?.length > 0 && (
+                  <span className="db-friends__notification-dot" title={`${friendRequests.inbox.length} pending friend request(s)`}>
+                    {friendRequests.inbox.length}
+                  </span>
+                )}
               </div>
             </div>
             <div className="db-friends__content">
@@ -633,6 +655,11 @@ export default function Dashboard() {
                   onClick={() => setFriendsTab('requests')}
                 >
                   Requests
+                  {friendRequests.inbox?.length > 0 && (
+                    <span className="db-friends__tab-badge">
+                      {friendRequests.inbox.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -658,87 +685,101 @@ export default function Dashboard() {
                 </button>
               </form>
 
-              <div className="db-friends__divider" />
+              <div
+                className="db-friends__collapsible-header"
+                onClick={() => setIsFriendsListExpanded(!isFriendsListExpanded)}
+              >
+                <div className="db-subheading" style={{ marginBottom: 0 }}>
+                  {friendsTab === 'friends'
+                    ? `Your friends (${friendsLoading ? '...' : friends.length})`
+                    : `Pending Requests (${requestsLoading ? '...' : (friendRequests.inbox?.length || 0) + (friendRequests.outbox?.length || 0)})`}
+                </div>
+                <span className="db-friends__collapse-toggle">
+                  {isFriendsListExpanded ? 'Hide List' : 'Show List'}
+                </span>
+              </div>
 
-              {friendsTab === 'friends' && (
-                <>
-                  <div className="db-subheading">Your friends</div>
-                  {friendsLoading ? (
-                    <div className="db-empty">Loading…</div>
-                  ) : friends.length === 0 ? (
-                    <div className="db-empty">No friends yet. Add someone by email above.</div>
-                  ) : (
-                    <div className="db-list">
-                      {friends.map((f) => (
-                        <div key={f.id} className="db-list__item db-list__item--friend">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{f.friend_username || f.friend_email || 'Friend'}</div>
-                            <div className="db-list__sub">{f.friend_email}</div>
-                          </div>
-                          <span className="db-friend-badge">Friends</span>
+              {isFriendsListExpanded && (
+                <div className="db-friends__collapsible-content" style={{ marginTop: 16 }}>
+                  {friendsTab === 'friends' && (
+                    <>
+                      {friendsLoading ? (
+                        <div className="db-empty">Loading…</div>
+                      ) : friends.length === 0 ? (
+                        <div className="db-empty">No friends yet. Add someone by email above.</div>
+                      ) : (
+                        <div className="db-list">
+                          {friends.map((f) => (
+                            <div key={f.id} className="db-list__item db-list__item--friend">
+                              <div className="db-list__main">
+                                <div className="db-list__title">{f.friend_username || f.friend_email || 'Friend'}</div>
+                                <div className="db-list__sub">{f.friend_email}</div>
+                              </div>
+                              <span className="db-friend-badge">Friends</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
 
-              {friendsTab === 'requests' && (
-                <>
-                  <div className="db-subheading">Requests</div>
-                  {requestsLoading ? (
-                    <div className="db-empty">Loading…</div>
-                  ) : (friendRequests.inbox?.length === 0 && friendRequests.outbox?.length === 0) ? (
-                    <div className="db-empty">No pending requests.</div>
-                  ) : (
-                    <div className="db-list">
-                      {friendRequests.inbox?.map((r) => (
-                        <div key={r.id} className="db-list__item">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
-                            <div className="db-list__sub">Wants to be your friend</div>
-                          </div>
-                          <div className="db-list__actions">
-                            <button
-                              type="button"
-                              className="db-chip db-chip--accept"
-                              onClick={() => respondToRequest(r.id, 'accept')}
-                              disabled={respondingId === r.id}
-                              aria-label="Accept"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              type="button"
-                              className="db-chip db-chip--decline"
-                              onClick={() => respondToRequest(r.id, 'decline')}
-                              disabled={respondingId === r.id}
-                              aria-label="Decline"
-                            >
-                              ✕
-                            </button>
-                          </div>
+                  {friendsTab === 'requests' && (
+                    <>
+                      {requestsLoading ? (
+                        <div className="db-empty">Loading…</div>
+                      ) : (friendRequests.inbox?.length === 0 && friendRequests.outbox?.length === 0) ? (
+                        <div className="db-empty">No pending requests.</div>
+                      ) : (
+                        <div className="db-list">
+                          {friendRequests.inbox?.map((r) => (
+                            <div key={r.id} className="db-list__item">
+                              <div className="db-list__main">
+                                <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
+                                <div className="db-list__sub">Wants to be your friend</div>
+                              </div>
+                              <div className="db-list__actions">
+                                <button
+                                  type="button"
+                                  className="db-chip db-chip--accept"
+                                  onClick={() => respondToRequest(r.id, 'accept')}
+                                  disabled={respondingId === r.id}
+                                  aria-label="Accept"
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  type="button"
+                                  className="db-chip db-chip--decline"
+                                  onClick={() => respondToRequest(r.id, 'decline')}
+                                  disabled={respondingId === r.id}
+                                  aria-label="Decline"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          {friendRequests.outbox?.map((r) => (
+                            <div key={r.id} className="db-list__item">
+                              <div className="db-list__main">
+                                <div className="db-list__title">{r.target?.username || r.target?.email || 'User'}</div>
+                                <div className="db-list__sub">Pending</div>
+                              </div>
+                              <button
+                                type="button"
+                                className="db-chip db-chip--neutral"
+                                onClick={() => respondToRequest(r.id, 'cancel')}
+                                disabled={respondingId === r.id}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                      {friendRequests.outbox?.map((r) => (
-                        <div key={r.id} className="db-list__item">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{r.target?.username || r.target?.email || 'User'}</div>
-                            <div className="db-list__sub">Pending</div>
-                          </div>
-                          <button
-                            type="button"
-                            className="db-chip db-chip--neutral"
-                            onClick={() => respondToRequest(r.id, 'cancel')}
-                            disabled={respondingId === r.id}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
