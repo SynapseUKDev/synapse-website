@@ -7,6 +7,7 @@ import '../Dashboard.css'
 import { authHeaders, clearTokens, authenticatedFetch } from '../../auth/token'
 import { LuMenu } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
+import TermsConsentModal from '../../components/consent/TermsConsentModal'
 
 function DashboardLayout() {
   const navigate = useNavigate()
@@ -68,6 +69,25 @@ function DashboardLayout() {
     setMobileMenuOpen(false)
   }, [location.pathname])
 
+  const handleAcceptTerms = async () => {
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    const res = await authenticatedFetch(`${API_BASE}/me/accept-terms`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}))
+      throw new Error(errData.error || 'Failed to update consent timestamp')
+    }
+    const data = await res.json()
+    setUser((prev) => ({
+      ...prev,
+      terms_accepted_at: data.terms_accepted_at,
+    }))
+  }
+
   const handleLogout = async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     await fetch(`${API_BASE}/auth/signout`, { method: 'POST', credentials: 'include', headers: authHeaders() })
@@ -78,8 +98,15 @@ function DashboardLayout() {
 
   if (loading) return <LoadingScreen message="Loading your dashboard..." />
 
+  const showConsentModal = user && !user.terms_accepted_at
+
   return (
     <div className="dash">
+      <TermsConsentModal
+        open={!!showConsentModal}
+        onAccept={handleAcceptTerms}
+        onLogout={handleLogout}
+      />
       <div className="dash__mobile-header">
         <div className="dash__mobile-header-content">
           <img src={logoImg} alt="Synapse UK" className="dash__mobile-logo" />
