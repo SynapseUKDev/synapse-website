@@ -49,15 +49,6 @@ function Footer() {
             >
               Terms &amp; Conditions
             </a>
-            <span className="footer__legal-sep">·</span>
-            <a
-              href="https://www.synapseuk.org/safeguarding"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="footer__legal-link"
-            >
-              Safeguarding
-            </a>
           </div>
 
           <div className="footer__copy">

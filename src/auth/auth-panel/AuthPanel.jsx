@@ -16,6 +16,7 @@ function AuthPanel() {
   const [username, setUsername] = useState('')
   const [remember, setRemember] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [signupAttempted, setSignupAttempted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
@@ -39,7 +40,7 @@ function AuthPanel() {
           <div className="auth-panel__tabs" role="tablist">
             <button
               className={`auth-panel__tab ${mode === 'signin' ? 'is-active' : ''}`}
-              onClick={() => { setMode('signin'); setWarning(''); setError(''); setStep('form'); }}
+              onClick={() => { setMode('signin'); setWarning(''); setError(''); setStep('form'); setSignupAttempted(false); }}
               aria-selected={mode === 'signin'}
             >
               Sign In
@@ -92,16 +93,30 @@ function AuthPanel() {
           setError('')
           setWarning('')
           setStep('form')
+
+          if (mode === 'signup') {
+            setSignupAttempted(true)
+            // Client-side validation guard — show red fields before hitting backend
+            const hasErrors =
+              !username.trim() ||
+              !email.trim() ||
+              !password.trim() || password.length < 6 ||
+              !confirmPassword.trim() || confirmPassword !== password ||
+              !termsAccepted
+            if (hasErrors) {
+              if (confirmPassword && confirmPassword !== password) {
+                setError('Passwords do not match')
+              }
+              return
+            }
+          }
+
           setLoading(true)
           try {
             const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
             console.log('API_BASE:', API_BASE)
 
             if (mode === 'signup') {
-              if (password !== confirmPassword) {
-                setError('Passwords do not match')
-                return
-              }
               console.log('Attempting signup...')
               const res = await fetch(`${API_BASE}/auth/signup`, {
                 method: 'POST',
@@ -158,7 +173,7 @@ function AuthPanel() {
           <>
             <label className="auth-panel__label">Username</label>
             <input
-              className="auth-panel__input"
+              className={`auth-panel__input${signupAttempted && !username.trim() ? ' auth-panel__input--invalid' : ''}`}
               type="text"
               placeholder="Choose a username"
               value={username}
@@ -172,7 +187,7 @@ function AuthPanel() {
           <>
             <label className="auth-panel__label">Email address</label>
             <input
-              className="auth-panel__input"
+              className={`auth-panel__input${signupAttempted && !email.trim() ? ' auth-panel__input--invalid' : ''}`}
               type="email"
               placeholder="Enter your email"
               value={email}
@@ -185,14 +200,14 @@ function AuthPanel() {
         )}
         {!forgotPasswordMode && (
           <div className="auth-panel__input-wrapper">
-            <input
-              className="auth-panel__input"
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+              <input
+                className={`auth-panel__input${signupAttempted && mode === 'signup' && (!password.trim() || password.length < 6) ? ' auth-panel__input--invalid' : ''}`}
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
             <button
               type="button"
               className="auth-panel__eye-btn"
@@ -219,7 +234,7 @@ function AuthPanel() {
             <label className="auth-panel__label">Confirm password</label>
             <div className="auth-panel__input-wrapper">
               <input
-                className="auth-panel__input"
+                className={`auth-panel__input${signupAttempted && (!confirmPassword.trim() || confirmPassword !== password) ? ' auth-panel__input--invalid' : ''}`}
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Re-enter your password"
                 value={confirmPassword}
@@ -347,7 +362,7 @@ function AuthPanel() {
         )}
 
         {!forgotPasswordMode && mode === 'signup' && (
-          <label className="auth-panel__consent" id="terms-consent-label">
+          <label className={`auth-panel__consent${signupAttempted && !termsAccepted ? ' auth-panel__consent--invalid' : ''}`} id="terms-consent-label">
             <input
               type="checkbox"
               id="terms-consent"

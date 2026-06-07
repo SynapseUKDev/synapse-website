@@ -156,6 +156,18 @@
   background: #fff;
 }
 
+.auth-panel__input--invalid {
+  border-color: #e53e3e;
+  background: #fff5f5;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.12);
+}
+
+.auth-panel__input--invalid:focus {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.2);
+  background: #fff;
+}
+
 .auth-panel__input::placeholder {
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
   color: #66708a;
@@ -336,4 +348,16 @@
 
 .auth-panel__consent-link:hover {
   color: #061A86;
+}
+
+.auth-panel__consent--invalid {
+  background: #fff5f5;
+  border: 1.5px solid #e53e3e;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #c53030;
+}
+
+.auth-panel__consent--invalid .auth-panel__consent-link {
+  color: #c53030;
 }
