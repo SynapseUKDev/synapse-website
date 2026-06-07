@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { LuChevronLeft, LuPlay } from 'react-icons/lu'
+import { LuChevronLeft, LuPlay, LuUsers } from 'react-icons/lu'
 import './PracticeSetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import {
@@ -368,6 +368,31 @@ export default function PracticeSetup() {
     }
 
     navigate(`/dashboard/question-bank/practice?${params.toString()}`)
+  }
+
+  const createGroupSession = () => {
+    if (!studySetId && selectedTopics.size === 0) {
+      alert('Please select at least one topic')
+      return
+    }
+
+    const params = new URLSearchParams({
+      num_questions: numQuestions.toString(),
+      timer_minutes: timerEnabled ? timerMinutes.toString() : '0',
+      include_attempted: includeAttempted ? '1' : '0'
+    })
+    if (includeIncorrect && !includeAttempted) params.set('include_incorrect', '1')
+
+    if (studySetId) {
+      params.append('study_set_id', studySetId)
+      params.append('study_set_name', studySetName)
+    } else {
+      params.append('specialty_id', specialtyId)
+      params.append('specialty_name', specialtyName)
+      params.append('topic_ids', Array.from(selectedTopics).join(','))
+    }
+
+    navigate(`/dashboard/question-bank/group_setup?${params.toString()}`)
   }
 
   if (loading) {
@@ -737,6 +762,25 @@ export default function PracticeSetup() {
             >
               <LuPlay />
               Start Session
+            </button>
+
+            <button
+              className="setup__start-btn qb-btn--secondary"
+              onClick={createGroupSession}
+              disabled={isDisabled}
+              style={{
+                marginTop: 8,
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-color)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <LuUsers />
+              Create Group Session
             </button>
 
 

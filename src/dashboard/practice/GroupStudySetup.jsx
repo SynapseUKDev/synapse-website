@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { authHeaders, authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import { useNavigate, useSearchParams, useOutletContext } from 'react-router-dom'
-import { LuChevronLeft, LuUsers, LuCopy, LuCheck, LuPlay, LuCrown, LuUser } from 'react-icons/lu'
+import { LuChevronLeft, LuUsers, LuCopy, LuCheck, LuPlay, LuCrown, LuUser, LuLayers, LuBookOpen, LuSettings } from 'react-icons/lu'
 import './PracticeSetup.css'
 import './GroupStudySetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
@@ -12,12 +12,24 @@ export default function GroupStudySetup() {
   const { user } = useOutletContext()
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode') // 'join' or null (create mode)
-  const studySetId = searchParams.get('study_set_id')
-  const studySetName = searchParams.get('study_set_name') || 'Unknown Set'
   
   const [loading, setLoading] = useState(true)
   const [studySetData, setStudySetData] = useState(null)
   
+  // Question source choices
+  const [sessionSource, setSessionSource] = useState('set') // 'set' or 'specialty'
+  
+  // Lists
+  const [studySets, setStudySets] = useState([])
+  const [specialties, setSpecialties] = useState([])
+  const [topics, setTopics] = useState([])
+  
+  // Selections
+  const [selectedStudySetId, setSelectedStudySetId] = useState('')
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState('')
+  const [selectedTopics, setSelectedTopics] = useState(new Set())
+  const [topicsLoading, setTopicsLoading] = useState(false)
+
   // Session settings
   const [numQuestions, setNumQuestions] = useState(25)
   const [timerMinutes, setTimerMinutes] = useState(30)
@@ -39,19 +51,81 @@ export default function GroupStudySetup() {
   const SOCKET_URL = API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, ':4000')
 
   useEffect(() => {
-    // If in join mode, skip loading study set
     if (mode === 'join') {
       setLoading(false)
       return
     }
-    
-    // If in create mode, require study set
-    if (!studySetId) {
-      navigate('/dashboard/question-bank')
-      return
+
+    const loadInitialData = async () => {
+      try {
+        setLoading(true)
+        
+        // Fetch custom study sets and specialties
+        const [setsRes, specsRes] = await Promise.all([
+          authenticatedFetch(`${API_BASE}/qbank/sets`, { headers: authHeaders() }),
+          authenticatedFetch(`${API_BASE}/qbank/specialties`, { headers: authHeaders() })
+        ])
+
+        let sets = []
+        if (setsRes.ok) {
+          const setsData = await setsRes.json()
+          sets = setsData.sets || []
+          setStudySets(sets)
+        }
+
+        let specs = []
+        if (specsRes.ok) {
+          const specsData = await specsRes.json()
+          specs = specsData.specialties || []
+          setSpecialties(specs)
+        }
+
+        // Parse query params (pre-population)
+        const qStudySetId = searchParams.get('study_set_id')
+        const qSpecialtyId = searchParams.get('specialty_id')
+        const qNumQs = searchParams.get('num_questions')
+        const qTimerMins = searchParams.get('timer_minutes')
+        const qIncAtt = searchParams.get('include_attempted') === '1'
+        const qIncInc = searchParams.get('include_incorrect') === '1' || searchParams.get('incorrect_only') === '1'
+
+        if (qNumQs) setNumQuestions(parseInt(qNumQs, 10))
+        if (qTimerMins) {
+          const mins = parseInt(qTimerMins, 10)
+          setTimerMinutes(mins > 0 ? mins : 30)
+          setTimerEnabled(mins > 0)
+        }
+        setIncludeAttempted(qIncAtt)
+        setIncludeIncorrect(qIncInc)
+
+        if (qStudySetId) {
+          setSessionSource('set')
+          setSelectedStudySetId(qStudySetId)
+          await fetchSetDetails(qStudySetId)
+        } else if (qSpecialtyId) {
+          setSessionSource('specialty')
+          setSelectedSpecialtyId(qSpecialtyId)
+          await fetchTopicsList(qSpecialtyId, searchParams.get('topic_ids'))
+        } else {
+          // Default selection if no search query
+          setSessionSource('set')
+          if (sets.length > 0) {
+            setSelectedStudySetId(sets[0].id)
+            await fetchSetDetails(sets[0].id)
+          } else if (specs.length > 0) {
+            setSessionSource('specialty')
+            setSelectedSpecialtyId(specs[0].id)
+            await fetchTopicsList(specs[0].id)
+          }
+        }
+      } catch (err) {
+        console.error('Error loading group session setup data:', err)
+      } finally {
+        setLoading(false)
+      }
     }
-    loadStudySet()
-  }, [studySetId, mode])
+
+    loadInitialData()
+  }, [mode, searchParams])
 
   useEffect(() => {
     // Initialize socket connection when session is created or joined
@@ -66,20 +140,100 @@ export default function GroupStudySetup() {
     }
   }, [sessionCreated, roomCode])
 
+  const fetchSetDetails = async (setId) => {
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/qbank/sets/${setId}`, {
+        headers: authHeaders()
+      })
+      if (!res.ok) throw new Error('Failed to fetch study set details')
+      const data = await res.json()
+      setStudySetData(data.set)
+    } catch (err) {
+      console.error('Error fetching set details:', err)
+    }
+  }
+
+  const fetchTopicsList = async (specId, topicIdsParam = null) => {
+    try {
+      setTopicsLoading(true)
+      const res = await authenticatedFetch(`${API_BASE}/qbank/specialty/${specId}/topics`, {
+        headers: authHeaders()
+      })
+      if (!res.ok) throw new Error('Failed to fetch topics')
+      const data = await res.json()
+      const loadedTopics = data.topics || []
+      setTopics(loadedTopics)
+
+      if (topicIdsParam) {
+        const preselected = new Set(topicIdsParam.split(',').map(id => id.trim()).filter(Boolean))
+        setSelectedTopics(preselected)
+      } else {
+        // Select all topics by default
+        setSelectedTopics(new Set(loadedTopics.map(t => t.id)))
+      }
+    } catch (err) {
+      console.error('Error loading topics:', err)
+      setTopics([])
+    } finally {
+      setTopicsLoading(false)
+    }
+  }
+
+  const handleStudySetChange = async (setId) => {
+    setSelectedStudySetId(setId)
+    if (setId) {
+      await fetchSetDetails(setId)
+    } else {
+      setStudySetData(null)
+    }
+  }
+
+  const handleSpecialtyChange = async (specId) => {
+    setSelectedSpecialtyId(specId)
+    setSelectedTopics(new Set())
+    if (specId) {
+      await fetchTopicsList(specId)
+    } else {
+      setTopics([])
+    }
+  }
+
+  const getSpecialtyQuestionsCount = () => {
+    if (includeIncorrect && !includeAttempted) {
+      return topics
+        .filter(t => selectedTopics.has(t.id))
+        .reduce((sum, t) => sum + (t.remaining_count || 0) + (t.incorrect_count || 0), 0)
+    }
+    return topics
+      .filter(t => selectedTopics.has(t.id))
+      .reduce((sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)), 0)
+  }
+
+  const getStudySetQuestionsCount = () => {
+    if (!studySetData) return 0
+    if (includeIncorrect && !includeAttempted) {
+      return (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
+    }
+    return includeAttempted
+      ? (studySetData.total_questions || 0)
+      : (studySetData.remaining_questions ?? studySetData.total_questions ?? 0)
+  }
+
+  const totalAvailable = sessionSource === 'set' ? getStudySetQuestionsCount() : getSpecialtyQuestionsCount()
+  const maxQuestions = totalAvailable
+  const stepperMin = totalAvailable > 0 ? 1 : 0
+  const isDisabled = totalAvailable === 0
+
   useEffect(() => {
-    if (!studySetData || mode === 'join') return
-    const max =
-      includeIncorrect && !includeAttempted
-        ? (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
-        : includeAttempted
-          ? (studySetData.total_questions || 0)
-          : (studySetData.remaining_questions ?? studySetData.total_questions ?? 0)
-    if (max === 0) setNumQuestions(0)
-    else setNumQuestions((n) => (n < 1 || n > max ? Math.min(25, max) : Math.min(n, max)))
-  }, [includeIncorrect, includeAttempted, studySetData, mode])
+    if (mode === 'join') return
+    if (totalAvailable === 0) {
+      setNumQuestions(0)
+    } else {
+      setNumQuestions((n) => (n < 1 || n > totalAvailable ? Math.min(25, totalAvailable) : Math.min(n, totalAvailable)))
+    }
+  }, [totalAvailable, mode])
 
   const connectSocket = () => {
-    // Get user info from local storage or context
     const userId = user.id
     const username = user.username || user.email || 'Anonymous'
 
@@ -97,8 +251,6 @@ export default function GroupStudySetup() {
 
     socketRef.current.on('connect', () => {
       console.log('Socket connected:', socketRef.current.id)
-      
-      // Join the group session room
       console.log('joining room', userId)
       socketRef.current.emit('join-group-session', {
         room_code: roomCode,
@@ -110,7 +262,6 @@ export default function GroupStudySetup() {
     socketRef.current.on('participant-joined', (data) => {
       console.log('Participant joined:', data)
       setParticipants(prev => {
-        // Check if participant already exists
         if (prev.some(p => p.id === data.participant.id)) {
           return prev
         }
@@ -125,18 +276,19 @@ export default function GroupStudySetup() {
 
     socketRef.current.on('session-started', (data) => {
       console.log('Session started:', data)
-      // Navigate to GROUP practice page with session data
       const params = new URLSearchParams({
         room_code: data.room_code,
-        study_set_id: data.study_set_id,
         study_set_name: data.study_set_name,
         num_questions: data.num_questions.toString(),
         timer_minutes: data.timer_minutes.toString(),
         include_attempted: data.include_attempted ? '1' : '0',
         include_incorrect: data.incorrect_only ? '1' : '0'
       })
+
+      if (data.study_set_id) {
+        params.append('study_set_id', data.study_set_id)
+      }
       
-      // Store timer end time in session storage for sync
       if (data.timer_end_time) {
         sessionStorage.setItem('group_timer_end', data.timer_end_time.toString())
       }
@@ -154,60 +306,34 @@ export default function GroupStudySetup() {
     })
   }
 
-  const loadStudySet = async () => {
-    try {
-      const res = await authenticatedFetch(`${API_BASE}/qbank/sets/${studySetId}`, {
-        credentials: 'include',
-        headers: authHeaders(),
-      })
-      if (!res.ok) throw new Error('Failed to load study set')
-      const data = await res.json()
-      const set = data.set
-      setStudySetData(set)
-
-      const paramIncAtt = searchParams.get('include_attempted') === '1'
-      const paramIncInc =
-        searchParams.get('include_incorrect') === '1' || searchParams.get('incorrect_only') === '1'
-
-      let effectiveAttempted = false
-      let effectiveIncorrect = false
-      if (paramIncAtt || paramIncInc) {
-        effectiveAttempted = paramIncAtt
-        effectiveIncorrect = paramIncInc && !paramIncAtt
-      } else {
-        const scope = set?.practice_scope_default
-        if (scope === 'all_answered') {
-          effectiveAttempted = true
-          effectiveIncorrect = false
-        } else if (scope === 'incorrect_focus' || set?.incorrect_only) {
-          effectiveIncorrect = true
-          effectiveAttempted = false
-        }
-      }
-
-      setIncludeAttempted(effectiveAttempted)
-      setIncludeIncorrect(effectiveIncorrect)
-
-      const totalAvailable =
-        effectiveIncorrect && !effectiveAttempted
-          ? (set.remaining_questions ?? 0) + (set.incorrect_questions ?? 0)
-          : effectiveAttempted
-            ? (set.total_questions || 0)
-            : (set.remaining_questions ?? set.total_questions ?? 0)
-      if (totalAvailable > 0) {
-        setNumQuestions(Math.min(totalAvailable, 25))
-      } else {
-        setNumQuestions(0)
-      }
-    } catch (error) {
-      console.error('Error loading study set:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const createSession = async () => {
     try {
+      const body = {
+        num_questions: numQuestions,
+        timer_minutes: timerEnabled ? timerMinutes : 0,
+        include_attempted: includeAttempted,
+        include_incorrect: includeIncorrect,
+      }
+
+      if (sessionSource === 'set') {
+        if (!selectedStudySetId) {
+          alert('Please select a study set')
+          return
+        }
+        body.study_set_id = selectedStudySetId
+      } else {
+        if (!selectedSpecialtyId) {
+          alert('Please select a specialty')
+          return
+        }
+        if (selectedTopics.size === 0) {
+          alert('Please select at least one topic')
+          return
+        }
+        body.specialty_id = selectedSpecialtyId
+        body.topic_ids = Array.from(selectedTopics).join(',')
+      }
+
       const res = await authenticatedFetch(`${API_BASE}/qbank/group-session/create`, {
         method: 'POST',
         credentials: 'include',
@@ -215,13 +341,7 @@ export default function GroupStudySetup() {
           ...authHeaders(),
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          study_set_id: studySetId,
-          num_questions: numQuestions,
-          timer_minutes: timerEnabled ? timerMinutes : 0,
-          include_attempted: includeAttempted,
-          include_incorrect: includeIncorrect,
-        })
+        body: JSON.stringify(body)
       })
       
       if (!res.ok) throw new Error('Failed to create session')
@@ -232,6 +352,8 @@ export default function GroupStudySetup() {
       
       setParticipants([{ id: data.host_id, name: data.host_name, is_host: true }])
       setSessionCreated(true)
+
+      setStudySetData({ name: data.study_set_name })
     } catch (error) {
       console.error('Error creating session:', error)
       alert('Failed to create group session. Please try again.')
@@ -264,17 +386,18 @@ export default function GroupStudySetup() {
       }
       const data = await res.json()
       
-      // If the session has already started, navigate directly to practice!
       if (data.status === 'active') {
         const params = new URLSearchParams({
           room_code: joinCode.toUpperCase(),
-          study_set_id: data.study_set_id || '',
           study_set_name: data.study_set_name || '',
           num_questions: data.num_questions.toString(),
           timer_minutes: data.timer_minutes.toString(),
           include_attempted: data.include_attempted ? '1' : '0',
           include_incorrect: data.incorrect_only ? '1' : '0'
         })
+        if (data.study_set_id) {
+          params.append('study_set_id', data.study_set_id)
+        }
         navigate(`/dashboard/question-bank/group-practice?${params.toString()}`)
         return
       }
@@ -310,19 +433,18 @@ export default function GroupStudySetup() {
     return progress
   }
 
+  const getSessionDisplayName = () => {
+    if (sessionSource === 'set') {
+      return studySets.find(s => s.id === selectedStudySetId)?.name || 'Custom Study Set'
+    } else {
+      const specName = specialties.find(s => s.id === selectedSpecialtyId)?.name || 'Specialty Practice'
+      return `${specName} (${selectedTopics.size} Topics)`
+    }
+  }
+
   if (loading) {
     return <LoadingScreen message="Loading group study setup..." />
   }
-
-  const totalAvailable =
-    includeIncorrect && !includeAttempted
-      ? (studySetData?.remaining_questions ?? 0) + (studySetData?.incorrect_questions ?? 0)
-      : includeAttempted
-        ? (studySetData?.total_questions || 0)
-        : (studySetData?.remaining_questions ?? studySetData?.total_questions ?? 0)
-  const maxQuestions = totalAvailable
-  const stepperMin = totalAvailable > 0 ? 1 : 0
-  const isDisabled = totalAvailable === 0
 
   // Show waiting room if session is created
   if (sessionCreated) {
@@ -339,7 +461,7 @@ export default function GroupStudySetup() {
           <div className="setup__title-section">
             <div>
               <h1 className="setup__title">Group Study Session</h1>
-              <p className="setup__subtitle">{studySetData?.name || studySetName}</p>
+              <p className="setup__subtitle">{studySetData?.name}</p>
             </div>
           </div>
         </div>
@@ -413,8 +535,8 @@ export default function GroupStudySetup() {
               <h3 className="setup__summary-title">Session Details</h3>
               
               <div className="setup__summary-item">
-                <div className="setup__summary-label">Study Set:</div>
-                <div className="setup__summary-value">{studySetData?.name || studySetName}</div>
+                <div className="setup__summary-label">Question Source:</div>
+                <div className="setup__summary-value">{studySetData?.name}</div>
               </div>
               
               <div className="setup__summary-item">
@@ -454,7 +576,7 @@ export default function GroupStudySetup() {
         <div className="setup__title-section">
           <div>
             <h1 className="setup__title">
-              {mode === 'join' ? 'Join Group Study Session' : `${studySetName} Group Study`}
+              {mode === 'join' ? 'Join Group Study Session' : 'Group Study Setup'}
             </h1>
             <p className="setup__subtitle">
               {mode === 'join' ? 'Enter a room code to join an existing session' : 'Configure and create a group study session'}
@@ -494,186 +616,388 @@ export default function GroupStudySetup() {
               </div>
             </div>
           ) : (
-            // Create Mode - Show create button
-            <div className="setup__section">
-              <h2 className="setup__section-title">Create Session</h2>
-              <p className="setup__section-subtitle">Configure your settings below and create a new group session</p>
-              
-              <div className="group-create" style={{ marginTop: 24 }}>
-                <button 
-                  className="group-create__btn"
-                  onClick={createSession}
-                  disabled={isDisabled}
-                >
-                  <LuUsers size={20} />
-                  Create New Session
-                </button>
-                <p className="group-create__hint">You'll be the host and can invite others with a room code</p>
-              </div>
-            </div>
-          )}
+            <>
+              {/* Question Source Options */}
+              <div className="setup__section">
+                <h2 className="setup__section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <LuLayers size={20} />
+                  Question Source
+                </h2>
+                <p className="setup__section-subtitle">Choose how questions are selected for your group study session</p>
 
-          {/* Question Settings - Only show if creating (not join mode) */}
-          {mode !== 'join' && (
-          <div className="setup__section">
-            <h2 className="setup__section-title">Session Settings</h2>
-            <p className="setup__section-subtitle">Configure your group study session</p>
+                <div className="qb-segmented-control" style={{ display: 'flex', gap: '12px', marginTop: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+                  <button
+                    type="button"
+                    className={`qb-segmented-btn ${sessionSource === 'set' ? 'active' : ''}`}
+                    onClick={() => setSessionSource('set')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontWeight: 600,
+                      background: sessionSource === 'set' ? 'var(--primary-color, #0ea5e9)' : 'transparent',
+                      color: sessionSource === 'set' ? '#fff' : 'var(--text-color)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <LuBookOpen size={16} />
+                    Custom Study Set
+                  </button>
+                  <button
+                    type="button"
+                    className={`qb-segmented-btn ${sessionSource === 'specialty' ? 'active' : ''}`}
+                    onClick={() => setSessionSource('specialty')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontWeight: 600,
+                      background: sessionSource === 'specialty' ? 'var(--primary-color, #0ea5e9)' : 'transparent',
+                      color: sessionSource === 'specialty' ? '#fff' : 'var(--text-color)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <LuLayers size={16} />
+                    Specialty & Topics
+                  </button>
+                </div>
 
-            <div className="qs-grid">
-              <div className="qs-col">
-                <div className="setup__setting">
-                  <label className="setup__setting-label">
-                    Number of Questions
-                  </label>
-                  <div className="setup__qty">
-                    <div className="qty__control">
-                      <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={()=> setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
-                      <input
-                        type="number"
-                        className="qty__input"
-                        value={numQuestions}
-                        min={stepperMin}
-                        max={maxQuestions}
-                        disabled={isDisabled}
-                        onChange={(e)=>{
-                          const v = parseInt(e.target.value || '0', 10)
-                          if (Number.isNaN(v)) return
-                          setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
+                <div style={{ marginTop: '24px' }}>
+                  {sessionSource === 'set' ? (
+                    <div className="source-config">
+                      <label className="setup__setting-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+                        Select Custom Study Set
+                      </label>
+                      <select
+                        className="setup__select"
+                        value={selectedStudySetId}
+                        onChange={(e) => handleStudySetChange(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--card-bg)',
+                          color: 'var(--text-color)',
+                          fontSize: '16px',
+                          outline: 'none'
                         }}
-                      />
-                      <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={()=> setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
+                      >
+                        {studySets.length === 0 ? (
+                          <option value="">No custom study sets found</option>
+                        ) : (
+                          studySets.map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.name} ({s.total_questions} questions)
+                            </option>
+                          ))
+                        )}
+                      </select>
                     </div>
-                    <div className="qty__chips">
-                      {[10,25,50,100].filter(n => n <= maxQuestions).map(n => (
-                        <button key={n} className={`chip ${numQuestions===n ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(n)}>{n}</button>
-                      ))}
-                      <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
-                    </div>
-                  </div>
-                  {!includeIncorrect && (
-                  <div className="setup__toggle-row" style={{ marginTop: 20 }}>
-                    <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
-                    <div className="setup__toggle-container">
-                      <input
-                        type="checkbox"
-                        id="include-toggle"
-                        checked={includeAttempted}
-                        onChange={(e) => {
-                          const v = e.target.checked
-                          if (v) setIncludeIncorrect(false)
-                          setIncludeAttempted(v)
+                  ) : (
+                    <div className="source-config">
+                      <label className="setup__setting-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+                        Select Specialty
+                      </label>
+                      <select
+                        className="setup__select"
+                        value={selectedSpecialtyId}
+                        onChange={(e) => handleSpecialtyChange(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--card-bg)',
+                          color: 'var(--text-color)',
+                          fontSize: '16px',
+                          outline: 'none',
+                          marginBottom: '20px'
                         }}
-                        className="setup__toggle-input"
-                      />
-                      <label htmlFor="include-toggle" className="setup__toggle-slider"></label>
+                      >
+                        {specialties.length === 0 ? (
+                          <option value="">No specialties found</option>
+                        ) : (
+                          specialties.map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))
+                        )}
+                      </select>
+
+                      {selectedSpecialtyId && (
+                        <div className="setup__topics-list" style={{ marginTop: '16px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <span style={{ fontWeight: 600 }}>Select Topics ({selectedTopics.size} / {topics.length})</span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedTopics(new Set(topics.map(t => t.id)))}
+                                style={{ border: 'none', background: 'transparent', color: 'var(--primary-color, #0ea5e9)', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                              >
+                                Select All
+                              </button>
+                              <span style={{ color: 'var(--border-color)' }}>|</span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedTopics(new Set())}
+                                style={{ border: 'none', background: 'transparent', color: 'var(--text-muted, #64748b)', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                              >
+                                Deselect All
+                              </button>
+                            </div>
+                          </div>
+
+                          {topicsLoading ? (
+                            <div style={{ padding: '16px 0', color: 'var(--text-muted)' }}>Loading topics...</div>
+                          ) : (
+                            <div className="topics-grid" style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                              gap: '12px',
+                              maxHeight: '280px',
+                              overflowY: 'auto',
+                              padding: '4px',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: '8px',
+                              backgroundColor: 'var(--card-bg-alt, rgba(0,0,0,0.02))'
+                            }}>
+                              {topics.map(t => {
+                                const isChecked = selectedTopics.has(t.id)
+                                return (
+                                  <label
+                                    key={t.id}
+                                    className={`topic-checkbox-label ${isChecked ? 'checked' : ''}`}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      padding: '8px 12px',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      border: isChecked ? '1px solid var(--primary-color, #0ea5e9)' : '1px solid var(--border-color)',
+                                      backgroundColor: isChecked ? 'rgba(14, 165, 233, 0.05)' : 'transparent',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        const next = new Set(selectedTopics)
+                                        if (next.has(t.id)) next.delete(t.id)
+                                        else next.add(t.id)
+                                        setSelectedTopics(next)
+                                      }}
+                                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                    <div style={{ flex: 1, fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {t.name}
+                                    </div>
+                                    <span style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)' }}>
+                                      ({includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)})
+                                    </span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
-                  </div>
-                  )}
-                  {!includeAttempted && (
-                  <div className="setup__toggle-row" style={{ marginTop: 20 }}>
-                    <label htmlFor="g-incorrect-toggle" className="setup__toggle-label">Include incorrectly answered (host)</label>
-                    <div className="setup__toggle-container">
-                      <input
-                        type="checkbox"
-                        id="g-incorrect-toggle"
-                        checked={includeIncorrect}
-                        onChange={(e) => setIncludeIncorrect(e.target.checked)}
-                        className="setup__toggle-input"
-                      />
-                      <label htmlFor="g-incorrect-toggle" className="setup__toggle-slider"></label>
-                    </div>
-                    <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeIncorrect ? 'On' : 'Off'}</span>
-                  </div>
                   )}
                 </div>
               </div>
-              
-              <div className="qs-col">
-                <div className="setup__setting">
-                  <div className="setup__toggle-row">
-                    <label htmlFor="timer-toggle" className="setup__toggle-label">
-                      Enable Timer
-                    </label>
-                    <div className="setup__toggle-container">
-                      <input
-                        type="checkbox"
-                        id="timer-toggle"
-                        checked={timerEnabled}
-                        onChange={(e) => setTimerEnabled(e.target.checked)}
-                        className="setup__toggle-input"
-                      />
-                      <label htmlFor="timer-toggle" className="setup__toggle-slider"></label>
+
+              {/* Create session actions */}
+              <div className="setup__section">
+                <h2 className="setup__section-title">Create Session</h2>
+                <p className="setup__section-subtitle">Configure your settings below and create a new group session</p>
+                
+                <div className="group-create" style={{ marginTop: 24 }}>
+                  <button 
+                    className="group-create__btn"
+                    onClick={createSession}
+                    disabled={isDisabled}
+                  >
+                    <LuUsers size={20} />
+                    Create New Session
+                  </button>
+                  <p className="group-create__hint">You'll be the host and can invite others with a room code</p>
+                </div>
+              </div>
+
+              {/* Question Settings - Only show if creating (not join mode) */}
+              <div className="setup__section">
+                <h2 className="setup__section-title">Session Settings</h2>
+                <p className="setup__section-subtitle">Configure your group study session</p>
+
+                <div className="qs-grid">
+                  <div className="qs-col">
+                    <div className="setup__setting">
+                      <label className="setup__setting-label">
+                        Number of Questions
+                      </label>
+                      <div className="setup__qty">
+                        <div className="qty__control">
+                          <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={()=> setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
+                          <input
+                            type="number"
+                            className="qty__input"
+                            value={numQuestions}
+                            min={stepperMin}
+                            max={maxQuestions}
+                            disabled={isDisabled}
+                            onChange={(e)=>{
+                              const v = parseInt(e.target.value || '0', 10)
+                              if (Number.isNaN(v)) return
+                              setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
+                            }}
+                          />
+                          <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={()=> setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
+                        </div>
+                        <div className="qty__chips">
+                          {[10,25,50,100].filter(n => n <= maxQuestions).map(n => (
+                            <button key={n} className={`chip ${numQuestions===n ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(n)}>{n}</button>
+                          ))}
+                          <button className={`chip ${numQuestions===maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={()=> setNumQuestions(maxQuestions)}>Max</button>
+                        </div>
+                      </div>
+                      {!includeIncorrect && (
+                      <div className="setup__toggle-row" style={{ marginTop: 20 }}>
+                        <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
+                        <div className="setup__toggle-container">
+                          <input
+                            type="checkbox"
+                            id="include-toggle"
+                            checked={includeAttempted}
+                            onChange={(e) => {
+                              const v = e.target.checked
+                              if (v) setIncludeIncorrect(false)
+                              setIncludeAttempted(v)
+                            }}
+                            className="setup__toggle-input"
+                          />
+                          <label htmlFor="include-toggle" className="setup__toggle-slider"></label>
+                        </div>
+                        <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeAttempted ? 'Include' : 'New only'}</span>
+                      </div>
+                      )}
+                      {!includeAttempted && (
+                      <div className="setup__toggle-row" style={{ marginTop: 20 }}>
+                        <label htmlFor="g-incorrect-toggle" className="setup__toggle-label">Include incorrectly answered (host)</label>
+                        <div className="setup__toggle-container">
+                          <input
+                            type="checkbox"
+                            id="g-incorrect-toggle"
+                            checked={includeIncorrect}
+                            onChange={(e) => setIncludeIncorrect(e.target.checked)}
+                            className="setup__toggle-input"
+                          />
+                          <label htmlFor="g-incorrect-toggle" className="setup__toggle-slider"></label>
+                        </div>
+                        <span className="setup__timer-inline" style={{ fontWeight: 700 }}>{includeIncorrect ? 'On' : 'Off'}</span>
+                      </div>
+                      )}
                     </div>
-                    <span className={`setup__timer-inline ${!timerEnabled ? 'is-off' : ''}`}>
-                      {timerEnabled ? `${timerMinutes} minutes` : 'Off'}
-                    </span>
                   </div>
-                  <div className={`setup__timer-setting ${!timerEnabled ? 'is-dim' : ''}`}>
-                    <div className="setup__slider-wrapper">
-                      <input
-                        type="range"
-                        min="10"
-                        max="120"
-                        step="5"
-                        value={timerMinutes}
-                        onChange={(e) => setTimerMinutes(parseInt(e.target.value))}
-                        className={`setup__slider ${!timerEnabled ? 'setup__slider--disabled' : ''}`}
-                        style={{'--progress': `${updateSliderProgress(timerMinutes, 10, 120)}%`}}
-                        disabled={!timerEnabled}
-                      />
-                      <div className="setup__slider-labels-new">
-                        <span className="setup__slider-label-left">10 mins</span>
-                        <span className="setup__slider-label-right">120 mins</span>
+                  
+                  <div className="qs-col">
+                    <div className="setup__setting">
+                      <div className="setup__toggle-row">
+                        <label htmlFor="timer-toggle" className="setup__toggle-label">
+                          Enable Timer
+                        </label>
+                        <div className="setup__toggle-container">
+                          <input
+                            type="checkbox"
+                            id="timer-toggle"
+                            checked={timerEnabled}
+                            onChange={(e) => setTimerEnabled(e.target.checked)}
+                            className="setup__toggle-input"
+                          />
+                          <label htmlFor="timer-toggle" className="setup__toggle-slider"></label>
+                        </div>
+                        <span className={`setup__timer-inline ${!timerEnabled ? 'is-off' : ''}`}>
+                          {timerEnabled ? `${timerMinutes} minutes` : 'Off'}
+                        </span>
+                      </div>
+                      <div className={`setup__timer-setting ${!timerEnabled ? 'is-dim' : ''}`}>
+                        <div className="setup__slider-wrapper">
+                          <input
+                            type="range"
+                            min="10"
+                            max="120"
+                            step="5"
+                            value={timerMinutes}
+                            onChange={(e) => setTimerMinutes(parseInt(e.target.value))}
+                            className={`setup__slider ${!timerEnabled ? 'setup__slider--disabled' : ''}`}
+                            style={{'--progress': `${updateSliderProgress(timerMinutes, 10, 120)}%`}}
+                            disabled={!timerEnabled}
+                          />
+                          <div className="setup__slider-labels-new">
+                            <span className="setup__slider-label-left">10 mins</span>
+                            <span className="setup__slider-label-right">120 mins</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
           )}
         </div>
 
         {/* Sidebar - Only show in create mode */}
         {mode !== 'join' && (
-        <div className="setup__sidebar">
-          <div className="setup__summary">
-            <h3 className="setup__summary-title">Session Summary</h3>
-            
-            <div className="setup__summary-item">
-              <div className="setup__summary-label">Type:</div>
-              <div className="setup__summary-value">Group Study</div>
-            </div>
-            
-            <div className="setup__summary-item">
-              <div className="setup__summary-label">Study Set:</div>
-              <div className="setup__summary-value">{studySetData?.name || studySetName}</div>
-            </div>
-            
-            <div className="setup__summary-item">
-              <div className="setup__summary-label">Questions:</div>
-              <div className="setup__summary-value">{numQuestions}</div>
-            </div>
-            
-            <div className="setup__summary-item">
-              <div className="setup__summary-label">Time:</div>
-              <div className="setup__summary-value">
-                {timerEnabled ? `${timerMinutes} min` : 'No limit'}
+          <div className="setup__sidebar">
+            <div className="setup__summary">
+              <h3 className="setup__summary-title">Session Summary</h3>
+              
+              <div className="setup__summary-item">
+                <div className="setup__summary-label">Type:</div>
+                <div className="setup__summary-value">Group Study</div>
+              </div>
+              
+              <div className="setup__summary-item">
+                <div className="setup__summary-label">Question Source:</div>
+                <div className="setup__summary-value" style={{ maxWidth: '180px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {getSessionDisplayName()}
+                </div>
+              </div>
+              
+              <div className="setup__summary-item">
+                <div className="setup__summary-label">Questions:</div>
+                <div className="setup__summary-value">{numQuestions}</div>
+              </div>
+              
+              <div className="setup__summary-item">
+                <div className="setup__summary-label">Time:</div>
+                <div className="setup__summary-value">
+                  {timerEnabled ? `${timerMinutes} min` : 'No limit'}
+                </div>
+              </div>
+
+              <div className="setup__summary-divider"></div>
+
+              <div className="group-summary-hint">
+                <LuUsers size={16} />
+                <span>Configure settings above, then create a session to invite others</span>
               </div>
             </div>
-
-            <div className="setup__summary-divider"></div>
-
-            <div className="group-summary-hint">
-              <LuUsers size={16} />
-              <span>Configure settings above, then create a session to invite others</span>
-            </div>
           </div>
-        </div>
         )}
       </div>
     </div>
   )
 }
-
