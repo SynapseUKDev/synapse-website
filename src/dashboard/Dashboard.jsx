@@ -101,6 +101,8 @@ export default function Dashboard() {
   const [isEditingTargets, setIsEditingTargets] = useState(null) // 'time' | 'questions' | null
   const [tempTargets, setTempTargets] = useState({ questions: 30, time_minutes: 180 })
   const editRef = useRef(null)
+  const [isLeaderboardExpanded, setIsLeaderboardExpanded] = useState(false)
+  const [isFriendsListExpanded, setIsFriendsListExpanded] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -720,6 +722,11 @@ export default function Dashboard() {
               <div className="db-friends__title">
                 <LuUserPlus size={18} />
                 Friends
+                {friendRequests.inbox?.length > 0 && (
+                  <span className="db-friends__notification-dot" title={`${friendRequests.inbox.length} pending friend request(s)`}>
+                    {friendRequests.inbox.length}
+                  </span>
+                )}
               </div>
             </div>
             <div className="db-friends__content">
@@ -737,6 +744,11 @@ export default function Dashboard() {
                   onClick={() => setFriendsTab('requests')}
                 >
                   Requests
+                  {friendRequests.inbox?.length > 0 && (
+                    <span className="db-friends__tab-badge">
+                      {friendRequests.inbox.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -803,62 +815,63 @@ export default function Dashboard() {
                 </>
               )}
 
-              {friendsTab === 'requests' && (
-                <>
-                  <div className="db-subheading">Requests</div>
-                  {requestsLoading ? (
-                    <div className="db-empty">Loading…</div>
-                  ) : (friendRequests.inbox?.length === 0 && friendRequests.outbox?.length === 0) ? (
-                    <div className="db-empty">No pending requests.</div>
-                  ) : (
-                    <div className="db-list">
-                      {friendRequests.inbox?.map((r) => (
-                        <div key={r.id} className="db-list__item">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
-                            <div className="db-list__sub">Wants to be your friend</div>
-                          </div>
-                          <div className="db-list__actions">
-                            <button
-                              type="button"
-                              className="db-chip db-chip--accept"
-                              onClick={() => respondToRequest(r.id, 'accept')}
-                              disabled={respondingId === r.id}
-                              aria-label="Accept"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              type="button"
-                              className="db-chip db-chip--decline"
-                              onClick={() => respondToRequest(r.id, 'decline')}
-                              disabled={respondingId === r.id}
-                              aria-label="Decline"
-                            >
-                              ✕
-                            </button>
-                          </div>
+                  {friendsTab === 'requests' && (
+                    <>
+                      {requestsLoading ? (
+                        <div className="db-empty">Loading…</div>
+                      ) : (friendRequests.inbox?.length === 0 && friendRequests.outbox?.length === 0) ? (
+                        <div className="db-empty">No pending requests.</div>
+                      ) : (
+                        <div className="db-list">
+                          {friendRequests.inbox?.map((r) => (
+                            <div key={r.id} className="db-list__item">
+                              <div className="db-list__main">
+                                <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
+                                <div className="db-list__sub">Wants to be your friend</div>
+                              </div>
+                              <div className="db-list__actions">
+                                <button
+                                  type="button"
+                                  className="db-chip db-chip--accept"
+                                  onClick={() => respondToRequest(r.id, 'accept')}
+                                  disabled={respondingId === r.id}
+                                  aria-label="Accept"
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  type="button"
+                                  className="db-chip db-chip--decline"
+                                  onClick={() => respondToRequest(r.id, 'decline')}
+                                  disabled={respondingId === r.id}
+                                  aria-label="Decline"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          {friendRequests.outbox?.map((r) => (
+                            <div key={r.id} className="db-list__item">
+                              <div className="db-list__main">
+                                <div className="db-list__title">{r.target?.username || r.target?.email || 'User'}</div>
+                                <div className="db-list__sub">Pending</div>
+                              </div>
+                              <button
+                                type="button"
+                                className="db-chip db-chip--neutral"
+                                onClick={() => respondToRequest(r.id, 'cancel')}
+                                disabled={respondingId === r.id}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                      {friendRequests.outbox?.map((r) => (
-                        <div key={r.id} className="db-list__item">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{r.target?.username || r.target?.email || 'User'}</div>
-                            <div className="db-list__sub">Pending</div>
-                          </div>
-                          <button
-                            type="button"
-                            className="db-chip db-chip--neutral"
-                            onClick={() => respondToRequest(r.id, 'cancel')}
-                            disabled={respondingId === r.id}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>

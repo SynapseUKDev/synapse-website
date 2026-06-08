@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft, LuPlay, LuUsers } from 'react-icons/lu'
+import { LuChevronLeft, LuPlay, LuUsers } from 'react-icons/lu'
 import './PracticeSetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import {
