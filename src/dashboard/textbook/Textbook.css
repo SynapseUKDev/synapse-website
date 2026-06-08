@@ -1,37 +1,40 @@
+/*
+ * Textbook image design tokens — single source of truth.
+ * Defined at :root so they apply to ALL image/figure types
+ * (tb-md figure, .thumb .thumbinner, tb-carousel, inline p>img)
+ * regardless of component nesting.
+ *
+ * Light: off-white card (#f4f6fb) visible on white section backgrounds.
+ * Dark:  #242424 card elevated above the #141414 section background.
+ */
+:root {
+  --tb-media-outer: min(44rem, min(96vw, 100%));
+  --tb-media-pad: 14px;
+  --tb-media-hmax: min(72vh, 520px);
+  --tb-media-radius: 10px;
+  --tb-media-border: 1px solid #dde3ee;
+  --tb-media-surface: #f4f6fb;
+  --tb-media-viewport-bg: #edf0f7;
+  --tb-media-shadow:
+    0 2px 8px rgba(11, 22, 55, 0.06),
+    inset 0 0 0 1px rgba(11, 22, 55, 0.04);
+  --tb-media-cap-pad-x: 14px;
+  --tb-media-cap-pad-y: 10px;
+  --tb-media-cap-font: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+html[data-theme='dark'] {
+  --tb-media-border: 1px solid rgba(173, 198, 255, 0.22);
+  --tb-media-surface: #242424;
+  --tb-media-viewport-bg: #0c111f;
+  --tb-media-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(218, 226, 253, 0.07);
+}
+
 .tb-page {
   padding: 24px;
   font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-  /*
-   * Unified illustration “frame” for all textbook images:
-   * <figure>, inline <p><img>, MediaWiki .thumb*, and admin carousel (.tb-carousel__asset).
-   * Theme via html[data-theme='dark'] on .tb-page below.
-   */
-  --tb-media-outer: min(44rem, min(96vw, 100%));
-  --tb-media-pad: 12px;
-  --tb-media-hmax: min(72vh, 520px);
-  --tb-media-radius: 10px;
-  --tb-media-border: 1px solid var(--syn-border);
-  --tb-media-surface: var(--surface-card);
-  /* Slight off-white mat behind assets (closer to print / textbook figures than pure white cards). */
-  --tb-media-viewport-bg: #e6e9f0;
-  --tb-media-shadow:
-    0 1px 0 rgba(11, 22, 55, 0.04),
-    inset 0 0 0 1px rgba(11, 22, 55, 0.06);
-  --tb-media-cap-pad-x: 14px;
-  --tb-media-cap-pad-y: 10px;
-  --tb-media-cap-align: center;
-  --tb-media-cap-font: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
-}
-
-html[data-theme='dark'] .tb-page {
-  /* Match chapter body card; thin rule + inset read as “figure box” not a floating white tile. */
-  --tb-media-border: 1px solid rgba(173, 198, 255, 0.14);
-  --tb-media-surface: var(--dm-surface-container);
-  --tb-media-viewport-bg: #070b14;
-  --tb-media-shadow:
-    inset 0 0 0 1px rgba(218, 226, 253, 0.06),
-    0 10px 28px rgba(0, 0, 0, 0.35);
-  --tb-media-cap-align: center;
 }
 
 .tb-page>.loading--inline {
@@ -656,9 +659,7 @@ mark.tb-user-mark[data-note]:hover::after {
   color: var(--syn-navy-700);
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
+  overflow-x: visible;
 }
 
 /* Markdown-ish content */
@@ -747,17 +748,10 @@ mark.tb-user-mark[data-note]:hover::after {
 .tb-md table {
   border-collapse: collapse;
   margin: 8px 0 12px 0;
-  /* At least full width of the scroll container; grow for many columns */
-  width: max-content;
-  min-width: 100%;
-  max-width: none;
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   box-sizing: border-box;
-}
-
-.tb-md thead th {
-  background: var(--dm-surface-container-high, #f7f9ff);
-  color: var(--syn-navy-700);
-  font-weight: 800;
 }
 
 .tb-md th,
@@ -768,13 +762,31 @@ mark.tb-user-mark[data-note]:hover::after {
   word-break: break-word;
   overflow-wrap: anywhere;
   hyphens: auto;
+  white-space: normal;
 }
 
 .tb-md tbody tr:nth-child(even) {
   background: var(--dm-surface-container-low, #fbfcff);
 }
 
+.tb-md thead th {
+  background: var(--dm-surface-container-high, #f7f9ff);
+  color: var(--syn-navy-700);
+  font-weight: 800;
+}
+
 @media (max-width: 640px) {
+  .tb-section__content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .tb-md table {
+    table-layout: auto;
+    min-width: 100%;
+  }
+
   .tb-md th,
   .tb-md td {
     padding: 6px 8px;
@@ -811,13 +823,26 @@ html[data-theme='dark'] .dash__content .tb-md pre {
   border-color: var(--dm-outline-variant);
 }
 
-/* Pasted dashboard textbook: same containment */
+/* Pasted dashboard textbook: contain wide blocks without forcing section scroll on laptop */
 .dash__content .tb-md {
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
+  overflow-x: visible;
+}
+
+.dash__content .tb-md table,
+.tb-page .tb-md table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed;
+}
+
+@media (max-width: 640px) {
+  .dash__content .tb-md {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
 }
 
 .tb-block {
@@ -891,22 +916,29 @@ html[data-theme='dark'] .dash__content .tb-md pre {
   border-top: var(--tb-media-border) !important;
   box-sizing: border-box !important;
   background: var(--tb-media-surface) !important;
-  text-align: var(--tb-media-cap-align) !important;
+  text-align: center !important;
   color: var(--syn-navy-700);
   font-family: var(--tb-media-cap-font);
   font-size: 13px;
   font-weight: 500;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.5;
   letter-spacing: 0.01em;
 }
 
+/*
+ * Hard-reset every descendant inside any image caption — including <i> and <em>
+ * from wiki/CMS source HTML — so nothing ever renders italic or in a wrong font.
+ */
 .tb-page .tb-figure figcaption *,
-.tb-page .tb-md figure figcaption * {
-  font-family: inherit;
-  font-size: inherit;
-  font-style: inherit;
-  font-weight: inherit;
+.tb-page .tb-md figure figcaption *,
+.tb-page .tb-md .thumbcaption *,
+.tb-carousel__cap * {
+  font-family: var(--tb-media-cap-font) !important;
+  font-size: inherit !important;
+  font-style: normal !important;
+  font-weight: inherit !important;
+  font-variant: normal !important;
 }
 
 /* Inline-only <img> (CMS/Wiki): same --tb-media-* frame */
@@ -1031,12 +1063,12 @@ html[data-theme='dark'] .dash__content .tb-md pre {
   padding: var(--tb-media-cap-pad-y) var(--tb-media-cap-pad-x) !important;
   border-top: var(--tb-media-border) !important;
   background: var(--tb-media-surface) !important;
-  text-align: var(--tb-media-cap-align);
+  text-align: center;
   color: var(--syn-navy-700);
   font-family: var(--tb-media-cap-font);
   font-size: 13px;
   font-weight: 500;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.5;
   letter-spacing: 0.01em;
   box-sizing: border-box;
@@ -1097,23 +1129,45 @@ html[data-theme='dark'] .tb-page .tb-md .thumbcaption a {
   padding: 0 !important;
 }
 
+:is(.tb-page, .tb-md) .ff-cyclic-carousel figcaption {
+  text-align: center !important;
+  font-family: var(--tb-media-cap-font) !important;
+  font-style: normal !important;
+}
+
 html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel figcaption {
   color: var(--dm-on-surface-variant) !important;
 }
 
-html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel .ff-arrow {
-  background: rgba(13, 19, 34, 0.92) !important;
-  box-shadow:
-    0 2px 14px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(173, 198, 255, 0.22) !important;
-  color: var(--dm-primary) !important;
+/*
+ * Embedded carousel arrows (wk-* / ff-*): dark mode colour fix only.
+ * Inline HTML <style> loads after our sheet — !important needed for colours only.
+ * Do NOT touch layout, slides, dots, or frame — embed CSS controls those.
+ */
+html[data-theme='dark'] .dash__content :is(.tb-page, .tb-md) :is(
+  .ff-cyclic-carousel .ff-arrow,
+  label.wk-arrow,
+  .wk-arrow
+) {
+  background-color: rgba(0, 0, 0, 0.82) !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
-html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel .ff-arrow:hover {
-  background: rgba(19, 27, 49, 0.96) !important;
-  border-color: rgba(173, 198, 255, 0.35) !important;
-  color: #eaf0ff !important;
+html[data-theme='dark'] .dash__content :is(.tb-page, .tb-md) :is(
+  label.wk-arrow,
+  .wk-arrow,
+  .ff-arrow
+)::before,
+html[data-theme='dark'] .dash__content :is(.tb-page, .tb-md) :is(
+  label.wk-arrow,
+  .wk-arrow,
+  .ff-arrow
+)::after {
+  border-color: #ffffff !important;
+  color: #ffffff !important;
 }
 
 html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel .ff-dots label.ff-dot {
@@ -1175,6 +1229,16 @@ html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-
     background 0.15s ease,
     color 0.15s ease,
     box-shadow 0.15s ease;
+}
+
+.tb-carousel button.tb-carousel__nav svg,
+.tb-carousel__nav svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .tb-carousel button.tb-carousel__nav:hover:not(:disabled),
@@ -1247,7 +1311,7 @@ html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-
   border-top: var(--tb-media-border);
   box-sizing: border-box;
   background: var(--tb-media-surface);
-  text-align: var(--tb-media-cap-align);
+  text-align: center;
 }
 
 .tb-carousel__caption {
@@ -1255,9 +1319,14 @@ html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-
   font-family: var(--tb-media-cap-font);
   font-size: 13px;
   font-weight: 500;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.5;
   letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.tb-carousel__cap .tb-attr {
+  text-align: center;
 }
 
 .tb-carousel__dots {
@@ -1286,28 +1355,6 @@ html[data-theme='dark'] :is(.tb-page, .tb-md) .ff-cyclic-carousel:has(input:nth-
 .tb-carousel__dot.is-active {
   background: var(--dm-primary-container, #2e2cc4);
   border-color: var(--dm-primary-container, #2e2cc4);
-}
-
-html[data-theme='dark'] .tb-carousel button.tb-carousel__nav,
-html[data-theme='dark'] .tb-carousel__nav {
-  background: var(--dm-surface-container-high);
-  background-image: none;
-  border-color: rgba(255, 255, 255, 0.12);
-  color: var(--dm-primary);
-  box-shadow:
-    0 2px 14px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-html[data-theme='dark'] .tb-carousel button.tb-carousel__nav:hover:not(:disabled),
-html[data-theme='dark'] .tb-carousel__nav:hover:not(:disabled) {
-  background: var(--dm-surface-container-highest);
-  background-image: none;
-  border-color: rgba(255, 255, 255, 0.18);
-  color: var(--dm-on-surface);
-  box-shadow:
-    0 4px 18px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Pasted HTML under dashboard: strip nested frames; outer uses --tb-media-* */
@@ -1350,7 +1397,7 @@ html[data-theme='dark'] .tb-carousel__nav:hover:not(:disabled) {
   box-shadow: none !important;
 }
 
-.dash__content .tb-carousel__asset > :not(figcaption) * {
+.dash__content .tb-carousel__asset > :not(figcaption) *:not(.tb-carousel__nav):not(.tb-carousel__nav *) {
   border: none !important;
   box-shadow: none !important;
   background-color: transparent !important;
@@ -1384,27 +1431,9 @@ html[data-theme='dark'] .tb-figure img {
   outline: none;
 }
 
-html[data-theme='dark'] .tb-figure img:first-of-type,
-html[data-theme='dark'] .tb-md figure img:first-of-type {
-  background: transparent;
-}
-
 html[data-theme='dark'] .tb-figure figcaption,
 html[data-theme='dark'] .tb-md figure figcaption {
   color: var(--dm-on-surface);
-}
-
-html[data-theme='dark'] .tb-md p:has(> img:only-child) > img,
-html[data-theme='dark'] .tb-md p:has(> a:only-child > img:only-child) > a > img {
-  background: transparent;
-}
-
-html[data-theme='dark'] .tb-md p:has(> a:only-child > img:only-child) > a {
-  outline: none;
-}
-
-html[data-theme='dark'] .tb-md > img:only-child {
-  outline: none;
 }
 
 html[data-theme='dark'] .tb-page .tb-md .thumbcaption {

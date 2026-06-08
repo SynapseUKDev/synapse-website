@@ -2,6 +2,10 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { LuX } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
+import AdminImageGallery, {
+  imageItemsFromTextbookBlock,
+  normalizeTextbookImageItems,
+} from '../admin/AdminImageGallery.jsx'
 
 const SECTION_TYPES = [
   'overview',
@@ -47,219 +51,11 @@ function useSaveFlash() {
 }
 
 function normalizeImageItems(data) {
-  if (Array.isArray(data?.images)) {
-    return data.images.map((img) => ({
-      url: img?.url || '',
-      alt: img?.alt || '',
-      caption: img?.caption || '',
-      attribution: img?.attribution || '',
-      license: img?.license || '',
-    }))
-  }
-  if (data?.url) {
-    return [{
-      url: data.url || '',
-      alt: data.alt || '',
-      caption: data.caption || '',
-      attribution: data.attribution || '',
-      license: data.license || '',
-    }]
-  }
-  return []
+  return normalizeTextbookImageItems(data)
 }
 
 function imageItemsFromBlock(block) {
-  if (!block) return []
-  return normalizeImageItems(block.data || {})
-}
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = String(reader.result || '')
-      resolve(result.includes(',') ? result.split(',').pop() : result)
-    }
-    reader.onerror = () => reject(reader.error || new Error('Could not read file'))
-    reader.readAsDataURL(file)
-  })
-}
-
-function imageMimeForUpload(file) {
-  const t = file?.type
-  if (t && /^image\/(png|jpe?g|webp|gif|svg\+xml)$/i.test(t)) return t
-  return 'image/png'
-}
-
-function ImageGalleryFields({ API_BASE, images, setImages, uploadError, setUploadError, onBusyChange = () => {} }) {
-  const [uploadingBulk, setUploadingBulk] = useState(false)
-  const [replacingIdx, setReplacingIdx] = useState(null)
-
-  useEffect(() => {
-    onBusyChange(Boolean(uploadingBulk || replacingIdx !== null))
-  }, [uploadingBulk, replacingIdx, onBusyChange])
-
-  const emit = (next) => setImages(next)
-
-  const updateImage = (index, patch) => {
-    emit(images.map((img, i) => (i === index ? { ...img, ...patch } : img)))
-  }
-
-  const removeImage = (index) => {
-    emit(images.filter((_, i) => i !== index))
-  }
-
-  const moveImage = (index, direction) => {
-    const nextIndex = index + direction
-    if (nextIndex < 0 || nextIndex >= images.length) return
-    const next = [...images]
-    const [item] = next.splice(index, 1)
-    next.splice(nextIndex, 0, item)
-    emit(next)
-  }
-
-  const uploadOne = async (file) => {
-    const dataBase64 = await fileToBase64(file)
-    const res = await authenticatedFetch(`${API_BASE}/admin/textbook/images/upload`, {
-      method: 'POST',
-      body: JSON.stringify({
-        filename: file.name,
-        mime_type: imageMimeForUpload(file),
-        data_base64: dataBase64,
-      }),
-    })
-    if (!res.ok) throw new Error(await readJsonError(res))
-    const json = await res.json()
-    return {
-      url: json.url,
-      alt: file.name.replace(/\.[^.]+$/, ''),
-      caption: '',
-      attribution: '',
-      license: '',
-    }
-  }
-
-  const appendFromFiles = async (fileList) => {
-    const list = Array.from(fileList || []).filter(Boolean)
-    if (!list.length) return
-    setUploadingBulk(true)
-    setUploadError('')
-    try {
-      const next = [...images]
-      for (const file of list) {
-        const uploaded = await uploadOne(file)
-        next.push(uploaded)
-      }
-      emit(next)
-    } catch (e) {
-      setUploadError(e.message || 'Could not upload image.')
-    } finally {
-      setUploadingBulk(false)
-    }
-  }
-
-  const replaceAt = async (index, file) => {
-    if (!file) return
-    setReplacingIdx(index)
-    setUploadError('')
-    try {
-      const uploaded = await uploadOne(file)
-      updateImage(index, {
-        ...uploaded,
-        caption: images[index]?.caption || '',
-        attribution: images[index]?.attribution || '',
-        license: images[index]?.license || '',
-      })
-    } catch (e) {
-      setUploadError(e.message || 'Could not upload image.')
-    } finally {
-      setReplacingIdx(null)
-    }
-  }
-
-  const kindLabel = images.length <= 1 ? 'Single image' : `${images.length} images (carousel)`
-
-  return (
-    <div className="tb-admin-image-editor">
-      <div className="tb-admin-image-editor__head">
-        <div>
-          <strong>Images in this block</strong>
-          <span>{kindLabel}</span>
-        </div>
-        <label className="tb-admin-upload-btn">
-          {uploadingBulk ? 'Uploading…' : 'Add from device'}
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => {
-              appendFromFiles(e.target.files)
-              e.target.value = ''
-            }}
-          />
-        </label>
-      </div>
-
-      {images.length === 0 && (
-        <div className="tb-admin-image-empty">
-          No images yet. Use &quot;Add from device&quot; to choose one or more images (they upload automatically).
-        </div>
-      )}
-
-      {images.map((img, index) => (
-        <div key={`${img.url || 'row'}-${index}`} className="tb-admin-image-item">
-          <div className="tb-admin-image-item__preview">
-            {img.url ? <img src={img.url} alt={img.alt || ''} /> : <span>Needs image</span>}
-          </div>
-          <div className="tb-admin-image-item__fields">
-            <label>
-              <span>Alt text</span>
-              <input value={img.alt} onChange={(e) => updateImage(index, { alt: e.target.value })} />
-            </label>
-            <label>
-              <span>Caption</span>
-              <input value={img.caption} onChange={(e) => updateImage(index, { caption: e.target.value })} />
-            </label>
-            <div className="tb-admin-image-item__grid">
-              <label>
-                <span>Attribution</span>
-                <input value={img.attribution} onChange={(e) => updateImage(index, { attribution: e.target.value })} />
-              </label>
-              <label>
-                <span>License</span>
-                <input value={img.license} onChange={(e) => updateImage(index, { license: e.target.value })} />
-              </label>
-            </div>
-            <details className="tb-admin-image-item__manual">
-              <summary>Manual image URL</summary>
-              <label>
-                <span>URL</span>
-                <input value={img.url} onChange={(e) => updateImage(index, { url: e.target.value })} />
-              </label>
-            </details>
-          </div>
-          <div className="tb-admin-image-item__actions">
-            <label className="tb-admin-upload-btn tb-admin-upload-btn--small">
-              {replacingIdx === index ? 'Uploading…' : 'Replace file'}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  replaceAt(index, e.target.files?.[0])
-                  e.target.value = ''
-                }}
-              />
-            </label>
-            <button type="button" className="tb-admin-btn tb-admin-btn--ghost" onClick={() => moveImage(index, -1)} disabled={index === 0}>Up</button>
-            <button type="button" className="tb-admin-btn tb-admin-btn--ghost" onClick={() => moveImage(index, 1)} disabled={index === images.length - 1}>Down</button>
-            <button type="button" className="tb-admin-btn tb-admin-btn--danger" onClick={() => removeImage(index)}>Remove</button>
-          </div>
-        </div>
-      ))}
-
-      {uploadError && <div className="tb-admin-error tb-admin-error--block">{uploadError}</div>}
-    </div>
-  )
+  return imageItemsFromTextbookBlock(block)
 }
 
 function TextbookAdminImageModal({
@@ -371,13 +167,15 @@ function TextbookAdminImageModal({
           </button>
         </div>
         <div className="tb-admin-img-modal__body">
-          <ImageGalleryFields
+          <AdminImageGallery
             API_BASE={API_BASE}
             images={images}
             setImages={setImages}
             uploadError={uploadError}
             setUploadError={setUploadError}
             onBusyChange={setUploadBusy}
+            variant="textbook"
+            emptyHint='No images yet. Use "Add from device" to choose one or more images (they upload automatically).'
           />
           {isEdit && (
             <label className="tb-admin-img-modal__position">

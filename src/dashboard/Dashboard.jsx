@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import { authHeaders, authenticatedFetch } from '../auth/token'
-import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuTrophy, LuArrowRight, LuUserPlus, LuCheck, LuX, LuPencil } from 'react-icons/lu'
+import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuTrophy, LuArrowRight, LuUserPlus, LuCheck, LuX, LuPencil, LuChevronDown } from 'react-icons/lu'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import useStaleJson from '../utils/useStaleJson'
 import {
@@ -15,6 +15,16 @@ import {
   renderAccuracyChartByWeekday,
   renderTimeChartByWeekday,
 } from './insights/dashboardAnalyticsCharts.jsx'
+import { getEmailDomain, isUniversityEmail } from '../utils/emailDomain.js'
+
+/** px to scroll when a collapsible list opens — scales with item count */
+function collapseExpandScrollOffset(itemCount) {
+  const n = Math.max(1, itemCount)
+  const base = 40
+  const perItem = 52
+  const max = 520
+  return Math.min(max, base + n * perItem)
+}
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -68,6 +78,7 @@ export default function Dashboard() {
   const [specialties, setSpecialties] = useState([])
   const [selectedSpecialty, setSelectedSpecialty] = useState('all')
   const [sortBy, setSortBy] = useState('total_answered') // total_answered | correct | accuracy_pct
+  const [leaderboardScope, setLeaderboardScope] = useState('friends') // friends | university
 
   const [recentTopic, setRecentTopic] = useState(null)
   const [analyticsChart, setAnalyticsChart] = useState('questions') // 'questions' | 'accuracy' | 'time'
@@ -81,6 +92,12 @@ export default function Dashboard() {
   const [friendMessage, setFriendMessage] = useState(null) // { type: 'success'|'error', text }
   const [respondingId, setRespondingId] = useState(null)
   const [friendsTab, setFriendsTab] = useState('friends') // 'friends' | 'requests'
+  const [leaderboardExpanded, setLeaderboardExpanded] = useState(false)
+  const [friendsListExpanded, setFriendsListExpanded] = useState(false)
+  const friendsListRef = useRef(null)
+  const leaderboardListRef = useRef(null)
+  const shouldScrollFriendsRef = useRef(false)
+  const shouldScrollLeaderboardRef = useRef(false)
   const [isEditingTargets, setIsEditingTargets] = useState(null) // 'time' | 'questions' | null
   const [tempTargets, setTempTargets] = useState({ questions: 30, time_minutes: 180 })
   const editRef = useRef(null)
@@ -123,9 +140,13 @@ export default function Dashboard() {
   const loadLeaderboard = async () => {
     try {
       setLeaderboardLoading(true)
-      const url = selectedSpecialty === 'all'
-        ? `${API_BASE}/friends/leaderboard`
-        : `${API_BASE}/friends/leaderboard?specialty_id=${selectedSpecialty}`
+      const params = new URLSearchParams()
+      if (selectedSpecialty !== 'all') params.set('specialty_id', selectedSpecialty)
+      const query = params.toString()
+      const basePath = leaderboardScope === 'university'
+        ? `${API_BASE}/friends/university-leaderboard`
+        : `${API_BASE}/friends/leaderboard`
+      const url = query ? `${basePath}?${query}` : basePath
       const res = await authenticatedFetch(url)
       if (res.ok) {
         const json = await res.json().catch(() => ({}))
@@ -140,13 +161,22 @@ export default function Dashboard() {
     }
   }
 
+  const universityEligible = isUniversityEmail(user?.email)
+  const universityDomain = getEmailDomain(user?.email)
+
   useEffect(() => {
     loadSpecialties()
   }, [])
 
   useEffect(() => {
+    if (leaderboardScope === 'university' && !universityEligible) {
+      setLeaderboardScope('friends')
+    }
+  }, [leaderboardScope, universityEligible])
+
+  useEffect(() => {
     loadLeaderboard()
-  }, [selectedSpecialty])
+  }, [selectedSpecialty, leaderboardScope])
 
   const loadFriends = async () => {
     try {
@@ -232,10 +262,6 @@ export default function Dashboard() {
     loadFriendRequests()
   }, [API_BASE])
 
-  useEffect(() => {
-    loadLeaderboard()
-  }, [selectedSpecialty])
-
   const continueQuestions = () => {
     const spec = summary.last_specialty
     if (spec?.id) {
@@ -306,6 +332,102 @@ export default function Dashboard() {
     } else if (e.key === 'Escape') {
       setIsEditingTargets(null)
     }
+  }
+
+  const sortedLeaderboard = useMemo(() => {
+    return [...leaderboard].sort((a, b) => {
+      if (sortBy === 'accuracy_pct') {
+        const aVal = a.accuracy_pct ?? -1
+        const bVal = b.accuracy_pct ?? -1
+        return bVal - aVal
+      }
+      return (b[sortBy] || 0) - (a[sortBy] || 0)
+    })
+  }, [leaderboard, sortBy])
+
+  const visibleLeaderboard = leaderboardExpanded
+    ? sortedLeaderboard
+    : sortedLeaderboard.slice(0, 3)
+  const hiddenLeaderboardCount = Math.max(0, sortedLeaderboard.length - 3)
+
+  useEffect(() => {
+    setLeaderboardExpanded(false)
+  }, [selectedSpecialty, sortBy, leaderboardScope])
+
+  const toggleFriendsList = () => {
+    setFriendsListExpanded((prev) => {
+      if (!prev) shouldScrollFriendsRef.current = true
+      return !prev
+    })
+  }
+
+  const toggleLeaderboardExpanded = () => {
+    setLeaderboardExpanded((prev) => {
+      if (!prev) shouldScrollLeaderboardRef.current = true
+      return !prev
+    })
+  }
+
+  useEffect(() => {
+    if (!friendsListExpanded || !shouldScrollFriendsRef.current) return
+    shouldScrollFriendsRef.current = false
+    const scrollPx = collapseExpandScrollOffset(friends.length)
+    requestAnimationFrame(() => {
+      friendsListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      window.scrollBy({ top: scrollPx, behavior: 'smooth' })
+    })
+  }, [friendsListExpanded, friends.length])
+
+  useEffect(() => {
+    if (!leaderboardExpanded || !shouldScrollLeaderboardRef.current) return
+    shouldScrollLeaderboardRef.current = false
+    const scrollPx = collapseExpandScrollOffset(hiddenLeaderboardCount)
+    requestAnimationFrame(() => {
+      leaderboardListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      window.scrollBy({ top: scrollPx, behavior: 'smooth' })
+    })
+  }, [leaderboardExpanded, hiddenLeaderboardCount])
+
+  const renderLeaderboardEntry = (entry, index) => {
+    const isCurrentUser = entry.user_id === user?.id
+    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
+
+    let scoreValue
+    let scoreLabel
+    if (sortBy === 'accuracy_pct') {
+      scoreValue = entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'
+      scoreLabel = 'accuracy'
+    } else if (sortBy === 'correct') {
+      scoreValue = entry.correct || 0
+      scoreLabel = 'correct'
+    } else {
+      scoreValue = entry.total_answered || 0
+      scoreLabel = 'total'
+    }
+
+    return (
+      <div
+        key={entry.user_id}
+        className={`db-leaderboard__item ${isCurrentUser ? 'db-leaderboard__item--self' : ''}`}
+      >
+        <div className="db-leaderboard__rank">
+          {medal || `#${index + 1}`}
+        </div>
+        <div className="db-leaderboard__user">
+          <div className="db-leaderboard__username">
+            {entry.username || entry.email?.split('@')[0] || 'User'}
+            {isCurrentUser && <span className="db-leaderboard__you">(You)</span>}
+          </div>
+          <div className="db-leaderboard__stats">
+            {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
+          </div>
+        </div>
+        <div className="db-leaderboard__score">
+          <div className="db-leaderboard__score-num">{scoreValue}</div>
+          <div className="db-leaderboard__score-label">{scoreLabel}</div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -471,6 +593,20 @@ export default function Dashboard() {
               </div>
               <div className="db-leaderboard__content">
                 <div className="db-filters">
+                  {universityEligible && (
+                    <div className="db-filter db-filter--full">
+                      <select
+                        className="db-select"
+                        value={leaderboardScope}
+                        onChange={(e) => setLeaderboardScope(e.target.value)}
+                      >
+                        <option value="friends">Friends leaderboard</option>
+                        <option value="university">
+                          University leaderboard (@{universityDomain})
+                        </option>
+                      </select>
+                    </div>
+                  )}
                   <div className="db-filter">
                     <select
                       className="db-select"
@@ -501,63 +637,31 @@ export default function Dashboard() {
                 {leaderboardLoading ? (
                   <div className="db-empty">Loading leaderboard…</div>
                 ) : leaderboard.length === 0 ? (
-                  <div className="db-empty">No data available. Add friends to compete!</div>
+                  <div className="db-empty">
+                    {leaderboardScope === 'university'
+                      ? `No students from @${universityDomain} on Synapse yet.`
+                      : 'No data available. Add friends to compete!'}
+                  </div>
                 ) : (
-                  <div className="db-leaderboard__list">
-                    {(() => {
-                      // Sort leaderboard based on selected metric
-                      const sorted = [...leaderboard].sort((a, b) => {
-                        if (sortBy === 'accuracy_pct') {
-                          const aVal = a.accuracy_pct ?? -1
-                          const bVal = b.accuracy_pct ?? -1
-                          return bVal - aVal
-                        } else {
-                          return (b[sortBy] || 0) - (a[sortBy] || 0)
-                        }
-                      })
-
-                      return sorted.map((entry, index) => {
-                        const isCurrentUser = entry.user_id === user?.id
-                        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
-
-                        // Determine what to show on the right based on sort
-                        let scoreValue, scoreLabel
-                        if (sortBy === 'accuracy_pct') {
-                          scoreValue = entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'
-                          scoreLabel = 'accuracy'
-                        } else if (sortBy === 'correct') {
-                          scoreValue = entry.correct || 0
-                          scoreLabel = 'correct'
-                        } else {
-                          scoreValue = entry.total_answered || 0
-                          scoreLabel = 'total'
-                        }
-
-                        return (
-                          <div
-                            key={entry.user_id}
-                            className={`db-leaderboard__item ${isCurrentUser ? 'db-leaderboard__item--self' : ''}`}
-                          >
-                            <div className="db-leaderboard__rank">
-                              {medal || `#${index + 1}`}
-                            </div>
-                            <div className="db-leaderboard__user">
-                              <div className="db-leaderboard__username">
-                                {entry.username || entry.email?.split('@')[0] || 'User'}
-                                {isCurrentUser && <span className="db-leaderboard__you">(You)</span>}
-                              </div>
-                              <div className="db-leaderboard__stats">
-                                {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
-                              </div>
-                            </div>
-                            <div className="db-leaderboard__score">
-                              <div className="db-leaderboard__score-num">{scoreValue}</div>
-                              <div className="db-leaderboard__score-label">{scoreLabel}</div>
-                            </div>
-                          </div>
-                        )
-                      })
-                    })()}
+                  <div className="db-leaderboard__list" ref={leaderboardListRef}>
+                    {visibleLeaderboard.map((entry, index) => renderLeaderboardEntry(entry, index))}
+                    {hiddenLeaderboardCount > 0 && (
+                      <button
+                        type="button"
+                        className="db-collapse-toggle"
+                        aria-expanded={leaderboardExpanded}
+                        onClick={toggleLeaderboardExpanded}
+                      >
+                        {leaderboardExpanded
+                          ? 'Show less'
+                          : `See more (${hiddenLeaderboardCount})`}
+                        <LuChevronDown
+                          size={16}
+                          className={`db-collapse-toggle__chevron ${leaderboardExpanded ? 'is-expanded' : ''}`}
+                          aria-hidden
+                        />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -662,23 +766,39 @@ export default function Dashboard() {
 
               {friendsTab === 'friends' && (
                 <>
-                  <div className="db-subheading">Your friends</div>
                   {friendsLoading ? (
                     <div className="db-empty">Loading…</div>
                   ) : friends.length === 0 ? (
                     <div className="db-empty">No friends yet. Add someone by email above.</div>
                   ) : (
-                    <div className="db-list">
-                      {friends.map((f) => (
-                        <div key={f.id} className="db-list__item db-list__item--friend">
-                          <div className="db-list__main">
-                            <div className="db-list__title">{f.friend_username || f.friend_email || 'Friend'}</div>
-                            <div className="db-list__sub">{f.friend_email}</div>
-                          </div>
-                          <span className="db-friend-badge">Friends</span>
+                    <>
+                      <button
+                        type="button"
+                        className="db-collapse-toggle"
+                        aria-expanded={friendsListExpanded}
+                        onClick={toggleFriendsList}
+                      >
+                        {friendsListExpanded ? 'Hide friends list' : `See friends list (${friends.length})`}
+                        <LuChevronDown
+                          size={16}
+                          className={`db-collapse-toggle__chevron ${friendsListExpanded ? 'is-expanded' : ''}`}
+                          aria-hidden
+                        />
+                      </button>
+                      {friendsListExpanded && (
+                        <div className="db-list db-friends__list" ref={friendsListRef}>
+                          {friends.map((f) => (
+                            <div key={f.id} className="db-list__item db-list__item--friend">
+                              <div className="db-list__main">
+                                <div className="db-list__title">{f.friend_username || f.friend_email || 'Friend'}</div>
+                                <div className="db-list__sub">{f.friend_email}</div>
+                              </div>
+                              <span className="db-friend-badge">Friends</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
                 </>
               )}

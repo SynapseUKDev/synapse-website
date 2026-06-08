@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { LuChevronLeft, LuCircleAlert, LuCircleCheck } from 'react-icons/lu'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
+import { LuChevronLeft, LuArrowRight, LuEye } from 'react-icons/lu'
 import { authHeaders } from '../../auth/token'
-import './MockExams.css'
-import '../practice/Practice.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
+import '../practice/PracticeResults.css'
+import '../practice/PracticeSetup.css'
+import './MockExams.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -42,14 +40,7 @@ export default function MockExamResults() {
           )
           const json = await res.json().catch(() => ({}))
           if (!res.ok) throw new Error(json.error || res.statusText)
-          if (!cancelled) {
-            setData({
-              correct: json.correct ?? 0,
-              total: json.total ?? 0,
-              skipped: json.skipped ?? 0,
-              questions: Array.isArray(json.questions) ? json.questions : [],
-            })
-          }
+          if (!cancelled) setData(json)
         } catch (e) {
           if (!cancelled) setError(e.message || 'Failed to load results')
         } finally {
@@ -63,9 +54,11 @@ export default function MockExamResults() {
 
     if (fromState) {
       setData({
+        attempt_id: state.attempt_id,
         correct: state.correct ?? 0,
         total: state.total ?? 0,
         skipped: state.skipped ?? 0,
+        paper_title: state.paper_title,
         questions: Array.isArray(state.questions) ? state.questions : [],
       })
       setLoading(false)
@@ -77,9 +70,17 @@ export default function MockExamResults() {
     return undefined
   }, [attemptIdQuery, location.key])
 
+  const enterReviewMode = () => {
+    const attemptId = data?.attempt_id || attemptIdQuery
+    const path = attemptId
+      ? `/dashboard/mock-exams/review?attempt_id=${encodeURIComponent(attemptId)}`
+      : '/dashboard/mock-exams/review'
+    navigate(path, { state: data })
+  }
+
   if (loading) {
     return (
-      <div className="me">
+      <div className="prr">
         <LoadingScreen message="Loading results…" inline />
       </div>
     )
@@ -102,6 +103,7 @@ export default function MockExamResults() {
   const total = data?.total ?? 0
   const skipped = data?.skipped ?? 0
   const questions = data?.questions ?? []
+  const paperTitle = data?.paper_title
 
   if (!total && questions.length === 0) {
     return (
@@ -116,93 +118,116 @@ export default function MockExamResults() {
     )
   }
 
-  const pct = total > 0 ? Math.round((correct / total) * 100) : 0
+  const incorrect = Math.max(total - correct - skipped, 0)
+  const attempted = total - skipped
+  const accuracyPct = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
+  const scoreTheme = accuracyPct >= 80 ? 'good' : accuracyPct >= 60 ? 'ok' : 'poor'
 
   return (
-    <div className="me me-results">
-      <header className="me__header">
-        <button type="button" className="me-btn me-btn--ghost me-results__back" onClick={() => navigate('/dashboard/mock-exams')}>
-          <LuChevronLeft size={18} /> Back to mock exams
+    <div className="prr">
+      <div className="prr__top">
+        <button type="button" className="setup__back" onClick={() => navigate('/dashboard/mock-exams')}>
+          <LuChevronLeft /> Back to Mock Exams
         </button>
-        <h1 className="me__title">Exam results</h1>
-        <p className="me__subtitle">
-          {correct} / {total} correct ({pct}%) · {skipped} skipped
-        </p>
-      </header>
+      </div>
 
-      <div className="me-results__list">
-        {questions.map((q, i) => (
-          <article key={q.id || i} className={`me-results__q ${q.skipped ? 'me-results__q--skipped' : q.is_correct ? 'me-results__q--ok' : 'me-results__q--bad'}`}>
-            <div className="me-results__q-head">
-              <span className="me-results__q-num">Q{q.ordinal ?? i + 1}</span>
-              {q.skipped ? (
-                <span className="me-results__badge me-results__badge--skip">Skipped</span>
-              ) : q.is_correct ? (
-                <span className="me-results__badge me-results__badge--ok">
-                  <LuCircleCheck size={16} /> Correct
-                </span>
-              ) : (
-                <span className="me-results__badge me-results__badge--bad">
-                  <LuCircleAlert size={16} /> Incorrect
-                </span>
-              )}
+      <div className="prr-hero card">
+        <div className="prr-hero__left">
+          <div
+            className={`score-ring score-ring--${scoreTheme}`}
+            style={{ ['--pct']: `${accuracyPct}%` }}
+            aria-label={`Accuracy ${accuracyPct}%`}
+          >
+            <div className="score-ring__inner">
+              <div className="score-ring__value">{accuracyPct}%</div>
+              <div className="score-ring__label">Accuracy</div>
             </div>
-            <div className="question-stem me-results__stem">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                {q.stem}
-              </ReactMarkdown>
+          </div>
+          <div className="prr-hero__meta">
+            <h1 className="prr__title">Exam Complete</h1>
+            <div className="prr__subtitle">{paperTitle ? `${paperTitle} • Mock exam` : 'Mock exam'}</div>
+          </div>
+        </div>
+        <div className="prr-hero__right">
+          <div className="kpi">
+            <div className="kpi__value kpi__value--green">{correct}</div>
+            <div className="kpi__label">Correct</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi__value kpi__value--red">{incorrect}</div>
+            <div className="kpi__label">Incorrect</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi__value kpi__value--muted">{skipped}</div>
+            <div className="kpi__label">Skipped</div>
+          </div>
+          <div className="kpi">
+            <div className="kpi__value">{total}</div>
+            <div className="kpi__label">Total</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="prr__grid prr__grid--top">
+        <div className="card prr-card">
+          <div className="card__header">Performance Highlights</div>
+          <div className="card__body prr-card__body">
+            <ul className="highlights">
+              <li>
+                <span className="dot dot--green" /> You answered {correct} correctly
+              </li>
+              <li>
+                <span className="dot dot--blue" /> Accuracy at {accuracyPct}%
+              </li>
+              <li>
+                <span className="dot dot--amber" /> {skipped} skipped questions
+              </li>
+            </ul>
+            <div className="prr-bar">
+              <div className="prr-fill" style={{ width: `${accuracyPct}%` }} />
             </div>
-            {Array.isArray(q.options) && q.options.length > 0 ? (
-              <div className="me-results__options" role="list" aria-label="Answer choices">
-                {q.options.map((o) => {
-                  const idx = o.id
-                  const isCorrect = q.correct_option_index != null && idx === q.correct_option_index
-                  const isUserPick =
-                    !q.skipped && q.selected_option_index != null && idx === q.selected_option_index
-                  const parts = ['me-results__opt']
-                  if (isCorrect) parts.push('me-results__opt--correct')
-                  if (isUserPick && !isCorrect) parts.push('me-results__opt--incorrect')
-                  return (
-                    <div key={String(idx)} className={parts.join(' ')} role="listitem">
-                      <span className="me-results__opt-label">{o.label}.</span>
-                      <div className="me-results__opt-main">
-                        <div className="me-results__opt-body">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                            {o.body || ''}
-                          </ReactMarkdown>
-                        </div>
-                        <div className="me-results__opt-meta">
-                          {isCorrect ? (
-                            <span className="me-results__opt-pill me-results__opt-pill--correct">Correct</span>
-                          ) : null}
-                          {isUserPick ? (
-                            <span className="me-results__opt-pill me-results__opt-pill--yours">Your answer</span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+            {questions.length > 0 ? (
+              <button type="button" className="btn btn--primary btn--icon" onClick={enterReviewMode}>
+                <LuEye size={16} /> Review Your Answers
+              </button>
             ) : null}
-            {(q.explanations?.detailed || q.explanations?.eli5) && (
-              <div className="me-results__explain">
-                {q.explanations?.eli5 && (
-                  <div>
-                    <div className="me-results__explain-label">Summary</div>
-                    <div>{q.explanations.eli5}</div>
-                  </div>
-                )}
-                {q.explanations?.detailed && (
-                  <div style={{ marginTop: 10 }}>
-                    <div className="me-results__explain-label">Explanation</div>
-                    <div>{q.explanations.detailed}</div>
-                  </div>
-                )}
+          </div>
+        </div>
+
+        <div className="card prr-card">
+          <div className="card__header">Score Summary</div>
+          <div className="card__body prr-card__body">
+            <div className="time-grid">
+              <div>
+                <div className="time__value">{correct}</div>
+                <div className="time__label">Correct out of {total}</div>
               </div>
-            )}
-          </article>
-        ))}
+              <div>
+                <div className="time__value">{accuracyPct}%</div>
+                <div className="time__label">Attempted accuracy</div>
+              </div>
+            </div>
+            <div className={`prr-badge ${accuracyPct >= 70 ? 'prr-badge--green' : 'prr-badge--amber'}`}>
+              {accuracyPct >= 70 ? 'Solid performance' : 'Review incorrect and skipped questions'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="prr__grid">
+        <div className="card">
+          <div className="card__header">Next Actions</div>
+          <div className="card__body next-steps">
+            <button type="button" className="btn btn--primary btn--icon" onClick={() => navigate('/dashboard/mock-exams')}>
+              Take another mock <LuArrowRight />
+            </button>
+            {questions.length > 0 ? (
+              <button type="button" className="btn btn--ghost btn--icon" onClick={enterReviewMode}>
+                <LuEye size={16} /> Review answers
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   )

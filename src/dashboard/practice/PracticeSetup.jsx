@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { LuChevronLeft, LuPlay } from 'react-icons/lu'
+import { LuChevronLeft, LuPlay, LuUsers } from 'react-icons/lu'
 import './PracticeSetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import {
@@ -368,6 +368,31 @@ export default function PracticeSetup() {
     }
 
     navigate(`/dashboard/question-bank/practice?${params.toString()}`)
+  }
+
+  const startGroupSession = () => {
+    if (!studySetId && selectedTopics.size === 0) {
+      alert('Please select at least one topic')
+      return
+    }
+
+    const params = new URLSearchParams({
+      num_questions: numQuestions.toString(),
+      timer_minutes: timerEnabled ? timerMinutes.toString() : '0',
+      include_attempted: includeAttempted ? '1' : '0',
+    })
+    if (includeIncorrect && !includeAttempted) params.set('include_incorrect', '1')
+
+    if (studySetId) {
+      params.append('study_set_id', studySetId)
+      params.append('study_set_name', studySetName)
+    } else {
+      params.append('specialty_id', specialtyId)
+      params.append('specialty_name', specialtyName)
+      params.append('topic_ids', Array.from(selectedTopics).join(','))
+    }
+
+    navigate(`/dashboard/question-bank/group_setup?${params.toString()}`)
   }
 
   if (loading) {
@@ -739,6 +764,15 @@ export default function PracticeSetup() {
               Start Session
             </button>
 
+            <button
+              className="setup__start-btn setup__start-btn--secondary"
+              onClick={startGroupSession}
+              disabled={isDisabled}
+              style={{ marginTop: 10 }}
+            >
+              <LuUsers />
+              Group Study
+            </button>
 
           </div>
         </div>

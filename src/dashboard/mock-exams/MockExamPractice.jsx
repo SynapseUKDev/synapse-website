@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authHeaders } from '../../auth/token'
-import { LuChevronLeft, LuClock, LuPause, LuPlay, LuFlag } from 'react-icons/lu'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
+import { LuChevronLeft, LuClock, LuPause, LuPlay, LuFlag, LuEraser } from 'react-icons/lu'
 import '../practice/Practice.css'
 import './MockExams.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
+import ExamCalculator from './ExamCalculator.jsx'
+import useQuestionStemHighlight from '../practice/useQuestionStemHighlight.jsx'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 const QUESTIONS_PER_PAGE = 30
@@ -63,6 +62,14 @@ export default function MockExamPractice() {
   const timeUpRef = useRef(false)
   const prevSecondsRef = useRef(-1)
   const secondsRef = useRef(0)
+  const {
+    stemRef,
+    renderHighlightedText,
+    renderPopover,
+    clearHighlights,
+    hasHighlights,
+    setActiveQuestion,
+  } = useQuestionStemHighlight()
 
   const timerBudget = paper?.timer_duration_seconds ?? 0
   const initialRemaining = paper?.timer_remaining_seconds ?? timerBudget
@@ -180,6 +187,11 @@ export default function MockExamPractice() {
   }, [currentIndex])
 
   const currentQ = questions[currentIndex]
+
+  useEffect(() => {
+    setActiveQuestion(currentQ || null)
+  }, [currentQ, setActiveQuestion])
+
   const hasRecorded =
     !!currentQ && Object.prototype.hasOwnProperty.call(saved, currentQ.id)
   const recordedVal = hasRecorded ? saved[currentQ.id] : undefined
@@ -252,7 +264,7 @@ export default function MockExamPractice() {
           })
           const data = await res.json().catch(() => ({}))
           if (!res.ok) throw new Error(data.error || res.statusText)
-          navigate('/dashboard/mock-exams/results', { state: data })
+          navigate(`/dashboard/mock-exams/results?attempt_id=${encodeURIComponent(attemptId)}`, { state: data })
         } catch (e) {
           alert(e.message || 'Could not finish')
           timeUpRef.current = false
@@ -276,13 +288,17 @@ export default function MockExamPractice() {
     if (!res.ok) throw new Error(data.error || res.statusText)
   }
 
-  const onSubmit = async () => {
-    if (!currentQ || submitting || !needsSaveAnswer) return
-    if (selected === null || selected === undefined) return
+  const onSaveAndNext = async () => {
+    if (!currentQ || submitting || selected === null || selected === undefined) return
     setSubmitting(true)
     try {
       await persistAnswer(currentQ.id, selected)
       setSaved((prev) => ({ ...prev, [currentQ.id]: selected }))
+      if (currentIndex < questions.length - 1) {
+        const n = currentIndex + 1
+        setCurrentIndex(n)
+        setSelectedRangeIdx(Math.floor(n / QUESTIONS_PER_PAGE))
+      }
     } catch (e) {
       alert(e.message || 'Save failed')
     } finally {
@@ -298,6 +314,11 @@ export default function MockExamPractice() {
       await persistAnswer(currentQ.id, null)
       setSaved((prev) => ({ ...prev, [currentQ.id]: null }))
       setSelected(null)
+      if (currentIndex < questions.length - 1) {
+        const n = currentIndex + 1
+        setCurrentIndex(n)
+        setSelectedRangeIdx(Math.floor(n / QUESTIONS_PER_PAGE))
+      }
     } catch (e) {
       alert(e.message || 'Save failed')
     } finally {
@@ -335,7 +356,7 @@ export default function MockExamPractice() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || res.statusText)
-      navigate('/dashboard/mock-exams/results', { state: data })
+      navigate(`/dashboard/mock-exams/results?attempt_id=${encodeURIComponent(attemptId)}`, { state: data })
     } catch (e) {
       alert(e.message || 'Could not finish')
     } finally {
@@ -391,7 +412,7 @@ export default function MockExamPractice() {
       <div className="pr__top">
         <div>
           <h2 style={{ margin: 0 }}>{paper?.title || 'Mock exam'}</h2>
-          <div style={{ color: '#64748b' }}>
+          <div className="pr__top-caption">
             Question {currentIndex + 1} of {questions.length}
           </div>
         </div>
@@ -423,11 +444,10 @@ export default function MockExamPractice() {
           <div className="card__body">
             <div className="question-content">
               <div className="question-stem-wrapper">
-                <div className="question-stem mock-exam-stem">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                    {currentQ.stem}
-                  </ReactMarkdown>
+                <div ref={stemRef} className="question-stem mock-exam-stem">
+                  {currentQ?.stem ? renderHighlightedText(currentQ.stem, currentQ.id) : null}
                 </div>
+                {renderPopover()}
               </div>
               <div className="mock-exam-options" style={{ display: 'grid', gap: 8 }}>
                 {(currentQ.options || []).map((o) => {
@@ -470,6 +490,18 @@ export default function MockExamPractice() {
                     {flagged.has(String(currentQ.id)) ? 'Flagged' : 'Flag'}
                   </button>
                 ) : null}
+                {currentQ && hasHighlights(currentQ.id) ? (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--icon"
+                    onClick={() => clearHighlights(currentQ.id)}
+                    title="Clear all highlights"
+                    aria-label="Clear all highlights"
+                  >
+                    <LuEraser aria-hidden />
+                    Clear Highlights
+                  </button>
+                ) : null}
               </div>
               <div className="controls__right">
                 <button type="button" onClick={goPrev} disabled={currentIndex <= 0} className="btn btn--ghost btn--icon">
@@ -479,15 +511,11 @@ export default function MockExamPractice() {
                 {needsSaveAnswer ? (
                   <button
                     type="button"
-                    onClick={onSubmit}
-                    disabled={submitting}
-                    className="btn btn--primary"
+                    onClick={onSaveAndNext}
+                    disabled={submitting || selected === null || selected === undefined}
+                    className="btn btn--primary btn--icon"
                   >
-                    {submitting
-                      ? 'Saving…'
-                      : hasRecorded && typeof recordedVal === 'number'
-                        ? 'Update answer'
-                        : 'Save answer'}
+                    {submitting ? 'Saving…' : 'Save answer'}
                   </button>
                 ) : null}
                 {readyToAdvance && !needsSaveAnswer ? (
@@ -521,12 +549,8 @@ export default function MockExamPractice() {
         <div className="pr__aside">
           <div className="card progress-tracker-card">
             <div className="card__body">
-              <div className="track-section">
-                <p className="mock-exam-tracker-hint">
-                  Navigate questions. You can change your saved choice anytime before you finish the exam. Correct answers
-                  are shown only after you finish. Use <strong>Flag</strong> below the question to mark items to revisit—the
-                  sidebar highlights them and lists them under Flagged.
-                </p>
+              <div className="track-section mock-exam-tracker">
+                <ExamCalculator />
                 <div className="trk-top-row">
                   {(() => {
                     const totalRanges = Math.ceil(questions.length / QUESTIONS_PER_PAGE) || 1
@@ -559,7 +583,8 @@ export default function MockExamPractice() {
                         const st = gridStatus(q)
                         const isCurrent = idx === currentIndex
                         const isFlag = flagged.has(String(q.id))
-                        const classes = `seg seg--${st} ${isCurrent ? 'seg--current' : ''} ${isFlag ? 'seg--flagged' : ''}`
+                        const statusClass = isFlag ? 'flagged' : st
+                        const classes = `seg seg--${statusClass}${isCurrent ? ' seg--current' : ''}`
                         return (
                           <button
                             key={q.id}
@@ -601,19 +626,19 @@ export default function MockExamPractice() {
                 ) : null}
                 <div className="trk-legend">
                   <span className="legend-item">
-                    <span className="legend-swatch legend-swatch--answered" /> Answered
+                    <span className="legend-swatch mock-exam-swatch--answered" /> Answered
                   </span>
                   <span className="legend-item">
-                    <span className="legend-swatch legend-swatch--skipped" /> Skipped
+                    <span className="legend-swatch mock-exam-swatch--skipped" /> Skipped
                   </span>
                   <span className="legend-item">
-                    <span className="legend-swatch swatch--unanswered" /> Not yet
+                    <span className="legend-swatch mock-exam-swatch--unanswered" /> Not yet
                   </span>
                   <span className="legend-item">
                     <span className="legend-swatch swatch--current" /> Current
                   </span>
                   <span className="legend-item">
-                    <span className="legend-swatch swatch--flagged" /> Flagged
+                    <span className="legend-swatch mock-exam-swatch--flagged" /> Flagged
                   </span>
                 </div>
                 <button

@@ -607,6 +607,30 @@ html[data-theme='dark'] .setup__toggle-input:checked + .setup__toggle-slider {
   transform: none;
 }
 
+.setup__start-btn--secondary {
+  background: transparent;
+  color: var(--syn-text-secondary, #6b7280);
+  border: 1.5px solid var(--syn-border, #e5e7eb);
+  font-weight: 700;
+}
+
+.setup__start-btn--secondary:hover:not(:disabled) {
+  background: var(--syn-surface-2, #f3f4f6);
+  color: var(--syn-text, #111827);
+  filter: none;
+  transform: translateY(-1px);
+}
+
+html[data-theme='dark'] .setup__start-btn--secondary {
+  color: var(--dm-text-secondary, #9ca3af);
+  border-color: var(--dm-border, #374151);
+}
+
+html[data-theme='dark'] .setup__start-btn--secondary:hover:not(:disabled) {
+  background: var(--dm-surface-2, #1f2937);
+  color: var(--dm-text, #f9fafb);
+}
+
 @media (max-width: 1024px) {
   .setup__content {
     grid-template-columns: 1fr;

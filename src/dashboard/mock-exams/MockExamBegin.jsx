@@ -58,7 +58,6 @@ export default function MockExamBegin() {
         if (!found) throw new Error('Mock paper not found')
         if (!cancelled) {
           setPaper(found)
-          setTimerMinutes(Math.min(300, Math.max(5, Number(found.duration_minutes) || 120)))
         }
       } catch (e) {
         if (!cancelled) setError(e.message || 'Failed to load')

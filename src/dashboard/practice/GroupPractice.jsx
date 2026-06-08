@@ -199,6 +199,15 @@ export default function GroupPractice() {
       return {
         ...question,
         ...updatedQuestion,
+        assets: (updatedQuestion.assets || []).map((asset, index) => ({
+          id: asset.id,
+          type: asset.asset_type || 'image',
+          url: asset.asset_url,
+          alt: asset.alt || null,
+          caption: asset.caption || null,
+          credit: asset.credit || null,
+          position: asset.position || index + 1,
+        })),
         options: optionBodies.map((body, idx) => ({
           id: idx,
           label: String.fromCharCode(65 + idx),

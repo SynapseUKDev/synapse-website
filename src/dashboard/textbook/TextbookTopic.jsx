@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useNavigate, useParams, useLocation, useOutletContext } from 'react-router-dom'
+import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
@@ -478,11 +479,11 @@ function ImageCarousel({ images }) {
   return (
     <div className="tb-carousel" role="region" aria-label="Image carousel">
       <button type="button" className="tb-carousel__nav tb-carousel__prev" onClick={prev} aria-label="Previous image">
-        ‹
+        <LuChevronLeft aria-hidden="true" />
       </button>
       {asset}
       <button type="button" className="tb-carousel__nav tb-carousel__next" onClick={next} aria-label="Next image">
-        ›
+        <LuChevronRight aria-hidden="true" />
       </button>
       <div className="tb-carousel__dots" role="tablist" aria-label="Image selector">
         {images.map((_, di) => (

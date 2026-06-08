@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authenticatedFetch, authHeaders } from '../../auth/token'
 import { LuChevronDown, LuChevronRight, LuX, LuSave, LuRefreshCw } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
@@ -9,6 +9,8 @@ import '../practice/Practice.css'
 
 export default function CreateStudySet() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const isGroupMode = searchParams.get('mode') === 'group'
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
   const specialtiesReq = useStaleJson(`${API_BASE}/qbank/specialties`, {
@@ -242,15 +244,15 @@ export default function CreateStudySet() {
         body: JSON.stringify({
           name: setName,
           items,
-          color: '#3b82f6', // default blue for now
-          // Pool is always the full set; users choose new vs review vs incorrect on Practice Setup before starting.
+          color: '#3b82f6',
           practice_scope_default: 'unattempted',
+          set_type: isGroupMode ? 'group' : 'solo',
         })
       })
 
       if (!res.ok) throw new Error('Failed to create set')
 
-      navigate('/dashboard/study-sets')
+      navigate(isGroupMode ? '/dashboard/group-study' : '/dashboard/study-sets')
     } catch (e) {
       console.error(e)
       alert('Failed to create study set')
@@ -265,10 +267,14 @@ export default function CreateStudySet() {
     <div className="create-set">
       <div className="create-set__header">
         <div className="create-set__title-row">
-          <h1>Create New Study Set</h1>
+          <h1>{isGroupMode ? 'Create Group Study Set' : 'Create New Study Set'}</h1>
           <button className="btn btn--exit btn--icon" onClick={() => navigate(-1)}><LuX /> Cancel</button>
         </div>
-        <p className="create-set__subtitle">Combine topics from multiple specialties into a single personal study set.</p>
+        <p className="create-set__subtitle">
+          {isGroupMode
+            ? 'Create a study set for group sessions. It will only appear on the Group Study page.'
+            : 'Combine topics from multiple specialties into a single personal study set.'}
+        </p>
       </div>
 
       <div className="create-set__form">

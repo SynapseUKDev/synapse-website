@@ -65,10 +65,10 @@
 .activity-heatmap__months {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: space-between; /* spread 4 months neatly */
+  justify-content: center;
   align-items: flex-start;
   width: 100%;
-  gap: clamp(12px, 2vw, 22px);
+  gap: 18px;
 }
 
 /* Month labels row */
@@ -124,25 +124,30 @@
   cursor: default;
 }
 
-/* Color scale: Red → Amber → Light Green → Dark Green */
+/* Color scale: white → red → yellow → light green → green (fixed question thresholds) */
 .activity-heatmap__day--level-0 {
-  background: #ebedf0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
 }
 
 .activity-heatmap__day--level-1 {
-  background: #fca5a5;
+  background: #ef4444;
+  border: 1px solid transparent;
 }
 
 .activity-heatmap__day--level-2 {
-  background: #fcd34d;
+  background: #eab308;
+  border: 1px solid transparent;
 }
 
 .activity-heatmap__day--level-3 {
   background: #86efac;
+  border: 1px solid transparent;
 }
 
 .activity-heatmap__day--level-4 {
   background: #22c55e;
+  border: 1px solid transparent;
 }
 
 .activity-heatmap__day--today {
@@ -277,8 +282,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1 1 0;     /* ✅ allow months to shrink to fit card */
-  min-width: 0;    /* ✅ required so flex children can shrink */
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .activity-heatmap__month-header {
@@ -303,6 +308,11 @@
 /* Dark mode: “future” cells are dashed by design; stronger border on dark cards */
 html[data-theme="dark"] .activity-heatmap__day--future {
   border-color: rgba(255, 255, 255, 0.22);
+}
+
+html[data-theme="dark"] .activity-heatmap__day--level-0 {
+  background: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 html[data-theme="dark"] .activity-heatmap__month-header {

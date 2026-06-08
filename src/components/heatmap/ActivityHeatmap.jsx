@@ -1,49 +1,25 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import './ActivityHeatmap.css'
+
+const MONTHS_SHOWN = 4
+
+/** Map question count to heatmap level (fixed thresholds, not relative to max). */
+function getIntensity(count) {
+  if (count <= 0) return 0
+  if (count <= 49) return 1
+  if (count <= 99) return 2
+  if (count <= 199) return 3
+  return 4
+}
 
 export default function ActivityHeatmap() {
   const [activityData, setActivityData] = useState({})
   const [loading, setLoading] = useState(true)
   const [hoveredDay, setHoveredDay] = useState(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
-  const [numWeeks, setNumWeeks] = useState(26) // default, will be calculated
   const containerRef = useRef(null)
-  const gridRef = useRef(null)
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-
-  // Calculate number of weeks based on container width
-  const calculateWeeks = useCallback(() => {
-    if (!containerRef.current) return
-    const containerWidth = containerRef.current.offsetWidth
-    const dayLabelWidth = 24 // space for day labels (S, M, T, etc.)
-    const wrapperGap = 8 // gap between day labels and grid
-    const availableWidth = containerWidth - dayLabelWidth - wrapperGap - 8 // extra padding
-    const cellSize = 14 // width of each cell
-    const gap = 3 // gap between cells
-    const calculatedWeeks = Math.floor(availableWidth / (cellSize + gap))
-    // Minimum 12 weeks (3 months), max 52 weeks (1 year)
-    setNumWeeks(Math.max(12, Math.min(52, calculatedWeeks)))
-  }, [])
-
-  useEffect(() => {
-    // Initial calculation with delay to ensure layout is ready
-    const timer = setTimeout(calculateWeeks, 50)
-
-    // ResizeObserver for container size changes
-    const resizeObserver = new ResizeObserver(() => {
-      calculateWeeks()
-    })
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current)
-    }
-
-    return () => {
-      clearTimeout(timer)
-      resizeObserver.disconnect()
-    }
-  }, [calculateWeeks])
 
   useEffect(() => {
     loadActivityData()
@@ -62,7 +38,7 @@ export default function ActivityHeatmap() {
         const data = await res.json()
         const dataMap = {}
         if (data.dates && Array.isArray(data.dates)) {
-          data.dates.forEach(item => {
+          data.dates.forEach((item) => {
             dataMap[item.date] = item.count || 0
           })
         }
@@ -75,107 +51,55 @@ export default function ActivityHeatmap() {
     }
   }
 
-  // Calendar day in the user's local timezone (must match /qbank/activity/daily keys)
-  const formatDateKeyStatic = (date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
+  const getMonthStarts = () => {
+    const today = new Date()
+    const start = new Date(today.getFullYear(), today.getMonth() - (MONTHS_SHOWN - 1), 1)
+    const end = new Date(today.getFullYear(), today.getMonth(), 1)
 
-  // Generate dates dynamically based on calculated weeks
-  // End date is the Sunday of current week, so today is near the right side
-  const generateDates = useCallback(() => {
-  const dates = []
-  const today = new Date()
-
-  // Start: 1st day of (current month - 4)  => total = 5 months incl current
-  const startMonth = new Date(today.getFullYear(), today.getMonth() - 4, 1)
-
-  // End: Sunday of the current week (no future spill)
-  const endDate = new Date(today)
-  const endDay = endDate.getDay() === 0 ? 7 : endDate.getDay() // Mon=1..Sun=7
-  endDate.setDate(endDate.getDate() + (7 - endDay))
-
-  // Align start to Monday
-  const startDate = new Date(startMonth)
-  const startDay = startDate.getDay() === 0 ? 7 : startDate.getDay()
-  startDate.setDate(startDate.getDate() - (startDay - 1))
-
-  const current = new Date(startDate)
-  while (current <= endDate) {
-    dates.push(new Date(current))
-    current.setDate(current.getDate() + 1)
-  }
-
-  return dates
-}, [numWeeks])
-
-  const getMaxCount = () => {
-    const counts = Object.values(activityData)
-    return Math.max(...counts, 1)
-  }
-
-  const getIntensity = (count) => {
-    if (count === 0) return 0
-    const max = getMaxCount()
-    const ratio = count / max
-    if (ratio <= 0.25) return 1
-    if (ratio <= 0.5) return 2
-    if (ratio <= 0.75) return 3
-    return 4
-  }
-
-  const getMonthStarts = (monthsBack = 4) => {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth() - monthsBack, 1);
-  const end = new Date(today.getFullYear(), today.getMonth(), 1);
-
-  const out = [];
-  const cur = new Date(start);
-  while (cur <= end) {
-    out.push(new Date(cur));
-    cur.setMonth(cur.getMonth() + 1);
-  }
-  return out;
-};
-
-const startOfMondayWeek = (d) => {
-  const x = new Date(d);
-  const day = x.getDay() === 0 ? 7 : x.getDay(); // Mon=1..Sun=7
-  x.setDate(x.getDate() - (day - 1));
-  x.setHours(0, 0, 0, 0);
-  return x;
-};
-
-const endOfSundayWeek = (d) => {
-  const x = new Date(d);
-  const day = x.getDay() === 0 ? 7 : x.getDay();
-  x.setDate(x.getDate() + (7 - day));
-  x.setHours(0, 0, 0, 0);
-  return x;
-};
-
-// Weeks for ONE month. Each week is 7 dates (Mon..Sun).
-const buildMonthWeeks = (monthStart) => {
-  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-  const gridStart = startOfMondayWeek(monthStart);
-  const gridEnd = endOfSundayWeek(monthEnd);
-
-  const weeks = [];
-  const cur = new Date(gridStart);
-
-  while (cur <= gridEnd) {
-    const week = [];
-    for (let i = 0; i < 7; i++) {
-      week.push(new Date(cur));
-      cur.setDate(cur.getDate() + 1);
+    const out = []
+    const cur = new Date(start)
+    while (cur <= end) {
+      out.push(new Date(cur))
+      cur.setMonth(cur.getMonth() + 1)
     }
-    weeks.push(week);
+    return out
   }
 
-  return weeks;
-};
+  const startOfMondayWeek = (d) => {
+    const x = new Date(d)
+    const day = x.getDay() === 0 ? 7 : x.getDay()
+    x.setDate(x.getDate() - (day - 1))
+    x.setHours(0, 0, 0, 0)
+    return x
+  }
+
+  const endOfSundayWeek = (d) => {
+    const x = new Date(d)
+    const day = x.getDay() === 0 ? 7 : x.getDay()
+    x.setDate(x.getDate() + (7 - day))
+    x.setHours(0, 0, 0, 0)
+    return x
+  }
+
+  const buildMonthWeeks = (monthStart) => {
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+    const gridStart = startOfMondayWeek(monthStart)
+    const gridEnd = endOfSundayWeek(monthEnd)
+
+    const weeks = []
+    const cur = new Date(gridStart)
+
+    while (cur <= gridEnd) {
+      const week = []
+      for (let i = 0; i < 7; i++) {
+        week.push(new Date(cur))
+        cur.setDate(cur.getDate() + 1)
+      }
+      weeks.push(week)
+    }
+
+    return weeks
+  }
 
   const formatDateKey = (date) => {
     const year = date.getFullYear()
@@ -189,19 +113,15 @@ const buildMonthWeeks = (monthStart) => {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
     })
   }
 
   const handleMouseEnter = (e, date, count) => {
-    const rect = e.target.getBoundingClientRect()
-    const containerRect = containerRef.current?.getBoundingClientRect()
-    if (containerRect) {
-      setTooltipPos({
-        x: e.clientX,
-        y: e.clientY - 12
-      })
-    }
+    setTooltipPos({
+      x: e.clientX,
+      y: e.clientY - 12,
+    })
     setHoveredDay({ date, count })
   }
 
@@ -209,17 +129,15 @@ const buildMonthWeeks = (monthStart) => {
     setHoveredDay(null)
   }
 
-  const dates = generateDates()
   const today = new Date()
   const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-  const dayOrder = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun in JS getDay() terms
-  const monthStarts = getMonthStarts(3)
+  const monthStarts = getMonthStarts()
 
   if (loading) {
     return (
       <div className="activity-heatmap">
         <div className="activity-heatmap-loading">
-          <div className="activity-heatmap-loading__spinner"></div>
+          <div className="activity-heatmap-loading__spinner" />
         </div>
       </div>
     )
@@ -227,9 +145,7 @@ const buildMonthWeeks = (monthStart) => {
 
   return (
     <div className="activity-heatmap" ref={containerRef}>
-      {/* Main heatmap grid */}
       <div className="activity-heatmap__wrapper">
-        {/* Day labels on the left */}
         <div className="activity-heatmap__day-labels">
           {dayNames.map((dayName, i) => (
             <div key={i} className="activity-heatmap__day-label">
@@ -239,81 +155,79 @@ const buildMonthWeeks = (monthStart) => {
         </div>
 
         <div className="activity-heatmap__content">
-  <div className="activity-heatmap__months">
-    {monthStarts.map((monthStart) => {
-      const monthWeeks = buildMonthWeeks(monthStart)
-      const monthLabel = monthStart.toLocaleDateString('en-GB', { month: 'short' })
-      const monthIndex = monthStart.getMonth()
-      const monthYear = monthStart.getFullYear()
+          <div className="activity-heatmap__months">
+            {monthStarts.map((monthStart) => {
+              const monthWeeks = buildMonthWeeks(monthStart)
+              const monthLabel = monthStart.toLocaleDateString('en-GB', { month: 'short' })
+              const monthIndex = monthStart.getMonth()
+              const monthYear = monthStart.getFullYear()
 
-      return (
-        <div key={`${monthYear}-${monthIndex}`} className="activity-heatmap__month">
-          <div className="activity-heatmap__month-header">{monthLabel}</div>
+              return (
+                <div key={`${monthYear}-${monthIndex}`} className="activity-heatmap__month">
+                  <div className="activity-heatmap__month-header">{monthLabel}</div>
 
-          <div className="activity-heatmap__grid">
-            {dayNames.map((_, dayIndex) => (
-              <div key={dayIndex} className="activity-heatmap__row">
-                {monthWeeks.map((week, weekIndex) => {
-                  const date = week[dayIndex]
+                  <div className="activity-heatmap__grid">
+                    {dayNames.map((_, dayIndex) => (
+                      <div key={dayIndex} className="activity-heatmap__row">
+                        {monthWeeks.map((week, weekIndex) => {
+                          const date = week[dayIndex]
 
-                  const isInMonth =
-                    date.getFullYear() === monthYear && date.getMonth() === monthIndex
+                          const isInMonth =
+                            date.getFullYear() === monthYear && date.getMonth() === monthIndex
 
-                  if (!isInMonth) {
-                    return (
-                      <div
-                        key={weekIndex}
-                        className="activity-heatmap__day activity-heatmap__day--empty"
-                      />
-                    )
-                  }
+                          if (!isInMonth) {
+                            return (
+                              <div
+                                key={weekIndex}
+                                className="activity-heatmap__day activity-heatmap__day--empty"
+                              />
+                            )
+                          }
 
-                  const dateKey = formatDateKey(date)
-                  const count = activityData[dateKey] || 0
-                  const intensity = getIntensity(count)
-                  const isToday = formatDateKey(today) === dateKey
-                  // Compare calendar days only (avoids time-of-day edge cases; still marks days after "today" as future)
-                  const d0 = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-                  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-                  const isFuture = d0 > t0
+                          const dateKey = formatDateKey(date)
+                          const count = activityData[dateKey] || 0
+                          const intensity = getIntensity(count)
+                          const isToday = formatDateKey(today) === dateKey
+                          const d0 = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+                          const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                          const isFuture = d0 > t0
 
-                  if (isFuture) {
-                    return (
-                      <div
-                        key={weekIndex}
-                        className="activity-heatmap__day activity-heatmap__day--future"
-                      />
-                    )
-                  }
+                          if (isFuture) {
+                            return (
+                              <div
+                                key={weekIndex}
+                                className="activity-heatmap__day activity-heatmap__day--future"
+                              />
+                            )
+                          }
 
-                  return (
-                    <div
-                      key={weekIndex}
-                      className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${
-                        isToday ? 'activity-heatmap__day--today' : ''
-                      }`}
-                      onMouseEnter={(e) => handleMouseEnter(e, date, count)}
-                      onMouseLeave={handleMouseLeave}
-                    />
-                  )
-                })}
-              </div>
-            ))}
+                          return (
+                            <div
+                              key={weekIndex}
+                              className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${
+                                isToday ? 'activity-heatmap__day--today' : ''
+                              }`}
+                              onMouseEnter={(e) => handleMouseEnter(e, date, count)}
+                              onMouseLeave={handleMouseLeave}
+                            />
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
-      )
-        })}
-        </div>  {/* closes .activity-heatmap__months */}
-      </div>    {/* closes .activity-heatmap__content */}
-    </div>      {/* closes .activity-heatmap__wrapper */}
+      </div>
 
-      {/* Tooltip */}
       {hoveredDay && (
         <div
           className="activity-heatmap__tooltip"
           style={{
             left: tooltipPos.x,
-            top: tooltipPos.y
+            top: tooltipPos.y,
           }}
         >
           <div className="activity-heatmap__tooltip-count">
@@ -325,7 +239,6 @@ const buildMonthWeeks = (monthStart) => {
         </div>
       )}
 
-      {/* Legend */}
       <div className="activity-heatmap__legend">
         <span className="activity-heatmap__legend-label">Less</span>
         <div className="activity-heatmap__legend-squares">

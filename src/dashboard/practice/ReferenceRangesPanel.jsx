@@ -192,15 +192,19 @@ export default function ReferenceRangesPanel({
                                                                 <div className="refrow__right refrow__right--groups">
                                                                     {toShow.length === 1 && toShow[0].isGeneral ? (
                                                                         <div className="refrow__valueblock">
-                                                                            <div className="refrow__value">{highlightMatch(toShow[0].value)}</div>
-                                                                            {row.unit && <div className="refrow__unit">{row.unit}</div>}
+                                                                            <div className="refrow__valuetext">
+                                                                                <span className="refrow__value">{highlightMatch(toShow[0].value)}</span>
+                                                                                {row.unit && <span className="refrow__unit">{row.unit}</span>}
+                                                                            </div>
                                                                         </div>
                                                                     ) : (
                                                                         sortedToShow.map((p, j) => (
                                                                             <div key={j} className="refrow__valueblock">
-                                                                                <div className="refrow__poplabel">{p.label}</div>
-                                                                                <div className="refrow__value">{highlightMatch(p.value)}</div>
-                                                                                {row.unit && <div className="refrow__unit">{row.unit}</div>}
+                                                                                {p.label && <span className="refrow__poplabel">{p.label}</span>}
+                                                                                <div className="refrow__valuetext">
+                                                                                    <span className="refrow__value">{highlightMatch(p.value)}</span>
+                                                                                    {row.unit && <span className="refrow__unit">{row.unit}</span>}
+                                                                                </div>
                                                                             </div>
                                                                         ))
                                                                     )}

@@ -14,7 +14,7 @@ import './components/loading/LoadingScreen.css'
 import DashboardLayout from './dashboard/layout/DashboardLayout.jsx'
 import QuestionBank from './dashboard/question-bank/QuestionBank.jsx'
 import CreateStudySet from './dashboard/question-bank/CreateStudySet.jsx'
-import StudySets from './dashboard/question-bank/StudySets.jsx'
+import StudySets, { GroupStudySets } from './dashboard/question-bank/StudySets.jsx'
 import Practice from './dashboard/practice/Practice.jsx'
 import PracticeSetup from './dashboard/practice/PracticeSetup.jsx'
 import GroupStudySetup from './dashboard/practice/GroupStudySetup.jsx'
@@ -38,6 +38,7 @@ import MockExams from './dashboard/mock-exams/MockExams.jsx'
 import MockExamBegin from './dashboard/mock-exams/MockExamBegin.jsx'
 import MockExamPractice from './dashboard/mock-exams/MockExamPractice.jsx'
 import MockExamResults from './dashboard/mock-exams/MockExamResults.jsx'
+import MockExamReview from './dashboard/mock-exams/MockExamReview.jsx'
 
 function HashRedirector() {
   const location = useLocation()
@@ -89,6 +90,7 @@ function App() {
           <Route path="question-bank" element={<QuestionBank />} />
           <Route path="question-bank/create-set" element={<CreateStudySet />} />
           <Route path="study-sets" element={<StudySets />} />
+          <Route path="group-study" element={<GroupStudySets />} />
           <Route path="question-bank/setup" element={<PracticeSetup />} />
           <Route path="question-bank/group_setup" element={<GroupStudySetup />} />
           <Route path="question-bank/practice" element={<Practice />} />
@@ -98,6 +100,7 @@ function App() {
           <Route path="mock-exams" element={<MockExams />} />
           <Route path="mock-exams/practice" element={<MockExamPractice />} />
           <Route path="mock-exams/results" element={<MockExamResults />} />
+          <Route path="mock-exams/review" element={<MockExamReview />} />
           <Route path="mock-exams/:examId" element={<MockExamBegin />} />
           <Route path="textbook" element={<Textbook />} />
           <Route path="textbook/search" element={<TextbookSearch />} />

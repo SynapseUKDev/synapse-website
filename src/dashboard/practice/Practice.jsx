@@ -278,6 +278,15 @@ export default function Practice() {
       return {
         ...question,
         ...updatedQuestion,
+        assets: (updatedQuestion.assets || []).map((asset, index) => ({
+          id: asset.id,
+          type: asset.asset_type || 'image',
+          url: asset.asset_url,
+          alt: asset.alt || null,
+          caption: asset.caption || null,
+          credit: asset.credit || null,
+          position: asset.position || index + 1,
+        })),
         options: optionBodies.map((body, idx) => ({
           id: idx,
           label: String.fromCharCode(65 + idx),
@@ -1378,7 +1387,7 @@ export default function Practice() {
       <div className="pr__top">
         <div>
           <h2 style={{ margin: 0 }}>{isReviewMode ? 'Review Session' : 'Question Bank'}</h2>
-          <div style={{ color: '#64748b' }}>
+          <div className="pr__top-caption">
             Question {currentIndex + 1} of {questions.length}
             {isReviewMode && reviewFilter !== 'All' && ` (${currentFilteredPosition + 1} of ${filteredIndices.length} ${reviewFilter.toLowerCase()})`}
           </div>

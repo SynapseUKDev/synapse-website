@@ -567,17 +567,102 @@ html[data-theme='dark'] .me-btn--ghost:hover {
   background: var(--dm-surface-container-high);
 }
 
-/* Mock exam practice: tracker + timer */
+html[data-theme='dark'] .me-timer-block {
+  background: var(--dm-surface-container-high);
+  border-color: var(--dm-outline-variant);
+}
+
+html[data-theme='dark'] .me-timer-block__label {
+  color: var(--dm-on-surface);
+}
+
+html[data-theme='dark'] .me-chip {
+  background: var(--dm-surface-container);
+  border-color: var(--dm-outline-variant);
+  color: var(--dm-on-surface);
+}
+
+html[data-theme='dark'] .me-chip.is-active {
+  background: rgba(77, 142, 255, 0.2);
+  border-color: var(--dm-primary-container);
+  color: var(--dm-primary);
+}
+
+html[data-theme='dark'] .me-timer-custom {
+  color: var(--dm-on-surface-variant);
+}
+
+html[data-theme='dark'] .me-timer-custom input {
+  background: var(--dm-surface-container);
+  border-color: var(--dm-outline-variant);
+  color: var(--dm-on-surface);
+}
+
+/* Mock exam practice: calculator + tracker + timer */
 .pr__time--warn {
   color: #dc2626;
   font-weight: 800;
 }
 
-.mock-exam-tracker-hint {
-  margin: 0 0 12px;
-  font-size: 13px;
-  color: #64748b;
-  line-height: 1.45;
+.me-calc {
+  margin-bottom: 14px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--syn-border, #e2e8f0);
+  background: var(--surface-card, #fff);
+}
+
+.me-calc__display {
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--syn-border, #e2e8f0);
+  background: var(--surface-muted, #f8fafc);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 42px;
+  line-height: 22px;
+}
+
+.me-calc__keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.me-calc__key {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--syn-border, #e2e8f0);
+  background: var(--surface-card, #fff);
+  color: var(--syn-text, #0f172a);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.me-calc__key:hover {
+  background: var(--surface-muted, #f1f5f9);
+}
+
+.me-calc__key--equals {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
+.me-calc__key--equals:hover {
+  background: #4f46e5;
+}
+
+.me-calc__key--clear {
+  color: #dc2626;
 }
 
 .mock-exam-finish-sidebar {
@@ -585,28 +670,93 @@ html[data-theme='dark'] .me-btn--ghost:hover {
   margin-top: 16px;
 }
 
-.seg--skipped {
+/* Mock exam tracker colours (scoped) */
+.mock-exam-tracker .seg--answered {
+  background: #3b82f6;
+  border-color: #2563eb;
+}
+
+.mock-exam-tracker .seg--unanswered {
+  background: transparent;
+  border-color: #cbd5e1;
+}
+
+.mock-exam-tracker .seg--skipped {
   background: #fde68a;
   border-color: #f59e0b;
 }
 
-.legend-swatch--answered {
-  background: #94a3b8;
-  border: 1px solid #64748b;
+.mock-exam-tracker .seg--flagged {
+  background: #ef4444;
+  border-color: #dc2626;
 }
 
-.legend-swatch--skipped {
+.mock-exam-tracker .seg--current {
+  box-shadow: 0 0 0 2px #6366f1;
+}
+
+.mock-exam-swatch--answered {
+  background: #3b82f6;
+  border: 1px solid #2563eb;
+}
+
+.mock-exam-swatch--skipped {
   background: #fde68a;
   border: 1px solid #f59e0b;
 }
 
-html[data-theme='dark'] .seg--skipped {
+.mock-exam-swatch--unanswered {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+}
+
+.mock-exam-swatch--flagged {
+  background: #ef4444;
+  border: 1px solid #dc2626;
+}
+
+html[data-theme='dark'] .me-calc {
+  background: var(--dm-surface-container);
+  border-color: var(--dm-outline-variant);
+}
+
+html[data-theme='dark'] .me-calc__display {
+  background: var(--dm-surface-container-low);
+  border-color: var(--dm-outline-variant);
+  color: var(--dm-on-surface);
+}
+
+html[data-theme='dark'] .me-calc__key {
+  background: var(--dm-surface-container-high);
+  border-color: var(--dm-outline-variant);
+  color: var(--dm-on-surface);
+}
+
+html[data-theme='dark'] .me-calc__key:hover {
+  background: var(--dm-surface-container-highest);
+}
+
+html[data-theme='dark'] .mock-exam-tracker .seg--unanswered {
+  border-color: var(--dm-outline-variant);
+}
+
+html[data-theme='dark'] .mock-exam-tracker .seg--skipped {
   background: rgba(245, 158, 11, 0.35);
   border-color: rgba(245, 158, 11, 0.65);
 }
 
-html[data-theme='dark'] .mock-exam-tracker-hint {
-  color: var(--syn-muted, #94a3b8);
+html[data-theme='dark'] .mock-exam-tracker .seg--answered {
+  background: rgba(59, 130, 246, 0.55);
+  border-color: rgba(59, 130, 246, 0.85);
+}
+
+html[data-theme='dark'] .mock-exam-tracker .seg--flagged {
+  background: rgba(239, 68, 68, 0.55);
+  border-color: rgba(239, 68, 68, 0.85);
+}
+
+html[data-theme='dark'] .mock-exam-swatch--unanswered {
+  border-color: var(--dm-outline-variant);
 }
 
 .me-results {

@@ -271,6 +271,22 @@ html[data-theme="dark"] .admin-list button.is-active {
   gap: 12px;
 }
 
+.admin-form__section {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.admin-form__section-title {
+  font-weight: 800;
+  color: var(--syn-navy-700);
+}
+
+.admin-form__section-hint {
+  margin: 0;
+  font-size: 13px;
+}
+
 .admin-check {
   flex-direction: row !important;
   align-items: center;

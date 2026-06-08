@@ -252,7 +252,7 @@ export default function QuestionBank() {
           </div>
           <div className="qb-card__actions" style={{ display: 'flex', gap: 8 }}>
             <button className="qb-btn qb-btn--secondary" onClick={() => navigate('/dashboard/question-bank/group_setup?mode=join')}>Join Session</button>
-            <button className="qb-btn" onClick={() => navigate('/dashboard/study-sets')}>Create Session</button>
+            <button className="qb-btn" onClick={() => navigate('/dashboard/group-study')}>Create Session</button>
           </div>
         </div>
 

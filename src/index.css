@@ -941,9 +941,7 @@ html[data-theme="dark"] .tb-page--chapter .tb-anchors {
 }
 
 /*
- * Textbook topic carousel (TextbookTopic.jsx → ImageCarousel, classes tb-carousel).
- * Route is under DashboardLayout → .dash__content; native <button> styling can revert
- * backgrounds to transparent/white. These rules win over UA + generic resets.
+ * React tb-carousel only — prevents dashboard button resets from stripping nav fill.
  */
 .dash__content .tb-carousel button.tb-carousel__nav {
   -webkit-appearance: none !important;
@@ -965,18 +963,20 @@ html[data-theme="dark"] .tb-page--chapter .tb-anchors {
 }
 
 html[data-theme="dark"] .dash__content .tb-carousel button.tb-carousel__nav {
-  background: var(--dm-surface-container-high) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: var(--dm-primary) !important;
-  box-shadow:
-    0 2px 14px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  background: rgba(0, 0, 0, 0.82) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.55) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .dash__content .tb-carousel button.tb-carousel__nav svg {
+  stroke: #ffffff !important;
+  color: #ffffff !important;
 }
 
 html[data-theme="dark"] .dash__content .tb-carousel button.tb-carousel__nav:hover:not(:disabled) {
-  background: var(--dm-surface-container-highest) !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
-  color: var(--dm-on-surface) !important;
+  background: rgba(0, 0, 0, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.75) !important;
+  color: #ffffff !important;
 }
 
 /* Practice: sidebar “Completed” and other uncolored stat values (e.g. 0/50) */

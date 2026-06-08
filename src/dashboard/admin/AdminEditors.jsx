@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import AdminImageGallery, {
+  galleryImagesToQuestionAssets,
+  questionAssetsToGalleryImages,
+} from './AdminImageGallery.jsx'
 import './Admin.css'
 
 function normaliseOptions(options) {
@@ -43,6 +47,7 @@ function questionToForm(question) {
       : question?.explanations?.points_by_option
         ? JSON.stringify(question.explanations.points_by_option, null, 2)
         : '',
+    images: questionAssetsToGalleryImages(question?.assets),
   }
 }
 
@@ -51,6 +56,8 @@ export function AdminQuestionInlineEditor({ questionId, initialQuestion = null, 
   const [form, setForm] = useState(initialQuestion ? questionToForm(initialQuestion) : null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadBusy, setUploadBusy] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -101,6 +108,7 @@ export function AdminQuestionInlineEditor({ questionId, initialQuestion = null, 
         explanation_l2: form.explanation_l2 || null,
         explanation_eli5: form.explanation_eli5 || null,
         explanation_points_by_option: pointsByOption,
+        assets: galleryImagesToQuestionAssets(form.images),
       }
 
       const res = await authenticatedFetch(`${API_BASE}/admin/questions/${questionId}`, {
@@ -144,7 +152,22 @@ export function AdminQuestionInlineEditor({ questionId, initialQuestion = null, 
           <label>Detailed explanation<textarea rows={7} value={form.explanation_l2} onChange={(e) => setForm({ ...form, explanation_l2: e.target.value })} /></label>
           <label>ELI5 explanation<textarea rows={4} value={form.explanation_eli5} onChange={(e) => setForm({ ...form, explanation_eli5: e.target.value })} /></label>
           <label>Explanation points by option JSON<textarea rows={6} value={form.explanation_points_by_option} onChange={(e) => setForm({ ...form, explanation_points_by_option: e.target.value })} /></label>
-          <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save question'}</button>
+          <div className="admin-form__section">
+            <div className="admin-form__section-title">Question images</div>
+            <p className="admin__muted admin-form__section-hint">
+              Upload images shown in the question carousel. Two or more images display with navigation arrows.
+            </p>
+            <AdminImageGallery
+              API_BASE={API_BASE}
+              images={form.images}
+              setImages={(images) => setForm({ ...form, images })}
+              uploadError={uploadError}
+              setUploadError={setUploadError}
+              onBusyChange={setUploadBusy}
+              variant="question"
+            />
+          </div>
+          <button type="submit" disabled={saving || uploadBusy}>{saving ? 'Saving...' : 'Save question'}</button>
         </form>
       )}
     </div>

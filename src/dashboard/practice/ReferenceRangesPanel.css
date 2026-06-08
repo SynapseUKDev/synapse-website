@@ -95,3 +95,50 @@
         font-size: 13px;
     }
 }
+
+@media (max-width: 480px) {
+    .refrow--grouped {
+        flex-wrap: wrap;
+    }
+
+    .refrow__left {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    .refrow__right--groups {
+        flex: 1 1 100%;
+        max-width: 100%;
+        align-items: flex-end;
+    }
+
+    .refrow__valueblock {
+        width: auto;
+        max-width: 100%;
+    }
+
+    .refrow__valuetext {
+        white-space: normal;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+}
+
+html[data-theme='dark'] .refcard__search {
+    border-bottom-color: var(--syn-border);
+}
+
+html[data-theme='dark'] .refcard__search-input {
+    background: var(--dm-surface-container-high);
+    border-color: var(--syn-border);
+    color: var(--syn-navy-700);
+}
+
+html[data-theme='dark'] .refcard__search-clear {
+    background: var(--dm-surface-container-highest);
+    color: var(--syn-muted);
+}
+
+html[data-theme='dark'] .refrow--grouped {
+    border-bottom-color: var(--syn-border);
+}
