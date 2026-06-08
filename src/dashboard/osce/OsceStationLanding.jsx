@@ -23,7 +23,7 @@ export default function OsceStationLanding() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const { user } = useOutletContext()
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
+  const canManageOsce = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_osce
 
   const [station, setStation] = useState(null)
   const [sections, setSections] = useState([])
@@ -94,7 +94,7 @@ export default function OsceStationLanding() {
             </button>
             <h1 className="osce-group__page-title">{station.title}</h1>
           </div>
-          {isAdmin && (
+          {canManageOsce && (
             <button 
               className="osce-btn osce-btn--secondary osce-btn--sm" 
               onClick={() => navigate(`/dashboard/admin/osce/station/${station.id}`)}

@@ -32,10 +32,10 @@ function slugify(str) {
     .replace(/-+/g, '-')
 }
 
-export default function OsceAdminPanel() {
+export default function OsceAdminPanel({ embedded = false }) {
   const navigate = useNavigate()
   const { user } = useOutletContext()
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_osce
 
   const [stations, setStations] = useState([])
   const [loading, setLoading] = useState(true)
@@ -178,12 +178,14 @@ export default function OsceAdminPanel() {
   }
 
   return (
-    <div className="osce-admin-panel">
+    <div className={`osce-admin-panel ${embedded ? 'osce-admin-panel--embedded' : ''}`}>
       <div className="osce-admin-panel__header">
         <div>
-          <button className="osce-station__back" onClick={() => navigate('/dashboard/osce')}>
-            <LuChevronLeft size={16} /> Back to OSCE Stations
-          </button>
+          {!embedded && (
+            <button className="osce-station__back" onClick={() => navigate('/dashboard/osce')}>
+              <LuChevronLeft size={16} /> Back to OSCE Stations
+            </button>
+          )}
           <h1 className="osce-admin-panel__title">Manage OSCE Stations</h1>
           <p className="osce-admin-panel__subtitle">Create, edit, and publish OSCE stations for all station types.</p>
         </div>

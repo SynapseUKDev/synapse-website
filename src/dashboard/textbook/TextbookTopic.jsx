@@ -740,7 +740,7 @@ export default function TextbookTopic() {
   const { topicSlug } = useParams()
   const location = useLocation()
   const { user } = useOutletContext() || {}
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_textbook
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)

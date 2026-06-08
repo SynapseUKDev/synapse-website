@@ -186,7 +186,7 @@ export default function OsceAdminStationEditor() {
         onCancel={() => setPromptData(null)} 
       />
 
-      <button className="osce-station__back" onClick={() => navigate('/dashboard/admin/osce')}>
+      <button className="osce-station__back" onClick={() => navigate('/dashboard/admin')}>
         <LuChevronLeft size={16} /> Back to Stations List
       </button>
 

@@ -126,7 +126,7 @@ export default function Practice() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useOutletContext() || {}
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_qbank
   const params = new URLSearchParams(location.search)
 
   // Check if we're in review mode (navigated from results page)

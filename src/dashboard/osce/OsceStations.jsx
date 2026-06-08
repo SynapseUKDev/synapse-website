@@ -34,7 +34,7 @@ const TYPE_EMOJIS = {
 export default function OsceStations() {
   const navigate = useNavigate()
   const { user } = useOutletContext()
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
+  const canManageOsce = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_osce
   const [stations, setStations] = useState([])
   const [progress, setProgress] = useState([])
   const [loading, setLoading] = useState(true)
@@ -100,10 +100,13 @@ export default function OsceStations() {
           <h1 className="osce__title">OSCE Stations</h1>
           <p className="osce__subtitle">Practice clinical examinations following the UKMLA specification</p>
         </div>
-        {isAdmin && (
+        {canManageOsce && (
           <button 
             className="osce-btn osce-btn--secondary osce-btn--sm" 
-            onClick={() => navigate('/dashboard/admin/osce')}
+            onClick={() => {
+              localStorage.setItem('admin_active_tab', 'osce');
+              navigate('/dashboard/admin');
+            }}
           >
             <LuPencil size={16} /> Manage Stations
           </button>

@@ -353,3 +353,16 @@ html[data-theme="dark"] .osce-admin-btn--ghost:hover { background: var(--dm-surf
 [data-color-mode='dark'] .osce-drag-handle:hover {
   color: var(--syn-cyan);
 }
+
+/* Embedded OSCE Admin Panel inside general Admin Dashboard tabs */
+.osce-admin-panel--embedded {
+  padding: 16px 0 0 0;
+  max-width: none;
+  margin: 0;
+}
+.osce-admin-panel--embedded .osce-admin-panel__header {
+  margin-bottom: 24px;
+}
+.osce-admin-panel--embedded .osce-admin-panel__title {
+  margin: 0 0 8px;
+}

@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import { AdminQuestionInlineEditor, AdminTextbookInlineEditor } from './AdminEditors'
+import OsceAdminPanel from '../osce/OsceAdminPanel'
 import './Admin.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -32,8 +33,32 @@ function formatDate(value) {
 
 export default function Admin() {
   const { user } = useOutletContext()
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
-  const [activeTab, setActiveTab] = useState('question-issues')
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_access_admin || !!user?.capabilities?.can_manage_osce || !!user?.capabilities?.can_manage_qbank || !!user?.capabilities?.can_manage_textbook || !!user?.capabilities?.can_manage_mock_papers
+
+  const isGlobalAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
+  const canManageOsce = isGlobalAdmin || !!user?.capabilities?.can_manage_osce
+  const canManageQbank = isGlobalAdmin || !!user?.capabilities?.can_manage_qbank
+  const canManageTextbook = isGlobalAdmin || !!user?.capabilities?.can_manage_textbook
+  const canManageMockPapers = isGlobalAdmin || !!user?.capabilities?.can_manage_mock_papers
+
+  const [activeTab, setActiveTabState] = useState(() => {
+    const saved = localStorage.getItem('admin_active_tab')
+    if (saved === 'osce' && canManageOsce) return 'osce'
+    if (saved === 'mock-papers' && canManageMockPapers) return 'mock-papers'
+    if (saved === 'topic-issues' && canManageTextbook) return 'topic-issues'
+    if (saved === 'question-issues' && canManageQbank) return 'question-issues'
+
+    if (canManageQbank) return 'question-issues'
+    if (canManageTextbook) return 'topic-issues'
+    if (canManageMockPapers) return 'mock-papers'
+    if (canManageOsce) return 'osce'
+    return 'question-issues'
+  })
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab)
+    localStorage.setItem('admin_active_tab', tab)
+  }
 
   const [mockReplaceExisting, setMockReplaceExisting] = useState(true)
   // New 3-file upload state
@@ -107,24 +132,47 @@ export default function Admin() {
     setError('')
     try {
       const qs = `limit=100&status=${encodeURIComponent(statusQuery)}`
-      const [questionRes, topicRes] = await Promise.all([
-        authenticatedFetch(`${API_BASE}/admin/question-issues?${qs}`, { cache: 'no-store' }),
-        authenticatedFetch(`${API_BASE}/admin/topic-issues?${qs}`, { cache: 'no-store' }),
-      ])
-      if (!questionRes.ok) throw new Error(await readJsonError(questionRes))
-      if (!topicRes.ok) throw new Error(await readJsonError(topicRes))
-      const [questionData, topicData] = await Promise.all([questionRes.json(), topicRes.json()])
-      const nextQuestionIssues = questionData.issues || []
-      const nextTopicIssues = topicData.issues || []
-      setQuestionIssues(nextQuestionIssues)
-      setTopicIssues(nextTopicIssues)
-      reconcileSelections(nextQuestionIssues, nextTopicIssues)
+      const promises = []
+
+      if (canManageQbank) {
+        promises.push(
+          authenticatedFetch(`${API_BASE}/admin/question-issues?${qs}`, { cache: 'no-store' })
+            .then(async (res) => {
+              if (!res.ok) throw new Error(await readJsonError(res))
+              const data = await res.json()
+              return { type: 'qbank', issues: data.issues || [] }
+            })
+        )
+      } else {
+        promises.push(Promise.resolve({ type: 'qbank', issues: [] }))
+      }
+
+      if (canManageTextbook) {
+        promises.push(
+          authenticatedFetch(`${API_BASE}/admin/topic-issues?${qs}`, { cache: 'no-store' })
+            .then(async (res) => {
+              if (!res.ok) throw new Error(await readJsonError(res))
+              const data = await res.json()
+              return { type: 'textbook', issues: data.issues || [] }
+            })
+        )
+      } else {
+        promises.push(Promise.resolve({ type: 'textbook', issues: [] }))
+      }
+
+      const results = await Promise.all(promises)
+      const qbankResult = results.find((r) => r.type === 'qbank')?.issues || []
+      const textbookResult = results.find((r) => r.type === 'textbook')?.issues || []
+
+      setQuestionIssues(qbankResult)
+      setTopicIssues(textbookResult)
+      reconcileSelections(qbankResult, textbookResult)
     } catch (e) {
       setError(e.message || 'Could not load reported issues.')
     } finally {
       setIssuesLoading(false)
     }
-  }, [API_BASE, statusQuery, reconcileSelections])
+  }, [API_BASE, statusQuery, reconcileSelections, canManageQbank, canManageTextbook])
 
   const patchIssueStatus = useCallback(
     async (kind, issueId, status) => {
@@ -227,7 +275,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (!serverAllowsAdmin) return
-    if (activeTab === 'mock-papers') return
+    if (activeTab === 'mock-papers' || activeTab === 'osce') return
     loadIssues()
   }, [serverAllowsAdmin, loadIssues, activeTab])
 
@@ -253,33 +301,62 @@ export default function Admin() {
 
   return (
     <div className="admin">
-      <div className="admin__header">
-        <div>
-          <h1 className="admin__title">
-            {activeTab === 'mock-papers' ? 'Import mock exam' : 'Admin Issues'}
-          </h1>
-          <p className="admin__muted">
-            {activeTab === 'mock-papers'
-              ? 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'
-              : 'Review user-reported issues, then edit the related question or textbook page.'}
-          </p>
+      {activeTab !== 'osce' && (
+        <div className="admin__header">
+          <div>
+            <h1 className="admin__title">
+              {activeTab === 'mock-papers' ? 'Import mock exam' : 'Admin Issues'}
+            </h1>
+            <p className="admin__muted">
+              {activeTab === 'mock-papers'
+                ? 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'
+                : 'Review user-reported issues, then edit the related question or textbook page.'}
+            </p>
+          </div>
+          <div className="admin-badge">Admin</div>
         </div>
-        <div className="admin-badge">Admin</div>
-      </div>
+      )}
 
-      {error && activeTab !== 'mock-papers' && <div className="admin-alert">{error}</div>}
+      {error && activeTab !== 'mock-papers' && activeTab !== 'osce' && <div className="admin-alert">{error}</div>}
 
       <div className="admin-tabs">
-        <button type="button" className={activeTab === 'question-issues' ? 'is-active' : ''} onClick={() => setActiveTab('question-issues')}>
+        <button
+          type="button"
+          className={activeTab === 'question-issues' ? 'is-active' : ''}
+          onClick={() => setActiveTab('question-issues')}
+          disabled={!canManageQbank}
+          title={!canManageQbank ? 'Question Bank Admin permission required' : undefined}
+        >
           Question Issues
         </button>
-        <button type="button" className={activeTab === 'topic-issues' ? 'is-active' : ''} onClick={() => setActiveTab('topic-issues')}>
+        <button
+          type="button"
+          className={activeTab === 'topic-issues' ? 'is-active' : ''}
+          onClick={() => setActiveTab('topic-issues')}
+          disabled={!canManageTextbook}
+          title={!canManageTextbook ? 'Textbook Admin permission required' : undefined}
+        >
           Textbook Issues
         </button>
-        <button type="button" className={activeTab === 'mock-papers' ? 'is-active' : ''} onClick={() => setActiveTab('mock-papers')}>
+        <button
+          type="button"
+          className={activeTab === 'mock-papers' ? 'is-active' : ''}
+          onClick={() => setActiveTab('mock-papers')}
+          disabled={!canManageMockPapers}
+          title={!canManageMockPapers ? 'Mock Exams Admin permission required' : undefined}
+        >
           Mock papers
         </button>
-        {activeTab !== 'mock-papers' && (
+        <button
+          type="button"
+          className={activeTab === 'osce' ? 'is-active' : ''}
+          onClick={() => setActiveTab('osce')}
+          disabled={!canManageOsce}
+          title={!canManageOsce ? 'OSCE Stations Admin permission required' : undefined}
+        >
+          OSCE Stations
+        </button>
+        {activeTab !== 'mock-papers' && activeTab !== 'osce' && (
           <>
             <label className="admin-tabs__toggle">
               <input
@@ -464,7 +541,7 @@ export default function Admin() {
       )}
 
 
-      {activeTab !== 'mock-papers' && (
+      {activeTab !== 'mock-papers' && activeTab !== 'osce' && (
       <div className="admin-grid">
         <section className="admin-card">
           {issuesLoading ? (
@@ -629,6 +706,10 @@ export default function Admin() {
           )}
         </section>
       </div>
+      )}
+
+      {activeTab === 'osce' && (
+        <OsceAdminPanel embedded={true} />
       )}
     </div>
   )

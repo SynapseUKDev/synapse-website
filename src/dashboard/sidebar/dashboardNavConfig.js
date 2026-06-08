@@ -12,7 +12,7 @@ import {
  * Single source of truth for dashboard primary nav (desktop sidebar + mobile menu).
  */
 export function getDashboardNavItems(user) {
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_access_admin
   return [
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
     { id: 'question-bank', label: 'Question Bank', icon: LuCircleHelp, to: '/dashboard/question-bank' },

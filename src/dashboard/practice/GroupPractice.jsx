@@ -60,7 +60,7 @@ export default function GroupPractice() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useOutletContext()
-  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin
+  const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_qbank
   const params = new URLSearchParams(location.search)
   const roomCode = params.get('room_code')
   const studySetId = params.get('study_set_id')
