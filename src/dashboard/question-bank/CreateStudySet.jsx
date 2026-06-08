@@ -13,11 +13,11 @@ export default function CreateStudySet() {
   const isGroupMode = searchParams.get('mode') === 'group'
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-  const specialtiesReq = useStaleJson(`${API_BASE}/qbank/specialties`, {
+  const specialtiesReq = useStaleJson(`${API_BASE}/qbank/specialties/list`, {
     headers: authHeaders(),
     staleMs: 5 * 60_000,
     persist: 'session',
-    key: 'qbank:specialties',
+    key: 'qbank:specialties:list',
     transform: (t) => (Array.isArray(t.specialties) ? t.specialties : []),
   })
 

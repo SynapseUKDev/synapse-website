@@ -63,7 +63,7 @@ export default function GroupStudySetup() {
         // Fetch custom study sets and specialties
         const [setsRes, specsRes] = await Promise.all([
           authenticatedFetch(`${API_BASE}/qbank/sets`, { headers: authHeaders() }),
-          authenticatedFetch(`${API_BASE}/qbank/specialties`, { headers: authHeaders() })
+          authenticatedFetch(`${API_BASE}/qbank/specialties/list`, { headers: authHeaders() })
         ])
 
         let sets = []
