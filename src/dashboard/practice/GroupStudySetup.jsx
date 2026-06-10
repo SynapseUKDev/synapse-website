@@ -657,7 +657,8 @@ export default function GroupStudySetup() {
                         <option value="">Select a study set...</option>
                         {studySets.map(s => (
                           <option key={s.id} value={s.id}>
-                            {s.name} ({s.item_count} {s.item_count === 1 ? 'item' : 'items'})
+                            {s.name} ({s.topic_count ?? s.item_count}{' '}
+                            {(s.topic_count ?? s.item_count) === 1 ? 'topic' : 'topics'})
                           </option>
                         ))}
                       </select>

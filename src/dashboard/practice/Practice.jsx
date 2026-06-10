@@ -1451,16 +1451,17 @@ export default function Practice() {
                     const next = () => setAssetIdx((i) => assets.length > 0 ? (i + 1) % assets.length : 0)
                     if (!cur) return null
                     return (
-                      <div className="q-carousel" role="region" aria-label="Question images">
-                        <button
-                          type="button"
-                          className="qc-nav qc-prev"
-                          onClick={prev}
-                          aria-label="Previous image"
-                          disabled={assets.length <= 1}
-                        >
-                          ‹
-                        </button>
+                      <div className={`q-carousel ${assets.length <= 1 ? 'q-carousel--single' : ''}`} role="region" aria-label="Question images">
+                        {assets.length > 1 && (
+                          <button
+                            type="button"
+                            className="qc-nav qc-prev"
+                            onClick={prev}
+                            aria-label="Previous image"
+                          >
+                            ‹
+                          </button>
+                        )}
                         <figure key={cur.id} className="q-asset">
                           {cur.type === 'image' ? (
                             <div className="q-carousel__viewport">
@@ -1474,15 +1475,16 @@ export default function Practice() {
                             </figcaption>
                           )}
                         </figure>
-                        <button
-                          type="button"
-                          className="qc-nav qc-next"
-                          onClick={next}
-                          aria-label="Next image"
-                          disabled={assets.length <= 1}
-                        >
-                          ›
-                        </button>
+                        {assets.length > 1 && (
+                          <button
+                            type="button"
+                            className="qc-nav qc-next"
+                            onClick={next}
+                            aria-label="Next image"
+                          >
+                            ›
+                          </button>
+                        )}
                         {assets.length > 1 && (
                           <div className="qc-dots" role="tablist" aria-label="Image selector">
                             {assets.map((_, i) => (

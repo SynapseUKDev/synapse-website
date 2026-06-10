@@ -881,6 +881,20 @@ html[data-theme="dark"] .dash__content .topic-item:hover {
   border-color: var(--syn-border);
 }
 
+html[data-theme="dark"] .dash__content .topic-item.is-selected {
+  background: rgba(77, 142, 255, 0.18);
+  border-color: rgba(173, 198, 255, 0.45);
+}
+
+html[data-theme="dark"] .dash__content .topic-item.is-selected .topic-name {
+  color: var(--dm-on-surface);
+}
+
+html[data-theme="dark"] .dash__content .topic-item.is-selected .topic-count {
+  background: rgba(77, 142, 255, 0.28);
+  color: var(--dm-primary);
+}
+
 html[data-theme="dark"] .dash__content .create-set__footer {
   background: var(--dm-surface-container);
   border-top-color: var(--syn-border);

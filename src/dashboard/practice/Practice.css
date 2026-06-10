@@ -179,6 +179,16 @@
   --tb-carousel-img-w: min(var(--tb-carousel-wmax), calc(var(--tb-carousel-hmax) * 3 / 4));
 }
 
+.q-carousel.q-carousel--single {
+  grid-template-columns: minmax(0, min(100%, 24rem));
+}
+
+.q-carousel.q-carousel--single .q-asset {
+  grid-column: 1;
+}
+
+
+
 .q-assets {
   display: grid;
   gap: 12px;

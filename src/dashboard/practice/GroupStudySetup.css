@@ -525,10 +525,13 @@ html[data-theme='dark'] .qb-segmented-btn.active {
 
 .topics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
   gap: 12px;
+  width: 100%;
+  min-width: 0;
   max-height: 280px;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 4px;
   border: 1px solid var(--syn-border);
   border-radius: 12px;

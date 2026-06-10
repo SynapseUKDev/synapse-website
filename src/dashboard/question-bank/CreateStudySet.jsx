@@ -74,7 +74,7 @@ export default function CreateStudySet() {
       wholeSpecialties.size > 0 &&
       [...wholeSpecialties].some((id) => !Array.isArray(topicsBySpec[id]))
 
-    return { totalQuestions, totalRemaining, totalIncorrect, needsTopicStats }
+    return { totalQuestions, totalRemaining, totalIncorrect, needsTopicStats, topicCount: counted.size }
   }, [wholeSpecialties, selectedTopics, topicsBySpec])
 
   const loadTopicsFor = async (specId) => {
@@ -380,7 +380,9 @@ export default function CreateStudySet() {
 
       <div className="create-set__footer">
         <div className="summary-text">
-          {wholeSpecialties.size} specialties, {selectedTopics.size} individual topics selected
+          {selectionStats.needsTopicStats
+            ? 'Loading topic count…'
+            : `${selectionStats.topicCount} ${selectionStats.topicCount === 1 ? 'topic' : 'topics'} selected`}
         </div>
         <button
           className="btn btn--primary btn--icon"

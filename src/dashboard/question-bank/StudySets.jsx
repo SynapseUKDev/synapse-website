@@ -19,7 +19,10 @@ function StudySetCard({ item, onDelete, groupMode }) {
           </div>
           <div style={{ overflow: 'hidden' }}>
             <div className="qb-card__title" style={{ fontSize: 18, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
-            <div className="qb-card__meta">{item.item_count} items included</div>
+            <div className="qb-card__meta">
+              {item.topic_count ?? item.item_count}{' '}
+              {(item.topic_count ?? item.item_count) === 1 ? 'topic' : 'topics'} included
+            </div>
           </div>
         </div>
         <button
