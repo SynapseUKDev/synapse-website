@@ -10,6 +10,7 @@ import { io } from 'socket.io-client'
 export default function GroupStudySetup() {
   const navigate = useNavigate()
   const { user } = useOutletContext()
+  const isReviewer = !!user?.capabilities?.can_review
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode') // 'join' or null (create mode)
 
@@ -600,14 +601,16 @@ export default function GroupStudySetup() {
                     placeholder="ABCD12"
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    onKeyPress={(e) => e.key === 'Enter' && joinCode.trim() && joinSession()}
+                    onKeyPress={(e) => e.key === 'Enter' && joinCode.trim() && !isReviewer && joinSession()}
                     maxLength={6}
                     autoFocus
+                    disabled={isReviewer}
                   />
                   <button
                     className="group-join__btn"
                     onClick={joinSession}
-                    disabled={!joinCode.trim() || isJoining}
+                    disabled={!joinCode.trim() || isJoining || isReviewer}
+                    title={isReviewer ? 'Group sessions are not available for reviewer accounts' : undefined}
                   >
                     {isJoining ? 'Joining...' : 'Join Session'}
                   </button>
@@ -901,10 +904,16 @@ export default function GroupStudySetup() {
 
               <div className="setup__summary-divider"></div>
 
+              {isReviewer && (
+                <p style={{ fontSize: 13, color: '#b45309', marginBottom: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '8px 12px' }}>
+                  Group sessions are not available for reviewer accounts.
+                </p>
+              )}
               <button
                 className="setup__start-btn"
                 onClick={createSession}
-                disabled={isCreateDisabled}
+                disabled={isCreateDisabled || isReviewer}
+                title={isReviewer ? 'Group sessions are not available for reviewer accounts' : undefined}
               >
                 <LuUsers size={20} />
                 Create Group Session

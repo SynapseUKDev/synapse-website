@@ -179,25 +179,25 @@ export default function OsceAdminPanel({ embedded = false }) {
 
   return (
     <div className={`osce-admin-panel ${embedded ? 'osce-admin-panel--embedded' : ''}`}>
-      <div className="osce-admin-panel__header">
-        <div>
-          {!embedded && (
+      {!embedded && (
+        <div className="osce-admin-panel__header">
+          <div>
             <button className="osce-station__back" onClick={() => navigate('/dashboard/osce')}>
               <LuChevronLeft size={16} /> Back to OSCE Stations
             </button>
-          )}
-          <h1 className="osce-admin-panel__title">Manage OSCE Stations</h1>
-          <p className="osce-admin-panel__subtitle">Create, edit, and publish OSCE stations for all station types.</p>
+            <h1 className="osce-admin-panel__title">Manage OSCE Stations</h1>
+            <p className="osce-admin-panel__subtitle">Create, edit, and publish OSCE stations for all station types.</p>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button className="osce-admin-btn osce-admin-btn--secondary" onClick={() => setShowImport(true)}>
+              <LuBrain size={18} /> Import Station
+            </button>
+            <button className="osce-admin-btn osce-admin-btn--primary" onClick={() => setShowCreate(true)}>
+              <LuPlus size={18} /> New Station
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button className="osce-admin-btn osce-admin-btn--secondary" onClick={() => setShowImport(true)}>
-            <LuBrain size={18} /> Import Station
-          </button>
-          <button className="osce-admin-btn osce-admin-btn--primary" onClick={() => setShowCreate(true)}>
-            <LuPlus size={18} /> New Station
-          </button>
-        </div>
-      </div>
+      )}
 
       <OsceImportModal 
         isOpen={showImport} 
@@ -229,7 +229,20 @@ export default function OsceAdminPanel({ embedded = false }) {
           <option value="published">Published</option>
           <option value="archived">Archived</option>
         </select>
-        <span className="osce-admin-count">{filtered.length} station{filtered.length !== 1 ? 's' : ''}</span>
+        
+        {embedded ? (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span className="osce-admin-count" style={{ margin: 0 }}>{filtered.length} station{filtered.length !== 1 ? 's' : ''}</span>
+            <button className="osce-admin-btn osce-admin-btn--secondary" onClick={() => setShowImport(true)}>
+              <LuBrain size={18} /> Import Station
+            </button>
+            <button className="osce-admin-btn osce-admin-btn--primary" onClick={() => setShowCreate(true)}>
+              <LuPlus size={18} /> New Station
+            </button>
+          </div>
+        ) : (
+          <span className="osce-admin-count">{filtered.length} station{filtered.length !== 1 ? 's' : ''}</span>
+        )}
       </div>
 
       {/* Station table */}

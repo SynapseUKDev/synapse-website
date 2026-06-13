@@ -110,6 +110,9 @@ function Sidebar({ user, onLogout }) {
             <div className="sidebar__user-details">
               <div className="sidebar__user-name">{displayUsername || user?.email || 'User'}</div>
               <div className="sidebar__user-role">{user?.email || 'No email'}</div>
+              {user?.capabilities?.can_review && (
+                <div className="sidebar__reviewer-badge">Reviewer</div>
+              )}
             </div>
           </div>
           <div className="sidebar__user-actions">

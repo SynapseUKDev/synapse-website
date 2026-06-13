@@ -5,18 +5,18 @@ import { LuCheck } from 'react-icons/lu'
  * Renders a single OSCE content block based on its block_type.
  * Supported types: markdown, checklist, key_value, callout, image, table, list
  */
-export default function OsceBlockRenderer({ block, interactive = false }) {
+export default function OsceBlockRenderer({ block, interactive = false, isReviewer = false, reviewComments = [] }) {
   if (!block) return null
 
   switch (block.block_type) {
     case 'markdown':
-      return <MarkdownBlock content={block.content} />
+      return <MarkdownBlock content={block.content} isReviewer={isReviewer} reviewComments={reviewComments} />
     case 'checklist':
       return <ChecklistBlock content={block.content} interactive={interactive} />
     case 'key_value':
       return <KeyValueBlock content={block.content} />
     case 'callout':
-      return <CalloutBlock content={block.content} />
+      return <CalloutBlock content={block.content} isReviewer={isReviewer} reviewComments={reviewComments} />
     case 'image':
       return <ImageBlock content={block.content} />
     case 'table':
@@ -30,11 +30,12 @@ export default function OsceBlockRenderer({ block, interactive = false }) {
 
 /* ── Markdown ──────────────────────────────────────── */
 
-function MarkdownBlock({ content }) {
+function MarkdownBlock({ content, isReviewer, reviewComments }) {
   const text = content?.text || ''
   // Simple markdown → HTML conversion (bold, italic, headings, links, lists)
   const html = simpleMarkdown(text)
-  return <div className="osce-block--markdown" dangerouslySetInnerHTML={{ __html: html }} />
+  const finalHtml = isReviewer ? injectReviewCommentsIntoHtml(html, reviewComments) : html
+  return <div className="osce-block--markdown" dangerouslySetInnerHTML={{ __html: finalHtml }} />
 }
 
 function simpleMarkdown(text) {
@@ -142,12 +143,14 @@ function KeyValueBlock({ content }) {
 
 /* ── Callout ───────────────────────────────────────── */
 
-function CalloutBlock({ content }) {
+function CalloutBlock({ content, isReviewer, reviewComments }) {
   const variant = content?.variant || 'info'
+  const html = content?.text || ''
+  const finalHtml = isReviewer ? injectReviewCommentsIntoHtml(html, reviewComments) : html
   return (
     <div className="osce-block--callout" data-variant={variant}>
       {content?.title && <div className="osce-callout__title">{content.title}</div>}
-      <div>{content?.text || ''}</div>
+      <div dangerouslySetInnerHTML={{ __html: finalHtml }} />
     </div>
   )
 }
@@ -202,4 +205,112 @@ function ListBlock({ content }) {
       {items.map((item, idx) => <li key={idx}>{item}</li>)}
     </Tag>
   )
+}
+
+/* ── Inject Review Comments Helper ─────────────────── */
+
+function injectReviewCommentsIntoHtml(html, reviewComments) {
+  if (!html || !reviewComments?.length) return html
+  if (typeof document === 'undefined' || typeof DOMParser === 'undefined') return html
+
+  let doc
+  try {
+    doc = new DOMParser().parseFromString(`<!doctype html><body><div id="__tbroot">${html}</div>`, 'text/html')
+  } catch (e) {
+    return html
+  }
+  const root = doc.getElementById('__tbroot')
+  if (!root) return html
+
+  const collectTextNodes = () => {
+    const nodes = []
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => NodeFilter.FILTER_ACCEPT,
+    })
+    let n
+    while ((n = walker.nextNode())) nodes.push(n)
+    return nodes
+  }
+
+  const buildIndex = () => {
+    const tns = collectTextNodes()
+    let fullText = ''
+    const map = []
+    for (const tn of tns) {
+      const start = fullText.length
+      fullText += tn.nodeValue || ''
+      map.push({ node: tn, start, end: fullText.length })
+    }
+    return { fullText, map }
+  }
+
+  const findBestOffsets = (blockText, quote, startOffset, endOffset) => {
+    const len = blockText.length
+    if (typeof startOffset === 'number' && typeof endOffset === 'number') {
+      let s = Math.max(0, Math.min(len, startOffset))
+      let e = Math.max(s, Math.min(len, endOffset))
+      if (s < e) return { start: s, end: e }
+    }
+    if (quote) {
+      const idx = blockText.indexOf(quote)
+      if (idx !== -1) return { start: idx, end: idx + quote.length }
+    }
+    return null
+  }
+
+  // Sort comments right-to-left
+  const ordered = reviewComments
+    .map((rc) => {
+      const { fullText } = buildIndex()
+      const off = findBestOffsets(fullText, rc.quote, rc.start_offset, rc.end_offset)
+      return { rc, off }
+    })
+    .filter((x) => x.off)
+    .sort((a, b) => b.off.start - a.off.start)
+
+  for (const { rc, off } of ordered) {
+    const { fullText, map } = buildIndex()
+    if (!off || off.start >= off.end) continue
+
+    const subRange = doc.createRange()
+    let firstNode = null, lastNode = null
+    let firstStart = 0, lastEnd = 0
+
+    for (const e of map) {
+      if (e.end <= off.start) continue
+      if (e.start >= off.end) break
+      if (!firstNode) {
+        firstNode = e.node
+        firstStart = off.start - e.start
+      }
+      lastNode = e.node
+      lastEnd = off.end - e.start
+    }
+
+    if (!firstNode || !lastNode) continue
+
+    try {
+      subRange.setStart(firstNode, firstStart)
+      subRange.setEnd(lastNode, lastEnd)
+    } catch (e) {
+      continue
+    }
+
+    if (subRange.collapsed) continue
+
+    const mark = doc.createElement('mark')
+    mark.className = 'rv-mark'
+    mark.setAttribute('data-comment-id', rc.id)
+    mark.setAttribute('style', 'cursor:pointer;')
+
+    try {
+      const frag = subRange.extractContents()
+      mark.appendChild(frag)
+      subRange.insertNode(mark)
+    } catch (e) {
+      continue
+    }
+  }
+
+  return root.innerHTML
 }

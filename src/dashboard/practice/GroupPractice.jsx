@@ -61,8 +61,16 @@ export default function GroupPractice() {
   const navigate = useNavigate()
   const { user } = useOutletContext()
   const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_qbank
+  const isReviewer = !!user?.capabilities?.can_review
   const params = new URLSearchParams(location.search)
   const roomCode = params.get('room_code')
+
+  // Redirect reviewer accounts away from group sessions immediately
+  useEffect(() => {
+    if (isReviewer) {
+      navigate('/dashboard/question-bank', { replace: true })
+    }
+  }, [isReviewer, navigate])
   const studySetId = params.get('study_set_id')
   const studySetName = params.get('study_set_name') || 'Group Study'
   const numQuestions = parseInt(params.get('num_questions') || '25')

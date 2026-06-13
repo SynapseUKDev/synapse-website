@@ -8,6 +8,7 @@ import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
+import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import {
   clearStudySetQuestionIdsPrefetch,
   getStudySetQuestionIdsPrefetch,
@@ -127,6 +128,7 @@ export default function Practice() {
   const navigate = useNavigate()
   const { user } = useOutletContext() || {}
   const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_qbank
+  const isReviewer = !!user?.capabilities?.can_review
   const params = new URLSearchParams(location.search)
 
   // Check if we're in review mode (navigated from results page)
@@ -170,23 +172,27 @@ export default function Practice() {
   const stemRef = useRef(null)
   const hasLoadedRef = useRef(false) // Prevent double-loading of session
 
+  // Reviewer annotation state
+  const [reviewComments, setReviewComments] = useState([]) // comments for current question
+  const [reviewPopover, setReviewPopover] = useState(null) // { quote, anchorRect, start_offset, end_offset }
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+
   // Review mode filter state
   const [reviewFilter, setReviewFilter] = useState('All') // All | Correct | Incorrect | Skipped
 
-  const getOffsetWithinStem = (targetNode, nodeOffset) => {
-    if (!stemRef.current || !targetNode) return null
+  const getOffsetWithinElement = (rootEl, targetNode, nodeOffset) => {
+    if (!rootEl || !targetNode) return null
 
-    // Match `getFlatTextFromStem` exactly: ignore text inside `.hl-mark__delete` (the `×`
-    // button rendered inside each existing highlight) so offsets stay in sync with `flat`.
+    // Ignore text inside highlight delete buttons so offsets stay in sync with flat text.
     const isIgnored = (n) => {
       let el = n && n.parentNode
       while (el && el.nodeType === 1) {
-        if (el.classList && el.classList.contains('hl-mark__delete')) return true
+        if (el.classList && (el.classList.contains('hl-mark__delete') || el.classList.contains('rv-mark__delete'))) return true
         el = el.parentNode
       }
       return false
     }
-    const walker = document.createTreeWalker(stemRef.current, NodeFilter.SHOW_TEXT, {
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
       acceptNode(n) {
         return isIgnored(n) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
       },
@@ -203,8 +209,6 @@ export default function Practice() {
       return null
     }
 
-    // Range boundary on an element (common for big selections that end at a `<p>` / `<td>` edge):
-    // resolve to a text-node offset via Range.comparePoint.
     if (targetNode.nodeType === Node.ELEMENT_NODE) {
       const r = document.createRange()
       try {
@@ -231,6 +235,10 @@ export default function Practice() {
     }
 
     return null
+  }
+
+  const getOffsetWithinStem = (targetNode, nodeOffset) => {
+    return getOffsetWithinElement(stemRef.current, targetNode, nodeOffset)
   }
 
   // Reference ranges
@@ -445,6 +453,24 @@ export default function Practice() {
       loadCurrentQuestion(0, data.questions)
       setQuestionStartTime(Date.now())
       setRefRanges(Array.isArray(rData?.groups) ? rData.groups : [])
+
+      // Reviewer mode: auto-reveal all answers immediately (no stat recording)
+      if (isReviewer && data.questions?.length > 0) {
+        const autoAnswers = {}
+        const autoSubmitted = new Set()
+        data.questions.forEach((q) => {
+          autoAnswers[q.id] = {
+            selected: q.correct_answer,
+            saqText: '',
+            isCorrect: true,
+            timeTaken: 0,
+            submitted: true,
+          }
+          autoSubmitted.add(q.id)
+        })
+        setUserAnswers(autoAnswers)
+        setSubmittedAnswers(autoSubmitted)
+      }
 
       if (studySetId) {
         clearStudySetQuestionIdsPrefetch(studySetId)
@@ -800,8 +826,7 @@ export default function Practice() {
     return /(^|\n)\s{0,3}#{1,6}\s+|(^|\n)\s*([-*+]\s+|\d+\.\s+)|\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|\[[^\]]+\]\([^)]+\)|\|[^|]+\|/m.test(text)
   }
 
-  const applyHighlightsToMarkdown = (text, currentQuestionId) => {
-    const questionHighlights = highlights[currentQuestionId] || []
+  const applyHighlightsToMarkdown = (text, questionHighlights) => {
     if (questionHighlights.length === 0) return text
 
     // Split highlights at paragraph boundaries (\n\n) to prevent breaking markdown structure
@@ -825,7 +850,9 @@ export default function Practice() {
               start: currentPos,
               end: currentPos + part.length,
               text: part,
-              id: hl.id
+              id: hl.id,
+              color: hl.color,
+              note: hl.note
             })
             currentPos += part.length
           }
@@ -849,18 +876,35 @@ export default function Practice() {
       const highlightedWithBr = highlighted.replace(/\n(?!\n)/g, '<br/>')
 
       // Insert HTML with wrapper span that has the highlight ID
-      const hlColor = hl.color || 'yellow'
-      const hasNoteClass = hl.note ? ' hl-mark--has-note' : ''
-      result = before +
-        `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}" data-highlight-id="${hl.id}">${highlightedWithBr}</mark></span>` +
-        after
+      if (isReviewer) {
+        result = before +
+          `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="rv-mark" data-highlight-id="${hl.id}">${highlightedWithBr}</mark></span>` +
+          after
+      } else {
+        const hlColor = hl.color || 'yellow'
+        const hasNoteClass = hl.note ? ' hl-mark--has-note' : ''
+        result = before +
+          `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}" data-highlight-id="${hl.id}">${highlightedWithBr}</mark></span>` +
+          after
+      }
     })
 
     return result
   }
 
   const renderHighlightedText = (text, currentQuestionId) => {
-    const questionHighlights = highlights[currentQuestionId] || []
+    const questionHighlights = isReviewer
+      ? reviewComments
+          .filter(rc => !rc.block_id || rc.block_id === 'stem')
+          .map(rc => ({
+            start: rc.start_offset,
+            end: rc.end_offset,
+            text: rc.quote,
+            id: rc.id,
+            note: rc.comment_text,
+            color: 'reviewer'
+          }))
+      : (highlights[currentQuestionId] || [])
     const isMarkdown = hasMarkdown(text)
 
     // If no highlights and no markdown, return plain text with preserved line breaks
@@ -871,7 +915,7 @@ export default function Practice() {
     // If markdown, apply highlights and render with ReactMarkdown
     if (isMarkdown) {
       const textWithHighlights = questionHighlights.length > 0
-        ? applyHighlightsToMarkdown(text, currentQuestionId)
+        ? applyHighlightsToMarkdown(text, questionHighlights)
         : text
 
       return (
@@ -896,8 +940,12 @@ export default function Practice() {
                     data-highlight-id={highlightId}
                     onClick={(e) => {
                       e.preventDefault()
-                      const id = parseInt(highlightId)
-                      if (id) openHighlightPopover(currentQuestionId, id, e)
+                      if (isReviewer) {
+                        openReviewCommentDetails(highlightId, e)
+                      } else {
+                        const id = parseInt(highlightId)
+                        if (id) openHighlightPopover(currentQuestionId, id, e)
+                      }
                     }}
                     style={{ cursor: 'pointer' }}
                   >
@@ -909,12 +957,21 @@ export default function Practice() {
             },
             // Custom renderer for mark elements (within highlights) to add delete button
             mark: ({ node, children, ...props }) => {
-              if (props.className?.includes('hl-mark')) {
+              if (props.className?.includes('hl-mark') || props.className?.includes('rv-mark')) {
                 const highlightId =
                   props.dataHighlightId ??
                   props['data-highlight-id'] ??
                   node?.properties?.dataHighlightId ??
                   node?.properties?.['data-highlight-id']
+                
+                if (isReviewer) {
+                  return (
+                    <mark className="rv-mark" {...props}>
+                      {children}
+                    </mark>
+                  )
+                }
+
                 return (
                   <mark {...props}>
                     {children}
@@ -1039,6 +1096,25 @@ export default function Practice() {
           part.highlighted ? (
             (() => {
               const hl = questionHighlights.find(h => h.id === part.highlightId)
+              
+              if (isReviewer) {
+                return (
+                  <span
+                    key={part.key}
+                    className="highlight-wrapper"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      openReviewCommentDetails(part.highlightId, e)
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <mark className="rv-mark">
+                      {part.text}
+                    </mark>
+                  </span>
+                )
+              }
+
               const hlColor = hl?.color || 'yellow'
               const hasNoteClass = hl?.note ? ' hl-mark--has-note' : ''
               return (
@@ -1080,16 +1156,221 @@ export default function Practice() {
     )
   }
 
-  // Listen for text selection
-  useEffect(() => {
-    document.addEventListener('mouseup', handleTextSelection)
-    document.addEventListener('touchend', handleTextSelection)
+  const renderTextWithReviewComments = (text, blockId) => {
+    if (!text) return ''
+    if (!isReviewer) return text
 
-    return () => {
-      document.removeEventListener('mouseup', handleTextSelection)
-      document.removeEventListener('touchend', handleTextSelection)
+    const blockComments = reviewComments.filter(rc => rc.block_id === blockId)
+    if (blockComments.length === 0) return text
+
+    const sorted = [...blockComments]
+      .filter(rc => rc.start_offset !== null && rc.end_offset !== null)
+      .sort((a, b) => b.start_offset - a.start_offset)
+
+    let result = text
+    sorted.forEach((rc) => {
+      const before = result.slice(0, rc.start_offset)
+      const highlighted = result.slice(rc.start_offset, rc.end_offset)
+      const after = result.slice(rc.end_offset)
+
+      result = before +
+        `<span class="highlight-wrapper" data-highlight-id="${rc.id}"><mark class="rv-mark" data-highlight-id="${rc.id}">${highlighted}</mark></span>` +
+        after
+    })
+
+    return (
+      <span
+        dangerouslySetInnerHTML={{ __html: result }}
+        onClick={(e) => {
+          const wrapper = e.target.closest('.highlight-wrapper')
+          if (wrapper) {
+            e.preventDefault()
+            e.stopPropagation()
+            const highlightId = wrapper.getAttribute('data-highlight-id')
+            if (highlightId) {
+              openReviewCommentDetails(highlightId, e)
+            }
+          }
+        }}
+      />
+    )
+  }
+
+  // Listen for text selection — reviewer mode intercepts for review annotations;
+  // normal mode uses the existing highlight system.
+  useEffect(() => {
+    if (isReviewer) {
+      // Reviewer: mouseup → open ReviewCommentPopover if text selected inside stem, options, or explanations
+      const handleReviewerSelection = (e) => {
+        const selection = window.getSelection()
+        const currentQ = questions[currentIndex]
+        if (!selection || selection.isCollapsed || !currentQ) return
+        const selectedText = selection.toString()
+        if (!selectedText || /^\s*$/.test(selectedText)) return
+        const range = selection.getRangeAt(0)
+
+        let container = null
+        let block_id = null
+        let content_title = currentQ.stem?.slice(0, 100) || ''
+
+        const commonAncestor = range.commonAncestorContainer
+        const ancestorEl = commonAncestor.nodeType === 1 ? commonAncestor : commonAncestor.parentElement
+
+        if (stemRef.current && stemRef.current.contains(commonAncestor)) {
+          container = stemRef.current
+          block_id = 'stem'
+        } else {
+          // Check if inside options
+          const optionEl = ancestorEl?.closest('.option-wrapper') || ancestorEl?.closest('.option')
+          if (optionEl) {
+            const dataId = optionEl.getAttribute('data-option-id') || optionEl.querySelector('input')?.value
+            if (dataId !== undefined && dataId !== null) {
+              const bodyEl = optionEl.querySelector('.option__body') || optionEl
+              const oLabel = optionEl.querySelector('.option__label')?.textContent?.trim() || ''
+              container = bodyEl
+              block_id = `options:${dataId}`
+              content_title = `Option ${oLabel || dataId}: ${selectedText.slice(0, 50)}`
+            }
+          } else {
+            // Check if inside detailed explanation
+            const detailedSection = ancestorEl?.closest('[data-explanation-tab="detailed"]')
+            if (detailedSection) {
+              container = detailedSection
+              block_id = 'explanation:detailed'
+              content_title = `Detailed Explanation: ${selectedText.slice(0, 50)}`
+            } else {
+              // Check if inside eli5
+              const eli5Section = ancestorEl?.closest('[data-explanation-tab="eli5"]')
+              if (eli5Section) {
+                container = eli5Section
+                block_id = 'explanation:eli5'
+                content_title = `ELI5 Explanation: ${selectedText.slice(0, 50)}`
+              } else {
+                // Check if inside quick explanation
+                const quickEl = ancestorEl?.closest('.key-point')
+                if (quickEl) {
+                  const quickIdx = quickEl.getAttribute('data-quick-idx')
+                  container = quickEl
+                  block_id = `explanation:quick:${quickIdx}`
+                  content_title = `Quick Explanation ${quickIdx}: ${selectedText.slice(0, 50)}`
+                }
+              }
+            }
+          }
+        }
+
+        if (!container || !block_id) return
+
+        const startA = getOffsetWithinElement(container, range.startContainer, range.startOffset)
+        const endA = getOffsetWithinElement(container, range.endContainer, range.endOffset)
+        if (startA == null || endA == null) return
+
+        const rawStart = Math.min(startA, endA)
+        const rawEnd = Math.max(startA, endA)
+        if (rawStart === rawEnd) return
+
+        const rect = range.getBoundingClientRect()
+        setReviewPopover({
+          quote: selectedText,
+          anchorRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+          start_offset: rawStart,
+          end_offset: rawEnd,
+          block_id,
+          content_title
+        })
+        // Don't clear selection yet — popover needs the text context
+      }
+      document.addEventListener('mouseup', handleReviewerSelection)
+      return () => {
+        document.removeEventListener('mouseup', handleReviewerSelection)
+      }
+    } else {
+      document.addEventListener('mouseup', handleTextSelection)
+      document.addEventListener('touchend', handleTextSelection)
+      return () => {
+        document.removeEventListener('mouseup', handleTextSelection)
+        document.removeEventListener('touchend', handleTextSelection)
+      }
     }
-  }, [handleTextSelection])
+  }, [handleTextSelection, isReviewer, questions, currentIndex])
+
+  // Load reviewer's own comments for the current question
+  useEffect(() => {
+    if (!isReviewer || !questions[currentIndex]) return
+    const currentQ = questions[currentIndex]
+    fetch(`${API_BASE}/reviewer/comments?content_type=qbank_question&content_id=${currentQ.id}`, {
+      headers: authHeaders(),
+      credentials: 'include',
+    })
+      .then((r) => r.ok ? r.json() : { comments: [] })
+      .then((d) => setReviewComments(d.comments || []))
+      .catch(() => {})
+  }, [isReviewer, currentIndex, questions])
+
+  const handleReviewCommentSubmit = useCallback(async ({ comment_text }) => {
+    if (!questions[currentIndex] || !comment_text?.trim()) return
+    const currentQ = questions[currentIndex]
+    setReviewSubmitting(true)
+    try {
+      const res = await fetch(`${API_BASE}/reviewer/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          content_type: 'qbank_question',
+          content_id: currentQ.id,
+          content_title: reviewPopover?.content_title || currentQ.stem?.slice(0, 100) || '',
+          quote: reviewPopover?.quote || '',
+          start_offset: reviewPopover?.start_offset || null,
+          end_offset: reviewPopover?.end_offset || null,
+          block_id: reviewPopover?.block_id || null,
+          comment_text,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setReviewComments((prev) => [...prev, data.comment])
+      }
+    } catch (e) {
+      console.error('Failed to save review comment:', e)
+    } finally {
+      setReviewSubmitting(false)
+      setReviewPopover(null)
+      window.getSelection()?.removeAllRanges()
+    }
+  }, [questions, currentIndex, reviewPopover])
+
+  const openReviewCommentDetails = useCallback((commentId, e) => {
+    const comment = reviewComments.find(rc => rc.id === commentId)
+    if (!comment) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setReviewPopover({
+      id: comment.id,
+      quote: comment.quote,
+      commentText: comment.comment_text,
+      anchorRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+      isViewOnly: true
+    })
+  }, [reviewComments])
+
+  const handleReviewCommentDelete = useCallback(async (commentId) => {
+    setReviewSubmitting(true)
+    try {
+      const res = await fetch(`${API_BASE}/reviewer/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+        credentials: 'include',
+      })
+      if (res.ok) {
+        setReviewComments((prev) => prev.filter((rc) => rc.id !== commentId))
+      }
+    } catch (e) {
+      console.error('Failed to delete review comment:', e)
+    } finally {
+      setReviewSubmitting(false)
+      setReviewPopover(null)
+    }
+  }, [])
 
   // Calculate topic-level performance
   const calculateTopicPerformance = () => {
@@ -1245,22 +1526,25 @@ export default function Practice() {
       setSessionTotalMs(prev => prev + timeTaken)
 
       // Submit to backend for tracking (is_correct is computed server-side, not sent from client)
-      const payload = {
-        question_id: currentQuestionId,
-        selected_option_id: currentQuestion.type === 'MCQ' ? selected : undefined,
-        text_answer: currentQuestion.type === 'SAQ' ? saqText : undefined,
-        time_taken_ms: timeTaken,
-      }
+      // Skip for reviewer accounts — no stat recording
+      if (!isReviewer) {
+        const payload = {
+          question_id: currentQuestionId,
+          selected_option_id: currentQuestion.type === 'MCQ' ? selected : undefined,
+          text_answer: currentQuestion.type === 'SAQ' ? saqText : undefined,
+          time_taken_ms: timeTaken,
+        }
 
-      // Don't await this - let it happen in background
-      fetch(`${API_BASE}/qbank/practice/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      }).catch(error => {
-        console.error('Error submitting to backend:', error)
-      })
+        // Don't await this - let it happen in background
+        fetch(`${API_BASE}/qbank/practice/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        }).catch(error => {
+          console.error('Error submitting to backend:', error)
+        })
+      }
 
       console.log('Answer submitted successfully')
 
@@ -1443,6 +1727,20 @@ export default function Practice() {
                     onClose={() => setPopoverHl(null)}
                   />
                 )}
+                {isReviewer && reviewPopover && (
+                  <ReviewCommentPopover
+                    anchorRect={reviewPopover.anchorRect}
+                    quote={reviewPopover.quote}
+                    onSubmit={handleReviewCommentSubmit}
+                    onClose={() => {
+                      setReviewPopover(null)
+                      window.getSelection()?.removeAllRanges()
+                    }}
+                    submitting={reviewSubmitting}
+                    comment={reviewPopover.isViewOnly ? { id: reviewPopover.id, comment_text: reviewPopover.commentText } : null}
+                    onDelete={reviewPopover.isViewOnly ? () => handleReviewCommentDelete(reviewPopover.id) : null}
+                  />
+                )}
                 {Array.isArray(currentQuestion.assets) && currentQuestion.assets.length > 0 && (
                   (() => {
                     const assets = currentQuestion.assets.filter(a => a && a.url)
@@ -1522,7 +1820,7 @@ export default function Practice() {
                       if (isStruckOut) className += ' option--struck'
 
                       return (
-                        <div key={o.id} className="option-wrapper">
+                        <div key={o.id} className="option-wrapper" data-option-id={o.id}>
                           <label className={className}>
                             <input
                               type="radio"
@@ -1533,7 +1831,7 @@ export default function Practice() {
                               disabled={isSubmitted || isStruckOut || isReviewMode}
                             />
                             <div className="option__label">{o.label}.</div>
-                            <div className="option__body">{o.body}</div>
+                            <div className="option__body">{renderTextWithReviewComments(o.body, `options:${o.id}`)}</div>
                           </label>
                           {!isSubmitted && !isReviewMode && (
                             <button
@@ -1709,16 +2007,16 @@ export default function Practice() {
                     </div>
                   </div>
                 )}
-                {tab === 'quick' && (
+                 {tab === 'quick' && (
                   <div>
                     {allQuickPoints && allQuickPoints.length > 0 ? (
                       <div className="explain__section">
                         <div className="explain__label">Explanations:</div>
                         <ul className="key-points">
                           {allQuickPoints.map((p, idx) => (
-                            <li key={idx} className={`key-point ${p.isCorrect ? 'key-point--correct' : ''}`}>
+                            <li key={idx} className={`key-point ${p.isCorrect ? 'key-point--correct' : ''}`} data-quick-idx={idx}>
                               <div className={`key-point-badge ${p.isCorrect ? 'is-correct' : 'is-wrong'}`}>{p.label}</div>
-                              <div>{p.text}</div>
+                              <div>{renderTextWithReviewComments(p.text, `explanation:quick:${idx}`)}</div>
                             </li>
                           ))}
                         </ul>
@@ -1732,21 +2030,21 @@ export default function Practice() {
                   </div>
                 )}
                 {tab === 'detailed' && (
-                  <div>
+                  <div data-explanation-tab="detailed">
                     <div className="explain__section">
                       <div className="explain__label">Detailed Explanation:</div>
-                      <div>{result?.explanations?.detailed || 'No detailed explanation available'}</div>
+                      <div>{renderTextWithReviewComments(result?.explanations?.detailed || 'No detailed explanation available', 'explanation:detailed')}</div>
                     </div>
                   </div>
                 )}
                 {tab === 'eli5' && (
-                  <div>
+                  <div data-explanation-tab="eli5">
                     <div className="eli5-section">
                       <div className="eli5-header">
                         <LuLightbulb className="eli5-icon" />
                         <span className="eli5-title">Explain Like I'm 5</span>
                       </div>
-                      <div className="eli5-content">{result?.explanations?.eli5 || 'No ELI5 explanation available'}</div>
+                      <div className="eli5-content">{renderTextWithReviewComments(result?.explanations?.eli5 || 'No ELI5 explanation available', 'explanation:eli5')}</div>
                     </div>
                   </div>
                 )}

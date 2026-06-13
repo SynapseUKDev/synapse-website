@@ -444,3 +444,30 @@ html[data-theme="dark"] .admin-list button.is-active {
     grid-template-columns: 1fr;
   }
 }
+
+.admin-subtabs {
+  display: flex;
+  gap: 16px;
+  margin: 8px 0 16px;
+  border-bottom: 1.5px solid var(--syn-border, #e2e8f0);
+  padding-bottom: 6px;
+}
+
+.admin-subtab-btn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 0;
+  font-weight: 600;
+  color: var(--syn-muted);
+  border-bottom: 2.5px solid transparent;
+}
+
+.admin-subtab-btn.is-active {
+  font-weight: 800;
+  color: var(--syn-navy-700);
+  border-bottom: 2.5px solid #f59e0b;
+}
+

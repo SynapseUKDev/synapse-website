@@ -69,6 +69,13 @@ function DashboardLayout() {
     setMobileMenuOpen(false)
   }, [location.pathname])
 
+  // Route guard: Redirect reviewers away from admin routes
+  useEffect(() => {
+    if (user?.capabilities?.can_review && location.pathname.includes('/admin')) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [user, location.pathname, navigate])
+
   const handleAcceptTerms = async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     const res = await authenticatedFetch(`${API_BASE}/me/accept-terms`, {

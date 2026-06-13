@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useOutletContext } from 'react-router-dom'
 import { authHeaders } from '../../auth/token'
-import { LuChevronLeft, LuClock, LuPause, LuPlay, LuFlag, LuEraser } from 'react-icons/lu'
+import { LuChevronLeft, LuClock, LuPause, LuPlay, LuFlag, LuEraser, LuLightbulb, LuCircleCheck, LuCircleAlert } from 'react-icons/lu'
 import '../practice/Practice.css'
 import './MockExams.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ExamCalculator from './ExamCalculator.jsx'
 import useQuestionStemHighlight from '../practice/useQuestionStemHighlight.jsx'
+import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 const QUESTIONS_PER_PAGE = 30
@@ -62,6 +63,78 @@ export default function MockExamPractice() {
   const timeUpRef = useRef(false)
   const prevSecondsRef = useRef(-1)
   const secondsRef = useRef(0)
+  const { user } = useOutletContext() || {}
+  const isReviewer = !!user?.capabilities?.can_review
+
+  // Reviewer annotation state
+  const [reviewComments, setReviewComments] = useState([])
+  const [reviewPopover, setReviewPopover] = useState(null)
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+
+  const handleReviewCommentSubmit = useCallback(async ({ comment_text }) => {
+    const currentQ = questions[currentIndex]
+    if (!currentQ || !comment_text?.trim()) return
+    setReviewSubmitting(true)
+    try {
+      const res = await fetch(`${API_BASE}/reviewer/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        credentials: 'include',
+        body: JSON.stringify({
+          content_type: 'mock_paper_question',
+          content_id: currentQ.id,
+          content_title: currentQ.stem?.slice(0, 100) || '',
+          quote: reviewPopover?.quote || '',
+          start_offset: reviewPopover?.start_offset || null,
+          end_offset: reviewPopover?.end_offset || null,
+          comment_text,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setReviewComments((prev) => [...prev, data.comment])
+      }
+    } catch (e) {
+      console.error('Failed to save review comment:', e)
+    } finally {
+      setReviewSubmitting(false)
+      setReviewPopover(null)
+      window.getSelection()?.removeAllRanges()
+    }
+  }, [questions, currentIndex, reviewPopover])
+
+  const openReviewCommentDetails = useCallback((commentId, e) => {
+    const comment = reviewComments.find(rc => rc.id === commentId)
+    if (!comment) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    setReviewPopover({
+      id: comment.id,
+      quote: comment.quote,
+      commentText: comment.comment_text,
+      anchorRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+      isViewOnly: true
+    })
+  }, [reviewComments])
+
+  const handleReviewCommentDelete = useCallback(async (commentId) => {
+    setReviewSubmitting(true)
+    try {
+      const res = await fetch(`${API_BASE}/reviewer/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+        credentials: 'include',
+      })
+      if (res.ok) {
+        setReviewComments((prev) => prev.filter((rc) => rc.id !== commentId))
+      }
+    } catch (e) {
+      console.error('Failed to delete review comment:', e)
+    } finally {
+      setReviewSubmitting(false)
+      setReviewPopover(null)
+    }
+  }, [])
+
   const {
     stemRef,
     renderHighlightedText,
@@ -69,7 +142,12 @@ export default function MockExamPractice() {
     clearHighlights,
     hasHighlights,
     setActiveQuestion,
-  } = useQuestionStemHighlight()
+  } = useQuestionStemHighlight({
+    isReviewer,
+    reviewComments,
+    onReviewPopoverOpen: setReviewPopover,
+    onReviewCommentClick: openReviewCommentDetails,
+  })
 
   const timerBudget = paper?.timer_duration_seconds ?? 0
   const initialRemaining = paper?.timer_remaining_seconds ?? timerBudget
@@ -115,7 +193,9 @@ export default function MockExamPractice() {
       const map = {}
       const ans = data.answers || {}
       for (const q of data.questions || []) {
-        if (Object.prototype.hasOwnProperty.call(ans, q.id)) {
+        if (isReviewer && q.correct_answer != null) {
+          map[q.id] = q.correct_answer
+        } else if (Object.prototype.hasOwnProperty.call(ans, q.id)) {
           map[q.id] = ans[q.id]
         }
       }
@@ -127,7 +207,7 @@ export default function MockExamPractice() {
     } finally {
       setLoading(false)
     }
-  }, [attemptId, navigate])
+  }, [attemptId, navigate, isReviewer])
 
   useEffect(() => {
     load()
@@ -187,6 +267,20 @@ export default function MockExamPractice() {
   }, [currentIndex])
 
   const currentQ = questions[currentIndex]
+
+  const [tab, setTab] = useState('quick')
+
+  // Load reviewer's own comments for the current mock paper question
+  useEffect(() => {
+    if (!isReviewer || !currentQ) return
+    fetch(`${API_BASE}/reviewer/comments?content_type=mock_paper_question&content_id=${currentQ.id}`, {
+      headers: authHeaders(),
+      credentials: 'include',
+    })
+      .then((r) => r.ok ? r.json() : { comments: [] })
+      .then((d) => setReviewComments(d.comments || []))
+      .catch(() => {})
+  }, [isReviewer, currentQ])
 
   useEffect(() => {
     setActiveQuestion(currentQ || null)
@@ -448,12 +542,28 @@ export default function MockExamPractice() {
                   {currentQ?.stem ? renderHighlightedText(currentQ.stem, currentQ.id) : null}
                 </div>
                 {renderPopover()}
+                {isReviewer && reviewPopover && (
+                  <ReviewCommentPopover
+                    anchorRect={reviewPopover.anchorRect}
+                    quote={reviewPopover.quote}
+                    onSubmit={handleReviewCommentSubmit}
+                    onClose={() => {
+                      setReviewPopover(null)
+                      window.getSelection()?.removeAllRanges()
+                    }}
+                    submitting={reviewSubmitting}
+                    comment={reviewPopover.isViewOnly ? { id: reviewPopover.id, comment_text: reviewPopover.commentText } : null}
+                    onDelete={reviewPopover.isViewOnly ? () => handleReviewCommentDelete(reviewPopover.id) : null}
+                  />
+                )}
               </div>
               <div className="mock-exam-options" style={{ display: 'grid', gap: 8 }}>
                 {(currentQ.options || []).map((o) => {
+                  const isCorrectOption = isReviewer && currentQ.correct_answer === o.id
                   const userSelected = selected === o.id
                   let className = 'option'
                   if (userSelected) className += ' option--selected'
+                  if (isCorrectOption) className += ' option--correct'
                   return (
                     <label key={o.id} className={className}>
                       <input
@@ -461,7 +571,8 @@ export default function MockExamPractice() {
                         name="opt"
                         value={o.id}
                         checked={userSelected}
-                        onChange={() => setSelected(o.id)}
+                        onChange={() => !isReviewer && setSelected(o.id)}
+                        disabled={isReviewer}
                       />
                       <div className="option__label">{o.label}.</div>
                       <div className="option__body">{o.body}</div>
@@ -469,6 +580,77 @@ export default function MockExamPractice() {
                   )
                 })}
               </div>
+              {isReviewer && (
+                <div className="card explanation-card" style={{ marginTop: '20px' }}>
+                  <div
+                    className="card__header"
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div className="ex-card__status ex-card__status--correct">
+                      <LuCircleCheck /> Correct
+                    </div>
+                    <div className="tabs">
+                      <div className={`tab ${tab === 'quick' ? 'tab--active' : ''}`} onClick={() => setTab('quick')}>
+                        Quick
+                      </div>
+                      <div className={`tab ${tab === 'detailed' ? 'tab--active' : ''}`} onClick={() => setTab('detailed')}>
+                        Detailed
+                      </div>
+                      <div className={`tab ${tab === 'eli5' ? 'tab--active' : ''}`} onClick={() => setTab('eli5')}>
+                        ELI5
+                      </div>
+                    </div>
+                  </div>
+                  <div className="card__body explain">
+                    {tab === 'quick' && (
+                      <div>
+                        {currentQ.explanations?.points_by_option ? (
+                          <div className="explain__section">
+                            <div className="explain__label">Explanations:</div>
+                            <ul className="key-points">
+                              {[0, 1, 2, 3, 4]
+                                .map((idx) => ({
+                                  label: String.fromCharCode(65 + idx),
+                                  text: currentQ.explanations.points_by_option[String(idx)]?.[0] || null,
+                                  isCorrect: currentQ.correct_answer === idx,
+                                }))
+                                .filter((p) => p.text)
+                                .map((p, idx) => (
+                                  <li key={idx} className={`key-point ${p.isCorrect ? 'key-point--correct' : ''}`}>
+                                    <div className={`key-point-badge ${p.isCorrect ? 'is-correct' : 'is-wrong'}`}>
+                                      {p.label}
+                                    </div>
+                                    <div>{p.text}</div>
+                                  </li>
+                                ))}
+                            </ul>
+                          </div>
+                        ) : (
+                          <div className="explain__section">
+                            <div className="explain__label">Explanations:</div>
+                            <div>No quick points available</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {tab === 'detailed' && (
+                      <div className="explain__section">
+                        <div className="explain__label">Detailed Explanation:</div>
+                        <div>{currentQ.explanations?.detailed || 'No detailed explanation available'}</div>
+                      </div>
+                    )}
+                    {tab === 'eli5' && (
+                      <div className="eli5-section">
+                        <div className="eli5-header">
+                          <LuLightbulb className="eli5-icon" />
+                          <span className="eli5-title">Explain Like I'm 5</span>
+                        </div>
+                        <div className="eli5-content">{currentQ.explanations?.eli5 || 'No ELI5 explanation available'}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="controls">
               <div className="controls__left">
@@ -490,7 +672,7 @@ export default function MockExamPractice() {
                     {flagged.has(String(currentQ.id)) ? 'Flagged' : 'Flag'}
                   </button>
                 ) : null}
-                {currentQ && hasHighlights(currentQ.id) ? (
+                {!isReviewer && currentQ && hasHighlights(currentQ.id) ? (
                   <button
                     type="button"
                     className="btn btn--ghost btn--icon"
@@ -508,39 +690,53 @@ export default function MockExamPractice() {
                   <LuChevronLeft />
                   Previous
                 </button>
-                {needsSaveAnswer ? (
-                  <button
-                    type="button"
-                    onClick={onSaveAndNext}
-                    disabled={submitting || selected === null || selected === undefined}
-                    className="btn btn--primary btn--icon"
-                  >
-                    {submitting ? 'Saving…' : 'Save answer'}
-                  </button>
-                ) : null}
-                {readyToAdvance && !needsSaveAnswer ? (
+                {isReviewer ? (
+                  currentIndex < questions.length - 1 ? (
+                    <button type="button" onClick={goNext} className="btn btn--primary btn--icon">
+                      Next
+                    </button>
+                  ) : (
+                    <button type="button" onClick={finishExam} disabled={finishing} className="btn btn--primary">
+                      {finishing ? 'Finishing…' : 'Finish exam'}
+                    </button>
+                  )
+                ) : (
                   <>
-                    {currentIndex < questions.length - 1 ? (
-                      <button type="button" onClick={goNext} className="btn btn--primary btn--icon">
-                        Next
+                    {needsSaveAnswer ? (
+                      <button
+                        type="button"
+                        onClick={onSaveAndNext}
+                        disabled={submitting || selected === null || selected === undefined}
+                        className="btn btn--primary btn--icon"
+                      >
+                        {submitting ? 'Saving…' : 'Save answer'}
                       </button>
-                    ) : (
-                      <button type="button" onClick={finishExam} disabled={finishing} className="btn btn--primary">
-                        {finishing ? 'Finishing…' : 'Finish exam'}
+                    ) : null}
+                    {readyToAdvance && !needsSaveAnswer ? (
+                      <>
+                        {currentIndex < questions.length - 1 ? (
+                          <button type="button" onClick={goNext} className="btn btn--primary btn--icon">
+                            Next
+                          </button>
+                        ) : (
+                          <button type="button" onClick={finishExam} disabled={finishing} className="btn btn--primary">
+                            {finishing ? 'Finishing…' : 'Finish exam'}
+                          </button>
+                        )}
+                      </>
+                    ) : null}
+                    {showSkipUnanswered || showSkipClear ? (
+                      <button
+                        type="button"
+                        onClick={onSkip}
+                        disabled={submitting || needsSaveAnswer}
+                        className="btn btn--ghost"
+                      >
+                        {showSkipClear ? 'Clear answer (skip)' : 'Skip'}
                       </button>
-                    )}
+                    ) : null}
                   </>
-                ) : null}
-                {showSkipUnanswered || showSkipClear ? (
-                  <button
-                    type="button"
-                    onClick={onSkip}
-                    disabled={submitting || needsSaveAnswer}
-                    className="btn btn--ghost"
-                  >
-                    {showSkipClear ? 'Clear answer (skip)' : 'Skip'}
-                  </button>
-                ) : null}
+                )}
               </div>
             </div>
           </div>

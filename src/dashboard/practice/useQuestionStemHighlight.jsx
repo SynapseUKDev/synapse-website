@@ -50,7 +50,7 @@ function mergeOverlappingHighlights(highlights, stemText = '') {
   return merged
 }
 
-const markdownComponents = (questionId, { openHighlightPopover, removeHighlight }) => ({
+const markdownComponents = (questionId, { openHighlightPopover, removeHighlight, options = {} }) => ({
   span: ({ node, children, ...props }) => {
     if (props.className === 'highlight-wrapper') {
       const highlightId =
@@ -65,8 +65,12 @@ const markdownComponents = (questionId, { openHighlightPopover, removeHighlight 
           data-highlight-id={highlightId}
           onClick={(e) => {
             e.preventDefault()
-            const id = parseInt(highlightId, 10)
-            if (id) openHighlightPopover(questionId, id, e)
+            if (options.isReviewer) {
+              options.onReviewCommentClick?.(highlightId, e)
+            } else {
+              const id = parseInt(highlightId, 10)
+              if (id) openHighlightPopover(questionId, id, e)
+            }
           }}
           style={{ cursor: 'pointer' }}
         >
@@ -77,12 +81,21 @@ const markdownComponents = (questionId, { openHighlightPopover, removeHighlight 
     return <span {...props}>{children}</span>
   },
   mark: ({ node, children, ...props }) => {
-    if (props.className?.includes('hl-mark')) {
+    if (props.className?.includes('hl-mark') || props.className?.includes('rv-mark')) {
       const highlightId =
         props.dataHighlightId ??
         props['data-highlight-id'] ??
         node?.properties?.dataHighlightId ??
         node?.properties?.['data-highlight-id']
+      
+      if (options.isReviewer) {
+        return (
+          <mark className="rv-mark" {...props}>
+            {children}
+          </mark>
+        )
+      }
+
       return (
         <mark {...props}>
           {children}
@@ -198,7 +211,7 @@ const markdownComponents = (questionId, { openHighlightPopover, removeHighlight 
  * Shared question-stem highlighting (selection → mark, popover, clear).
  * Used by mock exams; mirrors solo study-set practice behaviour.
  */
-export default function useQuestionStemHighlight() {
+export default function useQuestionStemHighlight(options = {}) {
   const [highlights, setHighlights] = useState({})
   const [popoverHl, setPopoverHl] = useState(null)
   const stemRef = useRef(null)
@@ -300,8 +313,7 @@ export default function useQuestionStemHighlight() {
   }, [])
 
   const applyHighlightsToMarkdown = useCallback(
-    (text, questionId) => {
-      const questionHighlights = highlights[questionId] || []
+    (text, questionHighlights) => {
       if (questionHighlights.length === 0) return text
 
       const expandedHighlights = []
@@ -337,22 +349,38 @@ export default function useQuestionStemHighlight() {
         const highlighted = result.slice(hl.start, hl.end)
         const after = result.slice(hl.end)
         const highlightedWithBr = highlighted.replace(/\n(?!\n)/g, '<br/>')
-        const hlColor = hl.color || 'yellow'
-        const hasNoteClass = hl.note ? ' hl-mark--has-note' : ''
-        result =
-          before +
-          `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}" data-highlight-id="${hl.id}">${highlightedWithBr}</mark></span>` +
-          after
+        if (options.isReviewer) {
+          result =
+            before +
+            `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="rv-mark" data-highlight-id="${hl.id}">${highlightedWithBr}</mark></span>` +
+            after
+        } else {
+          const hlColor = hl.color || 'yellow'
+          const hasNoteClass = hl.note ? ' hl-mark--has-note' : ''
+          result =
+            before +
+            `<span class="highlight-wrapper" data-highlight-id="${hl.id}"><mark class="hl-mark hl-mark--${hlColor}${hasNoteClass}" data-highlight-id="${hl.id}">${highlightedWithBr}</mark></span>` +
+            after
+        }
       })
 
       return result
     },
-    [highlights],
+    [options.isReviewer],
   )
 
   const renderHighlightedText = useCallback(
     (text, questionId) => {
-      const questionHighlights = highlights[questionId] || []
+      const questionHighlights = options.isReviewer
+        ? (options.reviewComments || []).map(rc => ({
+            start: rc.start_offset,
+            end: rc.end_offset,
+            text: rc.quote,
+            id: rc.id,
+            note: rc.comment_text,
+            color: 'reviewer'
+          }))
+        : (highlights[questionId] || [])
       const isMarkdown = hasMarkdown(text)
 
       if (questionHighlights.length === 0 && !isMarkdown) {
@@ -361,13 +389,13 @@ export default function useQuestionStemHighlight() {
 
       if (isMarkdown) {
         const textWithHighlights =
-          questionHighlights.length > 0 ? applyHighlightsToMarkdown(text, questionId) : text
+          questionHighlights.length > 0 ? applyHighlightsToMarkdown(text, questionHighlights) : text
 
         return (
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
-            components={markdownComponents(questionId, { openHighlightPopover, removeHighlight })}
+            components={markdownComponents(questionId, { openHighlightPopover, removeHighlight, options })}
           >
             {textWithHighlights}
           </ReactMarkdown>
@@ -401,6 +429,24 @@ export default function useQuestionStemHighlight() {
             part.highlighted ? (
               (() => {
                 const hl = questionHighlights.find((h) => h.id === part.highlightId)
+                if (options.isReviewer) {
+                  return (
+                    <span
+                      key={part.key}
+                      className="highlight-wrapper"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        options.onReviewCommentClick?.(part.highlightId, e)
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <mark className="rv-mark">
+                        {part.text}
+                      </mark>
+                    </span>
+                  )
+                }
+
                 const hlColor = hl?.color || 'yellow'
                 const hasNoteClass = hl?.note ? ' hl-mark--has-note' : ''
                 return (
@@ -441,7 +487,7 @@ export default function useQuestionStemHighlight() {
         </span>
       )
     },
-    [highlights, applyHighlightsToMarkdown, openHighlightPopover, removeHighlight],
+    [highlights, applyHighlightsToMarkdown, openHighlightPopover, removeHighlight, options],
   )
 
   const addHighlightFromSelection = useCallback(
@@ -526,13 +572,37 @@ export default function useQuestionStemHighlight() {
   )
 
   useEffect(() => {
-    document.addEventListener('mouseup', handleTextSelection)
-    document.addEventListener('touchend', handleTextSelection)
-    return () => {
-      document.removeEventListener('mouseup', handleTextSelection)
-      document.removeEventListener('touchend', handleTextSelection)
+    if (options.isReviewer) {
+      const handleReviewerSelection = (e) => {
+        const selection = window.getSelection()
+        const currentQ = activeQuestionRef.current
+        if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
+        const selectedText = selection.toString()
+        if (!selectedText || /^\s*$/.test(selectedText)) return
+        const range = selection.getRangeAt(0)
+        if (!stemRef.current.contains(range.commonAncestorContainer)) return
+
+        const rect = range.getBoundingClientRect()
+        options.onReviewPopoverOpen?.({
+          quote: selectedText,
+          anchorRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+          start_offset: range.startOffset,
+          end_offset: range.endOffset,
+        })
+      }
+      document.addEventListener('mouseup', handleReviewerSelection)
+      return () => {
+        document.removeEventListener('mouseup', handleReviewerSelection)
+      }
+    } else {
+      document.addEventListener('mouseup', handleTextSelection)
+      document.addEventListener('touchend', handleTextSelection)
+      return () => {
+        document.removeEventListener('mouseup', handleTextSelection)
+        document.removeEventListener('touchend', handleTextSelection)
+      }
     }
-  }, [handleTextSelection])
+  }, [handleTextSelection, options.isReviewer, options.onReviewPopoverOpen])
 
   const setActiveQuestion = useCallback((question) => {
     activeQuestionRef.current = question

@@ -4,6 +4,7 @@ import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import { AdminQuestionInlineEditor, AdminTextbookInlineEditor } from './AdminEditors'
 import OsceAdminPanel from '../osce/OsceAdminPanel'
+import AdminReviewComments from './AdminReviewComments'
 import './Admin.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -55,8 +56,11 @@ export default function Admin() {
     return 'question-issues'
   })
 
+  const [subTab, setSubTab] = useState('main') // main | review
+
   const setActiveTab = (tab) => {
     setActiveTabState(tab)
+    setSubTab('main')
     localStorage.setItem('admin_active_tab', tab)
   }
 
@@ -301,21 +305,21 @@ export default function Admin() {
 
   return (
     <div className="admin">
-      {activeTab !== 'osce' && (
-        <div className="admin__header">
-          <div>
-            <h1 className="admin__title">
-              {activeTab === 'mock-papers' ? 'Import mock exam' : 'Admin Issues'}
-            </h1>
-            <p className="admin__muted">
-              {activeTab === 'mock-papers'
-                ? 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'
-                : 'Review user-reported issues, then edit the related question or textbook page.'}
-            </p>
-          </div>
-          <div className="admin-badge">Admin</div>
+      <div className="admin__header">
+        <div>
+          <h1 className="admin__title">
+            {activeTab === 'mock-papers' && 'Import mock exam'}
+            {activeTab === 'osce' && 'Manage OSCE Stations'}
+            {(activeTab === 'question-issues' || activeTab === 'topic-issues') && 'Admin Issues'}
+          </h1>
+          <p className="admin__muted">
+            {activeTab === 'mock-papers' && 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'}
+            {activeTab === 'osce' && 'Create, edit, and publish OSCE stations for all station types.'}
+            {(activeTab === 'question-issues' || activeTab === 'topic-issues') && 'Review user-reported issues, then edit the related question or textbook page.'}
+          </p>
         </div>
-      )}
+        <div className="admin-badge">Admin</div>
+      </div>
 
       {error && activeTab !== 'mock-papers' && activeTab !== 'osce' && <div className="admin-alert">{error}</div>}
 
@@ -327,7 +331,7 @@ export default function Admin() {
           disabled={!canManageQbank}
           title={!canManageQbank ? 'Question Bank Admin permission required' : undefined}
         >
-          Question Issues
+          Question Bank
         </button>
         <button
           type="button"
@@ -336,7 +340,7 @@ export default function Admin() {
           disabled={!canManageTextbook}
           title={!canManageTextbook ? 'Textbook Admin permission required' : undefined}
         >
-          Textbook Issues
+          UKMLA Textbook
         </button>
         <button
           type="button"
@@ -356,7 +360,7 @@ export default function Admin() {
         >
           OSCE Stations
         </button>
-        {activeTab !== 'mock-papers' && activeTab !== 'osce' && (
+        {activeTab !== 'mock-papers' && activeTab !== 'osce' && subTab === 'main' && (
           <>
             <label className="admin-tabs__toggle">
               <input
@@ -373,7 +377,27 @@ export default function Admin() {
         )}
       </div>
 
-      {activeTab === 'mock-papers' && (
+      <div className="admin-subtabs">
+        <button
+          type="button"
+          className={`admin-subtab-btn ${subTab === 'main' ? 'is-active' : ''}`}
+          onClick={() => setSubTab('main')}
+        >
+          {activeTab === 'question-issues' && 'Reported Issues'}
+          {activeTab === 'topic-issues' && 'Reported Issues'}
+          {activeTab === 'mock-papers' && 'Mock Import'}
+          {activeTab === 'osce' && 'Manage Stations'}
+        </button>
+        <button
+          type="button"
+          className={`admin-subtab-btn ${subTab === 'review' ? 'is-active' : ''}`}
+          onClick={() => setSubTab('review')}
+        >
+          Review Comments
+        </button>
+      </div>
+
+      {activeTab === 'mock-papers' && subTab === 'main' && (
         <section className="admin-card">
           <div className="admin-upload-section">
 
@@ -541,7 +565,7 @@ export default function Admin() {
       )}
 
 
-      {activeTab !== 'mock-papers' && activeTab !== 'osce' && (
+      {activeTab !== 'mock-papers' && activeTab !== 'osce' && subTab === 'main' && (
       <div className="admin-grid">
         <section className="admin-card">
           {issuesLoading ? (
@@ -708,8 +732,20 @@ export default function Admin() {
       </div>
       )}
 
-      {activeTab === 'osce' && (
+      {activeTab === 'osce' && subTab === 'main' && (
         <OsceAdminPanel embedded={true} />
+      )}
+
+      {subTab === 'review' && (
+        <AdminReviewComments
+          API_BASE={API_BASE}
+          defaultContentType={
+            activeTab === 'question-issues' ? 'qbank_question' :
+            activeTab === 'topic-issues' ? 'textbook_page' :
+            activeTab === 'osce' ? 'osce_station' :
+            'mock_paper_question'
+          }
+        />
       )}
     </div>
   )

@@ -29,19 +29,22 @@ function collapseExpandScrollOffset(itemCount) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user } = useOutletContext()
+  const isReviewer = !!user?.capabilities?.can_review
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   const summaryReq = useStaleJson(`${API_BASE}/dashboard/summary`, {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     staleMs: 60_000,
     persist: 'session',
     key: 'dashboard:summary',
+    skip: isReviewer,
   })
-  // Analytics: /qbank/performance/trend (from user_question_attempts) → questions_answered, accuracy_pct, avg_time_ms per day
+  // Analytics: /qbank/performance/trend
   const trendReq = useStaleJson(`${API_BASE}/qbank/performance/trend`, {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     staleMs: 5 * 60_000,
     persist: 'session',
     key: 'dashboard:trend',
+    skip: isReviewer,
     transform: (t) => ({
       days: Array.isArray(t.days)
         ? t.days.map((d) => ({
@@ -61,6 +64,7 @@ export default function Dashboard() {
     staleMs: 5 * 60_000,
     persist: 'session',
     key: 'dashboard:topics',
+    skip: isReviewer,
     transform: (t) => ({ topics: Array.isArray(t?.topics) ? t.topics : [] }),
   })
   const topicCards = topicsReq.data?.topics ?? []
@@ -70,7 +74,7 @@ export default function Dashboard() {
   // Use API trend when available (real analytics); demo only while loading or on error
   const trend = trendReq.data?.days ?? buildDemoTrend()
   const trendLoading = trendReq.loading && !trendReq.data
-  const loading = summaryReq.loading && !summaryReq.data
+  const loading = summaryReq.loading && !summaryReq.data && !isReviewer
 
   // Leaderboard state
   const [leaderboard, setLeaderboard] = useState([])
@@ -272,7 +276,7 @@ export default function Dashboard() {
       navigate('/dashboard/question-bank')
     }
   }
-  
+
   const startEditingTargets = (type) => {
     setTempTargets({
       questions: summary?.targets?.questions || 30,
@@ -303,7 +307,7 @@ export default function Dashboard() {
     const previousTargets = { ...summary.targets }
     const questionsVal = parseInt(tempTargets.questions) || 30
     const timeVal = parseInt(tempTargets.time_minutes) || 180
-    
+
     summary.targets = {
       questions: questionsVal,
       time_minutes: timeVal
@@ -451,9 +455,9 @@ export default function Dashboard() {
           <div className="qb-stat__value">{summary?.study_streak_days ?? 0} {summary?.study_streak_days === 1 ? 'day' : 'days'}</div>
           <div className="qb-stat__sub">Keep it up!</div>
         </div>
-        
-        <div 
-          className={`qb-stat ${isEditingTargets === 'time' ? 'is-editing' : 'is-clickable'}`} 
+
+        <div
+          className={`qb-stat ${isEditingTargets === 'time' ? 'is-editing' : 'is-clickable'}`}
           onClick={!isEditingTargets ? () => startEditingTargets('time') : undefined}
           ref={isEditingTargets === 'time' ? editRef : null}
         >
@@ -469,7 +473,7 @@ export default function Dashboard() {
           <div className="qb-stat__sub">
             {isEditingTargets === 'time' ? (
               <div className="qb-stat__input-wrap">
-                Target: 
+                Target:
                 <input
                   type="number"
                   className="qb-stat__input"
@@ -488,7 +492,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-          
+
           {isEditingTargets === 'time' && (
             <div className="qb-stat__edit-actions">
               <button className="qb-stat__action qb-stat__action--save" onClick={(e) => { e.stopPropagation(); saveTargets(); }} title="Save">
@@ -500,9 +504,9 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        
-        <div 
-          className={`qb-stat ${isEditingTargets === 'questions' ? 'is-editing' : 'is-clickable'}`} 
+
+        <div
+          className={`qb-stat ${isEditingTargets === 'questions' ? 'is-editing' : 'is-clickable'}`}
           onClick={!isEditingTargets ? () => startEditingTargets('questions') : undefined}
           ref={isEditingTargets === 'questions' ? editRef : null}
         >
@@ -525,8 +529,8 @@ export default function Dashboard() {
           </div>
           <div className="qb-stat__sub">
             <div className="qb-stat__progress">
-              <div 
-                className="qb-stat__progress-bar" 
+              <div
+                className="qb-stat__progress-bar"
                 style={{ width: `${Math.min(100, Math.round((((summary?.questions_today || 0) / (summary?.targets?.questions || 30)) * 100)))}%` }}
               ></div>
             </div>
@@ -672,50 +676,59 @@ export default function Dashboard() {
         </div>
 
         <aside className="db-analytics">
-          <div className="db-card db-analytics__card">
-            <div className="db-analytics__head">Analytics</div>
-            <div className="db-analytics__tabs">
+          {isReviewer ? (
+            <div className="db-card db-analytics__card db-analytics__card--reviewer">
+              <div className="db-analytics__head">Analytics</div>
+              <p className="db-analytics__reviewer-note">
+                Analytics are not available for reviewer accounts.
+              </p>
+            </div>
+          ) : (
+            <div className="db-card db-analytics__card">
+              <div className="db-analytics__head">Analytics</div>
+              <div className="db-analytics__tabs">
+                <button
+                  type="button"
+                  className={`db-analytics__tab ${analyticsChart === 'questions' ? 'is-active' : ''}`}
+                  onClick={() => setAnalyticsChart('questions')}
+                >
+                  Questions
+                </button>
+                <button
+                  type="button"
+                  className={`db-analytics__tab ${analyticsChart === 'accuracy' ? 'is-active' : ''}`}
+                  onClick={() => setAnalyticsChart('accuracy')}
+                >
+                  Accuracy
+                </button>
+                <button
+                  type="button"
+                  className={`db-analytics__tab ${analyticsChart === 'time' ? 'is-active' : ''}`}
+                  onClick={() => setAnalyticsChart('time')}
+                >
+                  Time
+                </button>
+              </div>
+              <div className="db-analytics__graph">
+                {analyticsChart === 'questions' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderQuestionsChart(aggregateTrendByWeekday(trend)))}
+                {analyticsChart === 'accuracy' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderAccuracyChartByWeekday(aggregateTrendByWeekdayForAccuracy(trend)))}
+                {analyticsChart === 'time' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderTimeChartByWeekday(aggregateTrendByWeekdayForTime(trend)))}
+              </div>
+              <p className="db-analytics__copy">
+                {analyticsChart === 'questions' && 'Track how many questions you answer each day. Consistency helps build long-term retention and improves exam readiness.'}
+                {analyticsChart === 'accuracy' && 'See which days you perform best. Higher accuracy on certain weekdays can help you plan when to do practice exams.'}
+                {analyticsChart === 'time' && "Average time per question by day of week. Spot days when you're quicker or need more focus."}
+              </p>
               <button
                 type="button"
-                className={`db-analytics__tab ${analyticsChart === 'questions' ? 'is-active' : ''}`}
-                onClick={() => setAnalyticsChart('questions')}
+                className="db-analytics__view-btn"
+                onClick={() => navigate('/dashboard/analytics')}
               >
-                Questions
-              </button>
-              <button
-                type="button"
-                className={`db-analytics__tab ${analyticsChart === 'accuracy' ? 'is-active' : ''}`}
-                onClick={() => setAnalyticsChart('accuracy')}
-              >
-                Accuracy
-              </button>
-              <button
-                type="button"
-                className={`db-analytics__tab ${analyticsChart === 'time' ? 'is-active' : ''}`}
-                onClick={() => setAnalyticsChart('time')}
-              >
-                Time
+                View analytics
+                <LuArrowRight size={12} />
               </button>
             </div>
-            <div className="db-analytics__graph">
-              {analyticsChart === 'questions' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderQuestionsChart(aggregateTrendByWeekday(trend)))}
-              {analyticsChart === 'accuracy' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderAccuracyChartByWeekday(aggregateTrendByWeekdayForAccuracy(trend)))}
-              {analyticsChart === 'time' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderTimeChartByWeekday(aggregateTrendByWeekdayForTime(trend)))}
-            </div>
-            <p className="db-analytics__copy">
-              {analyticsChart === 'questions' && 'Track how many questions you answer each day. Consistency helps build long-term retention and improves exam readiness.'}
-              {analyticsChart === 'accuracy' && 'See which days you perform best. Higher accuracy on certain weekdays can help you plan when to do practice exams.'}
-              {analyticsChart === 'time' && "Average time per question by day of week. Spot days when you're quicker or need more focus."}
-            </p>
-            <button
-              type="button"
-              className="db-analytics__view-btn"
-              onClick={() => navigate('/dashboard/analytics')}
-            >
-              View analytics
-              <LuArrowRight size={12} />
-            </button>
-          </div>
+          )}
 
           <div className="db-card db-friends__card">
             <div className="db-card__top">
@@ -815,62 +828,62 @@ export default function Dashboard() {
                 </>
               )}
 
-                  {friendsTab === 'requests' && (
-                    <>
-                      {requestsLoading ? (
-                        <div className="db-empty">Loading…</div>
-                      ) : (friendRequests.inbox?.length === 0 && friendRequests.outbox?.length === 0) ? (
-                        <div className="db-empty">No pending requests.</div>
-                      ) : (
-                        <div className="db-list">
-                          {friendRequests.inbox?.map((r) => (
-                            <div key={r.id} className="db-list__item">
-                              <div className="db-list__main">
-                                <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
-                                <div className="db-list__sub">Wants to be your friend</div>
-                              </div>
-                              <div className="db-list__actions">
-                                <button
-                                  type="button"
-                                  className="db-chip db-chip--accept"
-                                  onClick={() => respondToRequest(r.id, 'accept')}
-                                  disabled={respondingId === r.id}
-                                  aria-label="Accept"
-                                >
-                                  ✓
-                                </button>
-                                <button
-                                  type="button"
-                                  className="db-chip db-chip--decline"
-                                  onClick={() => respondToRequest(r.id, 'decline')}
-                                  disabled={respondingId === r.id}
-                                  aria-label="Decline"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                          {friendRequests.outbox?.map((r) => (
-                            <div key={r.id} className="db-list__item">
-                              <div className="db-list__main">
-                                <div className="db-list__title">{r.target?.username || r.target?.email || 'User'}</div>
-                                <div className="db-list__sub">Pending</div>
-                              </div>
-                              <button
-                                type="button"
-                                className="db-chip db-chip--neutral"
-                                onClick={() => respondToRequest(r.id, 'cancel')}
-                                disabled={respondingId === r.id}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ))}
+              {friendsTab === 'requests' && (
+                <>
+                  {requestsLoading ? (
+                    <div className="db-empty">Loading…</div>
+                  ) : (friendRequests.inbox?.length === 0 && friendRequests.outbox?.length === 0) ? (
+                    <div className="db-empty">No pending requests.</div>
+                  ) : (
+                    <div className="db-list">
+                      {friendRequests.inbox?.map((r) => (
+                        <div key={r.id} className="db-list__item">
+                          <div className="db-list__main">
+                            <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
+                            <div className="db-list__sub">Wants to be your friend</div>
+                          </div>
+                          <div className="db-list__actions">
+                            <button
+                              type="button"
+                              className="db-chip db-chip--accept"
+                              onClick={() => respondToRequest(r.id, 'accept')}
+                              disabled={respondingId === r.id}
+                              aria-label="Accept"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              type="button"
+                              className="db-chip db-chip--decline"
+                              onClick={() => respondToRequest(r.id, 'decline')}
+                              disabled={respondingId === r.id}
+                              aria-label="Decline"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    </>
+                      ))}
+                      {friendRequests.outbox?.map((r) => (
+                        <div key={r.id} className="db-list__item">
+                          <div className="db-list__main">
+                            <div className="db-list__title">{r.target?.username || r.target?.email || 'User'}</div>
+                            <div className="db-list__sub">Pending</div>
+                          </div>
+                          <button
+                            type="button"
+                            className="db-chip db-chip--neutral"
+                            onClick={() => respondToRequest(r.id, 'cancel')}
+                            disabled={respondingId === r.id}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
+                </>
+              )}
             </div>
           </div>
         </aside>

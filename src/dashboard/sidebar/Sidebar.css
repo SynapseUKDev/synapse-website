@@ -303,6 +303,21 @@
   text-overflow: ellipsis;
 }
 
+.sidebar__reviewer-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
 .sidebar__user-actions {
   display: flex;
   gap: 8px;

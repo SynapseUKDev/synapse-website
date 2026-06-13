@@ -5,6 +5,7 @@ import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
+import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { reconcileSelectionRangeToFlat, splitFlatRangeByTableCellsAndSnap } from '../../utils/questionStemHighlight'
 import {
@@ -172,7 +173,7 @@ function injectHighlightsIntoHtml(html, highlights) {
 
     const color = (h.color && /^[a-z]+$/.test(h.color)) ? h.color : 'yellow'
     const id = String(h.id || '')
-    const hasNote = !!(h.note && String(h.note).trim())
+    const hasNote = color === 'reviewer' ? false : !!(h.note && String(h.note).trim())
 
     // Process groups right-to-left so DOM mutations (text-node splits, extractContents)
     // earlier in the document don't invalidate node references in groups not yet processed.
@@ -577,7 +578,7 @@ function RenderBlockContent({ content, highlights = [], query = '', onHighlightC
           type: 'user-hl',
           content: text.slice(hlStart, hlEnd),
           color: hl.color || 'yellow',
-          hasNote: !!hl.note,
+          hasNote: hl.color === 'reviewer' ? false : !!hl.note,
           id: hl.id,
           hlObj: hl
         })
@@ -791,6 +792,27 @@ export default function TextbookTopic() {
   const [readingStatus, setReadingStatus] = useState('not_read')
   const [savingReadingStatus, setSavingReadingStatus] = useState(false)
 
+  const isReviewer = !!user?.capabilities?.can_review
+  const [reviewComments, setReviewComments] = useState([])
+  const [reviewPopover, setReviewPopover] = useState(null)
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+
+  const activeHighlights = useMemo(() => {
+    if (isReviewer) {
+      return reviewComments.map(rc => ({
+        id: rc.id,
+        block_id: rc.block_id,
+        section_anchor: rc.section_anchor,
+        color: 'reviewer',
+        quote: rc.quote,
+        start_offset: rc.start_offset,
+        end_offset: rc.end_offset,
+        note: rc.comment_text
+      }))
+    }
+    return highlights
+  }, [isReviewer, reviewComments, highlights])
+
   const currentProgressTarget = useMemo(() => {
     if (data?.subtopic?.id) return { type: 'subtopic', id: data.subtopic.id }
     if (data?.topic?.id) return { type: 'topic', id: data.topic.id }
@@ -847,7 +869,7 @@ export default function TextbookTopic() {
 
   useEffect(() => {
     const pageId = data?.page?.id
-    if (!pageId) return
+    if (!pageId || isReviewer) return
     let cancelled = false
       ; (async () => {
         try {
@@ -858,7 +880,23 @@ export default function TextbookTopic() {
         } catch { }
       })()
     return () => { cancelled = true }
-  }, [API_BASE, data?.page?.id])
+  }, [API_BASE, data?.page?.id, isReviewer])
+
+  // Fetch reviewer's comments
+  useEffect(() => {
+    const pageId = data?.page?.id
+    if (!pageId || !isReviewer) return
+    let cancelled = false
+      ; (async () => {
+        try {
+          const res = await authenticatedFetch(`${API_BASE}/reviewer/comments?content_type=textbook_page&content_id=${pageId}`, { method: 'GET' })
+          if (!res.ok) return
+          const json = await res.json()
+          if (!cancelled) setReviewComments(Array.isArray(json?.comments) ? json.comments : [])
+        } catch { }
+      })()
+    return () => { cancelled = true }
+  }, [API_BASE, data?.page?.id, isReviewer])
 
   useEffect(() => {
     const onMouseUp = async (e) => {
@@ -907,6 +945,25 @@ export default function TextbookTopic() {
       try {
         sel.removeAllRanges()
       } catch { }
+
+      if (isReviewer) {
+        const firstSeg = rangesToCreate[0]
+        const finalQuote = fullText.slice(firstSeg.start, firstSeg.end)
+        setReviewPopover({
+          quote: finalQuote,
+          anchorRect: {
+            top: selectionRect.top,
+            left: selectionRect.left,
+            width: selectionRect.width,
+            height: selectionRect.height,
+          },
+          start_offset: firstSeg.start,
+          end_offset: firstSeg.end,
+          block_id: blockId,
+          section_anchor: sectionAnchor,
+        })
+        return
+      }
 
       const created = []
       const deletedIds = new Set()
@@ -989,7 +1046,7 @@ export default function TextbookTopic() {
       document.removeEventListener('mouseup', onMouseUp, true)
       document.removeEventListener('touchend', onMouseUp, true)
     }
-  }, [data?.page?.id, API_BASE, highlights, editMode, lastHighlightColor])
+  }, [data?.page?.id, API_BASE, highlights, editMode, lastHighlightColor, isReviewer])
 
   const handleDeleteHighlight = async (hlId) => {
     try {
@@ -1006,6 +1063,57 @@ export default function TextbookTopic() {
       console.error('Error deleting highlight:', e)
     }
   }
+
+  const handleReviewCommentSubmit = useCallback(async ({ comment_text }) => {
+    const pageId = data?.page?.id
+    if (!pageId || !comment_text?.trim() || !reviewPopover) return
+    setReviewSubmitting(true)
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/reviewer/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content_type: 'textbook_page',
+          content_id: pageId,
+          content_title: data.page?.title || '',
+          quote: reviewPopover.quote || '',
+          start_offset: reviewPopover.start_offset || null,
+          end_offset: reviewPopover.end_offset || null,
+          block_id: reviewPopover.block_id || null,
+          section_anchor: reviewPopover.section_anchor || null,
+          comment_text: comment_text.trim(),
+        }),
+      })
+      if (res.ok) {
+        const d = await res.json()
+        if (d.comment) {
+          setReviewComments((prev) => [...prev, d.comment])
+        }
+      }
+    } catch (e) {
+      console.error('Failed to submit review comment:', e)
+    } finally {
+      setReviewSubmitting(false)
+      setReviewPopover(null)
+    }
+  }, [data, reviewPopover, API_BASE])
+
+  const handleReviewCommentDelete = useCallback(async (commentId) => {
+    setReviewSubmitting(true)
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/reviewer/comments/${commentId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        setReviewComments((prev) => prev.filter((rc) => rc.id !== commentId))
+        setReviewPopover(null)
+      }
+    } catch (e) {
+      console.error('Failed to delete review comment:', e)
+    } finally {
+      setReviewSubmitting(false)
+    }
+  }, [API_BASE])
 
   const handlePopoverSave = useCallback(async ({ note, color }) => {
     if (!popoverHl) return
@@ -1179,24 +1287,30 @@ export default function TextbookTopic() {
           />
         </form>
         <div className="tb-header__actions">
-          {isAdmin && data.page?.id && (
-            <button
-              type="button"
-              className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
-              onClick={() => setEditMode((open) => !open)}
-            >
-              {editMode ? 'Close editor' : 'Edit'}
-            </button>
+          {isReviewer ? (
+            <span className="tb-review-mode-badge" style={{ background: '#f59e0b', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>Review Mode</span>
+          ) : (
+            <>
+              {isAdmin && data.page?.id && (
+                <button
+                  type="button"
+                  className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
+                  onClick={() => setEditMode((open) => !open)}
+                >
+                  {editMode ? 'Close editor' : 'Edit'}
+                </button>
+              )}
+              <button
+                type="button"
+                className={`tb-highlights-toggle ${highlightsOn ? 'is-on' : ''}`}
+                onClick={() => setHighlightsOn((on) => !on)}
+                title={highlightsOn ? 'Hide highlights' : 'Show highlights'}
+                aria-pressed={highlightsOn}
+              >
+                {highlightsOn ? 'Hide highlights' : 'Show highlights'}
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            className={`tb-highlights-toggle ${highlightsOn ? 'is-on' : ''}`}
-            onClick={() => setHighlightsOn((on) => !on)}
-            title={highlightsOn ? 'Hide highlights' : 'Show highlights'}
-            aria-pressed={highlightsOn}
-          >
-            {highlightsOn ? 'Hide highlights' : 'Show highlights'}
-          </button>
           <ReportTopicIssueButton topicSlug={topicSlug} API_BASE={API_BASE} />
         </div>
       </header>
@@ -1232,6 +1346,18 @@ export default function TextbookTopic() {
             />
           )}
 
+          {isReviewer && reviewPopover && (
+            <ReviewCommentPopover
+              anchorRect={reviewPopover.anchorRect}
+              quote={reviewPopover.quote}
+              comment={reviewPopover.comment}
+              submitting={reviewSubmitting}
+              onSubmit={handleReviewCommentSubmit}
+              onDelete={reviewPopover.comment ? () => handleReviewCommentDelete(reviewPopover.comment.id) : null}
+              onClose={() => setReviewPopover(null)}
+            />
+          )}
+
           {topSections.map((s) => (
             <section key={s.id} id={`sec-${s.anchor_slug}`} className="tb-section">
               {isAdmin && editMode && (
@@ -1256,17 +1382,33 @@ export default function TextbookTopic() {
                     <RenderBlock
                       block={b}
                       query={topicQ}
-                      blockHighlights={highlightsOn ? highlights.filter((h) => String(h.block_id) === String(b.id)) : []}
+                      blockHighlights={highlightsOn ? activeHighlights.filter((h) => String(h.block_id) === String(b.id)) : []}
                       isAdminEditing={isAdmin && editMode}
                       onHighlightClick={(hl, rect) => {
-                        setPopoverHl(hl)
-                        setPopoverRect(rect)
+                        if (isReviewer) {
+                          const comment = reviewComments.find((rc) => rc.id === hl.id)
+                          if (comment) {
+                            setReviewPopover({
+                              comment,
+                              quote: comment.quote,
+                              anchorRect: rect
+                            })
+                          }
+                        } else {
+                          setPopoverHl(hl)
+                          setPopoverRect(rect)
+                        }
                       }}
-                      onDeleteHighlight={handleDeleteHighlight}
+                      onDeleteHighlight={(hlId) => {
+                        if (isReviewer) {
+                          handleReviewCommentDelete(hlId)
+                        } else {
+                          handleDeleteHighlight(hlId)
+                        }
+                      }}
                     />
                   )
                   const wrapperProps = {
-                    key: b.id,
                     className: 'tb-block',
                     'data-tb-block-id': b.id,
                     'data-tb-section-anchor': s.anchor_slug,
@@ -1274,7 +1416,7 @@ export default function TextbookTopic() {
                   if (isAdmin && editMode) {
                     if (b.block_type === 'markdown') {
                       return (
-                        <div {...wrapperProps}>
+                        <div key={b.id} {...wrapperProps}>
                           <InlineMarkdownBlock block={b} API_BASE={API_BASE} onSaved={refreshChapter}>
                             {rendered}
                           </InlineMarkdownBlock>
@@ -1282,14 +1424,14 @@ export default function TextbookTopic() {
                       )
                     }
                     return (
-                      <div {...wrapperProps}>
+                      <div key={b.id} {...wrapperProps}>
                         <InlineNonMarkdownBlock block={b} API_BASE={API_BASE} onSaved={refreshChapter}>
                           {rendered}
                         </InlineNonMarkdownBlock>
                       </div>
                     )
                   }
-                  return <div {...wrapperProps}>{rendered}</div>
+                  return <div key={b.id} {...wrapperProps}>{rendered}</div>
                 })}
               </div>
             </section>
