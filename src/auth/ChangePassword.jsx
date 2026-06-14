@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
 import './auth-panel/AuthPanel.css'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { authHeaders, authenticatedFetch, setTokens } from './token'
 import logo from '../assets/logo/logo.png'
+import { Turnstile } from '@marsidev/react-turnstile'
 
 function ChangePassword() {
   const navigate = useNavigate()
@@ -16,6 +17,8 @@ function ChangePassword() {
   const [checkingSession, setCheckingSession] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const turnstileRef = useRef(null)
 
   useEffect(() => {
     // Verify user is authenticated and actually needs a password change
@@ -61,7 +64,7 @@ function ChangePassword() {
       const res = await authenticatedFetch(`${API_BASE}/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, captchaToken }),
       })
 
       if (!res.ok) {
@@ -83,6 +86,8 @@ function ChangePassword() {
       }, 2000)
     } catch (err) {
       console.error('Change password error:', err)
+      turnstileRef.current?.reset()
+      setCaptchaToken(null)
       setError(err.message || 'Something went wrong')
     } finally {
       setLoading(false)
@@ -219,10 +224,20 @@ function ChangePassword() {
                 </div>
               )}
 
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+                onSuccess={(token) => setCaptchaToken(token)}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => setCaptchaToken(null)}
+                options={{ theme: 'auto', size: 'normal' }}
+                style={{ marginBottom: '12px' }}
+              />
+
               <button
                 className="auth-panel__cta"
                 type="submit"
-                disabled={loading}
+                disabled={loading || !captchaToken}
               >
                 {loading ? 'Updating password...' : 'Update Password'}
               </button>
