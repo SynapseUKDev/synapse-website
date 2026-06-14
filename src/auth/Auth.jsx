@@ -28,6 +28,10 @@ function Auth() {
           })
           if (res.ok) {
             const data = await res.json()
+            if (data?.user?.needs_password_change) {
+              navigate('/auth/change-password', { replace: true })
+              return
+            }
             const hasAccess = !!data?.access?.has_active_access
             if (hasAccess) {
               navigate('/dashboard', { replace: true })
@@ -56,6 +60,10 @@ function Auth() {
                   })
                   if (retry.ok) {
                     const d2 = await retry.json()
+                    if (d2?.user?.needs_password_change) {
+                      navigate('/auth/change-password', { replace: true })
+                      return
+                    }
                     const ok2 = !!d2?.access?.has_active_access
                     if (ok2) {
                       navigate('/dashboard', { replace: true })

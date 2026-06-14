@@ -8,6 +8,7 @@ import Callback from './auth/Callback.jsx'
 import Subscribe from './auth/Subscribe.jsx'
 import ResetPassword from './auth/ResetPassword.jsx'
 import SetupAccount from './auth/SetupAccount.jsx'
+import ChangePassword from './auth/ChangePassword.jsx'
 import { getResolvedTheme, applyTheme } from './theme'
 import './App.css'
 import './components/loading/LoadingScreen.css'
@@ -83,6 +84,7 @@ function App() {
         <Route path="/auth/callback" element={<Callback />} />
         <Route path="/auth/reset-password" element={<ResetPassword />} />
         <Route path="/auth/setup-account" element={<SetupAccount />} />
+        <Route path="/auth/change-password" element={<ChangePassword />} />
         <Route path="/subscribe" element={<Subscribe />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />

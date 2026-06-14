@@ -61,6 +61,10 @@ function Callback() {
           })
           if (me.ok) {
             const data = await me.json()
+            if (data?.user?.needs_password_change) {
+              navigate('/auth/change-password')
+              return
+            }
             const hasAccess = !!data?.access?.has_active_access
             navigate(hasAccess ? '/dashboard' : '/subscribe')
           } else {

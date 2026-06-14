@@ -41,6 +41,11 @@ function DashboardLayout() {
 
       const data = await res.json()
       console.log('User data received:', data.user?.id)
+      if (data?.user?.needs_password_change) {
+        console.log('User needs password change, redirecting to change password page')
+        navigate('/auth/change-password')
+        return
+      }
       const hasAccess = !!data?.access?.has_active_access
       if (!hasAccess) {
         console.log('Access inactive, redirecting to subscribe')
