@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './Auth.css'
 import './auth-panel/AuthPanel.css'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
-import { authHeaders, authenticatedFetch } from './token'
+import { authHeaders, authenticatedFetch, setTokens } from './token'
 import logo from '../assets/logo/logo.png'
 
 function ChangePassword() {
@@ -67,6 +67,14 @@ function ChangePassword() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data?.error || 'Failed to update password')
+      }
+
+      const data = await res.json().catch(() => ({}))
+      if (data?.access_token && data?.refresh_token) {
+        setTokens({
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token,
+        })
       }
 
       setSuccess(true)
