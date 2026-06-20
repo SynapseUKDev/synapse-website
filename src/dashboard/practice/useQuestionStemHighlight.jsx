@@ -379,7 +379,16 @@ export default function useQuestionStemHighlight(options = {}) {
             id: rc.id,
             note: rc.comment_text,
             color: 'reviewer'
-          }))
+          })).concat(
+            options.reviewPopover && !options.reviewPopover.comment ? [{
+              start: options.reviewPopover.start_offset,
+              end: options.reviewPopover.end_offset,
+              text: options.reviewPopover.quote,
+              id: 'pending-review',
+              note: '',
+              color: 'reviewer'
+            }] : []
+          )
         : (highlights[questionId] || [])
       const isMarkdown = hasMarkdown(text)
 

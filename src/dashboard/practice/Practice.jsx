@@ -903,7 +903,16 @@ export default function Practice() {
             id: rc.id,
             note: rc.comment_text,
             color: 'reviewer'
-          }))
+          })).concat(
+            reviewPopover && !reviewPopover.comment && (!reviewPopover.block_id || reviewPopover.block_id === 'stem') ? [{
+              start: reviewPopover.start_offset,
+              end: reviewPopover.end_offset,
+              text: reviewPopover.quote,
+              id: 'pending-review',
+              note: '',
+              color: 'reviewer'
+            }] : []
+          )
       : (highlights[currentQuestionId] || [])
     const isMarkdown = hasMarkdown(text)
 
@@ -1160,7 +1169,16 @@ export default function Practice() {
     if (!text) return ''
     if (!isReviewer) return text
 
-    const blockComments = reviewComments.filter(rc => rc.block_id === blockId)
+    const blockComments = reviewComments.filter(rc => rc.block_id === blockId).concat(
+      reviewPopover && !reviewPopover.comment && reviewPopover.block_id === blockId ? [{
+        id: 'pending-review',
+        block_id: reviewPopover.block_id,
+        quote: reviewPopover.quote,
+        start_offset: reviewPopover.start_offset,
+        end_offset: reviewPopover.end_offset,
+        comment_text: ''
+      }] : []
+    )
     if (blockComments.length === 0) return text
 
     const sorted = [...blockComments]

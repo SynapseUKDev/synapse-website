@@ -459,7 +459,18 @@ export default function OsceStationActive() {
                     block={block}
                     interactive={!isReviewer}
                     isReviewer={isReviewer}
-                    reviewComments={reviewComments.filter((rc) => rc.block_id === block.id)}
+                    reviewComments={reviewComments.filter((rc) => rc.block_id === block.id).concat(
+                      reviewPopover && !reviewPopover.comment && reviewPopover.block_id === block.id ? [{
+                        id: 'pending-review',
+                        block_id: reviewPopover.block_id,
+                        section_anchor: reviewPopover.section_anchor,
+                        color: 'reviewer',
+                        quote: reviewPopover.quote,
+                        start_offset: reviewPopover.start_offset,
+                        end_offset: reviewPopover.end_offset,
+                        comment_text: ''
+                      }] : []
+                    )}
                   />
                 </div>
               ))}
@@ -560,7 +571,18 @@ export default function OsceStationActive() {
                             block={block}
                             interactive={!isReviewer}
                             isReviewer={isReviewer}
-                            reviewComments={reviewComments.filter((rc) => rc.block_id === block.id)}
+                            reviewComments={reviewComments.filter((rc) => rc.block_id === block.id).concat(
+                              reviewPopover && !reviewPopover.comment && reviewPopover.block_id === block.id ? [{
+                                id: 'pending-review',
+                                block_id: reviewPopover.block_id,
+                                section_anchor: reviewPopover.section_anchor,
+                                color: 'reviewer',
+                                quote: reviewPopover.quote,
+                                start_offset: reviewPopover.start_offset,
+                                end_offset: reviewPopover.end_offset,
+                                comment_text: ''
+                              }] : []
+                            )}
                           />
                         </div>
                       ))}

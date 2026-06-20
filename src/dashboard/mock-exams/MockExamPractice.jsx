@@ -145,6 +145,7 @@ export default function MockExamPractice() {
   } = useQuestionStemHighlight({
     isReviewer,
     reviewComments,
+    reviewPopover,
     onReviewPopoverOpen: setReviewPopover,
     onReviewCommentClick: openReviewCommentDetails,
   })

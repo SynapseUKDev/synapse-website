@@ -799,7 +799,7 @@ export default function TextbookTopic() {
 
   const activeHighlights = useMemo(() => {
     if (isReviewer) {
-      return reviewComments.map(rc => ({
+      const arr = reviewComments.map(rc => ({
         id: rc.id,
         block_id: rc.block_id,
         section_anchor: rc.section_anchor,
@@ -809,9 +809,22 @@ export default function TextbookTopic() {
         end_offset: rc.end_offset,
         note: rc.comment_text
       }))
+      if (reviewPopover && !reviewPopover.comment) {
+        arr.push({
+          id: 'pending-review',
+          block_id: reviewPopover.block_id,
+          section_anchor: reviewPopover.section_anchor,
+          color: 'reviewer',
+          quote: reviewPopover.quote,
+          start_offset: reviewPopover.start_offset,
+          end_offset: reviewPopover.end_offset,
+          note: ''
+        })
+      }
+      return arr
     }
     return highlights
-  }, [isReviewer, reviewComments, highlights])
+  }, [isReviewer, reviewComments, highlights, reviewPopover])
 
   const currentProgressTarget = useMemo(() => {
     if (data?.subtopic?.id) return { type: 'subtopic', id: data.subtopic.id }
