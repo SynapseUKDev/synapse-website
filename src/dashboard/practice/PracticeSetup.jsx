@@ -8,6 +8,13 @@ import {
   clearStudySetQuestionIdsPrefetch,
   setStudySetQuestionIdsPrefetch,
 } from '../question-bank/studySetPrefetchStore'
+import QuestionCountControl from './QuestionCountControl'
+import {
+  adjustQuestionCountInput,
+  isValidQuestionCountInput,
+  questionCountSummaryLabel,
+  resolveQuestionCountInput,
+} from './questionCountInput'
 
 export default function PracticeSetup() {
   const navigate = useNavigate()
@@ -21,7 +28,7 @@ export default function PracticeSetup() {
   const [studySetError, setStudySetError] = useState(null)
   const [topics, setTopics] = useState([])
   const [selectedTopics, setSelectedTopics] = useState(new Set())
-  const [numQuestions, setNumQuestions] = useState(25)
+  const [numQuestionsInput, setNumQuestionsInput] = useState('25')
   const [timerMinutes, setTimerMinutes] = useState(30)
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [includeAttempted, setIncludeAttempted] = useState(() => searchParams.get('include_attempted') === '1')
@@ -160,7 +167,7 @@ export default function PracticeSetup() {
         },
       })
 
-      setNumQuestions(initialSessionSize)
+      setNumQuestionsInput(String(initialSessionSize))
     } catch (error) {
       console.error('Error loading study set:', error)
       setStudySetError(error?.message || 'Failed to load study set')
@@ -267,9 +274,9 @@ export default function PracticeSetup() {
               0
             )
       if (totalAvailable > 0) {
-        setNumQuestions(Math.min(totalAvailable, 25))
+        setNumQuestionsInput(String(Math.min(totalAvailable, 25)))
       } else {
-        setNumQuestions(0)
+        setNumQuestionsInput('0')
       }
     } catch (error) {
       console.error('Error loading topics:', error)
@@ -299,9 +306,11 @@ export default function PracticeSetup() {
       }, 0)
 
     if (newTotalAvailable === 0) {
-      setNumQuestions(0)
-    } else if (numQuestions === 0 || numQuestions > newTotalAvailable) {
-      setNumQuestions(newTotalAvailable)
+      setNumQuestionsInput('0')
+    } else {
+      setNumQuestionsInput((prev) =>
+        adjustQuestionCountInput(prev, { max: newTotalAvailable, min: 1 })
+      )
     }
   }
 
@@ -317,7 +326,7 @@ export default function PracticeSetup() {
 
   const clearAllTopics = () => {
     setSelectedTopics(new Set())
-    setNumQuestions(0)
+    setNumQuestionsInput('0')
   }
 
   const getTotalQuestions = () => {
@@ -351,6 +360,9 @@ export default function PracticeSetup() {
       return
     }
 
+    const numQuestions = resolveQuestionCountInput(numQuestionsInput, stepperMin, maxQuestions)
+    setNumQuestionsInput(String(numQuestions))
+
     const params = new URLSearchParams({
       num_questions: numQuestions.toString(),
       timer_minutes: timerEnabled ? timerMinutes.toString() : '0',
@@ -375,6 +387,9 @@ export default function PracticeSetup() {
       alert('Please select at least one topic')
       return
     }
+
+    const numQuestions = resolveQuestionCountInput(numQuestionsInput, stepperMin, maxQuestions)
+    setNumQuestionsInput(String(numQuestions))
 
     const params = new URLSearchParams({
       num_questions: numQuestions.toString(),
@@ -445,6 +460,8 @@ export default function PracticeSetup() {
   const maxQuestions = totalAvailable
   const stepperMin = getStepperMin()
   const isDisabled = totalAvailable === 0
+  const isCountValid = isValidQuestionCountInput(numQuestionsInput, stepperMin, maxQuestions)
+  const canStart = !isDisabled && isCountValid
 
   return (
     <div className="setup">
@@ -540,31 +557,13 @@ export default function PracticeSetup() {
                   <label className="setup__setting-label">
                     Number of Questions
                   </label>
-                  <div className="setup__qty">
-                    <div className="qty__control">
-                      <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={() => setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
-                      <input
-                        type="number"
-                        className="qty__input"
-                        value={numQuestions}
-                        min={stepperMin}
-                        max={maxQuestions}
-                        disabled={isDisabled}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value || '0', 10)
-                          if (Number.isNaN(v)) return
-                          setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
-                        }}
-                      />
-                      <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={() => setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
-                    </div>
-                    <div className="qty__chips">
-                      {[10, 25, 50, 100, 200].filter(n => n <= maxQuestions).map(n => (
-                        <button key={n} className={`chip ${numQuestions === n ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(n)}>{n}</button>
-                      ))}
-                      <button className={`chip ${numQuestions === maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(maxQuestions)}>Max</button>
-                    </div>
-                  </div>
+                  <QuestionCountControl
+                    input={numQuestionsInput}
+                    onInputChange={setNumQuestionsInput}
+                    min={stepperMin}
+                    max={maxQuestions}
+                    disabled={isDisabled}
+                  />
                   <div className="setup__toggle-row" style={{ marginTop: 20 }}>
                     <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
                     <div className="setup__toggle-container">
@@ -584,9 +583,16 @@ export default function PracticeSetup() {
                                 ? (studySetData.remaining_questions ?? 0) + (studySetData.incorrect_questions ?? 0)
                                 : (studySetData.remaining_questions ?? 0)  // new-only: never fall back to total
                             if (newMax === 0) {
-                              setNumQuestions(0)
-                            } else if (numQuestions === oldMax || numQuestions > newMax) {
-                              setNumQuestions(newMax)
+                              setNumQuestionsInput('0')
+                            } else {
+                              setNumQuestionsInput((prev) =>
+                                adjustQuestionCountInput(prev, {
+                                  max: newMax,
+                                  previousMax: oldMax,
+                                  min: 1,
+                                  snapToMaxIfWasMax: true,
+                                })
+                              )
                             }
                           } else if (!studySetId) {
                             const newMax = topics
@@ -597,9 +603,16 @@ export default function PracticeSetup() {
                                 return sum + (t.remaining_count || 0)
                               }, 0)
                             if (newMax === 0) {
-                              setNumQuestions(0)
-                            } else if (numQuestions === oldMax || numQuestions > newMax) {
-                              setNumQuestions(newMax)
+                              setNumQuestionsInput('0')
+                            } else {
+                              setNumQuestionsInput((prev) =>
+                                adjustQuestionCountInput(prev, {
+                                  max: newMax,
+                                  previousMax: oldMax,
+                                  min: 1,
+                                  snapToMaxIfWasMax: true,
+                                })
+                              )
                             }
                           }
                         }}
@@ -632,8 +645,12 @@ export default function PracticeSetup() {
                               : (studySetId
                                 ? (studySetData?.remaining_questions ?? 0)  // new-only: never fall back to total
                                 : topics.filter(t => selectedTopics.has(t.id)).reduce((s, t) => s + (t.remaining_count || 0), 0))
-                          if (newMax === 0) setNumQuestions(0)
-                          else setNumQuestions((n) => (n === 0 || n > newMax ? newMax : Math.min(n, newMax)))
+                          if (newMax === 0) setNumQuestionsInput('0')
+                          else {
+                            setNumQuestionsInput((prev) =>
+                              adjustQuestionCountInput(prev, { max: newMax, min: 1 })
+                            )
+                          }
                         }}
                         className="setup__toggle-input"
                       />
@@ -724,7 +741,7 @@ export default function PracticeSetup() {
 
             <div className="setup__summary-item">
               <div className="setup__summary-label">Questions:</div>
-              <div className="setup__summary-value">{numQuestions}</div>
+              <div className="setup__summary-value">{questionCountSummaryLabel(numQuestionsInput)}</div>
             </div>
 
             {studySetId && (
@@ -758,7 +775,7 @@ export default function PracticeSetup() {
             <button
               className="setup__start-btn"
               onClick={startSession}
-              disabled={isDisabled}
+              disabled={!canStart}
             >
               <LuPlay />
               Start Session
@@ -767,7 +784,7 @@ export default function PracticeSetup() {
             <button
               className="setup__start-btn setup__start-btn--secondary"
               onClick={startGroupSession}
-              disabled={isDisabled}
+              disabled={!canStart}
               style={{ marginTop: 10 }}
             >
               <LuUsers />

@@ -6,6 +6,13 @@ import './PracticeSetup.css'
 import './GroupStudySetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { io } from 'socket.io-client'
+import QuestionCountControl from './QuestionCountControl'
+import {
+  adjustQuestionCountInput,
+  isValidQuestionCountInput,
+  questionCountSummaryLabel,
+  resolveQuestionCountInput,
+} from './questionCountInput'
 
 export default function GroupStudySetup() {
   const navigate = useNavigate()
@@ -32,7 +39,7 @@ export default function GroupStudySetup() {
   const [topicsLoading, setTopicsLoading] = useState(false)
 
   // Session settings
-  const [numQuestions, setNumQuestions] = useState(25)
+  const [numQuestionsInput, setNumQuestionsInput] = useState('25')
   const [timerMinutes, setTimerMinutes] = useState(30)
   const [timerEnabled, setTimerEnabled] = useState(false)
   const [includeAttempted, setIncludeAttempted] = useState(false)
@@ -89,7 +96,7 @@ export default function GroupStudySetup() {
         const qIncAtt = searchParams.get('include_attempted') === '1'
         const qIncInc = searchParams.get('include_incorrect') === '1' || searchParams.get('incorrect_only') === '1'
 
-        if (qNumQs) setNumQuestions(parseInt(qNumQs, 10))
+        if (qNumQs) setNumQuestionsInput(String(parseInt(qNumQs, 10)))
         if (qTimerMins) {
           const mins = parseInt(qTimerMins, 10)
           setTimerMinutes(mins > 0 ? mins : 30)
@@ -219,6 +226,8 @@ export default function GroupStudySetup() {
   const maxQuestions = totalAvailable
   const stepperMin = totalAvailable > 0 ? 1 : 0
   const isDisabled = totalAvailable === 0
+  const isCountValid = isValidQuestionCountInput(numQuestionsInput, stepperMin, maxQuestions)
+  const canStart = !isDisabled && isCountValid
 
   const isCreateDisabled = sessionSource === 'set'
     ? (!selectedStudySetId || totalAvailable === 0)
@@ -226,12 +235,34 @@ export default function GroupStudySetup() {
 
   useEffect(() => {
     if (mode === 'join') return
+
+    const stillLoading =
+      (sessionSource === 'set' && selectedStudySetId && !studySetData) ||
+      (sessionSource === 'specialty' && selectedSpecialtyId && topicsLoading)
+
+    if (stillLoading) return
+
     if (totalAvailable === 0) {
-      setNumQuestions(0)
-    } else {
-      setNumQuestions((n) => (n < 1 || n > totalAvailable ? Math.min(25, totalAvailable) : Math.min(n, totalAvailable)))
+      setNumQuestionsInput('0')
+      return
     }
-  }, [totalAvailable, mode])
+
+    setNumQuestionsInput((prev) =>
+      adjustQuestionCountInput(prev, {
+        max: totalAvailable,
+        min: 1,
+        defaultWhenEmpty: 'min25',
+      })
+    )
+  }, [
+    totalAvailable,
+    mode,
+    sessionSource,
+    selectedStudySetId,
+    studySetData,
+    selectedSpecialtyId,
+    topicsLoading,
+  ])
 
   const connectSocket = () => {
     const userId = user.id
@@ -308,6 +339,9 @@ export default function GroupStudySetup() {
 
   const createSession = async () => {
     try {
+      const numQuestions = resolveQuestionCountInput(numQuestionsInput, stepperMin, maxQuestions)
+      setNumQuestionsInput(String(numQuestions))
+
       const body = {
         num_questions: numQuestions,
         timer_minutes: timerEnabled ? timerMinutes : 0,
@@ -406,7 +440,7 @@ export default function GroupStudySetup() {
       setSessionCreated(true)
       setParticipants(data.participants || [])
       setStudySetData({ name: data.study_set_name })
-      setNumQuestions(data.num_questions)
+      setNumQuestionsInput(String(data.num_questions))
       setTimerMinutes(data.timer_minutes)
       setTimerEnabled(data.timer_minutes > 0)
     } catch (error) {
@@ -541,7 +575,7 @@ export default function GroupStudySetup() {
 
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Questions:</div>
-                <div className="setup__summary-value">{numQuestions}</div>
+                <div className="setup__summary-value">{questionCountSummaryLabel(numQuestionsInput)}</div>
               </div>
 
               <div className="setup__summary-item">
@@ -761,31 +795,13 @@ export default function GroupStudySetup() {
                       <label className="setup__setting-label">
                         Number of Questions
                       </label>
-                      <div className="setup__qty">
-                        <div className="qty__control">
-                          <button className="qty__btn" disabled={isDisabled || numQuestions <= stepperMin} onClick={() => setNumQuestions(Math.max(stepperMin, numQuestions - 1))}>−</button>
-                          <input
-                            type="number"
-                            className="qty__input"
-                            value={numQuestions}
-                            min={stepperMin}
-                            max={maxQuestions}
-                            disabled={isDisabled}
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value || '0', 10)
-                              if (Number.isNaN(v)) return
-                              setNumQuestions(Math.max(stepperMin, Math.min(maxQuestions, v)))
-                            }}
-                          />
-                          <button className="qty__btn" disabled={isDisabled || numQuestions >= maxQuestions} onClick={() => setNumQuestions(Math.min(maxQuestions, numQuestions + 1))}>+</button>
-                        </div>
-                        <div className="qty__chips">
-                          {[10, 25, 50, 100].filter(n => n <= maxQuestions).map(n => (
-                            <button key={n} className={`chip ${numQuestions === n ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(n)}>{n}</button>
-                          ))}
-                          <button className={`chip ${numQuestions === maxQuestions ? 'is-active' : ''}`} disabled={isDisabled} onClick={() => setNumQuestions(maxQuestions)}>Max</button>
-                        </div>
-                      </div>
+                      <QuestionCountControl
+                        input={numQuestionsInput}
+                        onInputChange={setNumQuestionsInput}
+                        min={stepperMin}
+                        max={maxQuestions}
+                        disabled={isDisabled}
+                      />
                       {!includeIncorrect && (
                         <div className="setup__toggle-row" style={{ marginTop: 20 }}>
                           <label htmlFor="include-toggle" className="setup__toggle-label">Include previously answered</label>
@@ -892,7 +908,7 @@ export default function GroupStudySetup() {
 
               <div className="setup__summary-item">
                 <div className="setup__summary-label">Questions:</div>
-                <div className="setup__summary-value">{numQuestions}</div>
+                <div className="setup__summary-value">{questionCountSummaryLabel(numQuestionsInput)}</div>
               </div>
 
               <div className="setup__summary-item">
@@ -912,7 +928,7 @@ export default function GroupStudySetup() {
               <button
                 className="setup__start-btn"
                 onClick={createSession}
-                disabled={isCreateDisabled || isReviewer}
+                disabled={isCreateDisabled || isReviewer || !canStart}
                 title={isReviewer ? 'Group sessions are not available for reviewer accounts' : undefined}
               >
                 <LuUsers size={20} />
