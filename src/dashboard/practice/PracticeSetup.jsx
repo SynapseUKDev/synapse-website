@@ -493,7 +493,7 @@ export default function PracticeSetup() {
         </div>
       </div>
 
-      <div className="setup__content">
+      <div className={`setup__content${studySetId ? ' setup__content--study-set' : ''}`}>
         <div className="setup__main">
           {!studySetId && (
             <div className="setup__section">
