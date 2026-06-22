@@ -690,7 +690,7 @@ export default function GroupPractice() {
     let rawEnd = Math.max(startA, endA)
     if (rawStart === rawEnd) return
 
-    if (e && e.type === 'mouseup' && e.detail === 2) {
+    {
       const r = reconcileSelectionRangeToFlat(flat, rawStart, rawEnd, selectedText)
       rawStart = r.start
       rawEnd = r.end
@@ -766,9 +766,16 @@ export default function GroupPractice() {
     const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
     if (startA == null || endA == null) return
 
-    const rawStart = Math.min(startA, endA)
-    const rawEnd = Math.max(startA, endA)
+    let rawStart = Math.min(startA, endA)
+    let rawEnd = Math.max(startA, endA)
     if (rawStart === rawEnd) return
+
+    {
+      const r = reconcileSelectionRangeToFlat(flat, rawStart, rawEnd, selectedText)
+      rawStart = r.start
+      rawEnd = r.end
+      if (rawStart >= rawEnd) return
+    }
 
     const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
     if (snappedRanges.length === 0) return

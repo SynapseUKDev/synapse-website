@@ -440,6 +440,35 @@ export function buildVisibleCharToMarkdownStart(md) {
   return map
 }
 
+function normalizeForHighlightMatch(s) {
+  return (s == null ? '' : String(s)).replace(/\u00a0/g, ' ')
+}
+
+/**
+ * Find `needle` in `haystack`, preferring the occurrence closest to `preferIndex`
+ * (avoids mapping a selection to the first duplicate word on the page).
+ */
+export function findClosestSubstringIndex(haystack, needle, preferIndex = 0) {
+  if (typeof haystack !== 'string' || typeof needle !== 'string') return -1
+  const n = needle.length
+  if (n === 0 || n > haystack.length) return -1
+
+  const prefer = Math.max(0, Math.min(preferIndex, haystack.length - n))
+  if (haystack.slice(prefer, prefer + n) === needle) return prefer
+
+  let best = -1
+  let bestDist = Infinity
+  for (let p = 0; p <= haystack.length - n; p++) {
+    if (haystack.slice(p, p + n) !== needle) continue
+    const d = Math.abs(p - preferIndex)
+    if (d < bestDist) {
+      bestDist = d
+      best = p
+    }
+  }
+  return best
+}
+
 /**
  * Map a [snapStart, snapEnd) range in rendered/flat text to markdown source offsets.
  * Returns null if mapping is inconsistent and caller should fall back.
@@ -452,20 +481,34 @@ export function mapFlatRangeToMarkdownRange(markdown, flat, snapStart, snapEnd) 
   const map = buildVisibleCharToMarkdownStart(markdown)
   const plainFromLexer = map.map((idx) => markdown[idx]).join('')
 
+  const preferPlain =
+    flat.length > 0 && plainFromLexer.length !== flat.length
+      ? Math.round((snapStart / flat.length) * plainFromLexer.length)
+      : snapStart
+
   if (map.length === flat.length && snapEnd <= flat.length) {
-    const mdStart = map[snapStart]
-    const mdEnd = snapEnd < map.length ? map[snapEnd] : markdown.length
-    return { start: mdStart, end: mdEnd }
+    const visibleSlice = plainFromLexer.slice(snapStart, snapEnd)
+    if (
+      visibleSlice === snippet ||
+      normalizeForHighlightMatch(visibleSlice) === normalizeForHighlightMatch(snippet)
+    ) {
+      const mdStart = map[snapStart]
+      const mdEnd = snapEnd < map.length ? map[snapEnd] : markdown.length
+      return { start: mdStart, end: mdEnd }
+    }
   }
 
-  const p0 = plainFromLexer.indexOf(snippet)
+  const p0 = findClosestSubstringIndex(plainFromLexer, snippet, preferPlain)
   if (p0 !== -1 && p0 + snippet.length <= map.length) {
     const mdStart = map[p0]
     const mdEnd = p0 + snippet.length < map.length ? map[p0 + snippet.length] : markdown.length
     return { start: mdStart, end: mdEnd }
   }
 
-  let idx = markdown.indexOf(snippet)
+  const preferMd =
+    preferPlain < map.length ? map[preferPlain] : Math.min(Math.max(0, preferPlain), markdown.length - 1)
+
+  const idx = findClosestSubstringIndex(markdown, snippet, preferMd)
   if (idx !== -1) return { start: idx, end: idx + snippet.length }
 
   return null

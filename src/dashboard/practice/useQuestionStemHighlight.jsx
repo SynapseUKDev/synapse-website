@@ -522,7 +522,7 @@ export default function useQuestionStemHighlight(options = {}) {
       let rawEnd = Math.max(startA, endA)
       if (rawStart === rawEnd) return
 
-      if (e && e.type === 'mouseup' && e.detail === 2) {
+      {
         const r = reconcileSelectionRangeToFlat(flat, rawStart, rawEnd, selectedText)
         rawStart = r.start
         rawEnd = r.end
