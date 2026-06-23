@@ -36,7 +36,6 @@ export default function Dashboard() {
     staleMs: 60_000,
     persist: 'session',
     key: 'dashboard:summary',
-    skip: isReviewer,
   })
   // Analytics: /qbank/performance/trend
   const trendReq = useStaleJson(`${API_BASE}/qbank/performance/trend`, {
@@ -44,7 +43,6 @@ export default function Dashboard() {
     staleMs: 5 * 60_000,
     persist: 'session',
     key: 'dashboard:trend',
-    skip: isReviewer,
     transform: (t) => ({
       days: Array.isArray(t.days)
         ? t.days.map((d) => ({
@@ -64,7 +62,6 @@ export default function Dashboard() {
     staleMs: 5 * 60_000,
     persist: 'session',
     key: 'dashboard:topics',
-    skip: isReviewer,
     transform: (t) => ({ topics: Array.isArray(t?.topics) ? t.topics : [] }),
   })
   const topicCards = topicsReq.data?.topics ?? []
@@ -74,7 +71,7 @@ export default function Dashboard() {
   // Use API trend when available (real analytics); demo only while loading or on error
   const trend = trendReq.data?.days ?? buildDemoTrend()
   const trendLoading = trendReq.loading && !trendReq.data
-  const loading = summaryReq.loading && !summaryReq.data && !isReviewer
+  const loading = summaryReq.loading && !summaryReq.data
 
   // Leaderboard state
   const [leaderboard, setLeaderboard] = useState([])
@@ -676,14 +673,6 @@ export default function Dashboard() {
         </div>
 
         <aside className="db-analytics">
-          {isReviewer ? (
-            <div className="db-card db-analytics__card db-analytics__card--reviewer">
-              <div className="db-analytics__head">Analytics</div>
-              <p className="db-analytics__reviewer-note">
-                Analytics are not available for reviewer accounts.
-              </p>
-            </div>
-          ) : (
             <div className="db-card db-analytics__card">
               <div className="db-analytics__head">Analytics</div>
               <div className="db-analytics__tabs">
@@ -728,7 +717,6 @@ export default function Dashboard() {
                 <LuArrowRight size={12} />
               </button>
             </div>
-          )}
 
           <div className="db-card db-friends__card">
             <div className="db-card__top">

@@ -380,7 +380,7 @@ export default function useQuestionStemHighlight(options = {}) {
             note: rc.comment_text,
             color: 'reviewer'
           })).concat(
-            options.reviewPopover && !options.reviewPopover.comment ? [{
+            options.reviewPopover && !options.reviewPopover.isViewOnly ? [{
               start: options.reviewPopover.start_offset,
               end: options.reviewPopover.end_offset,
               text: options.reviewPopover.quote,
@@ -612,13 +612,16 @@ export default function useQuestionStemHighlight(options = {}) {
         const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
         if (snappedRanges.length === 0) return
 
-        const snapped = snappedRanges[0]
+        // Use the full span from first to last snapped range so multi-line
+        // selections across table cells / block elements are preserved.
+        const firstSnapped = snappedRanges[0]
+        const lastSnapped = snappedRanges[snappedRanges.length - 1]
         const isMd = hasMarkdown(stemText)
-        let hlStart = snapped.start
-        let hlEnd = snapped.end
+        let hlStart = firstSnapped.start
+        let hlEnd = lastSnapped.end
 
         if (isMd) {
-          const mapped = mapFlatRangeToMarkdownRange(stemText, flat, snapped.start, snapped.end)
+          const mapped = mapFlatRangeToMarkdownRange(stemText, flat, firstSnapped.start, lastSnapped.end)
           if (mapped) {
             hlStart = mapped.start
             hlEnd = mapped.end

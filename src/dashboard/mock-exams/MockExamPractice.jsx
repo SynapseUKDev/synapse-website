@@ -8,6 +8,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ExamCalculator from './ExamCalculator.jsx'
 import useQuestionStemHighlight from '../practice/useQuestionStemHighlight.jsx'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
+import ReviewableContent from '../../components/highlight/ReviewableContent'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 const QUESTIONS_PER_PAGE = 30
@@ -70,6 +71,18 @@ export default function MockExamPractice() {
   const [reviewComments, setReviewComments] = useState([])
   const [reviewPopover, setReviewPopover] = useState(null)
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
+
+  // Callback for ReviewableContent: sets reviewPopover when user selects text in explanation blocks
+  const handleReviewSelect = useCallback((data) => {
+    setReviewPopover({
+      quote: data.quote,
+      anchorRect: data.anchorRect,
+      start_offset: data.start_offset,
+      end_offset: data.end_offset,
+      block_id: data.block_id,
+      content_title: data.content_title,
+    })
+  }, [])
 
   const handleReviewCommentSubmit = useCallback(async ({ comment_text }) => {
     const currentQ = questions[currentIndex]
@@ -194,9 +207,7 @@ export default function MockExamPractice() {
       const map = {}
       const ans = data.answers || {}
       for (const q of data.questions || []) {
-        if (isReviewer && q.correct_answer != null) {
-          map[q.id] = q.correct_answer
-        } else if (Object.prototype.hasOwnProperty.call(ans, q.id)) {
+        if (Object.prototype.hasOwnProperty.call(ans, q.id)) {
           map[q.id] = ans[q.id]
         }
       }
@@ -560,11 +571,9 @@ export default function MockExamPractice() {
               </div>
               <div className="mock-exam-options" style={{ display: 'grid', gap: 8 }}>
                 {(currentQ.options || []).map((o) => {
-                  const isCorrectOption = isReviewer && currentQ.correct_answer === o.id
                   const userSelected = selected === o.id
                   let className = 'option'
                   if (userSelected) className += ' option--selected'
-                  if (isCorrectOption) className += ' option--correct'
                   return (
                     <label key={o.id} className={className}>
                       <input
@@ -572,8 +581,7 @@ export default function MockExamPractice() {
                         name="opt"
                         value={o.id}
                         checked={userSelected}
-                        onChange={() => !isReviewer && setSelected(o.id)}
-                        disabled={isReviewer}
+                        onChange={() => setSelected(o.id)}
                       />
                       <div className="option__label">{o.label}.</div>
                       <div className="option__body">{o.body}</div>
@@ -621,7 +629,18 @@ export default function MockExamPractice() {
                                     <div className={`key-point-badge ${p.isCorrect ? 'is-correct' : 'is-wrong'}`}>
                                       {p.label}
                                     </div>
-                                    <div>{p.text}</div>
+                                    <ReviewableContent
+                                      blockId={`explanation:quick:${idx}`}
+                                      comments={reviewComments}
+                                      pendingHighlight={reviewPopover}
+                                      onSelect={handleReviewSelect}
+                                      onCommentClick={openReviewCommentDetails}
+                                      enabled={isReviewer}
+                                      contentKey={currentQ?.id}
+                                      contentTitle={`Quick Explanation ${p.label}`}
+                                    >
+                                      {p.text}
+                                    </ReviewableContent>
                                   </li>
                                 ))}
                             </ul>
@@ -637,7 +656,18 @@ export default function MockExamPractice() {
                     {tab === 'detailed' && (
                       <div className="explain__section">
                         <div className="explain__label">Detailed Explanation:</div>
-                        <div>{currentQ.explanations?.detailed || 'No detailed explanation available'}</div>
+                        <ReviewableContent
+                          blockId="explanation:detailed"
+                          comments={reviewComments}
+                          pendingHighlight={reviewPopover}
+                          onSelect={handleReviewSelect}
+                          onCommentClick={openReviewCommentDetails}
+                          enabled={isReviewer}
+                          contentKey={currentQ?.id}
+                          contentTitle="Detailed Explanation"
+                        >
+                          {currentQ.explanations?.detailed || 'No detailed explanation available'}
+                        </ReviewableContent>
                       </div>
                     )}
                     {tab === 'eli5' && (
@@ -646,7 +676,19 @@ export default function MockExamPractice() {
                           <LuLightbulb className="eli5-icon" />
                           <span className="eli5-title">Explain Like I'm 5</span>
                         </div>
-                        <div className="eli5-content">{currentQ.explanations?.eli5 || 'No ELI5 explanation available'}</div>
+                        <ReviewableContent
+                          className="eli5-content"
+                          blockId="explanation:eli5"
+                          comments={reviewComments}
+                          pendingHighlight={reviewPopover}
+                          onSelect={handleReviewSelect}
+                          onCommentClick={openReviewCommentDetails}
+                          enabled={isReviewer}
+                          contentKey={currentQ?.id}
+                          contentTitle="ELI5 Explanation"
+                        >
+                          {currentQ.explanations?.eli5 || 'No ELI5 explanation available'}
+                        </ReviewableContent>
                       </div>
                     )}
                   </div>
@@ -691,17 +733,6 @@ export default function MockExamPractice() {
                   <LuChevronLeft />
                   Previous
                 </button>
-                {isReviewer ? (
-                  currentIndex < questions.length - 1 ? (
-                    <button type="button" onClick={goNext} className="btn btn--primary btn--icon">
-                      Next
-                    </button>
-                  ) : (
-                    <button type="button" onClick={finishExam} disabled={finishing} className="btn btn--primary">
-                      {finishing ? 'Finishing…' : 'Finish exam'}
-                    </button>
-                  )
-                ) : (
                   <>
                     {needsSaveAnswer ? (
                       <button
@@ -737,8 +768,7 @@ export default function MockExamPractice() {
                       </button>
                     ) : null}
                   </>
-                )}
-              </div>
+                </div>
             </div>
           </div>
         </div>
