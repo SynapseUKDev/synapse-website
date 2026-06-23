@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LuArrowLeft, LuPlay, LuX, LuChevronDown, LuAlertTriangle,
+  LuArrowLeft, LuPlay, LuX, LuChevronDown, LuTriangleAlert,
   LuExternalLink, LuRotateCcw, LuClock, LuZap, LuThumbsUp,
-  LuThumbsDown, LuCheckCircle, LuFilter,
+  LuThumbsDown, LuCircleCheck, LuFilter,
 } from 'react-icons/lu';
 import './Flashcards.css';
 
@@ -382,7 +382,7 @@ function FlashCard({ card, flipped }) {
         {/* Exam tip — rendered on EVERY card per PDF spec */}
         {card.examTip && (
           <div className="fc-card__exam-tip">
-            <LuAlertTriangle size={16} className="fc-card__tip-icon" />
+            <LuTriangleAlert size={16} className="fc-card__tip-icon" />
             <div>
               <span className="fc-card__tip-heading">⚡ Exam Tip</span>
               <p className="fc-card__tip-text">{card.examTip}</p>
@@ -462,7 +462,7 @@ function SessionScreen({ initialDeck, onComplete, onAbandon }) {
   if (!card) {
     return (
       <div className="fc-session__empty">
-        <LuCheckCircle size={48} color="#16a34a" />
+        <LuCircleCheck size={48} color="#16a34a" />
         <h3>All done!</h3>
         <button className="fc-picker__start" onClick={() => onComplete({ total, mastered, hardCount: 0 })}>
           See Results
