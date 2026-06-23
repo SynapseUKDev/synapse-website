@@ -34,7 +34,11 @@ export function clearTokens() {
 
 export function authHeaders() {
   const token = getAccessToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  const refreshToken = getRefreshToken()
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(refreshToken ? { 'X-Refresh-Token': refreshToken } : {}),
+  }
 }
 
 /**
@@ -95,7 +99,18 @@ export async function authenticatedFetch(url, options = {}) {
         window.dispatchEvent(new Event('auth:changed'))
       }
     } else {
-      // No refresh token available
+      // Cookie-only session: retry without Bearer header (middleware uses cookies).
+      response = await fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+      })
+      if (response.status !== 401) {
+        return response
+      }
       clearTokens()
       window.dispatchEvent(new Event('auth:changed'))
     }

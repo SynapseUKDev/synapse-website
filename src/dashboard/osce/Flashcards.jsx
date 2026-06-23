@@ -6,8 +6,10 @@ import {
   LuThumbsDown, LuCircleCheck, LuFilter,
 } from 'react-icons/lu';
 import './Flashcards.css';
+import { authenticatedFetch } from '../../auth/token';
+import { useOutletContext } from 'react-router-dom';
 
-const API = import.meta.env.VITE_API_URL ?? '';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 // ─────────────────────────────────────────────────────────────
 // Constants
@@ -151,9 +153,8 @@ function applyConfidence(deck, card, rating) {
 // ─────────────────────────────────────────────────────────────
 
 async function apiFetch(path, opts = {}) {
-  const token = localStorage.getItem('sb-access-token') ?? '';
-  const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  const res = await authenticatedFetch(`${API_BASE}${path}`, {
+    credentials: 'include',
     ...opts,
   });
   if (!res.ok) {
@@ -194,6 +195,7 @@ function Select({ label, value, onChange, options, disabled, placeholder = 'All'
 // ─────────────────────────────────────────────────────────────
 
 function PickerScreen({ onStart }) {
+  const { user } = useOutletContext();
   const [conditions, setConditions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -205,12 +207,24 @@ function PickerScreen({ onStart }) {
   const [selSection, setSelSection]     = useState('All');
 
   useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
     setLoading(true);
+    setError(null);
     apiFetch('/flashcards/conditions')
-      .then(({ conditions: data }) => setConditions(data ?? []))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .then(({ conditions: data }) => {
+        if (!cancelled) setConditions(data ?? []);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Cascade: reset downstream when upstream changes
   useEffect(() => { setSelTopic(''); setSelCondition(''); }, [selSpecialty]);
