@@ -1594,25 +1594,22 @@ export default function Practice() {
       setSessionTotalMs(prev => prev + timeTaken)
 
       // Submit to backend for tracking (is_correct is computed server-side, not sent from client)
-      // Skip for reviewer accounts — no stat recording
-      if (!isReviewer) {
-        const payload = {
-          question_id: currentQuestionId,
-          selected_option_id: currentQuestion.type === 'MCQ' ? selected : undefined,
-          text_answer: currentQuestion.type === 'SAQ' ? saqText : undefined,
-          time_taken_ms: timeTaken,
-        }
-
-        // Don't await this - let it happen in background
-        fetch(`${API_BASE}/qbank/practice/submit`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeaders() },
-          credentials: 'include',
-          body: JSON.stringify(payload)
-        }).catch(error => {
-          console.error('Error submitting to backend:', error)
-        })
+      const payload = {
+        question_id: currentQuestionId,
+        selected_option_id: currentQuestion.type === 'MCQ' ? selected : undefined,
+        text_answer: currentQuestion.type === 'SAQ' ? saqText : undefined,
+        time_taken_ms: timeTaken,
       }
+
+      // Don't await this - let it happen in background
+      fetch(`${API_BASE}/qbank/practice/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      }).catch(error => {
+        console.error('Error submitting to backend:', error)
+      })
 
       console.log('Answer submitted successfully')
 
