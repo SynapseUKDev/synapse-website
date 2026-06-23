@@ -1290,9 +1290,37 @@ export default function Practice() {
         const endA = getOffsetWithinElement(container, range.endContainer, range.endOffset)
         if (startA == null || endA == null) return
 
-        const rawStart = Math.min(startA, endA)
-        const rawEnd = Math.max(startA, endA)
+        let rawStart = Math.min(startA, endA)
+        let rawEnd = Math.max(startA, endA)
         if (rawStart === rawEnd) return
+
+        if (block_id === 'stem') {
+          const flat = getFlatTextFromStem(container)
+          const r = reconcileSelectionRangeToFlat(flat, rawStart, rawEnd, selectedText)
+          rawStart = r.start
+          rawEnd = r.end
+          if (rawStart >= rawEnd) return
+
+          const snappedRanges = splitFlatRangeByTableCellsAndSnap(container, flat, rawStart, rawEnd)
+          if (snappedRanges.length === 0) return
+          const snapped = snappedRanges[0]
+
+          const stemText = currentQ.stem || ''
+          const isMd = hasMarkdown(stemText)
+          if (isMd) {
+            const mapped = mapFlatRangeToMarkdownRange(stemText, flat, snapped.start, snapped.end)
+            if (mapped) {
+              rawStart = mapped.start
+              rawEnd = mapped.end
+            } else {
+              rawStart = snapped.start
+              rawEnd = snapped.end
+            }
+          } else {
+            rawStart = snapped.start
+            rawEnd = snapped.end
+          }
+        }
 
         const rect = range.getBoundingClientRect()
         setReviewPopover({

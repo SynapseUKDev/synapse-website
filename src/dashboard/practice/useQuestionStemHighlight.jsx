@@ -591,12 +591,46 @@ export default function useQuestionStemHighlight(options = {}) {
         const range = selection.getRangeAt(0)
         if (!stemRef.current.contains(range.commonAncestorContainer)) return
 
+        const stemText = currentQ.stem || ''
+        const flat = getFlatTextFromStem(stemRef.current)
+
+        const startA = getOffsetWithinStem(range.startContainer, range.startOffset)
+        const endA = getOffsetWithinStem(range.endContainer, range.endOffset)
+        if (startA == null || endA == null) return
+
+        let rawStart = Math.min(startA, endA)
+        let rawEnd = Math.max(startA, endA)
+        if (rawStart === rawEnd) return
+
+        {
+          const r = reconcileSelectionRangeToFlat(flat, rawStart, rawEnd, selectedText)
+          rawStart = r.start
+          rawEnd = r.end
+          if (rawStart >= rawEnd) return
+        }
+
+        const snappedRanges = splitFlatRangeByTableCellsAndSnap(stemRef.current, flat, rawStart, rawEnd)
+        if (snappedRanges.length === 0) return
+
+        const snapped = snappedRanges[0]
+        const isMd = hasMarkdown(stemText)
+        let hlStart = snapped.start
+        let hlEnd = snapped.end
+
+        if (isMd) {
+          const mapped = mapFlatRangeToMarkdownRange(stemText, flat, snapped.start, snapped.end)
+          if (mapped) {
+            hlStart = mapped.start
+            hlEnd = mapped.end
+          }
+        }
+
         const rect = range.getBoundingClientRect()
         options.onReviewPopoverOpen?.({
           quote: selectedText,
           anchorRect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
-          start_offset: range.startOffset,
-          end_offset: range.endOffset,
+          start_offset: hlStart,
+          end_offset: hlEnd,
         })
       }
       document.addEventListener('mouseup', handleReviewerSelection)
