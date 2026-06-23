@@ -9,6 +9,7 @@ import ReportIssueButton from './ReportIssueButton'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
+import ReviewableContent from '../../components/highlight/ReviewableContent'
 import {
   clearStudySetQuestionIdsPrefetch,
   getStudySetQuestionIdsPrefetch,
@@ -176,6 +177,18 @@ export default function Practice() {
   const [reviewComments, setReviewComments] = useState([]) // comments for current question
   const [reviewPopover, setReviewPopover] = useState(null) // { quote, anchorRect, start_offset, end_offset }
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
+
+  // Callback for ReviewableContent: sets reviewPopover when user selects text in a non-stem block
+  const handleReviewSelect = useCallback((data) => {
+    setReviewPopover({
+      quote: data.quote,
+      anchorRect: data.anchorRect,
+      start_offset: data.start_offset,
+      end_offset: data.end_offset,
+      block_id: data.block_id,
+      content_title: data.content_title,
+    })
+  }, [])
 
   // Review mode filter state
   const [reviewFilter, setReviewFilter] = useState('All') // All | Correct | Incorrect | Skipped
@@ -889,7 +902,7 @@ export default function Practice() {
             note: rc.comment_text,
             color: 'reviewer'
           })).concat(
-            reviewPopover && !reviewPopover.comment && (!reviewPopover.block_id || reviewPopover.block_id === 'stem') ? [{
+            reviewPopover && !reviewPopover.isViewOnly && (!reviewPopover.block_id || reviewPopover.block_id === 'stem') ? [{
               start: reviewPopover.start_offset,
               end: reviewPopover.end_offset,
               text: reviewPopover.quote,
@@ -1150,93 +1163,7 @@ export default function Practice() {
     )
   }
 
-  const renderTextWithReviewComments = (text, blockId) => {
-    if (!text) return ''
-    if (!isReviewer) return text
-
-    const blockComments = reviewComments.filter(rc => rc.block_id === blockId).concat(
-      reviewPopover && !reviewPopover.isViewOnly && reviewPopover.block_id === blockId ? [{
-        id: 'pending-review',
-        block_id: reviewPopover.block_id,
-        quote: reviewPopover.quote,
-        start_offset: reviewPopover.start_offset,
-        end_offset: reviewPopover.end_offset,
-        comment_text: ''
-      }] : []
-    )
-    if (blockComments.length === 0) return text
-
-    const sorted = [...blockComments]
-      .filter(rc => rc.start_offset !== null && rc.end_offset !== null)
-      .sort((a, b) => b.start_offset - a.start_offset)
-
-    // Safely insert <mark> tags into HTML by parsing it into DOM, modifying text nodes right-to-left
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(text, 'text/html')
-    
-    const nodesInfo = []
-    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false)
-    let n
-    let currentOffset = 0
-    while ((n = walker.nextNode())) {
-      const len = n.nodeValue.length
-      nodesInfo.push({ node: n, start: currentOffset, end: currentOffset + len })
-      currentOffset += len
-    }
-
-    sorted.forEach((rc) => {
-      const overlaps = nodesInfo.filter(info => info.start < rc.end_offset && info.end > rc.start_offset)
-      for (let i = overlaps.length - 1; i >= 0; i--) {
-        const info = overlaps[i]
-        const nodeStart = info.start
-        const nodeEnd = info.end
-        const node = info.node
-        
-        const localStart = Math.max(0, rc.start_offset - nodeStart)
-        const localEnd = Math.min(nodeEnd - nodeStart, rc.end_offset - nodeStart)
-        if (localStart >= localEnd) continue
-        
-        let targetNode = node
-        if (localStart > 0) {
-          targetNode = targetNode.splitText(localStart)
-        }
-        if (localEnd - localStart < targetNode.nodeValue.length) {
-          targetNode.splitText(localEnd - localStart)
-        }
-        
-        const span = doc.createElement('span')
-        span.className = 'highlight-wrapper'
-        span.setAttribute('data-highlight-id', rc.id)
-        
-        const mark = doc.createElement('mark')
-        mark.className = 'rv-mark'
-        mark.setAttribute('data-highlight-id', rc.id)
-        
-        span.appendChild(mark)
-        targetNode.parentNode.replaceChild(span, targetNode)
-        mark.appendChild(targetNode)
-      }
-    })
-
-    const result = doc.body.innerHTML
-
-    return (
-      <span
-        dangerouslySetInnerHTML={{ __html: result }}
-        onClick={(e) => {
-          const wrapper = e.target.closest('.highlight-wrapper')
-          if (wrapper) {
-            e.preventDefault()
-            e.stopPropagation()
-            const highlightId = wrapper.getAttribute('data-highlight-id')
-            if (highlightId) {
-              openReviewCommentDetails(highlightId, e)
-            }
-          }
-        }}
-      />
-    )
-  }
+  // renderTextWithReviewComments removed — replaced by ReviewableContent component
 
   // Listen for text selection — reviewer mode intercepts for review annotations;
   // normal mode uses the existing highlight system.
@@ -1258,33 +1185,14 @@ export default function Practice() {
         let block_id = null
         let content_title = currentQ.stem?.slice(0, 100) || ''
 
+        // Non-stem blocks (options, detailed, eli5, quick) are handled by
+        // ReviewableContent components — only the stem needs the global handler.
         const resolveBlock = (el) => {
           if (!el) return {}
           if (stemRef.current && stemRef.current.contains(el)) {
             return { container: stemRef.current, block_id: 'stem', content_title: currentQ.stem?.slice(0, 100) || '' }
           }
-          const optionEl = el.closest('.option-wrapper') || el.closest('.option')
-          if (optionEl) {
-            const dataId = optionEl.getAttribute('data-option-id') || optionEl.querySelector('input')?.value
-            if (dataId !== undefined && dataId !== null) {
-              const bodyEl = optionEl.querySelector('.option__body') || optionEl
-              const oLabel = optionEl.querySelector('.option__label')?.textContent?.trim() || ''
-              return { container: bodyEl, block_id: `options:${dataId}`, content_title: `Option ${oLabel || dataId}: ${selectedText.slice(0, 50)}` }
-            }
-          }
-          const detailedSection = el.closest('[data-explanation-tab="detailed"]')
-          if (detailedSection) {
-            return { container: detailedSection, block_id: 'explanation:detailed', content_title: `Detailed Explanation: ${selectedText.slice(0, 50)}` }
-          }
-          const eli5Section = el.closest('[data-explanation-tab="eli5"]')
-          if (eli5Section) {
-            return { container: eli5Section, block_id: 'explanation:eli5', content_title: `ELI5 Explanation: ${selectedText.slice(0, 50)}` }
-          }
-          const quickEl = el.closest('.key-point')
-          if (quickEl) {
-            const quickIdx = quickEl.getAttribute('data-quick-idx')
-            return { container: quickEl, block_id: `explanation:quick:${quickIdx}`, content_title: `Quick Explanation ${quickIdx}: ${selectedText.slice(0, 50)}` }
-          }
+          // Other blocks handled by ReviewableContent — skip here
           return {}
         }
 
@@ -1318,22 +1226,25 @@ export default function Practice() {
 
           const snappedRanges = splitFlatRangeByTableCellsAndSnap(container, flat, rawStart, rawEnd)
           if (snappedRanges.length === 0) return
-          const snapped = snappedRanges[0]
+          // Use the full span from first to last snapped range so multi-line
+          // selections across table cells / block elements are preserved.
+          const firstSnapped = snappedRanges[0]
+          const lastSnapped = snappedRanges[snappedRanges.length - 1]
 
           const stemText = currentQ.stem || ''
           const isMd = hasMarkdown(stemText)
           if (isMd) {
-            const mapped = mapFlatRangeToMarkdownRange(stemText, flat, snapped.start, snapped.end)
+            const mapped = mapFlatRangeToMarkdownRange(stemText, flat, firstSnapped.start, lastSnapped.end)
             if (mapped) {
               rawStart = mapped.start
               rawEnd = mapped.end
             } else {
-              rawStart = snapped.start
-              rawEnd = snapped.end
+              rawStart = firstSnapped.start
+              rawEnd = lastSnapped.end
             }
           } else {
-            rawStart = snapped.start
-            rawEnd = snapped.end
+            rawStart = firstSnapped.start
+            rawEnd = lastSnapped.end
           }
         }
 
@@ -1896,7 +1807,20 @@ export default function Practice() {
                               disabled={isSubmitted || isStruckOut || isReviewMode}
                             />
                             <div className="option__label">{o.label}.</div>
-                            <div className="option__body">{renderTextWithReviewComments(o.body, `options:${o.id}`)}</div>
+                            <ReviewableContent
+                              as="div"
+                              className="option__body"
+                              blockId={`options:${o.id}`}
+                              comments={reviewComments}
+                              pendingHighlight={reviewPopover}
+                              onSelect={handleReviewSelect}
+                              onCommentClick={openReviewCommentDetails}
+                              enabled={isReviewer}
+                              contentKey={currentQuestionId}
+                              contentTitle={`Option ${o.label}`}
+                            >
+                              {o.body}
+                            </ReviewableContent>
                           </label>
                           {!isSubmitted && !isReviewMode && (
                             <button
@@ -2081,7 +2005,18 @@ export default function Practice() {
                           {allQuickPoints.map((p, idx) => (
                             <li key={idx} className={`key-point ${p.isCorrect ? 'key-point--correct' : ''}`} data-quick-idx={idx}>
                               <div className={`key-point-badge ${p.isCorrect ? 'is-correct' : 'is-wrong'}`}>{p.label}</div>
-                              <div>{renderTextWithReviewComments(p.text, `explanation:quick:${idx}`)}</div>
+                              <ReviewableContent
+                                blockId={`explanation:quick:${idx}`}
+                                comments={reviewComments}
+                                pendingHighlight={reviewPopover}
+                                onSelect={handleReviewSelect}
+                                onCommentClick={openReviewCommentDetails}
+                                enabled={isReviewer}
+                                contentKey={currentQuestionId}
+                                contentTitle={`Quick Explanation ${p.label}`}
+                              >
+                                {p.text}
+                              </ReviewableContent>
                             </li>
                           ))}
                         </ul>
@@ -2098,7 +2033,18 @@ export default function Practice() {
                   <div data-explanation-tab="detailed">
                     <div className="explain__section">
                       <div className="explain__label">Detailed Explanation:</div>
-                      <div>{renderTextWithReviewComments(result?.explanations?.detailed || 'No detailed explanation available', 'explanation:detailed')}</div>
+                      <ReviewableContent
+                        blockId="explanation:detailed"
+                        comments={reviewComments}
+                        pendingHighlight={reviewPopover}
+                        onSelect={handleReviewSelect}
+                        onCommentClick={openReviewCommentDetails}
+                        enabled={isReviewer}
+                        contentKey={currentQuestionId}
+                        contentTitle="Detailed Explanation"
+                      >
+                        {result?.explanations?.detailed || 'No detailed explanation available'}
+                      </ReviewableContent>
                     </div>
                   </div>
                 )}
@@ -2109,7 +2055,19 @@ export default function Practice() {
                         <LuLightbulb className="eli5-icon" />
                         <span className="eli5-title">Explain Like I'm 5</span>
                       </div>
-                      <div className="eli5-content">{renderTextWithReviewComments(result?.explanations?.eli5 || 'No ELI5 explanation available', 'explanation:eli5')}</div>
+                      <ReviewableContent
+                        className="eli5-content"
+                        blockId="explanation:eli5"
+                        comments={reviewComments}
+                        pendingHighlight={reviewPopover}
+                        onSelect={handleReviewSelect}
+                        onCommentClick={openReviewCommentDetails}
+                        enabled={isReviewer}
+                        contentKey={currentQuestionId}
+                        contentTitle="ELI5 Explanation"
+                      >
+                        {result?.explanations?.eli5 || 'No ELI5 explanation available'}
+                      </ReviewableContent>
                     </div>
                   </div>
                 )}
