@@ -209,6 +209,22 @@ function ListBlock({ content }) {
 
 /* ── Inject Review Comments Helper ─────────────────── */
 
+const TB_BLOCK_TAGS = new Set([
+  'P', 'LI', 'TD', 'TH', 'TR', 'TABLE', 'UL', 'OL', 'DIV',
+  'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+  'BLOCKQUOTE', 'PRE', 'FIGURE', 'FIGCAPTION', 'CAPTION',
+  'THEAD', 'TBODY', 'TFOOT', 'COLGROUP', 'HR',
+])
+
+function blockAncestorWithin(node, root) {
+  let el = node && node.parentElement
+  while (el && el !== root && el !== root.parentElement) {
+    if (TB_BLOCK_TAGS.has(el.tagName)) return el
+    el = el.parentElement
+  }
+  return root
+}
+
 function injectReviewCommentsIntoHtml(html, reviewComments) {
   if (!html || !reviewComments?.length) return html
   if (typeof document === 'undefined' || typeof DOMParser === 'undefined') return html
@@ -272,43 +288,53 @@ function injectReviewCommentsIntoHtml(html, reviewComments) {
     const { fullText, map } = buildIndex()
     if (!off || off.start >= off.end) continue
 
-    const subRange = doc.createRange()
-    let firstNode = null, lastNode = null
-    let firstStart = 0, lastEnd = 0
-
+    const groups = []
+    let cur = null
     for (const e of map) {
       if (e.end <= off.start) continue
       if (e.start >= off.end) break
-      if (!firstNode) {
-        firstNode = e.node
-        firstStart = off.start - e.start
+      const localStart = Math.max(e.start, off.start) - e.start
+      const localEnd = Math.min(e.end, off.end) - e.start
+      if (localEnd <= localStart) continue
+      const block = blockAncestorWithin(e.node, root)
+      if (cur && cur.block === block) {
+        cur.entries.push({ node: e.node, localStart, localEnd })
+      } else {
+        if (cur) groups.push(cur)
+        cur = { block, entries: [{ node: e.node, localStart, localEnd }] }
       }
-      lastNode = e.node
-      lastEnd = off.end - e.start
     }
+    if (cur) groups.push(cur)
+    if (groups.length === 0) continue
 
-    if (!firstNode || !lastNode) continue
+    const color = rc.color === 'reviewer' ? 'reviewer' : 'yellow'
 
-    try {
-      subRange.setStart(firstNode, firstStart)
-      subRange.setEnd(lastNode, lastEnd)
-    } catch (e) {
-      continue
-    }
+    for (let gi = groups.length - 1; gi >= 0; gi--) {
+      const grp = groups[gi]
+      const first = grp.entries[0]
+      const last = grp.entries[grp.entries.length - 1]
 
-    if (subRange.collapsed) continue
+      const subRange = doc.createRange()
+      try {
+        subRange.setStart(first.node, first.localStart)
+        subRange.setEnd(last.node, last.localEnd)
+      } catch (e) {
+        continue
+      }
+      if (subRange.collapsed) continue
 
-    const mark = doc.createElement('mark')
-    mark.className = 'rv-mark'
-    mark.setAttribute('data-comment-id', rc.id)
-    mark.setAttribute('style', 'cursor:pointer;')
+      const mark = doc.createElement('mark')
+      mark.className = `rv-mark`
+      mark.setAttribute('data-comment-id', rc.id)
+      mark.setAttribute('style', 'cursor:pointer;')
 
-    try {
-      const frag = subRange.extractContents()
-      mark.appendChild(frag)
-      subRange.insertNode(mark)
-    } catch (e) {
-      continue
+      try {
+        const frag = subRange.extractContents()
+        mark.appendChild(frag)
+        subRange.insertNode(mark)
+      } catch (e) {
+        continue
+      }
     }
   }
 

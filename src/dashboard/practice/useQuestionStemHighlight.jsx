@@ -372,7 +372,9 @@ export default function useQuestionStemHighlight(options = {}) {
   const renderHighlightedText = useCallback(
     (text, questionId) => {
       const questionHighlights = options.isReviewer
-        ? (options.reviewComments || []).map(rc => ({
+        ? (options.reviewComments || [])
+            .filter(rc => !rc.block_id || rc.block_id === 'stem')
+            .map(rc => ({
             start: rc.start_offset,
             end: rc.end_offset,
             text: rc.quote,
@@ -380,7 +382,7 @@ export default function useQuestionStemHighlight(options = {}) {
             note: rc.comment_text,
             color: 'reviewer'
           })).concat(
-            options.reviewPopover && !options.reviewPopover.isViewOnly ? [{
+            options.reviewPopover && !options.reviewPopover.isViewOnly && (!options.reviewPopover.block_id || options.reviewPopover.block_id === 'stem') ? [{
               start: options.reviewPopover.start_offset,
               end: options.reviewPopover.end_offset,
               text: options.reviewPopover.quote,

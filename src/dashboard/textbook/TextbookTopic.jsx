@@ -961,7 +961,8 @@ export default function TextbookTopic() {
 
       if (isReviewer) {
         const firstSeg = rangesToCreate[0]
-        const finalQuote = fullText.slice(firstSeg.start, firstSeg.end)
+        const lastSeg = rangesToCreate[rangesToCreate.length - 1]
+        const finalQuote = fullText.slice(firstSeg.start, lastSeg.end)
         setReviewPopover({
           quote: finalQuote,
           anchorRect: {
@@ -971,7 +972,7 @@ export default function TextbookTopic() {
             height: selectionRect.height,
           },
           start_offset: firstSeg.start,
-          end_offset: firstSeg.end,
+          end_offset: lastSeg.end,
           block_id: blockId,
           section_anchor: sectionAnchor,
         })

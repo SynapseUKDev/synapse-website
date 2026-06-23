@@ -96,10 +96,11 @@ export default function MockExamPractice() {
         body: JSON.stringify({
           content_type: 'mock_paper_question',
           content_id: currentQ.id,
-          content_title: currentQ.stem?.slice(0, 100) || '',
+          content_title: reviewPopover?.content_title || currentQ.stem?.slice(0, 100) || '',
           quote: reviewPopover?.quote || '',
           start_offset: reviewPopover?.start_offset || null,
           end_offset: reviewPopover?.end_offset || null,
+          block_id: reviewPopover?.block_id || null,
           comment_text,
         }),
       })
@@ -584,116 +585,24 @@ export default function MockExamPractice() {
                         onChange={() => setSelected(o.id)}
                       />
                       <div className="option__label">{o.label}.</div>
-                      <div className="option__body">{o.body}</div>
+                      <ReviewableContent
+                        as="div"
+                        className="option__body"
+                        blockId={`options:${o.id}`}
+                        comments={reviewComments}
+                        pendingHighlight={reviewPopover}
+                        onSelect={handleReviewSelect}
+                        onCommentClick={openReviewCommentDetails}
+                        enabled={isReviewer}
+                        contentKey={currentQ?.id}
+                        contentTitle={`Option ${o.label}`}
+                      >
+                        {o.body}
+                      </ReviewableContent>
                     </label>
                   )
                 })}
               </div>
-              {isReviewer && (
-                <div className="card explanation-card" style={{ marginTop: '20px' }}>
-                  <div
-                    className="card__header"
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                  >
-                    <div className="ex-card__status ex-card__status--correct">
-                      <LuCircleCheck /> Correct
-                    </div>
-                    <div className="tabs">
-                      <div className={`tab ${tab === 'quick' ? 'tab--active' : ''}`} onClick={() => setTab('quick')}>
-                        Quick
-                      </div>
-                      <div className={`tab ${tab === 'detailed' ? 'tab--active' : ''}`} onClick={() => setTab('detailed')}>
-                        Detailed
-                      </div>
-                      <div className={`tab ${tab === 'eli5' ? 'tab--active' : ''}`} onClick={() => setTab('eli5')}>
-                        ELI5
-                      </div>
-                    </div>
-                  </div>
-                  <div className="card__body explain">
-                    {tab === 'quick' && (
-                      <div>
-                        {currentQ.explanations?.points_by_option ? (
-                          <div className="explain__section">
-                            <div className="explain__label">Explanations:</div>
-                            <ul className="key-points">
-                              {[0, 1, 2, 3, 4]
-                                .map((idx) => ({
-                                  label: String.fromCharCode(65 + idx),
-                                  text: currentQ.explanations.points_by_option[String(idx)]?.[0] || null,
-                                  isCorrect: currentQ.correct_answer === idx,
-                                }))
-                                .filter((p) => p.text)
-                                .map((p, idx) => (
-                                  <li key={idx} className={`key-point ${p.isCorrect ? 'key-point--correct' : ''}`}>
-                                    <div className={`key-point-badge ${p.isCorrect ? 'is-correct' : 'is-wrong'}`}>
-                                      {p.label}
-                                    </div>
-                                    <ReviewableContent
-                                      blockId={`explanation:quick:${idx}`}
-                                      comments={reviewComments}
-                                      pendingHighlight={reviewPopover}
-                                      onSelect={handleReviewSelect}
-                                      onCommentClick={openReviewCommentDetails}
-                                      enabled={isReviewer}
-                                      contentKey={currentQ?.id}
-                                      contentTitle={`Quick Explanation ${p.label}`}
-                                    >
-                                      {p.text}
-                                    </ReviewableContent>
-                                  </li>
-                                ))}
-                            </ul>
-                          </div>
-                        ) : (
-                          <div className="explain__section">
-                            <div className="explain__label">Explanations:</div>
-                            <div>No quick points available</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {tab === 'detailed' && (
-                      <div className="explain__section">
-                        <div className="explain__label">Detailed Explanation:</div>
-                        <ReviewableContent
-                          blockId="explanation:detailed"
-                          comments={reviewComments}
-                          pendingHighlight={reviewPopover}
-                          onSelect={handleReviewSelect}
-                          onCommentClick={openReviewCommentDetails}
-                          enabled={isReviewer}
-                          contentKey={currentQ?.id}
-                          contentTitle="Detailed Explanation"
-                        >
-                          {currentQ.explanations?.detailed || 'No detailed explanation available'}
-                        </ReviewableContent>
-                      </div>
-                    )}
-                    {tab === 'eli5' && (
-                      <div className="eli5-section">
-                        <div className="eli5-header">
-                          <LuLightbulb className="eli5-icon" />
-                          <span className="eli5-title">Explain Like I'm 5</span>
-                        </div>
-                        <ReviewableContent
-                          className="eli5-content"
-                          blockId="explanation:eli5"
-                          comments={reviewComments}
-                          pendingHighlight={reviewPopover}
-                          onSelect={handleReviewSelect}
-                          onCommentClick={openReviewCommentDetails}
-                          enabled={isReviewer}
-                          contentKey={currentQ?.id}
-                          contentTitle="ELI5 Explanation"
-                        >
-                          {currentQ.explanations?.eli5 || 'No ELI5 explanation available'}
-                        </ReviewableContent>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
             <div className="controls">
               <div className="controls__left">
