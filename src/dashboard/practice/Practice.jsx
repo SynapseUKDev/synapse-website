@@ -210,28 +210,23 @@ export default function Practice() {
     }
 
     if (targetNode.nodeType === Node.ELEMENT_NODE) {
-      const r = document.createRange()
-      try {
-        r.setStart(targetNode, nodeOffset)
-        r.collapse(true)
-      } catch (e) {
-        return null
-      }
+      let nextChild = nodeOffset < targetNode.childNodes.length ? targetNode.childNodes[nodeOffset] : null
       let pos = 0
       let node = walker.nextNode()
       while (node) {
-        const nodeLen = (node.textContent || '').length
-        for (let i = 0; i <= nodeLen; i++) {
-          try {
-            if (r.comparePoint(node, i) === 0) return pos + i
-          } catch {
-            // not comparable; try next position/node
+        if (nextChild) {
+          if (node === nextChild || nextChild.contains(node) || (nextChild.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+            return pos
+          }
+        } else {
+          if (!targetNode.contains(node) && (targetNode.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+            return pos
           }
         }
-        pos += nodeLen
+        pos += node.textContent.length
         node = walker.nextNode()
       }
-      return null
+      return nextChild ? null : pos
     }
 
     return null
@@ -454,23 +449,6 @@ export default function Practice() {
       setQuestionStartTime(Date.now())
       setRefRanges(Array.isArray(rData?.groups) ? rData.groups : [])
 
-      // Reviewer mode: auto-reveal all answers immediately (no stat recording)
-      if (isReviewer && data.questions?.length > 0) {
-        const autoAnswers = {}
-        const autoSubmitted = new Set()
-        data.questions.forEach((q) => {
-          autoAnswers[q.id] = {
-            selected: q.correct_answer,
-            saqText: '',
-            isCorrect: true,
-            timeTaken: 0,
-            submitted: true,
-          }
-          autoSubmitted.add(q.id)
-        })
-        setUserAnswers(autoAnswers)
-        setSubmittedAnswers(autoSubmitted)
-      }
 
       if (studySetId) {
         clearStudySetQuestionIdsPrefetch(studySetId)
@@ -1177,7 +1155,7 @@ export default function Practice() {
     if (!isReviewer) return text
 
     const blockComments = reviewComments.filter(rc => rc.block_id === blockId).concat(
-      reviewPopover && !reviewPopover.comment && reviewPopover.block_id === blockId ? [{
+      reviewPopover && !reviewPopover.isViewOnly && reviewPopover.block_id === blockId ? [{
         id: 'pending-review',
         block_id: reviewPopover.block_id,
         quote: reviewPopover.quote,
@@ -1192,16 +1170,55 @@ export default function Practice() {
       .filter(rc => rc.start_offset !== null && rc.end_offset !== null)
       .sort((a, b) => b.start_offset - a.start_offset)
 
-    let result = text
-    sorted.forEach((rc) => {
-      const before = result.slice(0, rc.start_offset)
-      const highlighted = result.slice(rc.start_offset, rc.end_offset)
-      const after = result.slice(rc.end_offset)
+    // Safely insert <mark> tags into HTML by parsing it into DOM, modifying text nodes right-to-left
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(text, 'text/html')
+    
+    const nodesInfo = []
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false)
+    let n
+    let currentOffset = 0
+    while ((n = walker.nextNode())) {
+      const len = n.nodeValue.length
+      nodesInfo.push({ node: n, start: currentOffset, end: currentOffset + len })
+      currentOffset += len
+    }
 
-      result = before +
-        `<span class="highlight-wrapper" data-highlight-id="${rc.id}"><mark class="rv-mark" data-highlight-id="${rc.id}">${highlighted}</mark></span>` +
-        after
+    sorted.forEach((rc) => {
+      const overlaps = nodesInfo.filter(info => info.start < rc.end_offset && info.end > rc.start_offset)
+      for (let i = overlaps.length - 1; i >= 0; i--) {
+        const info = overlaps[i]
+        const nodeStart = info.start
+        const nodeEnd = info.end
+        const node = info.node
+        
+        const localStart = Math.max(0, rc.start_offset - nodeStart)
+        const localEnd = Math.min(nodeEnd - nodeStart, rc.end_offset - nodeStart)
+        if (localStart >= localEnd) continue
+        
+        let targetNode = node
+        if (localStart > 0) {
+          targetNode = targetNode.splitText(localStart)
+        }
+        if (localEnd - localStart < targetNode.nodeValue.length) {
+          targetNode.splitText(localEnd - localStart)
+        }
+        
+        const span = doc.createElement('span')
+        span.className = 'highlight-wrapper'
+        span.setAttribute('data-highlight-id', rc.id)
+        
+        const mark = doc.createElement('mark')
+        mark.className = 'rv-mark'
+        mark.setAttribute('data-highlight-id', rc.id)
+        
+        span.appendChild(mark)
+        targetNode.parentNode.replaceChild(span, targetNode)
+        mark.appendChild(targetNode)
+      }
     })
+
+    const result = doc.body.innerHTML
 
     return (
       <span
@@ -1234,61 +1251,59 @@ export default function Practice() {
         if (!selectedText || /^\s*$/.test(selectedText)) return
         const range = selection.getRangeAt(0)
 
+        const startEl = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement
+        const endEl = range.endContainer.nodeType === 1 ? range.endContainer : range.endContainer.parentElement
+
         let container = null
         let block_id = null
         let content_title = currentQ.stem?.slice(0, 100) || ''
 
-        const commonAncestor = range.commonAncestorContainer
-        const ancestorEl = commonAncestor.nodeType === 1 ? commonAncestor : commonAncestor.parentElement
-
-        if (stemRef.current && stemRef.current.contains(commonAncestor)) {
-          container = stemRef.current
-          block_id = 'stem'
-        } else {
-          // Check if inside options
-          const optionEl = ancestorEl?.closest('.option-wrapper') || ancestorEl?.closest('.option')
+        const resolveBlock = (el) => {
+          if (!el) return {}
+          if (stemRef.current && stemRef.current.contains(el)) {
+            return { container: stemRef.current, block_id: 'stem', content_title: currentQ.stem?.slice(0, 100) || '' }
+          }
+          const optionEl = el.closest('.option-wrapper') || el.closest('.option')
           if (optionEl) {
             const dataId = optionEl.getAttribute('data-option-id') || optionEl.querySelector('input')?.value
             if (dataId !== undefined && dataId !== null) {
               const bodyEl = optionEl.querySelector('.option__body') || optionEl
               const oLabel = optionEl.querySelector('.option__label')?.textContent?.trim() || ''
-              container = bodyEl
-              block_id = `options:${dataId}`
-              content_title = `Option ${oLabel || dataId}: ${selectedText.slice(0, 50)}`
-            }
-          } else {
-            // Check if inside detailed explanation
-            const detailedSection = ancestorEl?.closest('[data-explanation-tab="detailed"]')
-            if (detailedSection) {
-              container = detailedSection
-              block_id = 'explanation:detailed'
-              content_title = `Detailed Explanation: ${selectedText.slice(0, 50)}`
-            } else {
-              // Check if inside eli5
-              const eli5Section = ancestorEl?.closest('[data-explanation-tab="eli5"]')
-              if (eli5Section) {
-                container = eli5Section
-                block_id = 'explanation:eli5'
-                content_title = `ELI5 Explanation: ${selectedText.slice(0, 50)}`
-              } else {
-                // Check if inside quick explanation
-                const quickEl = ancestorEl?.closest('.key-point')
-                if (quickEl) {
-                  const quickIdx = quickEl.getAttribute('data-quick-idx')
-                  container = quickEl
-                  block_id = `explanation:quick:${quickIdx}`
-                  content_title = `Quick Explanation ${quickIdx}: ${selectedText.slice(0, 50)}`
-                }
-              }
+              return { container: bodyEl, block_id: `options:${dataId}`, content_title: `Option ${oLabel || dataId}: ${selectedText.slice(0, 50)}` }
             }
           }
+          const detailedSection = el.closest('[data-explanation-tab="detailed"]')
+          if (detailedSection) {
+            return { container: detailedSection, block_id: 'explanation:detailed', content_title: `Detailed Explanation: ${selectedText.slice(0, 50)}` }
+          }
+          const eli5Section = el.closest('[data-explanation-tab="eli5"]')
+          if (eli5Section) {
+            return { container: eli5Section, block_id: 'explanation:eli5', content_title: `ELI5 Explanation: ${selectedText.slice(0, 50)}` }
+          }
+          const quickEl = el.closest('.key-point')
+          if (quickEl) {
+            const quickIdx = quickEl.getAttribute('data-quick-idx')
+            return { container: quickEl, block_id: `explanation:quick:${quickIdx}`, content_title: `Quick Explanation ${quickIdx}: ${selectedText.slice(0, 50)}` }
+          }
+          return {}
         }
+
+        let resolved = resolveBlock(startEl)
+        if (!resolved.container) {
+          resolved = resolveBlock(endEl)
+        }
+        
+        container = resolved.container
+        block_id = resolved.block_id
+        content_title = resolved.content_title
 
         if (!container || !block_id) return
 
-        const startA = getOffsetWithinElement(container, range.startContainer, range.startOffset)
-        const endA = getOffsetWithinElement(container, range.endContainer, range.endOffset)
-        if (startA == null || endA == null) return
+        let startA = getOffsetWithinElement(container, range.startContainer, range.startOffset)
+        let endA = getOffsetWithinElement(container, range.endContainer, range.endOffset)
+        
+        if (startA == null) startA = 0
+        if (endA == null) endA = container.textContent.length
 
         let rawStart = Math.min(startA, endA)
         let rawEnd = Math.max(startA, endA)

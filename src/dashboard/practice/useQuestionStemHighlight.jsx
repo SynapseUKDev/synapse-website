@@ -380,7 +380,7 @@ export default function useQuestionStemHighlight(options = {}) {
             note: rc.comment_text,
             color: 'reviewer'
           })).concat(
-            options.reviewPopover && !options.reviewPopover.comment ? [{
+            options.reviewPopover && !options.reviewPopover.isViewOnly ? [{
               start: options.reviewPopover.start_offset,
               end: options.reviewPopover.end_offset,
               text: options.reviewPopover.quote,

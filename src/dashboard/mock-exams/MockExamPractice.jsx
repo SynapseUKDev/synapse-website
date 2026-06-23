@@ -194,9 +194,7 @@ export default function MockExamPractice() {
       const map = {}
       const ans = data.answers || {}
       for (const q of data.questions || []) {
-        if (isReviewer && q.correct_answer != null) {
-          map[q.id] = q.correct_answer
-        } else if (Object.prototype.hasOwnProperty.call(ans, q.id)) {
+        if (Object.prototype.hasOwnProperty.call(ans, q.id)) {
           map[q.id] = ans[q.id]
         }
       }
@@ -560,11 +558,9 @@ export default function MockExamPractice() {
               </div>
               <div className="mock-exam-options" style={{ display: 'grid', gap: 8 }}>
                 {(currentQ.options || []).map((o) => {
-                  const isCorrectOption = isReviewer && currentQ.correct_answer === o.id
                   const userSelected = selected === o.id
                   let className = 'option'
                   if (userSelected) className += ' option--selected'
-                  if (isCorrectOption) className += ' option--correct'
                   return (
                     <label key={o.id} className={className}>
                       <input
@@ -572,8 +568,7 @@ export default function MockExamPractice() {
                         name="opt"
                         value={o.id}
                         checked={userSelected}
-                        onChange={() => !isReviewer && setSelected(o.id)}
-                        disabled={isReviewer}
+                        onChange={() => setSelected(o.id)}
                       />
                       <div className="option__label">{o.label}.</div>
                       <div className="option__body">{o.body}</div>
@@ -691,17 +686,6 @@ export default function MockExamPractice() {
                   <LuChevronLeft />
                   Previous
                 </button>
-                {isReviewer ? (
-                  currentIndex < questions.length - 1 ? (
-                    <button type="button" onClick={goNext} className="btn btn--primary btn--icon">
-                      Next
-                    </button>
-                  ) : (
-                    <button type="button" onClick={finishExam} disabled={finishing} className="btn btn--primary">
-                      {finishing ? 'Finishing…' : 'Finish exam'}
-                    </button>
-                  )
-                ) : (
                   <>
                     {needsSaveAnswer ? (
                       <button
@@ -737,8 +721,7 @@ export default function MockExamPractice() {
                       </button>
                     ) : null}
                   </>
-                )}
-              </div>
+                </div>
             </div>
           </div>
         </div>
