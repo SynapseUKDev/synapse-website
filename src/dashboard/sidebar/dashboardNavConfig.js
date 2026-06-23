@@ -20,7 +20,7 @@ export function getDashboardNavItems(user) {
     { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },
     { id: 'osce', label: 'OSCEs', icon: LuStethoscope, to: '/dashboard/osce' },
     { id: 'mock-exams', label: 'Mock Exams', icon: LuTimer, to: '/dashboard/mock-exams' },
-    ...(!isReviewer ? [{ id: 'analytics', label: 'Analytics', icon: LuTrendingUp, to: '/dashboard/analytics' }] : []),
+    { id: 'analytics', label: 'Analytics', icon: LuTrendingUp, to: '/dashboard/analytics' },
     ...(isAdmin && !isReviewer ? [{ id: 'admin', label: 'Admin', icon: LuShield, to: '/dashboard/admin' }] : []),
   ]
 }
