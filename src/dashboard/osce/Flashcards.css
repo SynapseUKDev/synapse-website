@@ -272,6 +272,7 @@ html[data-theme="dark"] .fc-error {
 /* Score strip */
 .fc-session__score-strip {
   display: flex;
+  align-items: center;
   gap: 16px;
   background: var(--surface-card);
   border: 1px solid var(--syn-border);
@@ -281,6 +282,30 @@ html[data-theme="dark"] .fc-error {
   font-weight: 700;
   color: var(--syn-muted);
   justify-content: center;
+}
+
+.fc-session__stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.fc-session__stat-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--syn-navy-700);
+}
+
+.fc-session__stat-lbl {
+  font-weight: 600;
+  color: var(--syn-muted);
+}
+
+.fc-session__divider {
+  width: 1px;
+  height: 16px;
+  background: var(--syn-border);
+  flex-shrink: 0;
 }
 
 /* ── Card flip ─────────────────────────────────────────────── */
@@ -714,14 +739,366 @@ html[data-theme="dark"] .fc-summary__stats {
    ============================================================ */
 
 /* ── Cascading Filters & Dropdowns ─────────────────────────── */
-.fc-picker__filters {
+.fc-picker__subtitle {
+  font-size: 15px;
+  color: var(--syn-muted);
+  margin: 0 0 24px;
+  max-width: 560px;
+  line-height: 1.5;
+}
+
+/* Anki-style deck browser layout */
+.fc-picker--browser {
+  align-items: stretch;
+  text-align: left;
+  padding: 32px 36px 0;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.fc-picker--browser .fc-picker__header {
+  margin-bottom: 8px;
+}
+
+.fc-picker--browser .fc-picker__title {
+  text-align: left;
+}
+
+.fc-browser__toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--syn-border);
+}
+
+.fc-browser__sections-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--syn-muted);
+  margin-bottom: 10px;
+}
+
+.fc-browser__section-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fc-section-chip {
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--syn-border);
+  background: var(--surface-card);
+  color: var(--syn-muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Urbanist', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.fc-section-chip:hover {
+  border-color: var(--syn-cyan);
+  color: var(--syn-navy-700);
+}
+
+.fc-section-chip--on {
+  background: var(--surface-tint-cyan);
+  border-color: rgba(32, 229, 246, 0.45);
+  color: var(--syn-navy-700);
+}
+
+.fc-browser__list-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.fc-browser__list-meta {
+  font-size: 13px;
+  color: var(--syn-muted);
+  font-weight: 600;
+}
+
+.fc-browser__list-btns {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 24px;
-  align-self: flex-start;
+}
+
+.fc-browser__link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--syn-cyan);
+  cursor: pointer;
+  font-family: 'Urbanist', sans-serif;
+}
+
+.fc-browser__link-btn:hover {
+  text-decoration: underline;
+}
+
+.fc-browser__sep {
+  color: var(--syn-border);
+  font-size: 13px;
+}
+
+.fc-browser__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(52vh, 480px);
+  overflow-y: auto;
+  margin-bottom: 16px;
+  padding-right: 4px;
+}
+
+.fc-browser__group {
+  border: 1px solid var(--syn-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-card);
+}
+
+.fc-browser__group + .fc-browser__group {
+  margin-top: 8px;
+}
+
+.fc-browser__group-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px 10px 8px;
+  background: rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid var(--syn-border);
+}
+
+.fc-browser__expand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--syn-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.fc-browser__expand:hover {
+  background: var(--surface-tint-cyan);
   color: var(--syn-navy-700);
 }
+
+.fc-browser__group-title {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--syn-navy-700);
+  font-family: 'Urbanist', sans-serif;
+  cursor: pointer;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fc-browser__group-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--syn-muted);
+}
+
+.fc-browser__check-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.fc-browser__check-label input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.fc-browser__check-box,
+.fc-browser__row-check-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--syn-border);
+  background: var(--surface-card);
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.fc-browser__check-label input:checked + .fc-browser__check-box,
+.fc-browser__row-check:checked + .fc-browser__row-check-box {
+  background: var(--syn-cyan);
+  border-color: var(--syn-cyan);
+  box-shadow: inset 0 0 0 2px var(--surface-card);
+}
+
+.fc-browser__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.fc-browser__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px 12px 16px;
+  border-bottom: 1px solid var(--syn-border);
+  cursor: pointer;
+  transition: background 0.12s;
+  position: relative;
+}
+
+.fc-browser__row-check {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.fc-browser__row:last-child {
+  border-bottom: none;
+}
+
+.fc-browser__row:hover {
+  background: var(--surface-tint-cyan);
+}
+
+.fc-browser__row--selected {
+  background: rgba(32, 229, 246, 0.06);
+}
+
+.fc-browser__row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fc-browser__row-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--syn-navy-700);
+  line-height: 1.35;
+}
+
+.fc-browser__row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fc-tag {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: rgba(32, 229, 246, 0.1);
+  border: 1px solid rgba(32, 229, 246, 0.25);
+  color: var(--syn-navy-700);
+}
+
+.fc-tag--muted {
+  opacity: 0.35;
+}
+
+.fc-browser__row-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--syn-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fc-browser__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0 28px;
+  margin-top: 4px;
+  border-top: 1px solid var(--syn-border);
+  position: sticky;
+  bottom: 0;
+  background: var(--surface-card);
+  flex-wrap: wrap;
+}
+
+.fc-browser__footer-summary {
+  font-size: 15px;
+  color: var(--syn-muted);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fc-browser__footer-summary strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--syn-navy-700);
+}
+
+.fc-browser__footer-from {
+  font-size: 13px;
+}
+
+.fc-browser__start {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .fc-picker--browser {
+    padding: 24px 16px 0;
+  }
+
+  .fc-browser__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fc-browser__start {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .fc-picker__filter-icon {
   color: var(--syn-cyan);
 }
@@ -1112,6 +1489,11 @@ html[data-theme="dark"] .fc-select:focus {
 }
 html[data-theme="dark"] .fc-picker__filters,
 html[data-theme="dark"] .fc-picker__count,
+html[data-theme="dark"] .fc-browser__group-title,
+html[data-theme="dark"] .fc-browser__row-name,
+html[data-theme="dark"] .fc-browser__footer-summary strong,
+html[data-theme="dark"] .fc-section-chip--on,
+html[data-theme="dark"] .fc-tag,
 html[data-theme="dark"] .fc-select-label,
 html[data-theme="dark"] .fc-card__condition,
 html[data-theme="dark"] .fc-card__question,
@@ -1120,6 +1502,249 @@ html[data-theme="dark"] .fc-summary__stat-val,
 html[data-theme="dark"] .fc-summary__ring-text {
   color: #f1f5f9;
 }
+html[data-theme="dark"] .fc-browser__group-header {
+  background: rgba(255, 255, 255, 0.03);
+}
+html[data-theme="dark"] .fc-section-chip {
+  background: var(--dm-surface-container-low);
+  border-color: var(--dm-border, rgba(255, 255, 255, 0.08));
+  color: var(--dm-on-surface-variant, #9ca3af);
+}
+html[data-theme="dark"] .fc-browser__row--selected {
+  background: rgba(32, 229, 246, 0.08);
+}
 html[data-theme="dark"] .fc-session__empty h3 {
   color: #f1f5f9;
+}
+
+
+/* ============================================================
+   Due Pill — shown in picker header when cards are due today
+   ============================================================ */
+.fc-due-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 7px 14px;
+  background: rgba(32, 229, 246, 0.08);
+  border: 1px solid rgba(32, 229, 246, 0.3);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--syn-navy-700);
+  font-weight: 500;
+}
+
+.fc-due-pill svg {
+  color: var(--syn-primary, #20e5f6);
+  flex-shrink: 0;
+}
+
+html[data-theme="dark"] .fc-due-pill {
+  background: rgba(32, 229, 246, 0.1);
+  border-color: rgba(32, 229, 246, 0.25);
+  color: #e2e8f0;
+}
+
+
+/* ============================================================
+   Session Mode Panels
+   ============================================================ */
+.fc-mode-panel {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+/* Due Today — empty state */
+.fc-mode-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 24px;
+  text-align: center;
+  border: 1px dashed var(--syn-border);
+  border-radius: 16px;
+  background: var(--surface-card);
+}
+
+.fc-mode-panel__empty-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--syn-navy-700);
+  margin: 0;
+}
+
+.fc-mode-panel__empty-sub {
+  font-size: 14px;
+  color: var(--syn-muted);
+  margin: 0;
+  max-width: 320px;
+}
+
+/* Due Today — cards due */
+.fc-mode-panel__due {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 32px 24px;
+  border: 1px solid rgba(32, 229, 246, 0.3);
+  border-radius: 16px;
+  background: rgba(32, 229, 246, 0.05);
+  text-align: center;
+}
+
+.fc-mode-panel__due-count {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--syn-navy-700);
+}
+
+.fc-mode-panel__due-sub {
+  font-size: 14px;
+  color: var(--syn-muted);
+  margin: 0;
+  max-width: 340px;
+}
+
+/* New Cards panel info banner */
+.fc-mode-panel__new-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--syn-navy-700);
+  line-height: 1.5;
+}
+
+.fc-mode-panel__new-info svg {
+  flex-shrink: 0;
+  color: #7c3aed;
+  margin-top: 2px;
+}
+
+html[data-theme="dark"] .fc-mode-panel__empty {
+  border-color: rgba(255,255,255,.1);
+  background: var(--dm-surface-container-low);
+}
+html[data-theme="dark"] .fc-mode-panel__empty-title,
+html[data-theme="dark"] .fc-mode-panel__due-count {
+  color: #f1f5f9;
+}
+html[data-theme="dark"] .fc-mode-panel__due {
+  background: rgba(32, 229, 246, 0.07);
+  border-color: rgba(32, 229, 246, 0.25);
+}
+html[data-theme="dark"] .fc-mode-panel__new-info {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.3);
+  color: #e2e8f0;
+}
+
+/* ============================================================
+   Summary — Next Review Schedule
+   ============================================================ */
+.fc-summary__schedule {
+  width: 100%;
+  margin: 20px 0;
+  background: var(--surface-card);
+  border: 1px solid var(--syn-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.fc-summary__schedule-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--syn-muted);
+  border-bottom: 1px solid var(--syn-border);
+}
+
+.fc-summary__schedule-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.fc-summary__schedule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--syn-border);
+  font-size: 13px;
+}
+
+.fc-summary__schedule-row:last-child {
+  border-bottom: none;
+}
+
+.fc-summary__schedule-name {
+  color: var(--syn-navy-700);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fc-summary__schedule-when {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 8px;
+}
+
+.fc-summary__schedule-when--easy {
+  background: rgba(124,58,237,.12);
+  color: #7c3aed;
+}
+
+.fc-summary__schedule-when--good {
+  background: rgba(34,197,94,.12);
+  color: #16a34a;
+}
+
+.fc-summary__schedule-when--hard {
+  background: rgba(245,158,11,.12);
+  color: #d97706;
+}
+
+.fc-summary__schedule-more {
+  font-size: 12px;
+  color: var(--syn-muted);
+  margin: 0;
+  padding: 10px 16px;
+  text-align: center;
+}
+
+html[data-theme="dark"] .fc-summary__schedule {
+  background: var(--dm-surface-container-low);
+  border-color: var(--dm-border, rgba(255,255,255,.08));
+}
+html[data-theme="dark"] .fc-summary__schedule-title {
+  border-color: rgba(255,255,255,.08);
+}
+html[data-theme="dark"] .fc-summary__schedule-row {
+  border-color: rgba(255,255,255,.06);
+}
+html[data-theme="dark"] .fc-summary__schedule-name {
+  color: #e2e8f0;
 }

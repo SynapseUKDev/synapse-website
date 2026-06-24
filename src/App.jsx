@@ -110,7 +110,8 @@ function App() {
           <Route path="textbook/topic/:topicSlug" element={<TextbookTopic />} />
           <Route path="admin" element={<Admin />} />
           <Route path="osce" element={<OsceStations />} />
-          <Route path="osce/flashcards" element={<Flashcards />} />
+          <Route path="question-bank/flashcards" element={<Flashcards />} />
+          <Route path="osce/flashcards" element={<Navigate to="/dashboard/question-bank/flashcards" replace />} />
           <Route path="osce/station/:slug" element={<OsceStationLanding />} />
           <Route path="osce/station/:slug/practice" element={<OsceStationActive />} />
           <Route path="osce/group" element={<OsceGroupSetup />} />

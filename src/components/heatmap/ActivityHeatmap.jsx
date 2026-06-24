@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import './ActivityHeatmap.css'
 
-const MONTHS_SHOWN = 4
+const MONTHS_SHOWN = 3
 
 /** Map question count to heatmap level (fixed thresholds, not relative to max). */
 function getIntensity(count) {

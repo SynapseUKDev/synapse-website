@@ -241,6 +241,33 @@
 
 .qb__grid--features {
   grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 0;
+}
+
+.qb__features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 24px;
+}
+
+.qb-feature--revision {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.qb-feature--group {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.qb-feature--heatmap {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.qb-feature--flashcards {
+  grid-column: 1;
+  grid-row: 2;
 }
 
 /* Card Styles */
@@ -514,6 +541,30 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  .qb__features {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .qb-feature--revision {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .qb-feature--group {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .qb-feature--heatmap {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .qb-feature--flashcards {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
   .qb-card--heatmap {
     grid-column: span 2;
   }
@@ -572,6 +623,18 @@
 
   .qb__grid--features {
     grid-template-columns: 1fr;
+  }
+
+  .qb__features {
+    grid-template-columns: 1fr;
+  }
+
+  .qb-feature--revision,
+  .qb-feature--group,
+  .qb-feature--heatmap,
+  .qb-feature--flashcards {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .qb-card--heatmap {

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import * as Lu from 'react-icons/lu'
-import { LuTarget, LuListCheck, LuTimer, LuUsers, LuBookOpen, LuSearch } from 'react-icons/lu'
+import { LuTarget, LuListCheck, LuTimer, LuUsers, LuBookOpen, LuSearch, LuLayers } from 'react-icons/lu'
 import './QuestionBank.css'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import useStaleJson from '../../utils/useStaleJson'
@@ -217,10 +217,9 @@ export default function QuestionBank() {
         </div>
       </div>
 
-      {/* Three Feature Cards */}
-      <div className="qb__grid qb__grid--features" style={{ marginTop: 32, marginBottom: 40 }}>
-        {/* Custom Revision Sets Card */}
-        <div className="qb-card qb-card--feature">
+      {/* Feature cards: col 1 = revision + flashcards; cols 2–3 = group + heatmap */}
+      <div className="qb__features" style={{ marginTop: 32, marginBottom: 40 }}>
+        <div className="qb-card qb-card--feature qb-feature--revision">
           <div className="qb-card__head">
             <div className="qb-card__titlewrap">
               <div className="qb-card__icon" style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe' }}>
@@ -237,8 +236,7 @@ export default function QuestionBank() {
           </div>
         </div>
 
-        {/* Group Sessions Card */}
-        <div className="qb-card qb-card--feature">
+        <div className="qb-card qb-card--feature qb-feature--group">
           <div className="qb-card__head">
             <div className="qb-card__titlewrap">
               <div className="qb-card__icon" style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a' }}>
@@ -256,13 +254,29 @@ export default function QuestionBank() {
           </div>
         </div>
 
-        {/* Heatmap Card */}
-        <div className="qb-card qb-card--feature qb-card--heatmap">
+        <div className="qb-card qb-card--feature qb-card--heatmap qb-feature--heatmap">
           <div className="qb-card__head" style={{ marginBottom: 8 }}>
             <div className="qb-card__title">Study Activity</div>
           </div>
           <div className="qb-heatmap-visualization">
             <ActivityHeatmap />
+          </div>
+        </div>
+
+        <div className="qb-card qb-card--feature qb-feature--flashcards">
+          <div className="qb-card__head">
+            <div className="qb-card__titlewrap">
+              <div className="qb-card__icon" style={{ background: '#ede9fe', color: '#7c3aed', border: '1px solid #c4b5fd' }}>
+                <LuLayers size={24} />
+              </div>
+              <div>
+                <div className="qb-card__title">Flashcards</div>
+                <div className="qb-card__meta">Test your UKMLA recall</div>
+              </div>
+            </div>
+          </div>
+          <div className="qb-card__actions">
+            <button className="qb-btn" onClick={() => navigate('/dashboard/question-bank/flashcards')}>Start Session</button>
           </div>
         </div>
       </div>

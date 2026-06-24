@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { LuTimer, LuUsers, LuStethoscope, LuTarget, LuListCheck, LuSearch, LuShuffle, LuBookOpen, LuPencil, LuBrain } from 'react-icons/lu'
+import { LuTimer, LuUsers, LuStethoscope, LuTarget, LuListCheck, LuSearch, LuShuffle, LuBookOpen, LuPencil } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import './Osce.css'
@@ -192,21 +192,6 @@ export default function OsceStations() {
           </div>
           <div className="osce-feature__actions">
             <button className="osce-btn osce-btn--secondary osce-btn--sm" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>Coming Soon</button>
-          </div>
-        </div>
-
-        <div className="osce-feature">
-          <div className="osce-feature__head">
-            <div className="osce-feature__icon" style={{ background: '#ede9fe', color: '#7c3aed', border: '1px solid #c4b5fd' }}>
-              <LuBrain size={24} />
-            </div>
-            <div>
-              <div className="osce-feature__title">Flashcards</div>
-              <div className="osce-feature__meta">Test your prescribing recall</div>
-            </div>
-          </div>
-          <div className="osce-feature__actions">
-            <button className="osce-btn osce-btn--sm" onClick={() => navigate('/dashboard/osce/flashcards')}>Start Session</button>
           </div>
         </div>
       </div>

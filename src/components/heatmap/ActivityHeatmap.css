@@ -65,10 +65,9 @@
 .activity-heatmap__months {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: center;
   align-items: flex-start;
   width: 100%;
-  gap: 18px;
+  gap: 16px;
 }
 
 /* Month labels row */
@@ -281,8 +280,9 @@
 .activity-heatmap__month {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
-  flex: 0 0 auto;
+  flex: 1 1 0;
   min-width: 0;
 }
 
