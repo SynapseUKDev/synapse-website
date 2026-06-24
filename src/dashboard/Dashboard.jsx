@@ -87,7 +87,7 @@ export default function Dashboard() {
   const [specialties, setSpecialties] = useState([])
   const [selectedSpecialty, setSelectedSpecialty] = useState('all')
   const [sortBy, setSortBy] = useState('total_answered') // total_answered | correct | accuracy_pct
-  const [leaderboardScope, setLeaderboardScope] = useState('global') // global | university | friends
+  const [leaderboardScope, setLeaderboardScope] = useState('friends') // global | university | friends
 
   const [recentTopic, setRecentTopic] = useState(null)
   const [analyticsChart, setAnalyticsChart] = useState('questions') // 'questions' | 'accuracy' | 'time'
@@ -186,7 +186,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (leaderboardScope === 'university' && !universityEligible) {
-      setLeaderboardScope('global')
+      setLeaderboardScope('friends')
     }
   }, [leaderboardScope, universityEligible])
 
@@ -566,6 +566,7 @@ export default function Dashboard() {
       </div>
 
       <div className="db-split">
+          <div className="db-split__left">
           <div className="db-qa">
             <div className="db-qa__title">Quick Actions</div>
             <div className="db-qa__sub">Jump back into your learning journey</div>
@@ -602,53 +603,6 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
-
-          <aside className="db-analytics">
-            <div className="db-card db-analytics__card">
-              <div className="db-analytics__head">Analytics</div>
-              <div className="db-analytics__tabs">
-                <button
-                  type="button"
-                  className={`db-analytics__tab ${analyticsChart === 'questions' ? 'is-active' : ''}`}
-                  onClick={() => setAnalyticsChart('questions')}
-                >
-                  Questions
-                </button>
-                <button
-                  type="button"
-                  className={`db-analytics__tab ${analyticsChart === 'accuracy' ? 'is-active' : ''}`}
-                  onClick={() => setAnalyticsChart('accuracy')}
-                >
-                  Accuracy
-                </button>
-                <button
-                  type="button"
-                  className={`db-analytics__tab ${analyticsChart === 'time' ? 'is-active' : ''}`}
-                  onClick={() => setAnalyticsChart('time')}
-                >
-                  Time
-                </button>
-              </div>
-              <div className="db-analytics__graph">
-                {analyticsChart === 'questions' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderQuestionsChart(getLast7Days(trend)))}
-                {analyticsChart === 'accuracy' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderAccuracyChartByWeekday(getLast7Days(trend)))}
-                {analyticsChart === 'time' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderTimeChartByWeekday(getLast7Days(trend)))}
-              </div>
-              <p className="db-analytics__copy">
-                {analyticsChart === 'questions' && 'Questions answered each day this week. Aim for consistent daily practice to build long-term retention.'}
-                {analyticsChart === 'accuracy' && 'Your accuracy over the last 7 days. A rising trend means your knowledge is consolidating.'}
-                {analyticsChart === 'time' && 'Average seconds per question over the last 7 days. Getting faster usually means the material is becoming familiar.'}
-              </p>
-              <button
-                type="button"
-                className="db-analytics__view-btn"
-                onClick={() => navigate('/dashboard/analytics')}
-              >
-                View analytics
-                <LuArrowRight size={12} />
-              </button>
-            </div>
-          </aside>
 
           <div className="db-leaderboard">
             <div className="db-card db-leaderboard__card">
@@ -739,6 +693,55 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+          </div>
+
+          <div className="db-split__right">
+          <aside className="db-analytics">
+            <div className="db-card db-analytics__card">
+              <div className="db-analytics__head">Analytics</div>
+              <div className="db-analytics__tabs">
+                <button
+                  type="button"
+                  className={`db-analytics__tab ${analyticsChart === 'questions' ? 'is-active' : ''}`}
+                  onClick={() => setAnalyticsChart('questions')}
+                >
+                  Questions
+                </button>
+                <button
+                  type="button"
+                  className={`db-analytics__tab ${analyticsChart === 'accuracy' ? 'is-active' : ''}`}
+                  onClick={() => setAnalyticsChart('accuracy')}
+                >
+                  Accuracy
+                </button>
+                <button
+                  type="button"
+                  className={`db-analytics__tab ${analyticsChart === 'time' ? 'is-active' : ''}`}
+                  onClick={() => setAnalyticsChart('time')}
+                >
+                  Time
+                </button>
+              </div>
+              <div className="db-analytics__graph">
+                {analyticsChart === 'questions' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderQuestionsChart(getLast7Days(trend)))}
+                {analyticsChart === 'accuracy' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderAccuracyChartByWeekday(getLast7Days(trend)))}
+                {analyticsChart === 'time' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderTimeChartByWeekday(getLast7Days(trend)))}
+              </div>
+              <p className="db-analytics__copy">
+                {analyticsChart === 'questions' && 'Questions answered each day this week. Aim for consistent daily practice to build long-term retention.'}
+                {analyticsChart === 'accuracy' && 'Your accuracy over the last 7 days. A rising trend means your knowledge is consolidating.'}
+                {analyticsChart === 'time' && 'Average seconds per question over the last 7 days. Getting faster usually means the material is becoming familiar.'}
+              </p>
+              <button
+                type="button"
+                className="db-analytics__view-btn"
+                onClick={() => navigate('/dashboard/analytics')}
+              >
+                View analytics
+                <LuArrowRight size={12} />
+              </button>
+            </div>
+          </aside>
 
           <div className="db-friends">
             <div className="db-card db-friends__card">
@@ -896,6 +899,7 @@ export default function Dashboard() {
                 </>
               )}
             </div>
+          </div>
           </div>
           </div>
       </div>
