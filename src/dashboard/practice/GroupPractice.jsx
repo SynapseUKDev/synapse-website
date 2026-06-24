@@ -161,6 +161,7 @@ export default function GroupPractice() {
   const [serverCurrentIndex, setServerCurrentIndex] = useState(0) // Server-controlled current question index
   const [isReviewing, setIsReviewing] = useState(false) // Whether user is reviewing past questions
   const socketRef = useRef(null)
+  const isReviewingRef = useRef(false)
   // Reference ranges
   const [refRanges, setRefRanges] = useState([])
   const [showRef, setShowRef] = useState(false)
@@ -255,6 +256,11 @@ export default function GroupPractice() {
       }
     }
   }, [roomCode])
+
+  // Keep ref in sync for socket handlers (registered once on connect)
+  useEffect(() => {
+    isReviewingRef.current = isReviewing
+  }, [isReviewing])
 
   // Load all questions for the session
   useEffect(() => {
@@ -356,15 +362,12 @@ export default function GroupPractice() {
 
     socketRef.current.on('question-changed', (data) => {
       console.log('Question changed by host:', data)
-      // Server controls question progression
       const newIndex = data.question_index
       setServerCurrentIndex(newIndex)
 
       // If user is reviewing, they can stay on their current question
-      // Otherwise, move to the new server question
-      if (!isReviewing) {
+      if (!isReviewingRef.current) {
         setCurrentIndex(newIndex)
-        loadCurrentQuestion(newIndex, questions)
       }
 
       // Clear local answer list for new question (all clients clear)
@@ -528,9 +531,9 @@ export default function GroupPractice() {
     const questionId = question.id
     const userAnswer = userAnswers[questionId]
 
-    // Restore user's previous answer
-    if (userAnswer) {
-      setSelected(userAnswer.selected)
+    // Restore user's previous answer only if already submitted
+    if (userAnswer?.submitted) {
+      setSelected(userAnswer.selected ?? null)
       setSaqText(userAnswer.saqText || '')
     } else {
       setSelected(null)
@@ -543,6 +546,13 @@ export default function GroupPractice() {
     // Reset carousel index when question changes
     setAssetIdx(0)
   }
+
+  // Sync answer selection whenever the active question changes (fixes stale
+  // socket closures leaving the previous question's option selected)
+  useEffect(() => {
+    if (!questions.length) return
+    loadCurrentQuestion(currentIndex, questions)
+  }, [currentIndex, questions])
 
   const goToPrevious = () => {
     // Allow navigation to previous questions for review
@@ -1718,7 +1728,7 @@ export default function GroupPractice() {
                           <label className={className}>
                             <input
                               type="radio"
-                              name="opt"
+                              name={`opt-${questionId}`}
                               value={o.id}
                               checked={selected === o.id}
                               onChange={() => !isStruckOut && setSelected(o.id)}

@@ -594,21 +594,21 @@ function PickerScreen({ onStart, srsStats }) {
                             onChange={() => toggleCondition(cond.id)}
                           />
                           <span className="fc-browser__row-check-box" />
-                          <span className="fc-browser__row-main">
+                          <div className="fc-browser__row-head">
                             <span className="fc-browser__row-name">{cond.condition}</span>
-                            <span className="fc-browser__row-tags">
-                              {sections.map((sec) => (
-                                <span
-                                  key={sec}
-                                  className={`fc-tag${activeSections.has(sec) ? '' : ' fc-tag--muted'}`}
-                                >
-                                  {sec}
-                                </span>
-                              ))}
+                            <span className="fc-browser__row-count">
+                              {cardCount} {cardCount === 1 ? 'card' : 'cards'}
                             </span>
-                          </span>
-                          <span className="fc-browser__row-count">
-                            {cardCount} {cardCount === 1 ? 'card' : 'cards'}
+                          </div>
+                          <span className="fc-browser__row-tags">
+                            {sections.map((sec) => (
+                              <span
+                                key={sec}
+                                className={`fc-tag${activeSections.has(sec) ? '' : ' fc-tag--muted'}`}
+                              >
+                                {sec}
+                              </span>
+                            ))}
                           </span>
                         </label>
                       );
@@ -1001,7 +1001,7 @@ export default function Flashcards() {
         <span>Question Bank</span>
       </button>
 
-      <div className="fc-page__card">
+      <div className={`fc-page__card${view === VIEWS.PICKER ? ' fc-page__card--picker' : ''}`}>
         {view === VIEWS.PICKER && (
           <PickerScreen
             onStart={handleStart}

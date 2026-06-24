@@ -8,14 +8,22 @@ import LoadingScreen from '../components/loading/LoadingScreen'
 import useStaleJson from '../utils/useStaleJson'
 import {
   buildDemoTrend,
-  aggregateTrendByWeekday,
-  aggregateTrendByWeekdayForAccuracy,
-  aggregateTrendByWeekdayForTime,
+  getLast7Days,
   renderQuestionsChart,
   renderAccuracyChartByWeekday,
   renderTimeChartByWeekday,
 } from './insights/dashboardAnalyticsCharts.jsx'
+
 import { getEmailDomain, isUniversityEmail } from '../utils/emailDomain.js'
+
+/** Stable anonymised label for global / university leaderboards */
+function anonymisedLeaderboardLabel(userId) {
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0
+  }
+  return `Student ${1000 + (hash % 9000)}`
+}
 
 /** px to scroll when a collapsible list opens — scales with item count */
 function collapseExpandScrollOffset(itemCount) {
@@ -79,7 +87,7 @@ export default function Dashboard() {
   const [specialties, setSpecialties] = useState([])
   const [selectedSpecialty, setSelectedSpecialty] = useState('all')
   const [sortBy, setSortBy] = useState('total_answered') // total_answered | correct | accuracy_pct
-  const [leaderboardScope, setLeaderboardScope] = useState('friends') // friends | university
+  const [leaderboardScope, setLeaderboardScope] = useState('global') // global | university | friends
 
   const [recentTopic, setRecentTopic] = useState(null)
   const [analyticsChart, setAnalyticsChart] = useState('questions') // 'questions' | 'accuracy' | 'time'
@@ -146,9 +154,12 @@ export default function Dashboard() {
       const params = new URLSearchParams()
       if (selectedSpecialty !== 'all') params.set('specialty_id', selectedSpecialty)
       const query = params.toString()
-      const basePath = leaderboardScope === 'university'
-        ? `${API_BASE}/friends/university-leaderboard`
-        : `${API_BASE}/friends/leaderboard`
+      const basePaths = {
+        global: `${API_BASE}/friends/global-leaderboard`,
+        university: `${API_BASE}/friends/university-leaderboard`,
+        friends: `${API_BASE}/friends/leaderboard`,
+      }
+      const basePath = basePaths[leaderboardScope] || basePaths.friends
       const url = query ? `${basePath}?${query}` : basePath
       const res = await authenticatedFetch(url)
       if (res.ok) {
@@ -164,6 +175,8 @@ export default function Dashboard() {
     }
   }
 
+  const userYearGroup = user?.year_group ? String(user.year_group).trim() : null
+
   const universityEligible = isUniversityEmail(user?.email)
   const universityDomain = getEmailDomain(user?.email)
 
@@ -173,7 +186,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (leaderboardScope === 'university' && !universityEligible) {
-      setLeaderboardScope('friends')
+      setLeaderboardScope('global')
     }
   }, [leaderboardScope, universityEligible])
 
@@ -393,6 +406,10 @@ export default function Dashboard() {
 
   const renderLeaderboardEntry = (entry, index) => {
     const isCurrentUser = entry.user_id === user?.id
+    const isAnonymised = leaderboardScope === 'global' || leaderboardScope === 'university'
+    const displayName = isAnonymised
+      ? (isCurrentUser ? 'You' : anonymisedLeaderboardLabel(entry.user_id))
+      : (entry.username || entry.email?.split('@')[0] || 'User')
     const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
 
     let scoreValue
@@ -418,8 +435,9 @@ export default function Dashboard() {
         </div>
         <div className="db-leaderboard__user">
           <div className="db-leaderboard__username">
-            {entry.username || entry.email?.split('@')[0] || 'User'}
-            {isCurrentUser && <span className="db-leaderboard__you">(You)</span>}
+            {displayName}
+            {isCurrentUser && !isAnonymised && <span className="db-leaderboard__you">(You)</span>}
+            {isCurrentUser && isAnonymised && <span className="db-leaderboard__you"> (You)</span>}
           </div>
           <div className="db-leaderboard__stats">
             {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
@@ -548,7 +566,6 @@ export default function Dashboard() {
       </div>
 
       <div className="db-split">
-        <div className="db-split__left">
           <div className="db-qa">
             <div className="db-qa__title">Quick Actions</div>
             <div className="db-qa__sub">Jump back into your learning journey</div>
@@ -586,93 +603,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="db-leaderboard">
-            <div className="db-card">
-              <div className="db-card__top">
-                <div className="db-leaderboard__title">
-                  <LuTrophy size={18} />
-                  Leaderboard
-                </div>
-              </div>
-              <div className="db-leaderboard__content">
-                <div className="db-filters">
-                  {universityEligible && (
-                    <div className="db-filter db-filter--full">
-                      <select
-                        className="db-select"
-                        value={leaderboardScope}
-                        onChange={(e) => setLeaderboardScope(e.target.value)}
-                      >
-                        <option value="friends">Friends leaderboard</option>
-                        <option value="university">
-                          University leaderboard (@{universityDomain})
-                        </option>
-                      </select>
-                    </div>
-                  )}
-                  <div className="db-filter">
-                    <select
-                      className="db-select"
-                      value={selectedSpecialty}
-                      onChange={(e) => setSelectedSpecialty(e.target.value)}
-                    >
-                      <option value="all">All Specialties</option>
-                      {specialties.map((spec) => (
-                        <option key={spec.specialty_id} value={spec.specialty_id}>
-                          {spec.specialty_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="db-filter">
-                    <select
-                      className="db-select"
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                    >
-                      <option value="total_answered">Sort by Total Answered</option>
-                      <option value="correct">Sort by Correct Answers</option>
-                      <option value="accuracy_pct">Sort by Accuracy</option>
-                    </select>
-                  </div>
-                </div>
-
-                {leaderboardLoading ? (
-                  <div className="db-empty">Loading leaderboard…</div>
-                ) : leaderboard.length === 0 ? (
-                  <div className="db-empty">
-                    {leaderboardScope === 'university'
-                      ? `No students from @${universityDomain} on Synapse yet.`
-                      : 'No data available. Add friends to compete!'}
-                  </div>
-                ) : (
-                  <div className="db-leaderboard__list" ref={leaderboardListRef}>
-                    {visibleLeaderboard.map((entry, index) => renderLeaderboardEntry(entry, index))}
-                    {hiddenLeaderboardCount > 0 && (
-                      <button
-                        type="button"
-                        className="db-collapse-toggle"
-                        aria-expanded={leaderboardExpanded}
-                        onClick={toggleLeaderboardExpanded}
-                      >
-                        {leaderboardExpanded
-                          ? 'Show less'
-                          : `See more (${hiddenLeaderboardCount})`}
-                        <LuChevronDown
-                          size={16}
-                          className={`db-collapse-toggle__chevron ${leaderboardExpanded ? 'is-expanded' : ''}`}
-                          aria-hidden
-                        />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <aside className="db-analytics">
+          <aside className="db-analytics">
             <div className="db-card db-analytics__card">
               <div className="db-analytics__head">Analytics</div>
               <div className="db-analytics__tabs">
@@ -699,14 +630,14 @@ export default function Dashboard() {
                 </button>
               </div>
               <div className="db-analytics__graph">
-                {analyticsChart === 'questions' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderQuestionsChart(aggregateTrendByWeekday(trend)))}
-                {analyticsChart === 'accuracy' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderAccuracyChartByWeekday(aggregateTrendByWeekdayForAccuracy(trend)))}
-                {analyticsChart === 'time' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderTimeChartByWeekday(aggregateTrendByWeekdayForTime(trend)))}
+                {analyticsChart === 'questions' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderQuestionsChart(getLast7Days(trend)))}
+                {analyticsChart === 'accuracy' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderAccuracyChartByWeekday(getLast7Days(trend)))}
+                {analyticsChart === 'time' && (trendLoading ? <div className="db-analytics__graph-loading">Loading analytics…</div> : renderTimeChartByWeekday(getLast7Days(trend)))}
               </div>
               <p className="db-analytics__copy">
-                {analyticsChart === 'questions' && 'Track how many questions you answer each day. Consistency helps build long-term retention and improves exam readiness.'}
-                {analyticsChart === 'accuracy' && 'See which days you perform best. Higher accuracy on certain weekdays can help you plan when to do practice exams.'}
-                {analyticsChart === 'time' && "Average time per question by day of week. Spot days when you're quicker or need more focus."}
+                {analyticsChart === 'questions' && 'Questions answered each day this week. Aim for consistent daily practice to build long-term retention.'}
+                {analyticsChart === 'accuracy' && 'Your accuracy over the last 7 days. A rising trend means your knowledge is consolidating.'}
+                {analyticsChart === 'time' && 'Average seconds per question over the last 7 days. Getting faster usually means the material is becoming familiar.'}
               </p>
               <button
                 type="button"
@@ -717,8 +648,100 @@ export default function Dashboard() {
                 <LuArrowRight size={12} />
               </button>
             </div>
+          </aside>
 
-          <div className="db-card db-friends__card">
+          <div className="db-leaderboard">
+            <div className="db-card db-leaderboard__card">
+              <div className="db-card__top">
+                <div className="db-leaderboard__title">
+                  <LuTrophy size={18} />
+                  Leaderboard
+                </div>
+              </div>
+              <div className="db-leaderboard__content">
+                <div className="db-filters">
+                  <div className="db-filter db-filter--full">
+                    <select
+                      className="db-select"
+                      value={selectedSpecialty}
+                      onChange={(e) => setSelectedSpecialty(e.target.value)}
+                    >
+                      <option value="all">All Specialties</option>
+                      {specialties.map((spec) => (
+                        <option key={spec.specialty_id} value={spec.specialty_id}>
+                          {spec.specialty_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="db-filter db-filter--full">
+                    <select
+                      className="db-select"
+                      value={leaderboardScope}
+                      onChange={(e) => setLeaderboardScope(e.target.value)}
+                    >
+                      <option value="global">Global — anonymised</option>
+                      {universityEligible && (
+                        <option value="university">
+                          University{userYearGroup ? ` — Year ${userYearGroup}` : ` (@${universityDomain})`} — anonymised
+                        </option>
+                      )}
+                      <option value="friends">Friends</option>
+                    </select>
+                  </div>
+                  <div className="db-filter db-filter--full">
+                    <select
+                      className="db-select"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="total_answered">Sort by Total Answered</option>
+                      <option value="correct">Sort by Correct Answers</option>
+                      <option value="accuracy_pct">Sort by Accuracy</option>
+                    </select>
+                  </div>
+                </div>
+
+                {leaderboardLoading ? (
+                  <div className="db-empty">Loading leaderboard…</div>
+                ) : leaderboard.length === 0 ? (
+                  <div className="db-empty">
+                    {leaderboardScope === 'global' && 'No activity on the platform yet for this filter.'}
+                    {leaderboardScope === 'university' && (
+                      userYearGroup
+                        ? `No students from @${universityDomain} in year ${userYearGroup} yet.`
+                        : `No students from @${universityDomain} on Synapse yet.`
+                    )}
+                    {leaderboardScope === 'friends' && 'No data available. Add friends to compete!'}
+                  </div>
+                ) : (
+                  <div className="db-leaderboard__list" ref={leaderboardListRef}>
+                    {visibleLeaderboard.map((entry, index) => renderLeaderboardEntry(entry, index))}
+                    {hiddenLeaderboardCount > 0 && (
+                      <button
+                        type="button"
+                        className="db-collapse-toggle"
+                        aria-expanded={leaderboardExpanded}
+                        onClick={toggleLeaderboardExpanded}
+                      >
+                        {leaderboardExpanded
+                          ? 'Show less'
+                          : `See more (${hiddenLeaderboardCount})`}
+                        <LuChevronDown
+                          size={16}
+                          className={`db-collapse-toggle__chevron ${leaderboardExpanded ? 'is-expanded' : ''}`}
+                          aria-hidden
+                        />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="db-friends">
+            <div className="db-card db-friends__card">
             <div className="db-card__top">
               <div className="db-friends__title">
                 <LuUserPlus size={18} />
@@ -874,7 +897,7 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        </aside>
+          </div>
       </div>
 
     </div>
