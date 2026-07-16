@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   LuArrowLeft, LuPlay, LuX, LuChevronDown, LuChevronRight, LuTriangleAlert,
   LuRotateCcw, LuClock, LuZap, LuThumbsUp,
-  LuThumbsDown, LuCircleCheck, LuCalendarClock,
+  LuThumbsDown, LuCircleCheck, LuCalendarClock, LuBrain, LuBookOpen,
 } from 'react-icons/lu';
 import './Flashcards.css';
 import { authenticatedFetch } from '../../auth/token';
@@ -16,6 +16,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 // ─────────────────────────────────────────────────────────────
 
 const VIEWS = { PICKER: 'picker', SESSION: 'session', SUMMARY: 'summary' };
+const SESSION_MODES = { DUE: 'due', NEW: 'new', FREE: 'free' };
 
 // Max new cards introduced per session when no SRS history exists for a card
 const MAX_NEW_CARDS_PER_SESSION = 20;
@@ -238,17 +239,19 @@ function Select({ label, value, onChange, options, disabled, placeholder = 'All'
 }
 
 // ─────────────────────────────────────────────────────────────
-// PickerScreen — Anki-style deck browser (specialty → topic → condition)
+// PickerScreen — three study modes + specialty-first deck browser
 // ─────────────────────────────────────────────────────────────
 
-function PickerScreen({ onStart, srsStats }) {
+function PickerScreen({ onStart, srsStats, sessionMode, onModeChange }) {
   const { user } = useOutletContext();
   const [conditions, setConditions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [starting, setStarting] = useState(false); // async deck build in progress
+  const [starting, setStarting] = useState(false);
+  const [loadingDue, setLoadingDue] = useState(false);
 
-  const [selSpecialty, setSelSpecialty] = useState('');
+  // Expanded state for specialties (top level) and topics (sub-level)
+  const [expandedSpecialties, setExpandedSpecialties] = useState(new Set());
   const [expandedTopics, setExpandedTopics] = useState(new Set());
   const [selectedConditions, setSelectedConditions] = useState(new Set());
   const [activeSections, setActiveSections] = useState(() => new Set(PATHWAY_SECTIONS));
@@ -262,77 +265,70 @@ function PickerScreen({ onStart, srsStats }) {
       .then(({ conditions: data }) => {
         if (!cancelled) setConditions(data ?? []);
       })
-      .catch((e) => {
-        if (!cancelled) setError(e.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .catch((e) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [user]);
 
-  const specialtyOptions = useMemo(() => {
-    const seen = new Map();
+  // Build specialty → topic → condition hierarchy
+  const specialtyGroups = useMemo(() => {
+    const spMap = new Map();
     for (const c of conditions) {
-      if (c.specialty && !seen.has(c.specialty.id)) {
-        seen.set(c.specialty.id, c.specialty.name);
-      }
+      const spId   = c.specialty?.id   ?? 'unknown';
+      const spName = c.specialty?.name ?? 'Other';
+      const topId  = c.topic?.id   ?? 'unknown';
+      const topName = c.topic?.name ?? 'Other';
+      if (!spMap.has(spId)) spMap.set(spId, { id: spId, name: spName, topics: new Map() });
+      const sp = spMap.get(spId);
+      if (!sp.topics.has(topId)) sp.topics.set(topId, { id: topId, name: topName, conditions: [] });
+      sp.topics.get(topId).conditions.push(c);
     }
-    return [...seen.entries()]
-      .map(([v, l]) => ({ value: v, label: l }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [conditions]);
-
-  // Default to first specialty once data loads
-  useEffect(() => {
-    if (!selSpecialty && specialtyOptions.length) {
-      setSelSpecialty(specialtyOptions[0].value);
-    }
-  }, [specialtyOptions, selSpecialty]);
-
-  const specialtyConditions = useMemo(
-    () => conditions.filter((c) => c.specialty?.id === selSpecialty),
-    [conditions, selSpecialty]
-  );
-
-  const topicGroups = useMemo(() => {
-    const map = new Map();
-    for (const c of specialtyConditions) {
-      const topicId = c.topic?.id ?? 'unknown';
-      if (!map.has(topicId)) {
-        map.set(topicId, {
-          id: topicId,
-          name: c.topic?.name ?? 'Other',
-          conditions: [],
-        });
-      }
-      map.get(topicId).conditions.push(c);
-    }
-    return [...map.values()]
-      .map((g) => ({
-        ...g,
-        conditions: g.conditions.sort((a, b) => a.condition.localeCompare(b.condition)),
+    return [...spMap.values()]
+      .map((sp) => ({
+        ...sp,
+        topics: [...sp.topics.values()]
+          .map((t) => ({ ...t, conditions: t.conditions.sort((a, b) => a.condition.localeCompare(b.condition)) }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [specialtyConditions]);
+  }, [conditions]);
 
-  // Reset selection when specialty changes; expand topics when list updates
+  // All conditions flat (used for deck generation across all selected)
+  const allConditions = useMemo(() => conditions, [conditions]);
+
+  // Auto-expand first specialty on load
   useEffect(() => {
-    if (!selSpecialty) return;
-    setSelectedConditions(new Set());
-  }, [selSpecialty]);
+    if (specialtyGroups.length > 0 && expandedSpecialties.size === 0) {
+      const firstId = specialtyGroups[0].id;
+      setExpandedSpecialties(new Set([firstId]));
+      // Also expand all topics in first specialty
+      const topicIds = specialtyGroups[0].topics.map((t) => t.id);
+      setExpandedTopics(new Set(topicIds));
+    }
+  }, [specialtyGroups]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    setExpandedTopics(new Set(topicGroups.map((g) => g.id)));
-  }, [topicGroups]);
+  const toggleSpecialty = (spId, topics) => {
+    setExpandedSpecialties((prev) => {
+      const next = new Set(prev);
+      if (next.has(spId)) {
+        next.delete(spId);
+      } else {
+        next.add(spId);
+        // Auto-expand topics of newly opened specialty
+        setExpandedTopics((pt) => {
+          const nt = new Set(pt);
+          topics.forEach((t) => nt.add(t.id));
+          return nt;
+        });
+      }
+      return next;
+    });
+  };
 
-  const toggleTopicExpand = (topicId) => {
+  const toggleTopic = (topId) => {
     setExpandedTopics((prev) => {
       const next = new Set(prev);
-      if (next.has(topicId)) next.delete(topicId);
-      else next.add(topicId);
+      if (next.has(topId)) next.delete(topId); else next.add(topId);
       return next;
     });
   };
@@ -340,116 +336,113 @@ function PickerScreen({ onStart, srsStats }) {
   const toggleCondition = (condId) => {
     setSelectedConditions((prev) => {
       const next = new Set(prev);
-      if (next.has(condId)) next.delete(condId);
-      else next.add(condId);
+      if (next.has(condId)) next.delete(condId); else next.add(condId);
       return next;
     });
   };
 
-  const toggleTopicAll = (group) => {
-    const ids = group.conditions.map((c) => c.id);
-    const allSelected = ids.every((id) => selectedConditions.has(id));
+  const toggleTopicAll = (topic) => {
+    const ids = topic.conditions.map((c) => c.id);
+    const allSel = ids.every((id) => selectedConditions.has(id));
     setSelectedConditions((prev) => {
       const next = new Set(prev);
-      if (allSelected) ids.forEach((id) => next.delete(id));
+      if (allSel) ids.forEach((id) => next.delete(id));
       else ids.forEach((id) => next.add(id));
       return next;
     });
   };
 
-  const selectAllVisible = () => {
-    setSelectedConditions(new Set(specialtyConditions.map((c) => c.id)));
+  const toggleSpecialtyAll = (sp) => {
+    const ids = sp.topics.flatMap((t) => t.conditions.map((c) => c.id));
+    const allSel = ids.every((id) => selectedConditions.has(id));
+    setSelectedConditions((prev) => {
+      const next = new Set(prev);
+      if (allSel) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
   };
 
-  const clearSelection = () => setSelectedConditions(new Set());
+  const selectAll = () => setSelectedConditions(new Set(conditions.map((c) => c.id)));
+  const clearAll  = () => setSelectedConditions(new Set());
 
   const toggleSection = (section) => {
     setActiveSections((prev) => {
       const next = new Set(prev);
-      if (next.has(section)) next.delete(section);
+      if (next.has(section)) next.delete(next.has(section) && section);
       else next.add(section);
       return next;
     });
   };
 
   const previewCount = useMemo(
-    () => countCardsForConditions(specialtyConditions, selectedConditions, activeSections),
-    [specialtyConditions, selectedConditions, activeSections]
+    () => countCardsForConditions(allConditions, selectedConditions, activeSections),
+    [allConditions, selectedConditions, activeSections]
   );
 
-  /**
-   * Build a priority-ordered deck:
-   *   1. Due cards (next_due_at <= now) from the user's selection — all of them
-   *   2. New cards (no SRS record) from the selection — up to MAX_NEW_CARDS_PER_SESSION
-   *   3. Remaining cards (not due yet, have SRS history) — rest of the selection
-   *
-   * The user only needs to pick conditions. SRS ordering is invisible.
-   */
+  const dueCount  = srsStats?.due_count  ?? 0;
+  const nextDueAt = srsStats?.next_due_at;
+  const seenCount = srsStats?.seen_count ?? 0;
+
+  function formatNextDue(isoStr) {
+    if (!isoStr) return null;
+    const d = new Date(isoStr);
+    const diffMs = d - Date.now();
+    const hrs = Math.round(diffMs / 3_600_000);
+    if (hrs < 1) return 'less than an hour';
+    if (hrs < 24) return `${hrs}h`;
+    const days = Math.round(diffMs / 86_400_000);
+    return `${days} day${days !== 1 ? 's' : ''}`;
+  }
+
   function handleStart() {
-    if (previewCount === 0) return;
-    setStarting(true);
+    if (sessionMode === SESSION_MODES.DUE) {
+      if (!srsStats || dueCount === 0) return;
+      setLoadingDue(true);
+      apiFetch('/flashcards/srs/due?limit=500')
+        .then(({ due }) => {
+          const dueSet = new Set(due.map((d) => d.flashcard_uid));
+          const fullDeck = generateDeckFromSelection(
+            allConditions,
+            new Set(allConditions.map((c) => c.id)),
+            new Set(PATHWAY_SECTIONS)
+          );
+          const dueDeck = fullDeck.filter((card) => dueSet.has(card.uid));
+          if (dueDeck.length > 0) onStart(dueDeck);
+        })
+        .catch(() => {})
+        .finally(() => setLoadingDue(false));
+      return;
+    }
 
-    const fullDeck = generateDeckFromSelection(specialtyConditions, selectedConditions, activeSections);
+    if (sessionMode === SESSION_MODES.NEW) {
+      if (selectedConditions.size === 0) return;
+      setStarting(true);
+      apiFetch('/flashcards/srs/due?limit=500')
+        .then(({ due }) => {
+          const seenUids = new Set(due.map((d) => d.flashcard_uid));
+          const fullDeck = generateDeckFromSelection(allConditions, selectedConditions, activeSections);
+          const newDeck  = fullDeck.filter((card) => !seenUids.has(card.uid));
+          if (newDeck.length > 0) onStart(newDeck.slice(0, MAX_NEW_CARDS_PER_SESSION));
+        })
+        .catch(() => {})
+        .finally(() => setStarting(false));
+      return;
+    }
 
-    // Fetch due UIDs in the background, then sort the deck
-    apiFetch('/flashcards/srs/due?limit=500')
-      .then(({ due }) => {
-        const dueUidSet = new Set(due.map((d) => d.flashcard_uid));
-
-        const dueDeck  = [];
-        const newDeck  = [];
-        const restDeck = [];
-
-        for (const card of fullDeck) {
-          if (dueUidSet.has(card.uid)) {
-            dueDeck.push(card);          // already scheduled, due now
-          } else if (!due.some(() => false) && !dueUidSet.has(card.uid)) {
-            // Distinguish new (never seen) from future-scheduled:
-            // due endpoint only returns rows where next_due_at <= now.
-            // Cards not in due list are either new (no row) or future-scheduled.
-            // We approximate: any card not in due list is treated as "rest".
-            // To properly distinguish new vs future we'd need a separate endpoint.
-            // For now, push to rest and interleave new logic below.
-            restDeck.push(card);
-          }
-        }
-
-        // Better split: fetch all seen uids separately
-        // Since we don't have a "all seen" endpoint, we reuse the due list.
-        // Cards in due list = seen + due now.
-        // Cards not in due list = either new OR seen but not yet due.
-        // We can't tell them apart without another query, so:
-        // treat restDeck as shuffled and cap at MAX_NEW_CARDS_PER_SESSION
-        // to avoid overwhelming users. This is a good approximation.
-        const finalDeck = [
-          ...dueDeck,
-          ...restDeck.slice(0, MAX_NEW_CARDS_PER_SESSION),
-        ];
-
-        if (finalDeck.length > 0) {
-          onStart(finalDeck);
-        } else {
-          onStart(fullDeck.slice(0, MAX_NEW_CARDS_PER_SESSION));
-        }
-      })
-      .catch(() => {
-        // If SRS fetch fails, fall back to plain shuffled deck
-        onStart(fullDeck);
-      })
-      .finally(() => setStarting(false));
+    // Free study
+    if (selectedConditions.size === 0) return;
+    const deck = generateDeckFromSelection(allConditions, selectedConditions, activeSections);
+    if (deck.length > 0) onStart(deck);
   }
 
   if (loading) {
     return (
       <div className="fc-picker fc-picker--browser">
-        <div className="fc-picker__loading">
-          <div className="fc-spinner" />
-          <p>Loading conditions…</p>
-        </div>
+        <div className="fc-picker__loading"><div className="fc-spinner" /><p>Loading conditions…</p></div>
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="fc-picker fc-picker--browser">
@@ -458,191 +451,320 @@ function PickerScreen({ onStart, srsStats }) {
     );
   }
 
-  const dueCount = srsStats?.due_count ?? 0;
+  // Condition browser — rendered for FREE and NEW modes
+  const conditionBrowser = (
+    <>
+      {/* Section chips */}
+      <div className="fc-browser__toolbar fc-browser__toolbar--sections-only">
+        <div className="fc-browser__sections">
+          <span className="fc-browser__sections-label">Pathway sections</span>
+          <div className="fc-browser__section-chips">
+            {PATHWAY_SECTIONS.map((section) => (
+              <button
+                key={section}
+                type="button"
+                className={`fc-section-chip${activeSections.has(section) ? ' fc-section-chip--on' : ''}`}
+                onClick={() => toggleSection(section)}
+              >
+                {section}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Global select / clear */}
+      <div className="fc-browser__list-actions">
+        <span className="fc-browser__list-meta">
+          {conditions.length} condition{conditions.length !== 1 ? 's' : ''} across {specialtyGroups.length} specialt{specialtyGroups.length !== 1 ? 'ies' : 'y'}
+        </span>
+        <div className="fc-browser__list-btns">
+          <button type="button" className="fc-browser__link-btn" onClick={selectAll}>Select all</button>
+          <span className="fc-browser__sep">·</span>
+          <button type="button" className="fc-browser__link-btn" onClick={clearAll}>Clear</button>
+        </div>
+      </div>
+
+      {/* Specialty-first hierarchy */}
+      <div className="fc-browser__list">
+        {specialtyGroups.map((sp) => {
+          const spExpanded   = expandedSpecialties.has(sp.id);
+          const spCondIds    = sp.topics.flatMap((t) => t.conditions.map((c) => c.id));
+          const spSelCount   = spCondIds.filter((id) => selectedConditions.has(id)).length;
+          const spAllSel     = spCondIds.length > 0 && spSelCount === spCondIds.length;
+          const spCardCount  = countCardsForConditions(
+            sp.topics.flatMap((t) => t.conditions),
+            new Set(spCondIds.filter((id) => selectedConditions.has(id))),
+            activeSections
+          );
+
+          return (
+            <div key={sp.id} className="fc-browser__specialty">
+              {/* Specialty header */}
+              <div className="fc-browser__specialty-header">
+                <button
+                  type="button"
+                  className="fc-browser__expand fc-browser__expand--specialty"
+                  onClick={() => toggleSpecialty(sp.id, sp.topics)}
+                  aria-expanded={spExpanded}
+                >
+                  {spExpanded ? <LuChevronDown size={18} /> : <LuChevronRight size={18} />}
+                </button>
+                <button
+                  type="button"
+                  className="fc-browser__specialty-title"
+                  onClick={() => toggleSpecialty(sp.id, sp.topics)}
+                >
+                  {sp.name}
+                  <span className="fc-browser__specialty-meta">
+                    {sp.topics.length} topic{sp.topics.length !== 1 ? 's' : ''}
+                    {' · '}{spCondIds.length} condition{spCondIds.length !== 1 ? 's' : ''}
+                    {spSelCount > 0 && ` · ${spCardCount} cards selected`}
+                  </span>
+                </button>
+                <label className="fc-browser__check-label">
+                  <input
+                    type="checkbox"
+                    checked={spAllSel}
+                    ref={(el) => { if (el) el.indeterminate = spSelCount > 0 && !spAllSel; }}
+                    onChange={() => toggleSpecialtyAll(sp)}
+                  />
+                  <span className="fc-browser__check-box" />
+                </label>
+              </div>
+
+              {/* Topics inside specialty */}
+              {spExpanded && (
+                <div className="fc-browser__specialty-body">
+                  {sp.topics.map((topic) => {
+                    const topExpanded  = expandedTopics.has(topic.id);
+                    const topCondIds   = topic.conditions.map((c) => c.id);
+                    const topSelCount  = topCondIds.filter((id) => selectedConditions.has(id)).length;
+                    const topAllSel    = topCondIds.length > 0 && topSelCount === topCondIds.length;
+                    const topCardCount = countCardsForConditions(
+                      topic.conditions,
+                      new Set(topCondIds.filter((id) => selectedConditions.has(id))),
+                      activeSections
+                    );
+
+                    return (
+                      <div key={topic.id} className="fc-browser__group">
+                        <div className="fc-browser__group-header">
+                          <button
+                            type="button"
+                            className="fc-browser__expand"
+                            onClick={() => toggleTopic(topic.id)}
+                            aria-expanded={topExpanded}
+                          >
+                            {topExpanded ? <LuChevronDown size={16} /> : <LuChevronRight size={16} />}
+                          </button>
+                          <button
+                            type="button"
+                            className="fc-browser__group-title"
+                            onClick={() => toggleTopic(topic.id)}
+                          >
+                            {topic.name}
+                            <span className="fc-browser__group-count">
+                              {topic.conditions.length} condition{topic.conditions.length !== 1 ? 's' : ''}
+                              {topSelCount > 0 && ` · ${topCardCount} cards`}
+                            </span>
+                          </button>
+                          <label className="fc-browser__check-label">
+                            <input
+                              type="checkbox"
+                              checked={topAllSel}
+                              ref={(el) => { if (el) el.indeterminate = topSelCount > 0 && !topAllSel; }}
+                              onChange={() => toggleTopicAll(topic)}
+                            />
+                            <span className="fc-browser__check-box" />
+                          </label>
+                        </div>
+
+                        {topExpanded && (
+                          <div className="fc-browser__rows">
+                            {topic.conditions.map((cond) => {
+                              const sections   = getConditionSections(cond);
+                              const isSelected = selectedConditions.has(cond.id);
+                              const cardCount  = countCardsForConditions([cond], new Set([cond.id]), activeSections);
+                              return (
+                                <label
+                                  key={cond.id}
+                                  className={`fc-browser__row${isSelected ? ' fc-browser__row--selected' : ''}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="fc-browser__row-check"
+                                    checked={isSelected}
+                                    onChange={() => toggleCondition(cond.id)}
+                                  />
+                                  <span className="fc-browser__row-check-box" />
+                                  <div className="fc-browser__row-head">
+                                    <span className="fc-browser__row-name">{cond.condition}</span>
+                                    <span className="fc-browser__row-count">{cardCount} {cardCount === 1 ? 'card' : 'cards'}</span>
+                                  </div>
+                                  <span className="fc-browser__row-tags">
+                                    {sections.map((sec) => (
+                                      <span
+                                        key={sec}
+                                        className={`fc-tag${activeSections.has(sec) ? '' : ' fc-tag--muted'}`}
+                                      >{sec}</span>
+                                    ))}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
 
   return (
     <div className="fc-picker fc-picker--browser">
       <div className="fc-picker__header">
-        <h2 className="fc-picker__title">Flashcard Study Session</h2>
-        <p className="fc-picker__subtitle">
-          Pick a specialty and conditions. Due cards are shown first, then new cards,
-          so your session always focuses on what matters most.
-        </p>
-        {dueCount > 0 && (
-          <div className="fc-due-pill">
-            <LuCalendarClock size={14} />
-            <span><strong>{dueCount}</strong> card{dueCount !== 1 ? 's' : ''} due for review — these will appear first</span>
-          </div>
-        )}
+        <h2 className="fc-picker__title">Flashcards</h2>
+        <p className="fc-picker__subtitle">Choose how you want to study, then pick conditions from the deck browser.</p>
       </div>
 
-      <div className="fc-browser__toolbar">
-        <Select
-          label="Specialty"
-          value={selSpecialty}
-          onChange={setSelSpecialty}
-          options={specialtyOptions}
-          placeholder="Select specialty"
-        />
-
-        <div className="fc-browser__sections">
-          <span className="fc-browser__sections-label">Pathway sections</span>
-          <div className="fc-browser__section-chips">
-            {PATHWAY_SECTIONS.map((section) => {
-              const on = activeSections.has(section);
-              return (
-                <button
-                  key={section}
-                  type="button"
-                  className={`fc-section-chip${on ? ' fc-section-chip--on' : ''}`}
-                  onClick={() => toggleSection(section)}
-                >
-                  {section}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="fc-browser__list-actions">
-        <span className="fc-browser__list-meta">
-          {topicGroups.length} topic{topicGroups.length !== 1 ? 's' : ''} ·{' '}
-          {specialtyConditions.length} condition{specialtyConditions.length !== 1 ? 's' : ''}
-        </span>
-        <div className="fc-browser__list-btns">
-          <button type="button" className="fc-browser__link-btn" onClick={selectAllVisible}>
-            Select all
-          </button>
-          <span className="fc-browser__sep">·</span>
-          <button type="button" className="fc-browser__link-btn" onClick={clearSelection}>
-            Clear
-          </button>
-        </div>
-      </div>
-
-      <div className="fc-browser__list">
-        {topicGroups.length === 0 ? (
-          <p className="fc-picker__empty">No conditions published for this specialty yet.</p>
-        ) : (
-          topicGroups.map((group) => {
-            const isExpanded = expandedTopics.has(group.id);
-            const groupIds = group.conditions.map((c) => c.id);
-            const selectedInGroup = groupIds.filter((id) => selectedConditions.has(id)).length;
-            const allInGroup = groupIds.length > 0 && selectedInGroup === groupIds.length;
-            const groupCardCount = countCardsForConditions(
-              group.conditions,
-              new Set(groupIds.filter((id) => selectedConditions.has(id))),
-              activeSections
-            );
-
-            return (
-              <div key={group.id} className="fc-browser__group">
-                <div className="fc-browser__group-header">
-                  <button
-                    type="button"
-                    className="fc-browser__expand"
-                    onClick={() => toggleTopicExpand(group.id)}
-                    aria-expanded={isExpanded}
-                  >
-                    {isExpanded ? <LuChevronDown size={18} /> : <LuChevronRight size={18} />}
-                  </button>
-                  <button
-                    type="button"
-                    className="fc-browser__group-title"
-                    onClick={() => toggleTopicExpand(group.id)}
-                  >
-                    {group.name}
-                    <span className="fc-browser__group-count">
-                      {group.conditions.length} condition{group.conditions.length !== 1 ? 's' : ''}
-                      {selectedInGroup > 0 && ` · ${groupCardCount} cards`}
-                    </span>
-                  </button>
-                  <label className="fc-browser__check-label">
-                    <input
-                      type="checkbox"
-                      checked={allInGroup}
-                      ref={(el) => {
-                        if (el) el.indeterminate = selectedInGroup > 0 && !allInGroup;
-                      }}
-                      onChange={() => toggleTopicAll(group)}
-                    />
-                    <span className="fc-browser__check-box" />
-                  </label>
-                </div>
-
-                {isExpanded && (
-                  <div className="fc-browser__rows">
-                    {group.conditions.map((cond) => {
-                      const sections = getConditionSections(cond);
-                      const isSelected = selectedConditions.has(cond.id);
-                      const cardCount = countCardsForConditions(
-                        [cond],
-                        new Set([cond.id]),
-                        activeSections
-                      );
-
-                      return (
-                        <label
-                          key={cond.id}
-                          className={`fc-browser__row${isSelected ? ' fc-browser__row--selected' : ''}`}
-                        >
-                          <input
-                            type="checkbox"
-                            className="fc-browser__row-check"
-                            checked={isSelected}
-                            onChange={() => toggleCondition(cond.id)}
-                          />
-                          <span className="fc-browser__row-check-box" />
-                          <div className="fc-browser__row-head">
-                            <span className="fc-browser__row-name">{cond.condition}</span>
-                            <span className="fc-browser__row-count">
-                              {cardCount} {cardCount === 1 ? 'card' : 'cards'}
-                            </span>
-                          </div>
-                          <span className="fc-browser__row-tags">
-                            {sections.map((sec) => (
-                              <span
-                                key={sec}
-                                className={`fc-tag${activeSections.has(sec) ? '' : ' fc-tag--muted'}`}
-                              >
-                                {sec}
-                              </span>
-                            ))}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      <div className="fc-browser__footer">
-        <div className="fc-browser__footer-summary">
-          <strong>{previewCount}</strong>
-          <span>{previewCount === 1 ? ' card' : ' cards'} selected</span>
-          {selectedConditions.size > 0 && (
-            <span className="fc-browser__footer-from">
-              from {selectedConditions.size} condition{selectedConditions.size !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
+      {/* ── Mode tabs ─────────────────────────── */}
+      <div className="fc-mode-tabs">
         <button
-          id="fc-start-study"
-          className="fc-picker__start fc-browser__start"
-          onClick={handleStart}
-          disabled={previewCount === 0 || starting}
+          id="fc-mode-due"
+          type="button"
+          className={`fc-mode-tab${sessionMode === SESSION_MODES.DUE ? ' fc-mode-tab--active' : ''}`}
+          onClick={() => onModeChange(SESSION_MODES.DUE)}
         >
-          {starting
-            ? <div className="fc-spinner" style={{ width: 18, height: 18, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%' }} />
-            : <LuPlay size={18} />}
-          Study Now
+          <LuCalendarClock size={16} />
+          Due Today
+          {dueCount > 0 && <span className="fc-mode-tab__badge">{dueCount}</span>}
+        </button>
+        <button
+          id="fc-mode-new"
+          type="button"
+          className={`fc-mode-tab${sessionMode === SESSION_MODES.NEW ? ' fc-mode-tab--active' : ''}`}
+          onClick={() => onModeChange(SESSION_MODES.NEW)}
+        >
+          <LuBookOpen size={16} />
+          New Cards
+        </button>
+        <button
+          id="fc-mode-free"
+          type="button"
+          className={`fc-mode-tab${sessionMode === SESSION_MODES.FREE ? ' fc-mode-tab--active' : ''}`}
+          onClick={() => onModeChange(SESSION_MODES.FREE)}
+        >
+          <LuBrain size={16} />
+          Free Study
         </button>
       </div>
+
+      {/* ── Due Today panel ───────────────────── */}
+      {sessionMode === SESSION_MODES.DUE && (
+        <div className="fc-mode-panel">
+          {dueCount === 0 ? (
+            <div className="fc-mode-panel__empty">
+              <LuCircleCheck size={36} color="#16a34a" />
+              <p className="fc-mode-panel__empty-title">All caught up!</p>
+              {nextDueAt ? (
+                <p className="fc-mode-panel__empty-sub">
+                  Next review in <strong>{formatNextDue(nextDueAt)}</strong>
+                </p>
+              ) : seenCount === 0 ? (
+                <p className="fc-mode-panel__empty-sub">
+                  No cards studied yet — try <strong>New Cards</strong> or <strong>Free Study</strong> to get started.
+                </p>
+              ) : (
+                <p className="fc-mode-panel__empty-sub">No upcoming reviews scheduled.</p>
+              )}
+            </div>
+          ) : (
+            <div className="fc-mode-panel__due">
+              <div className="fc-mode-panel__due-count">
+                <LuCalendarClock size={28} />
+                <span>{dueCount} card{dueCount !== 1 ? 's' : ''} due for review</span>
+              </div>
+              <p className="fc-mode-panel__due-sub">
+                These cards are scheduled for today based on your previous ratings.
+              </p>
+              <button
+                id="fc-start-due"
+                className="fc-picker__start fc-browser__start"
+                onClick={handleStart}
+                disabled={loadingDue}
+              >
+                {loadingDue
+                  ? <div className="fc-spinner" style={{ width: 18, height: 18, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                  : <LuPlay size={18} />}
+                Start Review
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── New Cards: browser + start ─────────── */}
+      {sessionMode === SESSION_MODES.NEW && (
+        <>
+          <div className="fc-mode-panel fc-mode-panel--inline">
+            <LuBookOpen size={18} className="fc-mode-panel__inline-icon" />
+            <p>Study <strong>up to {MAX_NEW_CARDS_PER_SESSION} new cards</strong> you haven&apos;t seen yet. Select conditions below.</p>
+          </div>
+          {conditionBrowser}
+          <div className="fc-browser__footer">
+            <div className="fc-browser__footer-summary">
+              <strong>{previewCount}</strong>
+              <span>{previewCount === 1 ? ' card' : ' cards'} available</span>
+              {selectedConditions.size > 0 && (
+                <span className="fc-browser__footer-from">from {selectedConditions.size} condition{selectedConditions.size !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+            <button
+              id="fc-start-new"
+              className="fc-picker__start fc-browser__start"
+              onClick={handleStart}
+              disabled={selectedConditions.size === 0 || starting}
+            >
+              {starting
+                ? <div className="fc-spinner" style={{ width: 18, height: 18, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                : <LuPlay size={18} />}
+              Study New Cards
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── Free Study: browser + start ─────────── */}
+      {sessionMode === SESSION_MODES.FREE && (
+        <>
+          {conditionBrowser}
+          <div className="fc-browser__footer">
+            <div className="fc-browser__footer-summary">
+              <strong>{previewCount}</strong>
+              <span>{previewCount === 1 ? ' card' : ' cards'} selected</span>
+              {selectedConditions.size > 0 && (
+                <span className="fc-browser__footer-from">from {selectedConditions.size} condition{selectedConditions.size !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+            <button
+              id="fc-start-free"
+              className="fc-picker__start fc-browser__start"
+              onClick={handleStart}
+              disabled={previewCount === 0}
+            >
+              <LuPlay size={18} />
+              Study Now
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -945,13 +1067,14 @@ function SummaryScreen({ result, onRestart, onExit }) {
 
 export default function Flashcards() {
   const navigate = useNavigate();
-  const [view, setView]         = useState(VIEWS.PICKER);
-  const [deck, setDeck]         = useState([]);
-  const [result, setResult]     = useState(null);
-  const [srsStats, setSrsStats] = useState(null);
+  const [view, setView]           = useState(VIEWS.PICKER);
+  const [deck, setDeck]           = useState([]);
+  const [result, setResult]       = useState(null);
+  const [sessionMode, setMode]    = useState(SESSION_MODES.DUE);
+  const [srsStats, setSrsStats]   = useState(null);
   const { user } = useOutletContext();
 
-  // Load SRS stats whenever we return to picker (to show due pill)
+  // Refresh SRS stats every time the picker is shown
   useEffect(() => {
     if (!user || view !== VIEWS.PICKER) return;
     apiFetch('/flashcards/srs/stats')
@@ -959,46 +1082,26 @@ export default function Flashcards() {
       .catch(() => setSrsStats(null));
   }, [user, view]);
 
-  /** Fire-and-forget SRS record — called from SessionScreen on each rating */
   async function handleRate(flashcard_uid, confidence) {
     try {
-      const result = await apiFetch('/flashcards/srs/record', {
+      const res = await apiFetch('/flashcards/srs/record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ flashcard_uid, confidence }),
       });
-      return result; // { next_due_at, interval_days, repetitions }
-    } catch {
-      return null;
-    }
+      return res;
+    } catch { return null; }
   }
 
-  function handleStart(generatedDeck) {
-    setDeck(generatedDeck);
-    setView(VIEWS.SESSION);
-  }
-
-  function handleComplete(res) {
-    setResult(res);
-    setView(VIEWS.SUMMARY);
-  }
-
-  function handleAbandon() {
-    setDeck([]);
-    setView(VIEWS.PICKER);
-  }
-
-  function handleRestart() {
-    setDeck([]);
-    setResult(null);
-    setView(VIEWS.PICKER);
-  }
+  function handleStart(generatedDeck) { setDeck(generatedDeck); setView(VIEWS.SESSION); }
+  function handleComplete(res) { setResult(res); setView(VIEWS.SUMMARY); }
+  function handleAbandon()  { setDeck([]); setView(VIEWS.PICKER); }
+  function handleRestart()  { setDeck([]); setResult(null); setView(VIEWS.PICKER); }
 
   return (
     <div className="fc-page">
       <button className="fc-page__back" onClick={() => navigate('/dashboard/question-bank')}>
-        <LuArrowLeft size={18} />
-        <span>Question Bank</span>
+        <LuArrowLeft size={18} /><span>Question Bank</span>
       </button>
 
       <div className={`fc-page__card${view === VIEWS.PICKER ? ' fc-page__card--picker' : ''}`}>
@@ -1006,9 +1109,10 @@ export default function Flashcards() {
           <PickerScreen
             onStart={handleStart}
             srsStats={srsStats}
+            sessionMode={sessionMode}
+            onModeChange={setMode}
           />
         )}
-
         {view === VIEWS.SESSION && deck.length > 0 && (
           <SessionScreen
             initialDeck={deck}
@@ -1017,7 +1121,6 @@ export default function Flashcards() {
             onRate={handleRate}
           />
         )}
-
         {view === VIEWS.SUMMARY && result && (
           <SummaryScreen
             result={result}
