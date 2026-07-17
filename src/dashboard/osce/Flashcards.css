@@ -210,7 +210,6 @@ html[data-theme="dark"] .fc-error {
   align-items: center;
   gap: 8px;
   transition: all .2s;
-  box-shadow: 0 4px 20px rgba(32,229,246,.3);
 }
 .fc-picker__start:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
 .fc-picker__start:disabled { background: #9ca3af; cursor: not-allowed; box-shadow: none; }
@@ -1821,9 +1820,9 @@ html[data-theme="dark"] .fc-summary__schedule-name {
 }
 
 .fc-mode-tab--active {
-  background: var(--syn-primary, #20e5f6);
+  background: #4f46e5;
   color: #fff;
-  box-shadow: 0 2px 8px rgba(32,229,246,.25);
+  box-shadow: 0 2px 8px rgba(79,70,229,.25);
 }
 
 .fc-mode-tab__badge {
@@ -1862,6 +1861,7 @@ html[data-theme="dark"] .fc-mode-tab:hover {
   border-radius: 14px;
   margin-bottom: 8px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .fc-browser__specialty-header {
@@ -1869,12 +1869,12 @@ html[data-theme="dark"] .fc-mode-tab:hover {
   align-items: center;
   gap: 6px;
   padding: 14px 16px;
-  background: linear-gradient(135deg, rgba(32,229,246,.04) 0%, rgba(124,58,237,.04) 100%);
+  background: rgba(0,0,0,.03);
   cursor: default;
 }
 
 .fc-browser__expand--specialty {
-  color: var(--syn-primary, #20e5f6);
+  color: var(--syn-muted);
 }
 
 .fc-browser__specialty-title {
@@ -1900,14 +1900,15 @@ html[data-theme="dark"] .fc-mode-tab:hover {
 }
 
 .fc-browser__specialty-body {
-  padding: 4px 0 4px 24px;
+  padding: 4px 0;
   border-top: 1px solid var(--syn-border);
+  border-left: 3px solid rgba(79,70,229,.25);
   background: var(--surface-card);
 }
 
-/* Nested groups inside specialty body are slightly indented and lighter */
+/* Nested groups inside specialty body inherit background cleanly */
 .fc-browser__specialty-body .fc-browser__group-header {
-  background: transparent;
+  background: var(--surface-card);
 }
 
 /* Sections-only toolbar (no specialty dropdown) */
@@ -1946,13 +1947,17 @@ html[data-theme="dark"] .fc-browser__specialty {
   border-color: var(--dm-border, rgba(255,255,255,.08));
 }
 html[data-theme="dark"] .fc-browser__specialty-header {
-  background: linear-gradient(135deg, rgba(32,229,246,.06) 0%, rgba(124,58,237,.06) 100%);
+  background: rgba(255,255,255,.04);
 }
 html[data-theme="dark"] .fc-browser__specialty-title {
   color: #f1f5f9;
 }
 html[data-theme="dark"] .fc-browser__specialty-body {
-  border-color: rgba(255,255,255,.06);
+  border-top-color: rgba(255,255,255,.06);
+  border-left-color: rgba(79,70,229,.4);
+  background: var(--dm-surface-container-low);
+}
+html[data-theme="dark"] .fc-browser__specialty-body .fc-browser__group-header {
   background: var(--dm-surface-container-low);
 }
 html[data-theme="dark"] .fc-mode-panel--inline {

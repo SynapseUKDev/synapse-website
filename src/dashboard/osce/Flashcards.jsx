@@ -418,14 +418,20 @@ function PickerScreen({ onStart, srsStats, sessionMode, onModeChange }) {
     if (sessionMode === SESSION_MODES.NEW) {
       if (selectedConditions.size === 0) return;
       setStarting(true);
-      apiFetch('/flashcards/srs/due?limit=500')
-        .then(({ due }) => {
-          const seenUids = new Set(due.map((d) => d.flashcard_uid));
+      apiFetch('/flashcards/srs/seen?limit=5000')
+        .then(({ seen }) => {
+          const seenUids = new Set(seen);
           const fullDeck = generateDeckFromSelection(allConditions, selectedConditions, activeSections);
           const newDeck  = fullDeck.filter((card) => !seenUids.has(card.uid));
-          if (newDeck.length > 0) onStart(newDeck.slice(0, MAX_NEW_CARDS_PER_SESSION));
+          // If all cards have been seen, fall back to the full deck so the user isn't stuck
+          const finalDeck = newDeck.length > 0 ? newDeck : fullDeck;
+          onStart(finalDeck.slice(0, MAX_NEW_CARDS_PER_SESSION));
         })
-        .catch(() => {})
+        .catch(() => {
+          // If seen-fetch fails, just serve the full selection as-is
+          const deck = generateDeckFromSelection(allConditions, selectedConditions, activeSections);
+          if (deck.length > 0) onStart(deck.slice(0, MAX_NEW_CARDS_PER_SESSION));
+        })
         .finally(() => setStarting(false));
       return;
     }
