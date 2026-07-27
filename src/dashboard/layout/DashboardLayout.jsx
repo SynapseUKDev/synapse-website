@@ -14,6 +14,8 @@ function DashboardLayout() {
   const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
+  const [access, setAccess] = useState(null)
+  const [institution, setInstitution] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const fetchUser = useCallback(async () => {
@@ -46,13 +48,25 @@ function DashboardLayout() {
         navigate('/auth/change-password')
         return
       }
+      // Set state before any redirect below: /dashboard/institution renders
+      // inside this layout, so bailing out early would leave it without a user.
+      setUser(data.user)
+      setAccess(data.access || null)
+      setInstitution(data.institution || null)
+
       const hasAccess = !!data?.access?.has_active_access
       if (!hasAccess) {
+        // /subscribe only sells personal plans, so an institution admin whose
+        // billing lapsed would be stranded there with no way to fix it.
+        if (data?.capabilities?.is_institution_admin) {
+          console.log('Institution billing inactive, redirecting to institution billing')
+          navigate('/dashboard/institution?billing=required', { replace: true })
+          return
+        }
         console.log('Access inactive, redirecting to subscribe')
         navigate('/subscribe')
         return
       }
-      setUser(data.user)
     } catch (error) {
       console.error('Error fetching user:', error)
       navigate('/')
@@ -78,6 +92,14 @@ function DashboardLayout() {
   useEffect(() => {
     if (user?.capabilities?.can_review && location.pathname.includes('/admin')) {
       navigate('/dashboard', { replace: true })
+    }
+  }, [user, location.pathname, navigate])
+
+  // Institution admins manage students rather than study, so the student
+  // dashboard is not their landing page.
+  useEffect(() => {
+    if (user?.capabilities?.is_institution_admin && location.pathname.replace(/\/$/, '') === '/dashboard') {
+      navigate('/dashboard/institution', { replace: true })
     }
   }, [user, location.pathname, navigate])
 
@@ -143,7 +165,7 @@ function DashboardLayout() {
 
       <Sidebar user={user} onLogout={handleLogout} />
       <main className="dash__content">
-        <Outlet context={{ user, location }} />
+        <Outlet context={{ user, access, institution, location }} />
       </main>
     </div>
   )

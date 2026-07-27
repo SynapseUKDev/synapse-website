@@ -25,6 +25,12 @@ function anonymisedLeaderboardLabel(userId) {
   return `Student ${1000 + (hash % 9000)}`
 }
 
+/** Scopes where every peer is anonymised, regardless of their own preference. */
+const ANONYMISED_SCOPES = ['global', 'university']
+
+/** Institution scopes hit one endpoint; the year variant adds a cohort filter. */
+const INSTITUTION_SCOPES = ['institution', 'institution_year']
+
 /** px to scroll when a collapsible list opens — scales with item count */
 function collapseExpandScrollOffset(itemCount) {
   const n = Math.max(1, itemCount)
@@ -36,7 +42,7 @@ function collapseExpandScrollOffset(itemCount) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user } = useOutletContext()
+  const { user, institution } = useOutletContext()
   const isReviewer = !!user?.capabilities?.can_review
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   const summaryReq = useStaleJson(`${API_BASE}/dashboard/summary`, {
@@ -153,10 +159,15 @@ export default function Dashboard() {
       setLeaderboardLoading(true)
       const params = new URLSearchParams()
       if (selectedSpecialty !== 'all') params.set('specialty_id', selectedSpecialty)
+      // 'mine' lets the backend resolve the viewer's cohort, so the client never
+      // needs to know cohort ids.
+      if (leaderboardScope === 'institution_year') params.set('cohort_id', 'mine')
       const query = params.toString()
       const basePaths = {
         global: `${API_BASE}/friends/global-leaderboard`,
         university: `${API_BASE}/friends/university-leaderboard`,
+        institution: `${API_BASE}/friends/institution-leaderboard`,
+        institution_year: `${API_BASE}/friends/institution-leaderboard`,
         friends: `${API_BASE}/friends/leaderboard`,
       }
       const basePath = basePaths[leaderboardScope] || basePaths.friends
@@ -180,6 +191,12 @@ export default function Dashboard() {
   const universityEligible = isUniversityEmail(user?.email)
   const universityDomain = getEmailDomain(user?.email)
 
+  const institutionName = institution?.name || null
+  const institutionEligible = !!institution?.id
+  // Assigned by the institution, not chosen by the student.
+  const institutionCohort = institution?.cohort_name || null
+  const isInstitutionScope = INSTITUTION_SCOPES.includes(leaderboardScope)
+
   useEffect(() => {
     loadSpecialties()
   }, [])
@@ -188,7 +205,13 @@ export default function Dashboard() {
     if (leaderboardScope === 'university' && !universityEligible) {
       setLeaderboardScope('friends')
     }
-  }, [leaderboardScope, universityEligible])
+    if (INSTITUTION_SCOPES.includes(leaderboardScope) && !institutionEligible) {
+      setLeaderboardScope('friends')
+    }
+    if (leaderboardScope === 'institution_year' && !institution?.cohort_id) {
+      setLeaderboardScope('institution')
+    }
+  }, [leaderboardScope, universityEligible, institutionEligible, institution?.cohort_id])
 
   useEffect(() => {
     loadLeaderboard()
@@ -406,10 +429,22 @@ export default function Dashboard() {
 
   const renderLeaderboardEntry = (entry, index) => {
     const isCurrentUser = entry.user_id === user?.id
-    const isAnonymised = leaderboardScope === 'global' || leaderboardScope === 'university'
-    const displayName = isAnonymised
-      ? (isCurrentUser ? 'You' : anonymisedLeaderboardLabel(entry.user_id))
-      : (entry.username || entry.email?.split('@')[0] || 'User')
+    const scopeAnonymised = ANONYMISED_SCOPES.includes(leaderboardScope)
+    // Institution peers are named, unless they opted out in their own settings.
+    const hideName = !isCurrentUser && (scopeAnonymised || entry.is_anonymous)
+
+    let displayName
+    if (hideName) {
+      displayName = anonymisedLeaderboardLabel(entry.user_id)
+    } else if (isCurrentUser && scopeAnonymised) {
+      displayName = 'You'
+    } else if (isInstitutionScope) {
+      // Institution rows carry no email; falling back to one would leak it.
+      displayName = entry.username || 'Student'
+    } else {
+      displayName = entry.username || entry.email?.split('@')[0] || 'User'
+    }
+
     const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
 
     let scoreValue
@@ -436,8 +471,7 @@ export default function Dashboard() {
         <div className="db-leaderboard__user">
           <div className="db-leaderboard__username">
             {displayName}
-            {isCurrentUser && !isAnonymised && <span className="db-leaderboard__you">(You)</span>}
-            {isCurrentUser && isAnonymised && <span className="db-leaderboard__you"> (You)</span>}
+            {isCurrentUser && displayName !== 'You' && <span className="db-leaderboard__you">(You)</span>}
           </div>
           <div className="db-leaderboard__stats">
             {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
@@ -634,10 +668,18 @@ export default function Dashboard() {
                       value={leaderboardScope}
                       onChange={(e) => setLeaderboardScope(e.target.value)}
                     >
-                      <option value="global">Global — anonymised</option>
+                      <option value="global">Global (Anonymous)</option>
                       {universityEligible && (
                         <option value="university">
                           University{userYearGroup ? ` — Year ${userYearGroup}` : ` (@${universityDomain})`} — anonymised
+                        </option>
+                      )}
+                      {institutionEligible && (
+                        <option value="institution">{institutionName || 'My institution'}</option>
+                      )}
+                      {institutionEligible && institutionCohort && (
+                        <option value="institution_year">
+                          {institutionName || 'My institution'} — {institutionCohort}
                         </option>
                       )}
                       <option value="friends">Friends</option>
@@ -666,6 +708,10 @@ export default function Dashboard() {
                         ? `No students from @${universityDomain} in year ${userYearGroup} yet.`
                         : `No students from @${universityDomain} on Synapse yet.`
                     )}
+                    {leaderboardScope === 'institution' &&
+                      `Nobody from ${institutionName || 'your institution'} has answered a question yet.`}
+                    {leaderboardScope === 'institution_year' &&
+                      `Nobody in ${institutionCohort || 'your year group'} at ${institutionName || 'your institution'} has answered a question yet.`}
                     {leaderboardScope === 'friends' && 'No data available. Add friends to compete!'}
                   </div>
                 ) : (

@@ -6,6 +6,7 @@ import {
   LuShield,
   LuStethoscope,
   LuTrendingUp,
+  LuBuilding2,
 } from 'react-icons/lu'
 
 /**
@@ -14,6 +15,14 @@ import {
 export function getDashboardNavItems(user) {
   const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_access_admin
   const isReviewer = !!user?.capabilities?.can_review
+
+  // Institution admins are staff rather than students, so they get their own
+  // cut-down nav. Settings and Logout live in the sidebar footer, so they stay
+  // reachable without being listed here.
+  if (user?.capabilities?.is_institution_admin) {
+    return [{ id: 'institution', label: 'Institution', icon: LuBuilding2, to: '/dashboard/institution' }]
+  }
+
   return [
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
     { id: 'question-bank', label: 'Question Bank', icon: LuCircleHelp, to: '/dashboard/question-bank' },

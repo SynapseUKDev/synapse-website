@@ -1,0 +1,180 @@
+/* Institution admin panel. Sits on top of the shared admin-* primitives. */
+
+.insta-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ── Collapsible section header ───────────────────────────── */
+
+.insta-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--syn-navy-700);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+}
+
+.insta-section__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.insta-section__count {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-tint-blue);
+  color: var(--syn-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.insta-section__chev {
+  flex: none;
+  color: var(--syn-muted);
+  transition: transform 0.15s ease;
+}
+
+.insta-section__chev--open {
+  transform: rotate(90deg);
+}
+
+.insta-section__body {
+  margin-top: 14px;
+}
+
+.insta-summary {
+  margin: 6px 0 0;
+  color: var(--syn-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── Member rows ──────────────────────────────────────────── */
+
+.insta-members {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insta-member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--syn-border);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+
+.insta-member__info {
+  min-width: 0;
+}
+
+.insta-member__email {
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.insta-member__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--syn-muted);
+  font-size: 13px;
+}
+
+.insta-member__actions {
+  flex: none;
+}
+
+.insta-member__actions .admin-btn-issue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Status pill ──────────────────────────────────────────── */
+
+.insta-status {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.insta-status--active {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.insta-status--invited {
+  background: var(--surface-tint-gold);
+  color: #92400e;
+}
+
+.insta-status--suspended {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+html[data-theme='dark'] .insta-status--active,
+html[data-theme='dark'] .insta-status--invited,
+html[data-theme='dark'] .insta-status--suspended {
+  background: var(--surface-tint-blue);
+  color: var(--syn-muted);
+}
+
+.insta-empty {
+  margin: 0;
+  padding: 14px;
+  border: 1px dashed var(--syn-border);
+  border-radius: 12px;
+  color: var(--syn-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── Add-member form ──────────────────────────────────────── */
+
+.insta-add {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--syn-border);
+}
+
+.insta-btn-block {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .insta-member {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .insta-member__actions {
+    align-self: stretch;
+  }
+}

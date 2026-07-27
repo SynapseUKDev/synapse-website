@@ -5,6 +5,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import { AdminQuestionInlineEditor, AdminTextbookInlineEditor } from './AdminEditors'
 import OsceAdminPanel from '../osce/OsceAdminPanel'
 import AdminReviewComments from './AdminReviewComments'
+import AdminInstitutions from './AdminInstitutions'
 import './Admin.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -41,9 +42,11 @@ export default function Admin() {
   const canManageQbank = isGlobalAdmin || !!user?.capabilities?.can_manage_qbank
   const canManageTextbook = isGlobalAdmin || !!user?.capabilities?.can_manage_textbook
   const canManageMockPapers = isGlobalAdmin || !!user?.capabilities?.can_manage_mock_papers
+  const canManageInstitutions = isGlobalAdmin || !!user?.capabilities?.can_manage_institutions
 
   const [activeTab, setActiveTabState] = useState(() => {
     const saved = localStorage.getItem('admin_active_tab')
+    if (saved === 'institutions' && canManageInstitutions) return 'institutions'
     if (saved === 'osce' && canManageOsce) return 'osce'
     if (saved === 'mock-papers' && canManageMockPapers) return 'mock-papers'
     if (saved === 'topic-issues' && canManageTextbook) return 'topic-issues'
@@ -87,6 +90,8 @@ export default function Admin() {
   const [selectedTopicIssue, setSelectedTopicIssue] = useState(null)
 
   const statusQuery = includeCompleted ? 'all' : 'ongoing'
+
+  const isIssuesTab = activeTab === 'question-issues' || activeTab === 'topic-issues'
 
   const activeIssues = activeTab === 'question-issues' ? questionIssues : topicIssues
 
@@ -279,9 +284,9 @@ export default function Admin() {
 
   useEffect(() => {
     if (!serverAllowsAdmin) return
-    if (activeTab === 'mock-papers' || activeTab === 'osce') return
+    if (!isIssuesTab) return
     loadIssues()
-  }, [serverAllowsAdmin, loadIssues, activeTab])
+  }, [serverAllowsAdmin, loadIssues, isIssuesTab])
 
   if (checking) {
     return (
@@ -310,18 +315,20 @@ export default function Admin() {
           <h1 className="admin__title">
             {activeTab === 'mock-papers' && 'Import mock exam'}
             {activeTab === 'osce' && 'Manage OSCE Stations'}
-            {(activeTab === 'question-issues' || activeTab === 'topic-issues') && 'Admin Issues'}
+            {activeTab === 'institutions' && 'Institutions'}
+            {isIssuesTab && 'Admin Issues'}
           </h1>
           <p className="admin__muted">
             {activeTab === 'mock-papers' && 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'}
             {activeTab === 'osce' && 'Create, edit, and publish OSCE stations for all station types.'}
-            {(activeTab === 'question-issues' || activeTab === 'topic-issues') && 'Review user-reported issues, then edit the related question or textbook page.'}
+            {activeTab === 'institutions' && 'Create institution accounts and manage the staff admins who invite their students.'}
+            {isIssuesTab && 'Review user-reported issues, then edit the related question or textbook page.'}
           </p>
         </div>
         <div className="admin-badge">Admin</div>
       </div>
 
-      {error && activeTab !== 'mock-papers' && activeTab !== 'osce' && <div className="admin-alert">{error}</div>}
+      {error && isIssuesTab && <div className="admin-alert">{error}</div>}
 
       <div className="admin-tabs">
         <button
@@ -360,7 +367,16 @@ export default function Admin() {
         >
           OSCE Stations
         </button>
-        {activeTab !== 'mock-papers' && activeTab !== 'osce' && subTab === 'main' && (
+        <button
+          type="button"
+          className={activeTab === 'institutions' ? 'is-active' : ''}
+          onClick={() => setActiveTab('institutions')}
+          disabled={!canManageInstitutions}
+          title={!canManageInstitutions ? 'Institutions Admin permission required' : undefined}
+        >
+          Institutions
+        </button>
+        {isIssuesTab && subTab === 'main' && (
           <>
             <label className="admin-tabs__toggle">
               <input
@@ -377,25 +393,29 @@ export default function Admin() {
         )}
       </div>
 
-      <div className="admin-subtabs">
-        <button
-          type="button"
-          className={`admin-subtab-btn ${subTab === 'main' ? 'is-active' : ''}`}
-          onClick={() => setSubTab('main')}
-        >
-          {activeTab === 'question-issues' && 'Reported Issues'}
-          {activeTab === 'topic-issues' && 'Reported Issues'}
-          {activeTab === 'mock-papers' && 'Mock Import'}
-          {activeTab === 'osce' && 'Manage Stations'}
-        </button>
-        <button
-          type="button"
-          className={`admin-subtab-btn ${subTab === 'review' ? 'is-active' : ''}`}
-          onClick={() => setSubTab('review')}
-        >
-          Review Comments
-        </button>
-      </div>
+      {activeTab !== 'institutions' && (
+        <div className="admin-subtabs">
+          <button
+            type="button"
+            className={`admin-subtab-btn ${subTab === 'main' ? 'is-active' : ''}`}
+            onClick={() => setSubTab('main')}
+          >
+            {activeTab === 'question-issues' && 'Reported Issues'}
+            {activeTab === 'topic-issues' && 'Reported Issues'}
+            {activeTab === 'mock-papers' && 'Mock Import'}
+            {activeTab === 'osce' && 'Manage Stations'}
+          </button>
+          <button
+            type="button"
+            className={`admin-subtab-btn ${subTab === 'review' ? 'is-active' : ''}`}
+            onClick={() => setSubTab('review')}
+          >
+            Review Comments
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'institutions' && <AdminInstitutions />}
 
       {activeTab === 'mock-papers' && subTab === 'main' && (
         <section className="admin-card">
@@ -565,7 +585,7 @@ export default function Admin() {
       )}
 
 
-      {activeTab !== 'mock-papers' && activeTab !== 'osce' && subTab === 'main' && (
+      {isIssuesTab && subTab === 'main' && (
       <div className="admin-grid">
         <section className="admin-card">
           {issuesLoading ? (

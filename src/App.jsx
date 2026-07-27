@@ -27,6 +27,7 @@ import TextbookTopic from './dashboard/textbook/TextbookTopic.jsx'
 import TextbookSearch from './dashboard/textbook/TextbookSearch.jsx'
 import Settings from './dashboard/Settings.jsx'
 import Admin from './dashboard/admin/Admin.jsx'
+import InstitutionDashboard from './dashboard/institution/InstitutionDashboard.jsx'
 import OsceStations from './dashboard/osce/OsceStations.jsx'
 import OsceStationLanding from './dashboard/osce/OsceStationLanding.jsx'
 import OsceStationActive from './dashboard/osce/OsceStationActive.jsx'
@@ -109,6 +110,7 @@ function App() {
           <Route path="textbook/specialty/:slug" element={<Textbook />} />
           <Route path="textbook/topic/:topicSlug" element={<TextbookTopic />} />
           <Route path="admin" element={<Admin />} />
+          <Route path="institution" element={<InstitutionDashboard />} />
           <Route path="osce" element={<OsceStations />} />
           <Route path="question-bank/flashcards" element={<Flashcards />} />
           <Route path="osce/flashcards" element={<Navigate to="/dashboard/question-bank/flashcards" replace />} />

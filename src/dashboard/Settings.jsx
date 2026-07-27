@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { authHeaders, clearTokens } from '../auth/token'
-import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuTrash2, LuLoader } from 'react-icons/lu'
+import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuTrash2, LuLoader, LuTrophy } from 'react-icons/lu'
 import { getStoredPreference, setPreference } from '../theme'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
@@ -22,6 +22,13 @@ export default function Settings() {
   const [targetMessage, setTargetMessage] = useState({ type: '', text: '' })
   const [portalLoading, setPortalLoading] = useState(false)
   const [appearance, setAppearance] = useState(() => getStoredPreference())
+  const [yearGroup, setYearGroup] = useState('')
+  const [savingYearGroup, setSavingYearGroup] = useState(false)
+  const [yearGroupMessage, setYearGroupMessage] = useState({ type: '', text: '' })
+  const [anonymise, setAnonymise] = useState(false)
+  const [savingPrivacy, setSavingPrivacy] = useState(false)
+  const [privacyMessage, setPrivacyMessage] = useState({ type: '', text: '' })
+  const [institution, setInstitution] = useState(null)
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -77,6 +84,9 @@ export default function Settings() {
         const data = await res.json()
         setAccessData(data.access || null)
         setUsername(data.user?.username || '')
+        setYearGroup(data.user?.year_group || '')
+        setAnonymise(!!data.user?.anonymise_in_leaderboards)
+        setInstitution(data.institution || null)
         setTargets({
           questions: data.user?.daily_question_target || 30,
           time_minutes: data.user?.daily_study_minutes_target || 180
@@ -112,6 +122,61 @@ export default function Settings() {
     } finally {
       setSaving(false)
       setTimeout(() => setSaveMessage({ type: '', text: '' }), 3000)
+    }
+  }
+
+  const saveYearGroup = async (e) => {
+    e?.preventDefault()
+    setSavingYearGroup(true)
+    setYearGroupMessage({ type: '', text: '' })
+    try {
+      const trimmed = yearGroup.trim()
+      const res = await fetch(`${API_BASE}/me/year-group`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ year_group: trimmed === '' ? null : trimmed }),
+      })
+      if (res.ok) {
+        setYearGroupMessage({ type: 'success', text: 'Year group updated!' })
+        window.dispatchEvent(new Event('auth:changed'))
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setYearGroupMessage({ type: 'error', text: json?.error || 'Failed to save' })
+      }
+    } catch {
+      setYearGroupMessage({ type: 'error', text: 'Failed to save' })
+    } finally {
+      setSavingYearGroup(false)
+      setTimeout(() => setYearGroupMessage({ type: '', text: '' }), 3000)
+    }
+  }
+
+  /** Saves immediately on toggle, and reverts the switch if the request fails. */
+  const savePrivacy = async (next) => {
+    setAnonymise(next)
+    setSavingPrivacy(true)
+    setPrivacyMessage({ type: '', text: '' })
+    try {
+      const res = await fetch(`${API_BASE}/me/privacy`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ anonymise_in_leaderboards: next }),
+      })
+      if (res.ok) {
+        setPrivacyMessage({ type: 'success', text: next ? 'Your name is now hidden.' : 'Your name is now visible.' })
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setAnonymise(!next)
+        setPrivacyMessage({ type: 'error', text: json?.error || 'Failed to save' })
+      }
+    } catch {
+      setAnonymise(!next)
+      setPrivacyMessage({ type: 'error', text: 'Failed to save' })
+    } finally {
+      setSavingPrivacy(false)
+      setTimeout(() => setPrivacyMessage({ type: '', text: '' }), 3000)
     }
   }
 
@@ -351,6 +416,91 @@ export default function Settings() {
           </form>
         </div>
 
+        {/* Leaderboards card */}
+        <div className="qb-card">
+          <div className="qb-card__head">
+            <div className="qb-card__titlewrap">
+              <div className="qb-card__icon" style={{ background: '#f0fdf4', border: '1.5px solid #10b981', color: '#10b981', borderRadius: '12px', boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)' }}>
+                <LuTrophy size={20} />
+              </div>
+              <div>
+                <div className="qb-card__title">Leaderboards</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {institution ? (
+              /* Institution students are assigned a year group by their institution,
+                 so this is shown rather than offered as an editable field. */
+              <div>
+                <label className="qb__subtitle" style={{ display: 'block', marginBottom: 6 }}>Year group</label>
+                <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)', fontSize: 15 }}>
+                  {institution.cohort_name || 'Not assigned yet'}
+                </div>
+                <p style={{ marginTop: 8, fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5 }}>
+                  {institution.cohort_name
+                    ? `Set by ${institution.name}, and used to compare you with students in the same year.`
+                    : `${institution.name} has not assigned you to a year group yet, so you can only be compared with the whole institution.`}
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={saveYearGroup}>
+                <label className="qb__subtitle" style={{ display: 'block', marginBottom: 6 }}>Year group</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={yearGroup}
+                    onChange={(e) => setYearGroup(e.target.value)}
+                    placeholder="e.g. 4"
+                    className="db-input"
+                    style={{ flex: 1 }}
+                    maxLength={50}
+                  />
+                  <button type="submit" className="qb-btn qb-btn--sm" style={{ width: 'auto' }} disabled={savingYearGroup}>
+                    {savingYearGroup ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+                <p style={{ marginTop: 8, fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5 }}>
+                  Used to compare you with students in the same year at your university. Leave blank to opt out of year
+                  filtering.
+                </p>
+                {yearGroupMessage.text && (
+                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, color: yearGroupMessage.type === 'success' ? '#10b981' : '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                    {yearGroupMessage.type === 'success' ? <LuCheck size={16} /> : <LuX size={16} />}
+                    {yearGroupMessage.text}
+                  </div>
+                )}
+              </form>
+            )}
+
+            <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--syn-border)', flex: 1 }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: savingPrivacy ? 'progress' : 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={anonymise}
+                  disabled={savingPrivacy}
+                  onChange={(e) => savePrivacy(e.target.checked)}
+                  style={{ marginTop: 3, width: 16, height: 16, flex: 'none', cursor: 'inherit' }}
+                />
+                <span>
+                  <span style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>Hide my name from other students</span>
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5 }}>
+                    You'll appear as an anonymous student
+                    {institution?.name ? ` on the ${institution.name} leaderboard` : ' on leaderboards'}. Your stats
+                    still count, and staff at your institution can always see your name.
+                  </span>
+                </span>
+              </label>
+              {privacyMessage.text && (
+                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, color: privacyMessage.type === 'success' ? '#10b981' : '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                  {privacyMessage.type === 'success' ? <LuCheck size={16} /> : <LuX size={16} />}
+                  {privacyMessage.text}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Subscription card */}
         <div className="qb-card">
           <div className="qb-card__head">
@@ -433,7 +583,7 @@ export default function Settings() {
             </div>
           </div>
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
-            <p style={{ fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5, flex: 1 }}>
+            <p style={{ fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5, flex: 1, marginTop: -5 }}>
               Permanently delete your account and all associated data, including progress history, subscription details, and mock attempts. This action is irreversible.
             </p>
             <div>
