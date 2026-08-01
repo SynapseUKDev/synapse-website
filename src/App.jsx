@@ -8,6 +8,7 @@ import Callback from './auth/Callback.jsx'
 import Subscribe from './auth/Subscribe.jsx'
 import ResetPassword from './auth/ResetPassword.jsx'
 import SetupAccount from './auth/SetupAccount.jsx'
+import LinkExpired from './auth/LinkExpired.jsx'
 import ChangePassword from './auth/ChangePassword.jsx'
 import { getResolvedTheme, applyTheme } from './theme'
 import './App.css'
@@ -42,25 +43,42 @@ import MockExamPractice from './dashboard/mock-exams/MockExamPractice.jsx'
 import MockExamResults from './dashboard/mock-exams/MockExamResults.jsx'
 import MockExamReview from './dashboard/mock-exams/MockExamReview.jsx'
 
+// Pages that already know how to read an auth link out of the URL themselves.
+const AUTH_LANDING_PAGES = ['/auth/callback', '/auth/reset-password', '/auth/setup-account']
+
 function HashRedirector() {
   const location = useLocation()
   const navigate = useNavigate()
   useEffect(() => {
-    if (location.hash && location.hash.includes('access_token')) {
-      const hashParams = new URLSearchParams(location.hash.slice(1))
-      const type = hashParams.get('type')
+    const hash = location.hash?.startsWith('#') ? location.hash.slice(1) : ''
+    if (!hash) return
+    const hashParams = new URLSearchParams(hash)
 
-      // Handle password reset links
-      if (type === 'recovery' && location.pathname !== '/auth/reset-password') {
-        navigate(`/auth/reset-password${location.hash}`, { replace: true })
+    // A dead link comes back as an error on whatever page Supabase lands on,
+    // which is the home page. Send it somewhere that explains itself.
+    if (hashParams.get('error') || hashParams.get('error_code')) {
+      if (location.pathname !== '/auth/link-expired') {
+        navigate(`/auth/link-expired${location.hash}`, { replace: true })
       }
-      // Handle invite links - redirect to setup account page
-      else if (type === 'invite' && location.pathname !== '/auth/setup-account') {
-        navigate(`/auth/setup-account${location.hash}`, { replace: true })
-      }
-      else if (type !== 'recovery' && type !== 'invite' && location.pathname !== '/auth/callback') {
-        navigate(`/auth/callback${location.hash}`, { replace: true })
-      }
+      return
+    }
+
+    if (!hashParams.get('access_token')) return
+    const type = hashParams.get('type')
+
+    // Handle password reset links
+    if (type === 'recovery' && location.pathname !== '/auth/reset-password') {
+      navigate(`/auth/reset-password${location.hash}`, { replace: true })
+    }
+    // Handle invite links - redirect to setup account page
+    else if (type === 'invite' && location.pathname !== '/auth/setup-account') {
+      navigate(`/auth/setup-account${location.hash}`, { replace: true })
+    }
+    // Anything else signs in as usual, unless it landed on a page that was
+    // asked for by name: a resent invite arrives as a magic link pointed at
+    // the setup page, and must not be bounced away from it.
+    else if (type !== 'recovery' && type !== 'invite' && !AUTH_LANDING_PAGES.includes(location.pathname)) {
+      navigate(`/auth/callback${location.hash}`, { replace: true })
     }
   }, [location, navigate])
   return null
@@ -85,6 +103,7 @@ function App() {
         <Route path="/auth/callback" element={<Callback />} />
         <Route path="/auth/reset-password" element={<ResetPassword />} />
         <Route path="/auth/setup-account" element={<SetupAccount />} />
+        <Route path="/auth/link-expired" element={<LinkExpired />} />
         <Route path="/auth/change-password" element={<ChangePassword />} />
         <Route path="/subscribe" element={<Subscribe />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
