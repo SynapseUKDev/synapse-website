@@ -271,33 +271,6 @@ html[data-theme='dark'] .inst-status--removed {
 
 /* ── Invite form ──────────────────────────────────────────── */
 
-.inst-modes {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--syn-border);
-  border-radius: 12px;
-  background: var(--surface-tint-blue);
-}
-
-.inst-modes button {
-  padding: 7px 14px;
-  border: none;
-  border-radius: 9px;
-  background: none;
-  color: var(--syn-muted);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.inst-modes button.is-active {
-  background: var(--surface-card);
-  color: var(--syn-navy-700);
-  box-shadow: 0 1px 3px rgba(11, 22, 55, 0.12);
-}
-
 .inst-form {
   margin-top: 14px;
   display: flex;
@@ -369,26 +342,40 @@ html[data-theme='dark'] .inst-status--removed {
   line-height: 1.5;
 }
 
-.inst-textarea {
-  width: 100%;
-  min-height: 130px;
-  padding: 12px 14px;
-  border: 1px solid var(--syn-border);
-  border-radius: 12px;
-  background: var(--surface-card);
-  color: var(--syn-navy-700);
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.6;
-  resize: vertical;
+/* One student per row, with the remove button pinned to the end. */
+
+.inst-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
 }
 
-.inst-textarea:focus {
-  outline: 2px solid #93c5fd;
-  outline-offset: 1px;
+.inst-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
 }
 
-/* ── Bulk invite results ──────────────────────────────────── */
+.inst-row__remove {
+  height: 40px;
+  padding: 0 12px;
+}
+
+@media (max-width: 760px) {
+  .inst-row {
+    grid-template-columns: 1fr;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--syn-border);
+  }
+
+  .inst-row__remove {
+    justify-self: start;
+  }
+}
+
+/* ── Invite results ───────────────────────────────────────── */
 
 .inst-results {
   display: flex;
@@ -437,6 +424,163 @@ html[data-theme='dark'] .inst-result--warn,
 html[data-theme='dark'] .inst-result--fail {
   background: var(--surface-tint-blue);
   color: var(--syn-muted);
+}
+
+/* ── Import from a file ───────────────────────────────────── */
+
+.inst-drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 26px 18px;
+  border: 2px dashed var(--syn-border);
+  border-radius: 14px;
+  background: var(--syn-surface-2, transparent);
+  text-align: center;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.inst-drop--over {
+  border-color: #6366f1;
+  background: var(--surface-tint-blue);
+}
+
+.inst-drop--filled {
+  border-style: solid;
+}
+
+/* The whole zone is the click target, so the input covers it invisibly. */
+.inst-drop input[type='file'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.inst-drop__label {
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.inst-drop__hint {
+  max-width: 520px;
+  color: var(--syn-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.inst-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (max-width: 760px) {
+  .inst-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.inst-summary__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--syn-border);
+  border-radius: 12px;
+}
+
+.inst-summary__num {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.inst-summary__label {
+  color: var(--syn-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.inst-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-tint-gold);
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.inst-import__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.inst-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* Pushes the buttons to the right, leaving the range on the left. */
+.inst-pager__label:first-child {
+  margin-right: auto;
+}
+
+.inst-pager__label {
+  color: var(--syn-muted);
+  font-size: 13px;
+}
+
+.inst-import__progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--syn-muted);
+  font-size: 13px;
+}
+
+/* Small sibling of .loading__spinner, for feedback inside a card. */
+.inst-spinner {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--syn-border);
+  border-top-color: #2f57ff;
+  border-radius: 50%;
+  animation: inst-spin 1s linear infinite;
+}
+
+@keyframes inst-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html[data-theme='dark'] .inst-spinner {
+  border-color: var(--dm-outline-variant);
+  border-top-color: var(--dm-primary);
+}
+
+/* Hints inside the plan follow a block rather than sit in a gapped column. */
+.inst-summary + .inst-form__hint,
+.inst-import__actions + .inst-form__hint {
+  margin-top: 12px;
 }
 
 /* ── Student detail modal ─────────────────────────────────── */

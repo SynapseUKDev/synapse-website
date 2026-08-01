@@ -9,6 +9,14 @@ async function readError(res, fallback) {
   return typeof body?.error === 'string' ? body.error : fallback
 }
 
+/** Restricted as you type, so the live example is always a username that could exist. */
+function normaliseTag(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 12)
+}
+
 /**
  * The details an institution may change about itself.
  *
@@ -17,7 +25,7 @@ async function readError(res, fallback) {
  * stays with the platform admin along with the commercial settings.
  */
 export default function InstitutionDetails({ institution, onSaved }) {
-  const [form, setForm] = useState({ name: '', contact_email: '' })
+  const [form, setForm] = useState({ name: '', contact_email: '', username_tag: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -26,17 +34,22 @@ export default function InstitutionDetails({ institution, onSaved }) {
     setForm({
       name: institution?.name || '',
       contact_email: institution?.contact_email || '',
+      username_tag: institution?.username_tag || '',
     })
-  }, [institution?.name, institution?.contact_email])
+  }, [institution?.name, institution?.contact_email, institution?.username_tag])
 
   const name = form.name.trim()
   const contactEmail = form.contact_email.trim()
+  const usernameTag = form.username_tag
+  const tagValid = /^[a-z0-9]{2,12}$/.test(usernameTag)
   const dirty =
-    name !== (institution?.name || '') || contactEmail !== (institution?.contact_email || '')
+    name !== (institution?.name || '') ||
+    contactEmail !== (institution?.contact_email || '') ||
+    usernameTag !== (institution?.username_tag || '')
 
   const save = async (e) => {
     e?.preventDefault()
-    if (!dirty || name.length < 2) return
+    if (!dirty || name.length < 2 || !tagValid) return
 
     setSaving(true)
     setError('')
@@ -47,6 +60,7 @@ export default function InstitutionDetails({ institution, onSaved }) {
       if (contactEmail !== (institution?.contact_email || '')) {
         payload.contact_email = contactEmail === '' ? null : contactEmail
       }
+      if (usernameTag !== (institution?.username_tag || '')) payload.username_tag = usernameTag
 
       const res = await authenticatedFetch(`${API_BASE}/institution/me`, {
         method: 'PATCH',
@@ -132,8 +146,33 @@ export default function InstitutionDetails({ institution, onSaved }) {
             />
           </div>
         </div>
+        <div className="inst-form__row inst-form__row--two">
+          <div className="inst-form__field">
+            <label className="inst-form__label" htmlFor="inst-details-tag">
+              Username tag
+            </label>
+            <input
+              id="inst-details-tag"
+              type="text"
+              className="db-input"
+              value={form.username_tag}
+              onChange={(e) => setForm((p) => ({ ...p, username_tag: normaliseTag(e.target.value) }))}
+              placeholder="uni"
+              required
+            />
+            <p className="inst-form__hint">
+              Every student you add gets a username ending in your tag:{' '}
+              <strong>john.smith.{usernameTag || 'uni'}</strong>. Changing it only affects students added afterwards,
+              usernames already issued stay as they are.
+            </p>
+          </div>
+        </div>
         <div>
-          <button type="submit" className="qb-btn qb-btn--sm" disabled={saving || !dirty || name.length < 2}>
+          <button
+            type="submit"
+            className="qb-btn qb-btn--sm"
+            disabled={saving || !dirty || name.length < 2 || !tagValid}
+          >
             {saving ? 'Saving...' : 'Save changes'}
           </button>
         </div>

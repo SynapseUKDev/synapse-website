@@ -212,7 +212,7 @@ export default function InstitutionDashboard() {
         onChanged={handleChanged}
       />
 
-      <InstitutionInvite cohorts={cohorts} onInvited={handleChanged} />
+      <InstitutionInvite cohorts={cohorts} usernameTag={details?.username_tag} onInvited={handleChanged} />
 
       <InstitutionRoster cohorts={cohorts} refreshKey={refreshKey} onChanged={handleChanged} />
 

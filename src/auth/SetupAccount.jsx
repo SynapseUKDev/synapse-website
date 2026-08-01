@@ -11,6 +11,9 @@ function SetupAccount() {
     const location = useLocation()
     const [email, setEmail] = useState('')
     const [username, setUsername] = useState('')
+    // Institution students are given a username when they are invited, so they
+    // are shown it rather than asked to invent one.
+    const [usernameAssigned, setUsernameAssigned] = useState(false)
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -54,6 +57,10 @@ function SetupAccount() {
                         setEmail(data.email)
                         setUsername(data.email.split('@')[0])
                     }
+                    if (data.username) {
+                        setUsername(data.username)
+                        setUsernameAssigned(true)
+                    }
                     setCheckingToken(false)
                 })
                 .catch(() => {
@@ -70,7 +77,7 @@ function SetupAccount() {
         e.preventDefault()
         setError('')
 
-        if (!username.trim()) {
+        if (!usernameAssigned && !username.trim()) {
             setError('Please enter a username')
             return
         }
@@ -100,7 +107,7 @@ function SetupAccount() {
                 credentials: 'include',
                 body: JSON.stringify({
                     password,
-                    username: username.trim(),
+                    ...(usernameAssigned ? {} : { username: username.trim() }),
                     access_token: inviteTokens.accessToken,
                     refresh_token: inviteTokens.refreshToken,
                 })
@@ -256,8 +263,15 @@ function SetupAccount() {
                                 placeholder="Choose a username"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
+                                disabled={usernameAssigned}
+                                style={usernameAssigned ? { background: '#f3f4f6', color: '#6b7280', cursor: 'not-allowed' } : undefined}
                                 required
                             />
+                            {usernameAssigned && (
+                                <p className="auth-panel__desc" style={{ marginTop: -4, fontSize: 13 }}>
+                                    Your institution has chosen this username for you.
+                                </p>
+                            )}
 
                             <label className="auth-panel__label">Password</label>
                             <div className="auth-panel__input-wrapper">

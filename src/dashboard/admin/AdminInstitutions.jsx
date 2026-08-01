@@ -30,6 +30,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 const BLANK_FORM = {
   name: '',
   slug: '',
+  username_tag: '',
   contact_email: '',
   email_domains: '',
   seat_limit: '',
@@ -42,6 +43,14 @@ const BLANK_FORM = {
 async function readError(res, fallback) {
   const body = await res.json().catch(() => ({}))
   return typeof body?.error === 'string' ? body.error : fallback
+}
+
+/** Restricted as you type, so the live example is always a username that could exist. */
+function normaliseTag(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 12)
 }
 
 /** "uni.ac.uk, @uni2.ac.uk" -> ['uni.ac.uk', 'uni2.ac.uk'] (backend normalises too) */
@@ -60,6 +69,7 @@ function formToPayload(form) {
     seat_limit: form.seat_limit === '' ? null : Number(form.seat_limit),
   }
   if (form.slug.trim()) payload.slug = form.slug.trim()
+  if (form.username_tag.trim()) payload.username_tag = form.username_tag.trim()
   return payload
 }
 
@@ -112,6 +122,7 @@ export default function AdminInstitutions() {
         ...BLANK_FORM,
         name: inst.name || '',
         slug: inst.slug || '',
+        username_tag: inst.username_tag || '',
         contact_email: inst.contact_email || '',
         email_domains: (inst.email_domains || []).join(', '),
         seat_limit: inst.seat_limit === null || inst.seat_limit === undefined ? '' : String(inst.seat_limit),
@@ -312,6 +323,20 @@ export default function AdminInstitutions() {
           />
         </label>
       </div>
+
+      <label>
+        Username tag
+        <input
+          type="text"
+          value={form.username_tag}
+          onChange={(e) => setField('username_tag', normaliseTag(e.target.value))}
+          placeholder={isCreate ? 'auto-generated from slug' : ''}
+        />
+      </label>
+      <p className="admin__muted admin-form__section-hint">
+        The last part of every username this institution issues: <strong>john.smith.{form.username_tag || 'uni'}</strong>.
+        Changing it only affects students added afterwards.
+      </p>
 
       <label>
         Allowed student email domains

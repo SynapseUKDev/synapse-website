@@ -71,10 +71,11 @@ export default function InstitutionStudentDetail({ userId, onClose }) {
       <div className="inst-modal__panel">
         <div className="inst-modal__head">
           <div>
-            <div className="inst-modal__title">{student?.email || 'Student'}</div>
+            <div className="inst-modal__title">{student?.student_name || student?.email || 'Student'}</div>
             {student && (
               <div className="inst-modal__meta">
                 <span className={`inst-status inst-status--${student.status}`}>{student.status}</span>
+                {student.student_name && student.email ? <span>{student.email}</span> : null}
                 {student.username ? <span>{student.username}</span> : null}
                 {student.cohort_name ? <span>{student.cohort_name}</span> : null}
                 <span>

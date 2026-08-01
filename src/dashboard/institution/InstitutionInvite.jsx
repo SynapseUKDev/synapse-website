@@ -1,23 +1,44 @@
-import React, { useState } from 'react'
-import { LuUserPlus } from 'react-icons/lu'
+import React, { useRef, useState } from 'react'
+import { LuUserPlus, LuPlus, LuX } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
+import { readRosterCsv } from './csvRoster'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
-/** The backend caps a single bulk request at 200 students. */
-const BULK_LIMIT = 200
+/** The preview endpoint reads at most this many rows in one request. */
+const MAX_ROWS = 500
 
-/** "a@x.ac.uk, b@x.ac.uk\nc@x.ac.uk" -> ['a@x.ac.uk', 'b@x.ac.uk', 'c@x.ac.uk'] */
-function parseEmails(value) {
-  const seen = new Set()
-  return String(value || '')
-    .split(/[\s,;]+/)
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => {
-      if (!e || seen.has(e)) return false
-      seen.add(e)
-      return true
-    })
+/** The import endpoint sends an email per row, so it takes them in chunks. */
+const IMPORT_CHUNK = 50
+
+/** A whole year group in one table is unreadable, so the summary is paged. */
+const PAGE_SIZE = 20
+
+const ACTION_LABELS = {
+  invite: 'Will be invited',
+  link_existing: 'Has an account, will be linked',
+  skip_already_member: 'Already in your institution',
+  error: 'Problem',
+}
+
+const ACTION_TONES = {
+  invite: 'ok',
+  link_existing: 'ok',
+  skip_already_member: 'warn',
+  error: 'fail',
+}
+
+/** Added, but the admin still has something to do about it. */
+function needsAttention(result) {
+  return !result.ok || result.email_sent === false
+}
+
+function resultMessage(result) {
+  if (!result.ok) return result.error || 'Failed'
+  if (result.email_sent === false) {
+    return `added, but the email failed (${result.email_error || 'unknown error'}). Use Resend invite from the roster.`
+  }
+  return 'added'
 }
 
 async function readError(res, fallback) {
@@ -25,122 +46,175 @@ async function readError(res, fallback) {
   return typeof body?.error === 'string' ? body.error : fallback
 }
 
-/** Classifies one row of a bulk response for display. */
-function resultTone(result) {
-  if (!result.ok) return 'fail'
-  return result.email_sent === false ? 'warn' : 'ok'
-}
+let nextRowId = 1
+const blankRow = () => ({ id: (nextRowId += 1), name: '', email: '', year_group: '' })
 
-function resultMessage(result) {
-  if (!result.ok) return result.error || 'Failed'
-  if (result.email_sent === false) {
-    return `added, but the email failed (${result.email_error || 'unknown error'})`
-  }
-  if (result.linked_existing) return 'linked to their existing account'
-  return 'invited'
-}
-
-export default function InstitutionInvite({ cohorts = [], onInvited }) {
-  const [mode, setMode] = useState('single')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
+/**
+ * Adding students, whether that is one person or a whole cohort.
+ *
+ * Typed rows and an uploaded CSV feed the same two endpoints: a preview that
+ * writes nothing and reports what each row would do, then an import that runs
+ * the identical planner again. So the summary an admin approves is what they
+ * get, and there is only one path to keep working.
+ */
+export default function InstitutionInvite({ cohorts = [], usernameTag, onInvited }) {
+  const fileRef = useRef(null)
+  const [rows, setRows] = useState([blankRow()])
+  const [fromFile, setFromFile] = useState('')
+  const [drag, setDrag] = useState(false)
+  const [plan, setPlan] = useState(null)
+  const [page, setPage] = useState(1)
   const [results, setResults] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [progress, setProgress] = useState({ done: 0, total: 0 })
+  const [error, setError] = useState('')
 
-  const [single, setSingle] = useState({ email: '', username: '', cohort_id: '' })
-  const [bulk, setBulk] = useState({ emails: '', cohort_id: '' })
+  /** Rows worth sending: anything the admin has actually put something into. */
+  const filled = rows.filter((row) => row.name.trim() || row.email.trim())
 
-  const bulkEmails = parseEmails(bulk.emails)
-
-  const reset = () => {
-    setError('')
-    setNotice('')
+  const startOver = () => {
+    setRows([blankRow()])
+    setFromFile('')
+    setPlan(null)
     setResults(null)
+    setError('')
+    setProgress({ done: 0, total: 0 })
+    if (fileRef.current) fileRef.current.value = ''
   }
 
-  const inviteSingle = async (e) => {
-    e?.preventDefault()
-    if (!single.email.trim()) return
-    setBusy(true)
-    reset()
-    try {
-      const payload = { email: single.email.trim() }
-      if (single.username.trim()) payload.username = single.username.trim()
-      if (single.cohort_id) payload.cohort_id = single.cohort_id
+  /** Any edit invalidates a summary that was calculated from the old rows. */
+  const editRows = (next) => {
+    setRows(next)
+    setPlan(null)
+    setError('')
+  }
 
-      const res = await authenticatedFetch(`${API_BASE}/institution/students`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        setError(await readError(res, 'Failed to invite this student'))
+  const setRow = (id, patch) => editRows(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+  const addRow = () => editRows([...rows, blankRow()])
+  const removeRow = (id) => editRows(rows.length === 1 ? [blankRow()] : rows.filter((row) => row.id !== id))
+
+  const toPayload = (list) =>
+    list.map((row) => ({ name: row.name.trim(), email: row.email.trim(), year_group: row.year_group.trim() }))
+
+  const review = async (list) => {
+    setBusy(true)
+    setError('')
+    setResults(null)
+    try {
+      if (list.length === 0) return
+      if (list.length > MAX_ROWS) {
+        setError(`That is ${list.length} students. Please do them in batches of ${MAX_ROWS} or fewer.`)
         return
       }
-      const student = (await res.json().catch(() => ({})))?.student
-      if (student?.email_sent === false) {
-        setError(
-          `${payload.email} was added, but the invite email could not be sent (${student.email_error || 'unknown error'}). Use Resend invite from the roster once that is fixed.`
-        )
-      } else if (student?.linked_existing) {
-        setNotice(`${payload.email} already had an account, so it has been linked to your institution.`)
-      } else {
-        setNotice(`Invite sent to ${payload.email}.`)
+
+      const res = await authenticatedFetch(`${API_BASE}/institution/students/import/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: toPayload(list) }),
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to check these students'))
+        return
       }
-      // The year group is kept, since admins normally invite a run of students
-      // into the same one.
-      setSingle((p) => ({ email: '', username: '', cohort_id: p.cohort_id }))
-      onInvited?.()
+      setPlan(await res.json())
+      setPage(1)
     } catch {
-      setError('Failed to invite this student')
+      setError('Failed to check these students')
     } finally {
       setBusy(false)
     }
   }
 
-  const inviteBulk = async (e) => {
-    e?.preventDefault()
-    if (bulkEmails.length === 0) return
-    if (bulkEmails.length > BULK_LIMIT) {
-      setError(`That is ${bulkEmails.length} addresses. Please invite at most ${BULK_LIMIT} at a time.`)
+  const handleFile = async (file) => {
+    if (!file) return
+    setError('')
+    setResults(null)
+    setPlan(null)
+    // Set here rather than in review, so the wait covers reading the file too.
+    setBusy(true)
+
+    let parsed
+    try {
+      parsed = await readRosterCsv(file)
+    } catch (e) {
+      setFromFile('')
+      setError(e?.message || 'Could not read that file')
+      setBusy(false)
       return
     }
-    setBusy(true)
-    reset()
-    try {
-      const students = bulkEmails.map((email) => ({ email }))
 
-      const res = await authenticatedFetch(`${API_BASE}/institution/students/bulk`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          students,
-          ...(bulk.cohort_id ? { cohort_id: bulk.cohort_id } : {}),
-        }),
-      })
-      if (!res.ok) {
-        setError(await readError(res, 'Failed to invite these students'))
-        return
-      }
-      const body = await res.json().catch(() => ({}))
-      setResults(body.results || [])
-      const invited = body.invited ?? 0
-      const failed = body.failed ?? 0
-      setNotice(
-        failed === 0
-          ? `Invited all ${invited} student${invited === 1 ? '' : 's'}.`
-          : `Invited ${invited}, and ${failed} could not be invited. See the details below.`
-      )
-      if (invited > 0) {
-        setBulk((p) => ({ emails: '', cohort_id: p.cohort_id }))
-        onInvited?.()
+    const loaded = parsed.map((row) => ({ ...blankRow(), ...row }))
+    setRows(loaded)
+    setFromFile(file.name)
+    await review(loaded)
+  }
+
+  /**
+   * Send in chunks, keeping every row's result. A chunk that fails outright
+   * stops the run: carrying on would send more email into whatever went wrong,
+   * and the rows already done are safe to keep.
+   */
+  const runImport = async () => {
+    const list = fromFile ? rows : filled
+    setImporting(true)
+    setError('')
+    setProgress({ done: 0, total: list.length })
+    const collected = []
+
+    try {
+      for (let start = 0; start < list.length; start += IMPORT_CHUNK) {
+        const chunk = list.slice(start, start + IMPORT_CHUNK)
+        const res = await authenticatedFetch(`${API_BASE}/institution/students/import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows: toPayload(chunk) }),
+        })
+        if (!res.ok) {
+          setError(await readError(res, 'This stopped partway through'))
+          break
+        }
+        const body = await res.json().catch(() => ({}))
+        // Row indexes come back relative to the chunk.
+        for (const result of body.results || []) collected.push({ ...result, index: start + (result.index ?? 0) })
+        setProgress({ done: Math.min(start + chunk.length, list.length), total: list.length })
+        setResults([...collected])
       }
     } catch {
-      setError('Failed to invite these students')
+      setError('This stopped partway through')
     } finally {
-      setBusy(false)
+      // Nothing collected means the very first chunk failed, so leave the rows
+      // where they are instead of showing a summary of zeros.
+      setResults(collected.length > 0 ? collected : null)
+      setPlan(null)
+      setImporting(false)
+      if (collected.some((r) => r.ok && !r.skipped)) onInvited?.()
     }
   }
+
+  const summary = plan?.summary
+  const seats = plan?.seats
+  const toAdd = summary ? summary.invite + summary.link_existing : 0
+  const showEditor = !results && !fromFile
+
+  // A repeated address is handled by the row above it, so it is noise in a
+  // list the admin is reading through.
+  const planRows = (plan?.rows ?? []).filter((row) => row.action !== 'duplicate_in_file')
+  const pageCount = Math.max(1, Math.ceil(planRows.length / PAGE_SIZE))
+  const firstOnPage = (page - 1) * PAGE_SIZE
+  const pageRows = planRows.slice(firstOnPage, firstOnPage + PAGE_SIZE)
+
+  const done = {
+    invited: (results ?? []).filter((r) => r.ok && !r.skipped && !r.linked_existing).length,
+    linked: (results ?? []).filter((r) => r.ok && r.linked_existing).length,
+    skipped: (results ?? []).filter((r) => r.skipped).length,
+    failed: (results ?? []).filter((r) => !r.ok).length,
+  }
+  const attention = (results ?? []).filter(needsAttention)
+  const doneHint =
+    done.invited + done.linked > 0
+      ? 'Everyone was emailed a link to set their own password. It lasts 24 hours — you can resend it from the roster below.'
+      : 'Nothing was created: everyone on that list is already in your institution.'
 
   return (
     <div className="qb-card inst-section">
@@ -158,35 +232,12 @@ export default function InstitutionInvite({ cohorts = [], onInvited }) {
             <LuUserPlus size={20} />
           </div>
           <div>
-            <div className="qb-card__title">Invite students</div>
+            <div className="qb-card__title">Add students</div>
             <div className="qb-card__meta" style={{ marginTop: 4 }}>
-              They set their own password from the email
+              They set their own password
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="inst-modes" role="group" aria-label="Invite mode" style={{ marginTop: 16 }}>
-        <button
-          type="button"
-          className={mode === 'single' ? 'is-active' : ''}
-          onClick={() => {
-            setMode('single')
-            reset()
-          }}
-        >
-          One student
-        </button>
-        <button
-          type="button"
-          className={mode === 'bulk' ? 'is-active' : ''}
-          onClick={() => {
-            setMode('bulk')
-            reset()
-          }}
-        >
-          Many at once
-        </button>
       </div>
 
       {error && (
@@ -194,129 +245,328 @@ export default function InstitutionInvite({ cohorts = [], onInvited }) {
           <div>{error}</div>
         </div>
       )}
-      {notice && (
-        <div className="inst-alert inst-alert--success" role="status">
-          <div>{notice}</div>
-        </div>
-      )}
-
-      {mode === 'single' ? (
-        <form className="inst-form" onSubmit={inviteSingle}>
-          <div className="inst-form__row">
-            <div className="inst-form__field">
-              <label className="inst-form__label" htmlFor="inst-invite-email">
-                Email
-              </label>
-              <input
-                id="inst-invite-email"
-                type="email"
-                className="db-input"
-                value={single.email}
-                onChange={(e) => setSingle((p) => ({ ...p, email: e.target.value }))}
-                placeholder="student@uni.ac.uk"
-                required
-              />
-            </div>
-            <div className="inst-form__field">
-              <label className="inst-form__label" htmlFor="inst-invite-username">
-                Username (optional)
-              </label>
-              <input
-                id="inst-invite-username"
-                type="text"
-                className="db-input"
-                value={single.username}
-                onChange={(e) => setSingle((p) => ({ ...p, username: e.target.value }))}
-                placeholder="Username"
-              />
-            </div>
-            <div className="inst-form__field">
-              <label className="inst-form__label" htmlFor="inst-invite-year">
-                Year group
-              </label>
-              <select
-                id="inst-invite-year"
-                className="db-select"
-                value={single.cohort_id}
-                onChange={(e) => setSingle((p) => ({ ...p, cohort_id: e.target.value }))}
-                disabled={cohorts.length === 0}
-              >
-                <option value="">{cohorts.length === 0 ? 'None set up yet' : 'No year group'}</option>
-                {cohorts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      {showEditor && (
+        <>
+          <div className="inst-rows">
+            {rows.map((row, index) => (
+              <div className="inst-row" key={row.id}>
+                <div className="inst-form__field">
+                  {index === 0 && (
+                    <label className="inst-form__label" htmlFor={`inst-row-name-${row.id}`}>
+                      Name
+                    </label>
+                  )}
+                  <input
+                    id={`inst-row-name-${row.id}`}
+                    type="text"
+                    className="db-input"
+                    value={row.name}
+                    onChange={(e) => setRow(row.id, { name: e.target.value })}
+                    placeholder="John Smith"
+                    aria-label="Name"
+                    maxLength={120}
+                  />
+                </div>
+                <div className="inst-form__field">
+                  {index === 0 && (
+                    <label className="inst-form__label" htmlFor={`inst-row-email-${row.id}`}>
+                      Email
+                    </label>
+                  )}
+                  <input
+                    id={`inst-row-email-${row.id}`}
+                    type="email"
+                    className="db-input"
+                    value={row.email}
+                    onChange={(e) => setRow(row.id, { email: e.target.value })}
+                    placeholder="student@uni.ac.uk"
+                    aria-label="Email"
+                  />
+                </div>
+                <div className="inst-form__field">
+                  {index === 0 && (
+                    <label className="inst-form__label" htmlFor={`inst-row-year-${row.id}`}>
+                      Year group
+                    </label>
+                  )}
+                  <select
+                    id={`inst-row-year-${row.id}`}
+                    className="db-select"
+                    value={row.year_group}
+                    onChange={(e) => setRow(row.id, { year_group: e.target.value })}
+                    aria-label="Year group"
+                    disabled={cohorts.length === 0}
+                  >
+                    <option value="">{cohorts.length === 0 ? 'None set up yet' : 'No year group'}</option>
+                    {cohorts.map((cohort) => (
+                      <option key={cohort.id} value={cohort.name}>
+                        {cohort.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  className="inst-btn inst-row__remove"
+                  onClick={() => removeRow(row.id)}
+                  disabled={rows.length === 1 && !row.name && !row.email}
+                  title="Remove this student"
+                  aria-label="Remove this student"
+                >
+                  <LuX size={14} aria-hidden />
+                </button>
+              </div>
+            ))}
           </div>
-          <div>
-            <button type="submit" className="qb-btn qb-btn--sm" disabled={busy || !single.email.trim()}>
-              {busy ? 'Sending...' : 'Send invite'}
+
+          <div className="inst-import__actions">
+            <button type="button" className="inst-btn" onClick={addRow}>
+              <LuPlus size={14} aria-hidden /> Add another
             </button>
           </div>
-        </form>
-      ) : (
-        <form className="inst-form" onSubmit={inviteBulk}>
-          <div className="inst-form__field">
-            <label className="inst-form__label" htmlFor="inst-invite-bulk">
-              Email addresses
-            </label>
-            <textarea
-              id="inst-invite-bulk"
-              className="inst-textarea"
-              value={bulk.emails}
-              onChange={(e) => setBulk((p) => ({ ...p, emails: e.target.value }))}
-              placeholder={'student1@uni.ac.uk\nstudent2@uni.ac.uk\nstudent3@uni.ac.uk'}
+
+          <div
+            className={`inst-drop${drag ? ' inst-drop--over' : ''}`}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDrag(true)
+            }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => {
+              e.preventDefault()
+              setDrag(false)
+              handleFile(e.dataTransfer.files?.[0])
+            }}
+          >
+            <input
+              ref={fileRef}
+              id="inst-roster-file"
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => handleFile(e.target.files?.[0])}
             />
-            <p className="inst-form__hint">
-              One per line, or separated by commas. Duplicates are ignored. Up to {BULK_LIMIT} at a time.
-              {bulkEmails.length > 0 && (
-                <>
-                  {' '}
-                  <strong>
-                    {bulkEmails.length} address{bulkEmails.length === 1 ? '' : 'es'} ready.
-                  </strong>
-                </>
-              )}
-            </p>
+            {busy && <span className="inst-spinner" aria-hidden />}
+            <span className="inst-drop__label">
+              {busy ? 'Reading your file...' : 'Or drop a CSV here to add a whole year at once'}
+            </span>
+            <span className="inst-drop__hint">
+              Columns: <strong>Name</strong>, <strong>Email</strong>, and <strong>Year group</strong> if you use them.
+              Up to {MAX_ROWS} students at a time.
+            </span>
           </div>
-          <div className="inst-form__field" style={{ maxWidth: 260 }}>
-            <label className="inst-form__label" htmlFor="inst-invite-bulk-year">
-              Year group for all of them
-            </label>
-            <select
-              id="inst-invite-bulk-year"
-              className="db-select"
-              value={bulk.cohort_id}
-              onChange={(e) => setBulk((p) => ({ ...p, cohort_id: e.target.value }))}
-              disabled={cohorts.length === 0}
+
+          <div className="inst-import__actions">
+            <button
+              type="button"
+              className="qb-btn qb-btn--sm"
+              onClick={() => review(filled)}
+              disabled={busy || filled.length === 0}
             >
-              <option value="">{cohorts.length === 0 ? 'None set up yet' : 'No year group'}</option>
-              {cohorts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <button type="submit" className="qb-btn qb-btn--sm" disabled={busy || bulkEmails.length === 0}>
-              {busy ? 'Sending...' : `Invite ${bulkEmails.length || ''} student${bulkEmails.length === 1 ? '' : 's'}`}
+              {busy ? 'Checking...' : `Review ${filled.length || ''} student${filled.length === 1 ? '' : 's'}`}
             </button>
           </div>
-        </form>
+        </>
       )}
 
-      {results && results.length > 0 && (
-        <div className="inst-results">
-          {results.map((result, i) => (
-            <div key={`${result.email}-${i}`} className={`inst-result inst-result--${resultTone(result)}`}>
-              <span className="inst-result__email">{result.email}</span>
-              <span>{resultMessage(result)}</span>
-            </div>
-          ))}
+      {fromFile && !results && (
+        <div className="inst-import__actions" style={{ marginTop: 16 }}>
+          <span className="inst-import__progress" role="status" aria-live="polite">
+            {busy && <span className="inst-spinner" aria-hidden />}
+            <span>
+              Read <strong>{fromFile}</strong> — {rows.length} row{rows.length === 1 ? '' : 's'}
+              {busy ? ', checking them now...' : ''}
+            </span>
+          </span>
+          {/* The plan panel has its own, so this is the way back when the check failed. */}
+          {!busy && !plan && (
+            <button type="button" className="inst-btn" onClick={startOver}>
+              Start again
+            </button>
+          )}
         </div>
+      )}
+
+      {plan && (
+        <>
+          <div className="inst-summary">
+            <div className="inst-summary__item">
+              <span className="inst-summary__num">{summary.invite}</span>
+              <span className="inst-summary__label">to invite</span>
+            </div>
+            <div className="inst-summary__item">
+              <span className="inst-summary__num">{summary.link_existing}</span>
+              <span className="inst-summary__label">already have an account</span>
+            </div>
+            <div className="inst-summary__item">
+              <span className="inst-summary__num">{summary.skip_already_member}</span>
+              <span className="inst-summary__label">already in your institution</span>
+            </div>
+            <div className="inst-summary__item">
+              <span className="inst-summary__num">{summary.error}</span>
+              <span className="inst-summary__label">with problems</span>
+            </div>
+          </div>
+
+          {summary.new_cohorts.length > 0 && (
+            <p className="inst-form__hint">
+              New year groups that will be created: <strong>{summary.new_cohorts.join(', ')}</strong>
+            </p>
+          )}
+
+          {summary.duplicate_in_file > 0 && (
+            <p className="inst-form__hint">
+              {summary.duplicate_in_file} row{summary.duplicate_in_file === 1 ? ' repeats' : 's repeat'} an address
+              listed earlier, so {summary.duplicate_in_file === 1 ? 'it has' : 'they have'} been left out below.
+            </p>
+          )}
+
+          {seats?.over_limit && (
+            <div className="inst-alert inst-alert--error" role="alert">
+              <div>
+                This would need {seats.needed} seats but only {Math.max(0, seats.limit - seats.used)} are left. Get in
+                touch to raise your limit.
+              </div>
+            </div>
+          )}
+
+          <div className="inst-table-wrap" style={{ marginTop: 14 }}>
+            <table className="inst-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Username</th>
+                  <th>Year group</th>
+                  <th>What will happen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageRows.map((row) => (
+                  <tr key={row.index}>
+                    <td>{row.name || '—'}</td>
+                    <td>
+                      <div className="inst-table__email">{row.email || '—'}</div>
+                    </td>
+                    <td>{row.username || '—'}</td>
+                    <td>
+                      {row.cohort_name || '—'}
+                      {row.cohort_name && !row.cohort_exists && <span className="inst-tag">new</span>}
+                    </td>
+                    <td>
+                      <span className={`inst-result inst-result--${ACTION_TONES[row.action]}`}>
+                        {row.error || ACTION_LABELS[row.action]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {pageCount > 1 && (
+            <div className="inst-pager">
+              <span className="inst-pager__label">
+                Showing {firstOnPage + 1}–{firstOnPage + pageRows.length} of {planRows.length}
+              </span>
+              <button
+                type="button"
+                className="inst-btn"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </button>
+              <span className="inst-pager__label">
+                Page {page} of {pageCount}
+              </span>
+              <button
+                type="button"
+                className="inst-btn"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page === pageCount}
+              >
+                Next
+              </button>
+            </div>
+          )}
+
+          <div className="inst-import__actions">
+            <button
+              type="button"
+              className="qb-btn qb-btn--sm"
+              onClick={runImport}
+              disabled={importing || seats?.over_limit || toAdd === 0}
+            >
+              {importing ? 'Adding...' : `Confirm and invite ${toAdd} student${toAdd === 1 ? '' : 's'}`}
+            </button>
+            <button type="button" className="inst-btn" onClick={startOver} disabled={importing}>
+              Start again
+            </button>
+            {importing && (
+              <span className="inst-import__progress" role="status" aria-live="polite">
+                <span className="inst-spinner" aria-hidden />
+                <span>
+                  {progress.done} of {progress.total} sent
+                </span>
+              </span>
+            )}
+          </div>
+          <p className="inst-form__hint">
+            Nothing has been created yet. Usernames are shown as they will be issued
+            {usernameTag ? `, ending in .${usernameTag}` : ''}.
+          </p>
+        </>
+      )}
+
+      {results && (
+        <>
+          <div className="inst-summary">
+            <div className="inst-summary__item">
+              <span className="inst-summary__num">{done.invited}</span>
+              <span className="inst-summary__label">invited</span>
+            </div>
+            <div className="inst-summary__item">
+              <span className="inst-summary__num">{done.linked}</span>
+              <span className="inst-summary__label">linked to an existing account</span>
+            </div>
+            <div className="inst-summary__item">
+              <span className="inst-summary__num">{done.skipped}</span>
+              <span className="inst-summary__label">already in your institution</span>
+            </div>
+            <div className="inst-summary__item">
+              <span className="inst-summary__num">{done.failed}</span>
+              <span className="inst-summary__label">could not be added</span>
+            </div>
+          </div>
+
+          {/* Everything that went to plan is in the counts above; only rows the
+              admin has to do something about are worth listing. */}
+          {attention.length > 0 ? (
+            <>
+              <p className="inst-form__hint">
+                {attention.length === 1 ? 'One student needs' : `${attention.length} students need`} a second look:
+              </p>
+              <div className="inst-results">
+                {attention.map((result) => (
+                  <div key={result.index} className={`inst-result inst-result--${result.ok ? 'warn' : 'fail'}`}>
+                    <span className="inst-result__email">{result.email}</span>
+                    <span>{resultMessage(result)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="inst-form__hint">{doneHint}</p>
+          )}
+
+          {!importing && (
+            <div className="inst-import__actions">
+              <button type="button" className="qb-btn qb-btn--sm" onClick={startOver}>
+                Add more students
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

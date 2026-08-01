@@ -77,7 +77,11 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
     const term = search.trim().toLowerCase()
     if (!term) return students
     return students.filter((s) =>
-      [s.email, s.username, s.cohort_name].some((field) => String(field || '').toLowerCase().includes(term))
+      [s.email, s.username, s.student_name, s.cohort_name].some((field) =>
+        String(field || '')
+          .toLowerCase()
+          .includes(term)
+      )
     )
   }, [students, search])
 
@@ -288,6 +292,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
           <table className="inst-table">
             <thead>
               <tr>
+                <th>Name</th>
                 <th>Student</th>
                 <th>Year group</th>
                 <th>Status</th>
@@ -304,6 +309,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
                 return (
                   <React.Fragment key={student.user_id}>
                     <tr>
+                      <td>{student.student_name || '—'}</td>
                       <td>
                         <div className="inst-table__email">{student.email || '—'}</div>
                         {student.username && <div className="inst-table__sub">{student.username}</div>}
@@ -389,7 +395,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
                     </tr>
                     {isEditing && (
                       <tr className="inst-edit">
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <div className="inst-edit__grid">
                             <div className="inst-edit__field">
                               <span className="inst-edit__label">Username</span>
