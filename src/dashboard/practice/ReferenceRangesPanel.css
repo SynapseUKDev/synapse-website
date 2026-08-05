@@ -125,7 +125,11 @@
 }
 
 html[data-theme='dark'] .refcard__search {
-    border-bottom-color: var(--syn-border);
+  border-bottom-color: var(--syn-border);
+}
+
+html[data-theme='dark'] .refcard__inner {
+  border-top-color: var(--syn-border);
 }
 
 html[data-theme='dark'] .refcard__search-input {

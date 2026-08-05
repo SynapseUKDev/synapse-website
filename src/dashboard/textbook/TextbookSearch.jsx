@@ -65,7 +65,8 @@ export default function TextbookSearch() {
 
   function openResult(r) {
     if (!r) return
-    navigate(`/dashboard/textbook/topic/${r.target_slug}#sec-${r.section_anchor}`)
+    const hash = r.section_anchor ? `#sec-${r.section_anchor}` : ''
+    navigate(`/dashboard/textbook/topic/${r.target_slug}${hash}`)
   }
 
   function submit(e) {
@@ -89,7 +90,7 @@ export default function TextbookSearch() {
           <input
             className="tb-search__input"
             type="search"
-            placeholder="Search textbook content…"
+            placeholder="Search textbook content or conditions…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             aria-label="Search query"

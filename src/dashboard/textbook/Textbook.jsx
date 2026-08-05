@@ -588,7 +588,8 @@ export default function Textbook() {
     const slug = r.target_slug
     const anchor = r.section_anchor
     if (slug) {
-      navigate(`/dashboard/textbook/topic/${slug}#sec-${anchor}`)
+      const hash = anchor ? `#sec-${anchor}` : ''
+      navigate(`/dashboard/textbook/topic/${slug}${hash}`)
     }
   }
 
@@ -909,7 +910,7 @@ export default function Textbook() {
             <input
               className="tb-search__input"
               type="search"
-              placeholder="Search textbook content…"
+              placeholder="Search textbook content or conditions…"
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}
               aria-label="Search query"
@@ -1012,7 +1013,7 @@ export default function Textbook() {
           <input
             className="tb-search__input"
             type="search"
-            placeholder="Search textbook content…"
+            placeholder="Search textbook content or conditions…"
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             aria-label="Search query"

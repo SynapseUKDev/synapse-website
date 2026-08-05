@@ -13,6 +13,38 @@ export function normalizeTextbookImageItems(data) {
       credit: img?.credit || '',
     }))
   }
+  if (Array.isArray(data?.composite) && data.composite.length > 0) {
+    return data.composite.map((item) => {
+      const raw = item?.caption_html || ''
+      const text = String(raw).replace(/<[^>]+>/g, '').trim()
+      const parts = text.split(/\s+[–-]\s+/)
+      const caption = parts.length >= 2 ? parts[0].trim() : text
+      const attribution = parts.length >= 2 ? parts.slice(1).join(' - ').trim() : ''
+      return {
+        url: item?.asset_url || '',
+        alt: item?.alt || '',
+        caption,
+        attribution,
+        license: '',
+        credit: '',
+      }
+    })
+  }
+  if (data?.asset_url) {
+    const raw = data?.caption_html || data?.caption || ''
+    const text = String(raw).replace(/<[^>]+>/g, '').trim()
+    const parts = text.split(/\s+[–-]\s+/)
+    const caption = parts.length >= 2 ? parts[0].trim() : text
+    const attribution = parts.length >= 2 ? parts.slice(1).join(' - ').trim() : ''
+    return [{
+      url: data.asset_url || '',
+      alt: data.alt || '',
+      caption,
+      attribution,
+      license: data.license || '',
+      credit: data.credit || '',
+    }]
+  }
   if (data?.url) {
     return [{
       url: data.url || '',

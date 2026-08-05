@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useNavigate, useParams, useLocation, useOutletContext } from 'react-router-dom'
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
 import './Textbook.css'
+import { extractImagesFromBlock, shouldRenderAsImageCarousel } from './textbookBlockImages.js'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
@@ -701,23 +702,12 @@ function RenderBlockContent({ content, highlights = [], query = '', onHighlightC
 }
 
 function RenderBlock({ block, query, blockHighlights = [], onHighlightClick = () => { }, onDeleteHighlight = () => { }, isAdminEditing = false }) {
-  if (block.block_type === 'image') {
-    const data = block.data || {}
-    const images = Array.isArray(data.images) && data.images.length > 0
-      ? data.images.map((im) => ({
-        url: im.url,
-        alt: im.alt ?? '',
-        caption: im.caption ?? data.caption,
-        attribution: im.attribution ?? data.attribution,
-        license: im.license ?? data.license,
-      }))
-      : data.url
-        ? [{ url: data.url, alt: data.alt ?? '', caption: data.caption, attribution: data.attribution, license: data.license }]
-        : []
+  if (shouldRenderAsImageCarousel(block)) {
+    const images = extractImagesFromBlock(block)
     if (images.length > 0) {
       return <ImageCarousel images={images} />
     }
-    if (isAdminEditing) {
+    if (block.block_type === 'image' && isAdminEditing) {
       return <div className="tb-admin-image-placeholder">No images in this block yet. Use Edit images to add files from your device.</div>
     }
     return null

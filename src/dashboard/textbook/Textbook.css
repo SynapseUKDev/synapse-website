@@ -680,6 +680,17 @@ mark.tb-user-mark[data-note]:hover::after {
   color: var(--syn-navy-700);
 }
 
+/* Body emphasis: bold only, never a larger size than surrounding copy */
+.tb-md :is(p, li, td) :is(strong, b) {
+  font-size: inherit;
+  font-weight: 800;
+}
+
+/* Override inline font-size on imported emphasis tags in body copy */
+.tb-md :is(p, li, td) :is(strong, b)[style] {
+  font-size: inherit !important;
+}
+
 .tb-md code {
   background: var(--dm-surface-container-high, #f5f7fb);
   padding: 2px 6px;
@@ -737,11 +748,15 @@ mark.tb-user-mark[data-note]:hover::after {
   margin: 10px 0 6px 0;
 }
 
-/* Standalone bold paragraph subheaders (e.g., "Pregnancy", "Recurrent BV") */
-.tb-md p>strong:only-child {
-  font-size: 16.5px;
-  color: var(--syn-navy-700);
-  display: inline-block;
+.tb-md h4 {
+  font-size: 16px;
+  margin: 8px 0 6px 0;
+}
+
+.tb-md h5,
+.tb-md h6 {
+  font-size: 15px;
+  margin: 8px 0 4px 0;
 }
 
 /* Table styling (for clinical features etc.) */
@@ -1594,6 +1609,10 @@ html[data-theme='dark'] .tb-carousel__nav:hover:not(:disabled) {
 .tb-page--chapter .tb-md strong {
   color: var(--syn-navy-700) !important;
   font-weight: 800;
+}
+
+.tb-page--chapter .tb-md :is(p, li, td) :is(strong, b) {
+  font-size: inherit !important;
 }
 
 .tb-page--chapter .tb-figure figcaption,
