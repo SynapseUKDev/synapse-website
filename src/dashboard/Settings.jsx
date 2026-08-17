@@ -243,6 +243,7 @@ export default function Settings() {
     const map = {
       active: { label: 'Active', color: '#10b981' },
       trialing: { label: 'Trialing', color: '#3b82f6' },
+      free_trial: { label: 'Free Trial', color: '#3b82f6' },
       past_due: { label: 'Past Due', color: '#f59e0b' },
       canceled: { label: 'Cancelled', color: '#64748b' },
       incomplete: { label: 'Incomplete', color: '#64748b' },
@@ -268,6 +269,9 @@ export default function Settings() {
   const isCanceledPaidSub = accessData?.subscription_status === 'canceled' && !!accessData?.current_period_end
   const isBetaTester = accessData?.is_beta_tester && accessData?.beta_access_ends_at
   const canceledDuringTrial = accessData?.subscription_status === 'canceled' && !accessData?.last_payment_at
+  const freeTrialEndsAt = accessData?.trial_ends_at ? new Date(accessData.trial_ends_at) : null
+  const isFreeTrial = !!freeTrialEndsAt && freeTrialEndsAt > new Date()
+    && !isPaidSubscriber && !hasStripeSubscription && !isCanceledPaidSub
 
   return (
     <div className="qb">
@@ -528,10 +532,21 @@ export default function Settings() {
                 statusBadge('trialing')
               ) : isPaidSubscriber ? (
                 statusBadge(accessData.subscription_status)
+              ) : isFreeTrial ? (
+                statusBadge('free_trial')
               ) : (
                 <span style={{ color: 'var(--syn-muted)' }}>No subscription</span>
               )}
             </div>
+
+            {isFreeTrial && (
+              <div>
+                <div className="qb__subtitle" style={{ marginBottom: 4 }}>Free Access Ends</div>
+                <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>
+                  {formatDate(accessData.trial_ends_at)}
+                </div>
+              </div>
+            )}
 
             {isBetaTester && (
               <>

@@ -6,6 +6,54 @@ import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { setTokens } from './token'
 import logo from '../assets/logo/logo.png'
 
+/** How long the invited access lasts, as "1 year", "6 months" or "12 days". */
+function describeDuration(endsAt) {
+    if (!endsAt) return ''
+    const end = new Date(endsAt)
+    if (Number.isNaN(end.getTime())) return ''
+
+    const days = Math.round((end.getTime() - Date.now()) / 86400000)
+    if (days <= 0) return ''
+    // Only genuinely short grants are counted in days; a month-long one reads
+    // better as "1 month" than as "30 days".
+    if (days < 25) return days === 1 ? '1 day' : `${days} days`
+
+    const months = Math.max(1, Math.round(days / 30.44))
+    if (months === 1) return '1 month'
+    if (months >= 12 && months % 12 === 0) {
+        const years = months / 12
+        return years === 1 ? '1 year' : `${years} years`
+    }
+    return `${months} months`
+}
+
+/**
+ * What this invite actually grants. Trial users, beta testers and institution
+ * students all finish signing up here, so the banner is built from the account
+ * rather than assuming the one-month beta everyone used to be on.
+ */
+function describeInvite(access) {
+    if (!access) return null
+
+    if (access.institution_name) {
+        return {
+            title: `${access.institution_name} Access`,
+            subtitle: 'Full access to all features, provided by your institution',
+            hero: 'Your institution has given you full access to everything on the platform.',
+        }
+    }
+
+    const isBeta = access.is_beta_tester && access.beta_access_ends_at
+    const duration = describeDuration(isBeta ? access.beta_access_ends_at : access.trial_ends_at)
+    if (!duration) return null
+
+    return {
+        title: isBeta ? 'Beta Tester Access' : 'Free Access',
+        subtitle: `${duration} of free access to all features`,
+        hero: `You'll have access to all features for ${duration}.`,
+    }
+}
+
 function SetupAccount() {
     const navigate = useNavigate()
     const location = useLocation()
@@ -14,6 +62,7 @@ function SetupAccount() {
     // Institution students are given a username when they are invited, so they
     // are shown it rather than asked to invent one.
     const [usernameAssigned, setUsernameAssigned] = useState(false)
+    const [access, setAccess] = useState(null)
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -61,6 +110,7 @@ function SetupAccount() {
                         setUsername(data.username)
                         setUsernameAssigned(true)
                     }
+                    setAccess(data.access || null)
                     setCheckingToken(false)
                 })
                 .catch(() => {
@@ -141,6 +191,8 @@ function SetupAccount() {
     if (checkingToken) {
         return <LoadingScreen message="Setting up your account..." />
     }
+
+    const invite = describeInvite(access)
 
     if (error && !password) {
         return (
@@ -232,19 +284,21 @@ function SetupAccount() {
                             </p>
                         </div>
 
-                        <div className="auth-panel__trial-banner" style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', borderColor: '#fcd34d' }}>
-                            <div className="auth-panel__trial-icon" style={{ color: '#92400e' }}>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                                    <path d="M2 17l10 5 10-5" />
-                                    <path d="M2 12l10 5 10-5" />
-                                </svg>
+                        {invite && (
+                            <div className="auth-panel__trial-banner" style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', borderColor: '#fcd34d' }}>
+                                <div className="auth-panel__trial-icon" style={{ color: '#92400e' }}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                        <path d="M2 17l10 5 10-5" />
+                                        <path d="M2 12l10 5 10-5" />
+                                    </svg>
+                                </div>
+                                <div className="auth-panel__trial-content">
+                                    <div className="auth-panel__trial-title" style={{ color: '#92400e' }}>{invite.title}</div>
+                                    <div className="auth-panel__trial-subtitle" style={{ color: '#b45309' }}>{invite.subtitle}</div>
+                                </div>
                             </div>
-                            <div className="auth-panel__trial-content">
-                                <div className="auth-panel__trial-title" style={{ color: '#92400e' }}>Beta Tester Access</div>
-                                <div className="auth-panel__trial-subtitle" style={{ color: '#b45309' }}>1 month of free access to all features</div>
-                            </div>
-                        </div>
+                        )}
 
                         <form className="auth-panel__form" onSubmit={handleSubmit}>
                             <label className="auth-panel__label">Email address</label>
@@ -370,7 +424,7 @@ function SetupAccount() {
                             Welcome to <span className="auth__gradient-text">Synapse UK</span>
                         </h1>
                         <p className="auth__subtitle">
-                            Thank you for joining our beta programme! You'll have access to all features for 1 month.
+                            {invite ? invite.hero : 'Set up your account to get started.'}
                         </p>
                     </div>
 
