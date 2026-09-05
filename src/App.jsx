@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from
 import Landing from './landing/Landing.jsx'
 import Auth from './auth/Auth.jsx'
 import Dashboard from './dashboard/Dashboard.jsx'
-import Analytics from './dashboard/insights/Insights.jsx'
+import Analytics from './dashboard/insights/Analytics.jsx'
+import Report from './dashboard/insights/Report.jsx'
 import Callback from './auth/Callback.jsx'
 import Subscribe from './auth/Subscribe.jsx'
 import ResetPassword from './auth/ResetPassword.jsx'
@@ -109,6 +110,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="analytics/report/:id" element={<Report />} />
           <Route path="question-bank" element={<QuestionBank />} />
           <Route path="question-bank/create-set" element={<CreateStudySet />} />
           <Route path="study-sets" element={<StudySets />} />

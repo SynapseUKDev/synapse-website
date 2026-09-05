@@ -23,6 +23,8 @@ export default function PracticeSetup() {
   const specialtyName = searchParams.get('specialty_name') || 'Unknown Specialty'
   const studySetId = searchParams.get('study_set_id')
   const studySetName = searchParams.get('study_set_name') || 'Unknown Set'
+  const preselectTopicId = searchParams.get('topic_id')
+  const presetCount = searchParams.get('count')
 
   const [loading, setLoading] = useState(true)
   const [studySetError, setStudySetError] = useState(null)
@@ -256,9 +258,21 @@ export default function PracticeSetup() {
       setSpecialtyAttemptedCount(typeof data.specialty_attempted_count === 'number' ? data.specialty_attempted_count : null)
       setSpecialtyTotalQuestions(typeof data.specialty_total_questions === 'number' ? data.specialty_total_questions : null)
 
-      // Select all topics by default
-      const allTopicIds = new Set(data.topics?.map(t => t.id) || [])
-      setSelectedTopics(allTopicIds)
+      const loaded = data.topics || []
+      const hasPreselect = preselectTopicId && loaded.some((t) => t.id === preselectTopicId)
+      setSelectedTopics(new Set(hasPreselect ? [preselectTopicId] : loaded.map((t) => t.id)))
+      if (hasPreselect && presetCount && /^\d+$/.test(presetCount)) {
+        const t = loaded.find((x) => x.id === preselectTopicId)
+        const pool = (t.remaining_count || 0) + (includeIncorrect ? (t.incorrect_count || 0) : 0)
+        if (pool > 0) {
+          setNumQuestionsInput(String(Math.max(1, Math.min(pool, Number(presetCount)))))
+        } else {
+          // Every question in this topic has already been attempted — fall
+          // back to the full pool so Start isn't left disabled.
+          setIncludeAttempted(true)
+          setNumQuestionsInput(String(Math.max(1, Math.min(t.question_count || 0, Number(presetCount)))))
+        }
+      }
 
       const preferIncludeIncorrect =
         searchParams.get('include_incorrect') === '1' || searchParams.get('incorrect_only') === '1'
@@ -273,10 +287,12 @@ export default function PracticeSetup() {
               (sum, t) => sum + (includeAttempted ? (t.question_count || 0) : (t.remaining_count || 0)),
               0
             )
-      if (totalAvailable > 0) {
-        setNumQuestionsInput(String(Math.min(totalAvailable, 25)))
-      } else {
-        setNumQuestionsInput('0')
+      if (!hasPreselect) {
+        if (totalAvailable > 0) {
+          setNumQuestionsInput(String(Math.min(totalAvailable, 25)))
+        } else {
+          setNumQuestionsInput('0')
+        }
       }
     } catch (error) {
       console.error('Error loading topics:', error)

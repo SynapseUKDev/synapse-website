@@ -471,3 +471,8 @@ html[data-theme="dark"] .admin-list button.is-active {
   border-bottom: 2.5px solid #f59e0b;
 }
 
+
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-table th, .admin-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--syn-border); white-space: nowrap; }
+.admin-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--syn-muted); }
