@@ -234,6 +234,16 @@ html[data-theme="dark"] .tb-chevron {
   color: var(--syn-muted);
 }
 
+html[data-theme="dark"] .tb-card {
+  background: var(--surface-card);
+  border-color: var(--syn-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme="dark"] .tb-card:hover {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
 html[data-theme="dark"] .tb-card__title {
   color: var(--syn-navy-700);
 }
@@ -245,6 +255,27 @@ html[data-theme="dark"] .tb-card__meta {
 html[data-theme="dark"] .tb-card__meta--completed,
 html[data-theme="dark"] .tb-card__meta--completed .tb-card__meta-icon {
   color: var(--dm-secondary);
+}
+
+html[data-theme="dark"] .tb-card__bar {
+  background: var(--dm-surface-container-highest);
+}
+
+html[data-theme="dark"] .tb-card__bar-fill {
+  background: var(--dm-primary);
+}
+
+html[data-theme="dark"] .tb-card__bar-fill--completed {
+  background: var(--dm-secondary);
+}
+
+html[data-theme="dark"] .tb-card__go {
+  background: var(--dm-surface-container-high);
+  color: var(--dm-primary);
+}
+
+html[data-theme="dark"] .tb-card:hover .tb-card__go {
+  background: var(--dm-surface-container-highest);
 }
 
 html[data-theme="dark"] .tb-topic-card {

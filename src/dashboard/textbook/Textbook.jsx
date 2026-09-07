@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { LuCircleCheck, LuCheck, LuMinus, LuChevronDown, LuFileText } from 'react-icons/lu'
+import { LuCircleCheck, LuCheck, LuMinus, LuChevronDown, LuChevronRight, LuFileText } from 'react-icons/lu'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { authHeaders } from '../../auth/token'
@@ -319,10 +319,9 @@ function ChapterCard({ specialty, onClick, priority = false, topicsRead = 0 }) {
   }
   const img = specialty.thumbnail_url
   const topicCount = Array.isArray(specialty.topics) ? specialty.topics.length : 0
-  const isCompleted = topicCount > 0 && topicsRead >= 0 && topicsRead === topicCount
-  const metaText = topicCount > 0
-    ? (isCompleted ? 'Completed' : topicsRead >= 0 ? `${topicCount} topics / ${topicsRead} read` : `${topicCount} topics`)
-    : null
+  const readCount = Math.min(Math.max(topicsRead, 0), topicCount)
+  const isCompleted = topicCount > 0 && readCount === topicCount
+  const percent = topicCount > 0 ? Math.round((readCount / topicCount) * 100) : 0
   return (
     <button className="tb-card" onClick={onClick} aria-label={`Open ${specialty.specialty_name || specialty.name}`}>
       <div className="tb-card__cover" style={bgStyle}>
@@ -341,12 +340,31 @@ function ChapterCard({ specialty, onClick, priority = false, topicsRead = 0 }) {
       </div>
       <div className="tb-card__label">
         <div className="tb-card__title">{specialty.specialty_name || specialty.name}</div>
-        {metaText && (
-          <div className={`tb-card__meta ${isCompleted ? 'tb-card__meta--completed' : ''}`}>
-            {isCompleted && <LuCircleCheck className="tb-card__meta-icon" aria-hidden />}
-            {metaText}
+        <div className="tb-card__footer">
+          <div className="tb-card__progress">
+            {topicCount > 0 && (
+              <>
+                <div className={`tb-card__meta ${isCompleted ? 'tb-card__meta--completed' : ''}`}>
+                  {isCompleted && <LuCircleCheck className="tb-card__meta-icon" aria-hidden />}
+                  {isCompleted ? 'Completed' : `${readCount} of ${topicCount} topics read`}
+                </div>
+                <div
+                  className="tb-card__bar"
+                  role="progressbar"
+                  aria-valuenow={percent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className={`tb-card__bar-fill ${isCompleted ? 'tb-card__bar-fill--completed' : ''}`}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </>
+            )}
           </div>
-        )}
+          <span className="tb-card__go" aria-hidden="true"><LuChevronRight /></span>
+        </div>
       </div>
     </button>
   )
