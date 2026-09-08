@@ -1,5 +1,5 @@
 /* Analytics.css — Synapse tokens; dark theme via html[data-theme='dark'] */
-.an { width: 100%; font-family: 'Urbanist', ui-sans-serif, system-ui, sans-serif; color: var(--syn-navy-700);
+.an { width: 100%; box-sizing: border-box; padding: 32px; font-family: 'Urbanist', ui-sans-serif, system-ui, sans-serif; color: var(--syn-navy-700);
   --an-weak: #dc2626; --an-weak-bg: #fee2e2; --an-dev: #d97706; --an-dev-bg: #fef3c7; --an-strong: #059669; --an-strong-bg: #d1fae5;
   --an-untested: #94a3b8; --an-untested-bg: #f1f5f9; --an-line: #143db8; --an-bars: #c7d2fe; --an-shadow: 0 10px 28px rgba(11,22,55,.08);
   --an-icon-cyan: #0ea5b5; --an-icon-mint: #059669; --an-icon-blue: #143db8; --an-tint-mint: #ecfdf5;
@@ -170,6 +170,7 @@ html[data-theme='dark'] .an-ai__prog i { background: var(--syn-gold); }
   .an-map { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) {
+  .an { padding: 16px; }
   .an-hero { flex-direction: column; align-items: flex-start; margin-bottom: 16px; }
   .an-row { gap: 12px; margin-bottom: 12px; }
   .an-row--4 { gap: 10px; }

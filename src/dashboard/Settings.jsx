@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { authHeaders, clearTokens } from '../auth/token'
-import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuTrash2, LuLoader, LuTrophy } from 'react-icons/lu'
+import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuLoader, LuTrophy } from 'react-icons/lu'
 import { getStoredPreference, setPreference } from '../theme'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import LoadingScreen from '../components/loading/LoadingScreen'
+import ResetProgressCard from './ResetProgressCard.jsx'
 
 export default function Settings() {
   const { user } = useOutletContext()
@@ -477,7 +478,7 @@ export default function Settings() {
               </form>
             )}
 
-            <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--syn-border)', flex: 1 }}>
+            <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--syn-border)' }}>
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: savingPrivacy ? 'progress' : 'pointer' }}>
                 <input
                   type="checkbox"
@@ -505,7 +506,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Subscription card */}
+        {/* Account card */}
         <div className="qb-card">
           <div className="qb-card__head">
             <div className="qb-card__titlewrap">
@@ -513,99 +514,88 @@ export default function Settings() {
                 <LuCreditCard size={20} />
               </div>
               <div>
-                <div className="qb-card__title">Subscription</div>
+                <div className="qb-card__title">Account</div>
               </div>
             </div>
           </div>
-          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <div className="qb__subtitle" style={{ marginBottom: 4 }}>Status</div>
-              {isBetaTester ? (
-                <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontWeight: 800, fontSize: 13 }}>
-                  Beta Tester
-                </span>
-              ) : isCanceledPaidSub || accessData?.cancel_at_period_end ? (
-                <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 999, background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: 13 }}>
-                  Cancelled
-                </span>
-              ) : hasStripeSubscription ? (
-                statusBadge('trialing')
-              ) : isPaidSubscriber ? (
-                statusBadge(accessData.subscription_status)
-              ) : isFreeTrial ? (
-                statusBadge('free_trial')
-              ) : (
-                <span style={{ color: 'var(--syn-muted)' }}>No subscription</span>
-              )}
-            </div>
-
-            {isFreeTrial && (
+          <div className="settings-account">
+            <div className="settings-account__row">
               <div>
-                <div className="qb__subtitle" style={{ marginBottom: 4 }}>Free Access Ends</div>
-                <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>
-                  {formatDate(accessData.trial_ends_at)}
-                </div>
+                <div className="qb__subtitle" style={{ marginBottom: 4 }}>Status</div>
+                {isBetaTester ? (
+                  <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontWeight: 800, fontSize: 13 }}>
+                    Beta Tester
+                  </span>
+                ) : isCanceledPaidSub || accessData?.cancel_at_period_end ? (
+                  <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 999, background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: 13 }}>
+                    Cancelled
+                  </span>
+                ) : hasStripeSubscription ? (
+                  statusBadge('trialing')
+                ) : isPaidSubscriber ? (
+                  statusBadge(accessData.subscription_status)
+                ) : isFreeTrial ? (
+                  statusBadge('free_trial')
+                ) : (
+                  <span style={{ color: 'var(--syn-muted)' }}>No subscription</span>
+                )}
               </div>
-            )}
 
-            {isBetaTester && (
-              <>
+              {isFreeTrial && (
                 <div>
-                  <div className="qb__subtitle" style={{ marginBottom: 4 }}>Beta Access Ends</div>
+                  <div className="qb__subtitle" style={{ marginBottom: 4 }}>Free access ends</div>
+                  <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>
+                    {formatDate(accessData.trial_ends_at)}
+                  </div>
+                </div>
+              )}
+
+              {isBetaTester && (
+                <div>
+                  <div className="qb__subtitle" style={{ marginBottom: 4 }}>Beta access ends</div>
                   <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>
                     {formatDate(accessData.beta_access_ends_at)}
                   </div>
                 </div>
-              </>
-            )}
+              )}
 
-            {hasStripeSubscription && !accessData?.cancel_at_period_end && (
-              <>
+              {hasStripeSubscription && !accessData?.cancel_at_period_end && (
                 <div>
-                  <div className="qb__subtitle" style={{ marginBottom: 4 }}>First Billing Date</div>
+                  <div className="qb__subtitle" style={{ marginBottom: 4 }}>First billing date</div>
                   <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>{formatDate(accessData.current_period_end)}</div>
                 </div>
-                <button className="qb-btn qb-btn--sm" style={{ marginTop: 8, width: 'auto' }} onClick={openBillingPortal} disabled={portalLoading}>
-                  {portalLoading ? 'Opening...' : 'Manage Subscription'}
-                </button>
-              </>
+              )}
+            </div>
+
+            {hasStripeSubscription && !accessData?.cancel_at_period_end && (
+              <button className="qb-btn qb-btn--sm" style={{ width: 'auto' }} onClick={openBillingPortal} disabled={portalLoading}>
+                {portalLoading ? 'Opening...' : 'Manage Subscription'}
+              </button>
             )}
 
             {isPaidSubscriber && !accessData?.cancel_at_period_end && (
-              <button className="qb-btn qb-btn--sm" style={{ marginTop: 8, width: 'auto' }} onClick={openBillingPortal} disabled={portalLoading}>
+              <button className="qb-btn qb-btn--sm" style={{ width: 'auto' }} onClick={openBillingPortal} disabled={portalLoading}>
                 {portalLoading ? 'Opening...' : 'Manage Subscription'}
               </button>
             )}
 
             {(isCanceledPaidSub || (isPaidSubscriber && accessData?.cancel_at_period_end)) && (
-              <button className="qb-btn qb-btn--sm" style={{ marginTop: 8, width: 'auto', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff' }} onClick={openBillingPortal} disabled={portalLoading}>
+              <button className="qb-btn qb-btn--sm" style={{ width: 'auto', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff' }} onClick={openBillingPortal} disabled={portalLoading}>
                 {portalLoading ? 'Opening...' : 'Reactivate Subscription'}
               </button>
             )}
-          </div>
-        </div>
 
-        {/* Delete Account (Danger Zone) card */}
-        <div className="qb-card settings-danger-card">
-          <div className="qb-card__head">
-            <div className="qb-card__titlewrap">
-              <div className="qb-card__icon settings-danger-icon">
-                <LuTrash2 size={20} />
-              </div>
+            <div className="settings-account__delete">
               <div>
-                <div className="qb-card__title">Delete Account</div>
+                <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>Delete account</div>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5 }}>
+                  Permanently removes your progress, subscription, and login.
+                </p>
               </div>
-            </div>
-          </div>
-          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
-            <p style={{ fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5, flex: 1, marginTop: -5 }}>
-              Permanently delete your account and all associated data, including progress history, subscription details, and mock attempts. This action is irreversible.
-            </p>
-            <div>
               <button
                 type="button"
                 className="qb-btn qb-btn--sm qb-btn--danger"
-                style={{ marginTop: 8, width: 'auto' }}
+                style={{ width: 'auto', flex: 'none' }}
                 onClick={() => {
                   setDeleteConfirmText('')
                   setDeleteUnderstand(false)
@@ -618,6 +608,8 @@ export default function Settings() {
             </div>
           </div>
         </div>
+
+        <ResetProgressCard />
       </div>
 
       {/* Account Deletion Confirmation Modal */}
