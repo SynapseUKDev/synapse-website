@@ -9,6 +9,7 @@ import SpecialtyMap from './components/SpecialtyMap'
 import WeakestTopics from './components/WeakestTopics'
 import ReadingVsPractice from './components/ReadingVsPractice'
 import ActivityCard from './components/ActivityCard'
+import SectionRule from './components/SectionRule'
 import './Analytics.css'
 
 const WINDOWS = [
@@ -52,7 +53,6 @@ export default function Analytics() {
     <div className="an">
       <div className="an-hero">
         <div>
-          <p className="an-eyebrow">Your progress</p>
           <h1 className="an-title">Analytics</h1>
           <p className="an-date">{windowLabel(win)}</p>
         </div>
@@ -76,10 +76,14 @@ export default function Analytics() {
       {d ? (
         <>
           <KpiDeck kpis={d.kpis} allTime={d.window.key === 'all'} />
+
+          <SectionRule label="This period" />
           <div className="an-row an-row--21">
             <TrendChart trend={d.trend} />
             <ReportCard report={d.latest_report} eligibility={d.report_eligibility} />
           </div>
+
+          <SectionRule label="Where you stand" />
           <div className="an-row">
             <SpecialtyMap specialties={d.specialties} perRow={isMobile ? 2 : 6} />
           </div>
@@ -87,6 +91,8 @@ export default function Analytics() {
             <WeakestTopics topics={d.weakest_topics} />
             <ReadingVsPractice data={d.reading_vs_practice} />
           </div>
+
+          <SectionRule label="Consistency" />
           <div className="an-row">
             <ActivityCard />
           </div>
