@@ -1,0 +1,152 @@
+/*
+ * Decorative dashboard artwork (EduSynapse background pack).
+ *
+ * Two layers sit behind the page content, both anchored to the top of the
+ * content column and faded into the page colour so long pages end on a flat
+ * background rather than a hard image edge:
+ *   ::before  paired light/dark artwork
+ *   ::after   dark-only corner gradients, kept faint so black stays dominant
+ *
+ * The artwork is decorative only; page content sits above it on z-index 1.
+ * Variation per route is chosen in dashboardBackgrounds.js.
+ */
+
+.dash__content[data-background] {
+  --bg-height: clamp(720px, 60vw, 1100px);
+  --bg-image: var(--bg-light);
+  --bg-opacity: .5;
+  --bg-gradient-display: none;
+  --bg-gradient-opacity: .75;
+  --bg-haze-a: none;
+  --bg-haze-b: none;
+  position: relative;
+  isolation: isolate;
+}
+
+.dash__content[data-background]::before,
+.dash__content[data-background]::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  /* Never taller than the content column: on a short page the full artwork
+     height would spill past the container and scroll the whole document. */
+  height: min(var(--bg-height), 100%);
+  pointer-events: none;
+  background-repeat: no-repeat;
+}
+
+.dash__content[data-background]::before {
+  opacity: var(--bg-opacity);
+  background-image:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0) 72%, var(--surface-app) 100%),
+    var(--bg-image);
+  background-size: 100% 100%, cover;
+  background-position: top center, top right;
+}
+
+.dash__content[data-background]::after {
+  display: var(--bg-gradient-display);
+  opacity: var(--bg-gradient-opacity);
+  background-image:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0) 82%, #000 100%),
+    var(--bg-haze-a),
+    var(--bg-haze-b);
+  background-size: 100% 100%;
+}
+
+/* Page content must clear the decorative layers. */
+.dash__content[data-background] > * {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-theme="dark"] .dash__content[data-background] {
+  --bg-image: var(--bg-dark);
+  --bg-opacity: .7;
+  --bg-gradient-display: block;
+}
+
+@media (max-width: 640px) {
+  .dash__content[data-background] {
+    --bg-height: 760px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Variations — light/dark artwork pairs plus their dark corner gradients.
+ * ------------------------------------------------------------------------- */
+
+.dash__content[data-background="signature-aurora"] {
+  --bg-light: url("../../assets/backgrounds/signature-aurora.webp");
+  --bg-dark: url("../../assets/backgrounds/signature-aurora-dark.webp");
+  --bg-haze-a: radial-gradient(ellipse at 96% 3%, rgba(36, 48, 82, .32) 0%, rgba(0, 0, 0, 0) 43%);
+  --bg-haze-b: radial-gradient(ellipse at 79% 0%, rgba(48, 24, 58, .20) 0%, rgba(0, 0, 0, 0) 29%);
+}
+
+.dash__content[data-background="quiet-pearl"] {
+  --bg-light: url("../../assets/backgrounds/quiet-pearl.webp");
+  --bg-dark: url("../../assets/backgrounds/quiet-pearl-dark.webp");
+  --bg-haze-a: radial-gradient(ellipse at 98% 2%, rgba(32, 42, 62, .22) 0%, rgba(0, 0, 0, 0) 31%);
+  --bg-haze-b: radial-gradient(ellipse at 100% 94%, rgba(30, 32, 47, .15) 0%, rgba(0, 0, 0, 0) 26%);
+}
+
+.dash__content[data-background="glacier-blue"] {
+  --bg-light: url("../../assets/backgrounds/glacier-blue.webp");
+  --bg-dark: url("../../assets/backgrounds/glacier-blue-dark.webp");
+  --bg-haze-a: radial-gradient(ellipse at 100% 10%, rgba(21, 47, 60, .30) 0%, rgba(0, 0, 0, 0) 37%);
+  --bg-haze-b: radial-gradient(ellipse at 100% 92%, rgba(18, 34, 53, .19) 0%, rgba(0, 0, 0, 0) 28%);
+}
+
+.dash__content[data-background="lavender-bloom"] {
+  --bg-light: url("../../assets/backgrounds/lavender-bloom.webp");
+  --bg-dark: url("../../assets/backgrounds/lavender-bloom-dark.webp");
+  --bg-haze-a: radial-gradient(ellipse at 96% 1%, rgba(43, 27, 66, .27) 0%, rgba(0, 0, 0, 0) 37%);
+  --bg-haze-b: radial-gradient(ellipse at 0% 98%, rgba(35, 23, 46, .16) 0%, rgba(0, 0, 0, 0) 24%);
+}
+
+.dash__content[data-background="champagne-dawn"] {
+  --bg-light: url("../../assets/backgrounds/champagne-dawn.webp");
+  --bg-dark: url("../../assets/backgrounds/champagne-dawn-dark.webp");
+  --bg-haze-a: radial-gradient(ellipse at 98% 2%, rgba(30, 39, 68, .25) 0%, rgba(0, 0, 0, 0) 39%);
+  --bg-haze-b: radial-gradient(ellipse at 0% 100%, rgba(51, 35, 23, .20) 0%, rgba(0, 0, 0, 0) 26%);
+}
+
+.dash__content[data-background="perimeter-network"] {
+  --bg-light: url("../../assets/backgrounds/perimeter-network.webp");
+  --bg-dark: url("../../assets/backgrounds/perimeter-network-dark.webp");
+  --bg-haze-a: radial-gradient(ellipse at 100% 0%, rgba(27, 44, 68, .25) 0%, rgba(0, 0, 0, 0) 32%);
+  --bg-haze-b: radial-gradient(ellipse at 0% 100%, rgba(32, 29, 48, .15) 0%, rgba(0, 0, 0, 0) 22%);
+}
+
+.dash__content[data-background="flowing-signal"] {
+  --bg-light: url("../../assets/backgrounds/flowing-signal.webp");
+  --bg-dark: url("../../assets/backgrounds/flowing-signal-dark.webp");
+  --bg-haze-a: radial-gradient(ellipse at 100% 0%, rgba(25, 43, 65, .26) 0%, rgba(0, 0, 0, 0) 40%);
+  --bg-haze-b: radial-gradient(ellipse at 76% 0%, rgba(37, 25, 58, .16) 0%, rgba(0, 0, 0, 0) 26%);
+}
+
+.dash__content[data-background="scattered-connections"] {
+  --bg-light: url("../../assets/backgrounds/scattered-connections.webp");
+  --bg-dark: url("../../assets/backgrounds/scattered-connections-dark.webp");
+  --bg-haze-a: radial-gradient(ellipse at 100% 0%, rgba(31, 35, 64, .23) 0%, rgba(0, 0, 0, 0) 29%);
+  --bg-haze-b: radial-gradient(ellipse at 100% 100%, rgba(23, 42, 55, .17) 0%, rgba(0, 0, 0, 0) 25%);
+}
+
+/* ---------------------------------------------------------------------------
+ * Page roots that paint their own opaque app fill would hide the artwork.
+ * They can inherit the shell background instead.
+ * ------------------------------------------------------------------------- */
+
+.dash__content[data-background] .setup,
+.dash__content[data-background] .prr,
+.dash__content[data-background] .group-leaderboard {
+  background: transparent;
+}
+
+html[data-theme="dark"] .dash__content[data-background] .tb-page,
+html[data-theme="dark"] .dash__content[data-background] .pr--review-mode {
+  background: transparent;
+}

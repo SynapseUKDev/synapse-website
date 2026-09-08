@@ -4,6 +4,8 @@ import Sidebar from '../sidebar/Sidebar'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import MobileNavModal from './MobileNavModal'
 import '../Dashboard.css'
+import './DashboardBackground.css'
+import { getBackgroundForPath } from './dashboardBackgrounds'
 import { authHeaders, clearTokens, authenticatedFetch } from '../../auth/token'
 import { LuMenu } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
@@ -133,6 +135,7 @@ function DashboardLayout() {
   if (loading) return <LoadingScreen message="Loading your dashboard..." />
 
   const showConsentModal = user && !user.terms_accepted_at
+  const background = getBackgroundForPath(location.pathname)
 
   return (
     <div className="dash">
@@ -164,7 +167,7 @@ function DashboardLayout() {
       />
 
       <Sidebar user={user} onLogout={handleLogout} />
-      <main className="dash__content">
+      <main className="dash__content" data-background={background || undefined}>
         <Outlet context={{ user, access, institution, location }} />
       </main>
     </div>

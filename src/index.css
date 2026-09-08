@@ -44,6 +44,35 @@ body {
   color: var(--syn-navy-700);
 }
 
+/* Page scrollbar: transparent track so the dashboard artwork shows through
+   instead of a grey gutter down the right edge. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(11, 22, 55, .25) transparent;
+}
+
+html::-webkit-scrollbar {
+  width: 12px;
+  background: transparent;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Drawn inside a transparent border so the thumb reads as a floating pill. */
+html::-webkit-scrollbar-thumb {
+  background: rgba(11, 22, 55, .25);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(11, 22, 55, .4);
+  background-clip: content-box;
+}
+
 a { color: inherit; }
 
 /* —— Dark mode (toggle in Settings → Appearance) ——
@@ -133,6 +162,20 @@ html[data-theme="dark"] {
   --hl-teal-hover: #0e7f76;
   --hl-search: #b8921a;
   --hl-search-hover: #a17f0f;
+}
+
+html[data-theme="dark"] {
+  scrollbar-color: rgba(232, 233, 236, .28) transparent;
+}
+
+html[data-theme="dark"]::-webkit-scrollbar-thumb {
+  background: rgba(232, 233, 236, .28);
+  background-clip: content-box;
+}
+
+html[data-theme="dark"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 233, 236, .45);
+  background-clip: content-box;
 }
 
 html[data-theme="dark"] .db-card__title {
