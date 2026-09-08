@@ -452,7 +452,7 @@ export default function AdminInstitutions() {
 
         {detailLoading ? (
           <section className="admin-card">
-            <LoadingScreen message="Loading institution..." inline />
+            <LoadingScreen message="Loading institution..." compact />
           </section>
         ) : isCreate ? (
           <section className="admin-card">

@@ -100,7 +100,7 @@ export default function TextbookSearch() {
       </header>
 
       {loading && (
-        <LoadingScreen message="Searching…" inline />
+        <LoadingScreen message="Searching…" compact />
       )}
       {error && <div className="tb-error" style={{ marginTop: 8 }}>{error}</div>}
       {!loading && !error && results.length === 0 && currentQ && (

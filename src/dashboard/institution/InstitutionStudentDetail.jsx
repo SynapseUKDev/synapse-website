@@ -92,7 +92,7 @@ export default function InstitutionStudentDetail({ userId, onClose }) {
         </div>
 
         {loading ? (
-          <LoadingScreen message="Loading student..." inline />
+          <LoadingScreen message="Loading student..." compact />
         ) : error ? (
           <div className="inst-alert inst-alert--error" role="alert">
             <div>{error}</div>

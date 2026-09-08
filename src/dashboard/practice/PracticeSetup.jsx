@@ -434,6 +434,7 @@ export default function PracticeSetup() {
             ? 'Loading your study set and counting questions…'
             : 'Loading practice setup…'
         }
+        inline
       />
     )
   }
@@ -469,7 +470,7 @@ export default function PracticeSetup() {
   }
 
   if (studySetId && !studySetData) {
-    return <LoadingScreen message="Loading your study set…" />
+    return <LoadingScreen message="Loading your study set…" inline />
   }
 
   const totalAvailable = getTotalQuestions()

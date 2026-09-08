@@ -278,7 +278,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
       )}
 
       {loading ? (
-        <LoadingScreen message="Loading students..." inline />
+        <LoadingScreen message="Loading students..." compact />
       ) : students.length === 0 ? (
         <p className="inst-placeholder">
           {statusFilter || cohortFilter

@@ -477,7 +477,7 @@ export default function GroupStudySetup() {
   }
 
   if (loading) {
-    return <LoadingScreen message="Loading group study setup..." />
+    return <LoadingScreen message="Loading group study setup..." inline />
   }
 
   // Show waiting room if session is created

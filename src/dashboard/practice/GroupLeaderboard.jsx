@@ -93,7 +93,7 @@ export default function GroupLeaderboard() {
   if (loadingReview) {
     return (
       <div className="group-leaderboard">
-        <LoadingScreen message="Loading review data..." />
+        <LoadingScreen message="Loading review data..." inline />
       </div>
     )
   }

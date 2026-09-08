@@ -10,12 +10,20 @@
 .loading--inline {
   position: static;
   inset: auto;
-  min-height: 60vh;
+  /* Fills the content column so the loader centres in it rather than sitting
+     high on the page. 64px is the largest vertical padding a page root adds
+     (.qb), so this cannot push the column past the viewport. */
+  min-height: calc(100vh - 64px);
   height: 100%;
   display: grid;
   place-items: center;
   background: transparent;
   z-index: auto;
+}
+
+/* Replaces a single panel, so it must not stretch to the page height. */
+.loading--compact {
+  min-height: 240px;
 }
 
 .loading__content {

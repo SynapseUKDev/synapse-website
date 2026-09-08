@@ -184,7 +184,7 @@ export default function InstitutionCohorts({ cohorts, unassigned, loading, onCha
       </form>
 
       {loading ? (
-        <LoadingScreen message="Loading year groups..." inline />
+        <LoadingScreen message="Loading year groups..." compact />
       ) : cohorts.length === 0 ? (
         <p className="inst-placeholder">
           No year groups yet. Add one above, then you can assign students to it when you invite them.

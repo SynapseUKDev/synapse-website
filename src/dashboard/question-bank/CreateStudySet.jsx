@@ -261,7 +261,7 @@ export default function CreateStudySet() {
     }
   }
 
-  if (loading) return <LoadingScreen />
+  if (loading) return <LoadingScreen inline />
 
   return (
     <div className="create-set">

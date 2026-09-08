@@ -604,7 +604,7 @@ export default function Admin() {
       <div className="admin-grid">
         <section className="admin-card">
           {issuesLoading ? (
-            <LoadingScreen message="Loading reported issues..." inline />
+            <LoadingScreen message="Loading reported issues..." compact />
           ) : activeIssues.length === 0 ? (
             <p className="admin__muted">
               {includeCompleted ? 'No reported issues in the archive yet.' : 'No ongoing issues.'}

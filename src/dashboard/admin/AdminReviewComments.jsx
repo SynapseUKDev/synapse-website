@@ -184,7 +184,7 @@ export default function AdminReviewComments({ API_BASE, defaultContentType = nul
       <div className="admin-grid">
         <section className="admin-card">
           {loading && comments.length === 0 ? (
-            <LoadingScreen message="Loading review comments..." inline />
+            <LoadingScreen message="Loading review comments..." compact />
           ) : comments.length === 0 ? (
             <p className="admin__muted">
               {includeCompleted ? 'No review comments in this category yet.' : 'No pending review comments.'}

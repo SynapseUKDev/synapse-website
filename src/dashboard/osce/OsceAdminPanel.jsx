@@ -247,7 +247,7 @@ export default function OsceAdminPanel({ embedded = false }) {
 
       {/* Station table */}
       {loading ? (
-        <LoadingScreen message="Loading stations..." inline />
+        <LoadingScreen message="Loading stations..." compact />
       ) : filtered.length === 0 ? (
         <div className="osce-admin-empty">
           <LuStethoscope size={40} />
