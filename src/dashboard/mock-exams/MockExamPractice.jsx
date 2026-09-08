@@ -281,8 +281,6 @@ export default function MockExamPractice() {
 
   const currentQ = questions[currentIndex]
 
-  const [tab, setTab] = useState('quick')
-
   // Load reviewer's own comments for the current mock paper question
   useEffect(() => {
     if (!isReviewer || !currentQ) return

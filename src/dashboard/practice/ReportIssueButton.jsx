@@ -11,7 +11,7 @@ const CATEGORY_OPTIONS = [
   { value: 'other', label: 'Other' },
 ]
 
-export default function ReportIssueButton({ questionId, API_BASE, inline = false }) {
+export default function ReportIssueButton({ questionId, API_BASE }) {
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')

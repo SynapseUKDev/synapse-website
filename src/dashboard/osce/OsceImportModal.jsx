@@ -136,7 +136,7 @@ Markdown:
 export default function OsceImportModal({ isOpen, type, onImport, onClose, isNew }) {
   const [text, setText] = useState('');
   const [preview, setPreview] = useState(null);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -163,7 +163,7 @@ export default function OsceImportModal({ isOpen, type, onImport, onClose, isNew
         setPreview(parsed);
         setError(null);
       });
-    } catch (e) {
+    } catch {
       setError('Failed to parse text. Please check the format.');
     }
   };

@@ -23,7 +23,6 @@ export default function PracticeResults() {
     totalMs = 0, 
     perQuestionMs,
     weakTopics = [],
-    topicPerformance = [],
     questions = [],
     userAnswers = {}
   } = useResultsData()

@@ -335,7 +335,7 @@ function Subscribe() {
                     return
                   }
                   setBanner({ type: 'warning', text: 'Checkout URL not returned. Please try again.' })
-                } catch (e) {
+                } catch {
                   setBanner({ type: 'warning', text: 'Could not start checkout. Please try again.' })
                 } finally {
                   setProcessing(false)

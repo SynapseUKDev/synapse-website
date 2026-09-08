@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
 import { useNavigate } from 'react-router-dom'
 import { LuLayers, LuTrash2, LuPlus, LuChevronLeft, LuUsers } from 'react-icons/lu'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LuArrowLeft, LuPlay, LuX, LuChevronDown, LuChevronRight, LuTriangleAlert,
@@ -112,16 +112,6 @@ function generateDeckFromSelection(conditions, selectedConditionIds, activeSecti
   }
 
   return deck;
-}
-
-/** Legacy helper — single pathway section filter over a condition array. */
-function generateDeck(conditions, pathwaySection) {
-  const sectionKey = pathwaySection || 'All';
-  const activeSections = sectionKey === 'All'
-    ? new Set(PATHWAY_SECTIONS)
-    : new Set([sectionKey]);
-  const ids = new Set(conditions.map((c) => c.id));
-  return generateDeckFromSelection(conditions, ids, activeSections);
 }
 
 function getActiveFields(activeSections) {
@@ -839,8 +829,6 @@ function SessionScreen({ initialDeck, onComplete, onAbandon, onRate }) {
   const ratedCards = useRef([]); // { uid, rating, next_due_at }
 
   const card = deck[0] ?? null;
-  const seen  = mastered + (total - deck.length - mastered);
-  // cards seen = total - remaining + mastered removed
   const remaining = deck.length;
 
   function handleFlip() {

@@ -502,7 +502,7 @@ export default function useQuestionStemHighlight(options = {}) {
   )
 
   const addHighlightFromSelection = useCallback(
-    (e) => {
+    () => {
       const selection = window.getSelection()
       const currentQ = activeQuestionRef.current
       if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
@@ -584,7 +584,7 @@ export default function useQuestionStemHighlight(options = {}) {
 
   useEffect(() => {
     if (options.isReviewer) {
-      const handleReviewerSelection = (e) => {
+      const handleReviewerSelection = () => {
         const selection = window.getSelection()
         const currentQ = activeQuestionRef.current
         if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return

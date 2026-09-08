@@ -178,7 +178,7 @@ export function OsceInlinePageBar({ station, API_BASE, onSaved }) {
 // ==========================================
 // INLINE SECTION TOOLBAR
 // ==========================================
-export function OsceInlineSection({ stationId, section, API_BASE, onSaved, children, onAddBlock, isAddingBlock, dragHandleProps }) {
+export function OsceInlineSection({ section, API_BASE, onSaved, children, onAddBlock, isAddingBlock, dragHandleProps }) {
   const [form, setForm] = useState({ title: section.title, position: section.position, visible_to: section.visible_to || [], initially_hidden: section.initially_hidden })
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(false)
@@ -361,7 +361,7 @@ export function OsceInlineBlock({ block, API_BASE, onSaved, dragHandleProps }) {
             />
           </div>
         )
-      case 'checklist':
+      case 'checklist': {
         const checklistItems = (content.items || []).map((it, i) => ({ 
           id: `it-${i}`, 
           label: typeof it === 'string' ? it : it.label, 
@@ -397,7 +397,8 @@ export function OsceInlineBlock({ block, API_BASE, onSaved, dragHandleProps }) {
             <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ ...content, items: [...checklistItems, { id: `new-${Date.now()}`, label: '', required: false }] })}><LuPlus size={14} /> Add Item</button>
           </div>
         )
-      case 'key_value':
+      }
+      case 'key_value': {
         const pairs = (content.pairs || []).map((p, i) => ({ id: `p-${i}`, key: p.key || '', value: p.value || '' }))
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -429,7 +430,8 @@ export function OsceInlineBlock({ block, API_BASE, onSaved, dragHandleProps }) {
             <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ ...content, pairs: [...pairs, { id: `new-${Date.now()}`, key: '', value: '' }] })}><LuPlus size={14} /> Add Pair</button>
           </div>
         )
-      case 'list':
+      }
+      case 'list': {
         const listItems = (content.items || []).map((it, i) => ({ id: `li-${i}`, val: typeof it === 'string' ? it : it.label }))
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -456,7 +458,8 @@ export function OsceInlineBlock({ block, API_BASE, onSaved, dragHandleProps }) {
             <button type="button" className="osce-btn osce-btn--secondary osce-btn--sm" onClick={() => handleContentChange({ ...content, items: [...(content.items || []), ''] })}><LuPlus size={14} /> Add List Item</button>
           </div>
         )
-      case 'table':
+      }
+      case 'table': {
         const headers = content.headers || ['Col 1', 'Col 2']
         const rows = content.rows || [['', ''], ['', '']]
         return (
@@ -546,6 +549,7 @@ export function OsceInlineBlock({ block, API_BASE, onSaved, dragHandleProps }) {
             }}><LuPlus size={14} /> Add Row</button>
           </div>
         )
+      }
       case 'callout':
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -638,7 +642,7 @@ export function OsceInlineBlock({ block, API_BASE, onSaved, dragHandleProps }) {
               className="osce-group__input" style={{ minHeight: 120, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
               value={JSON.stringify(content, null, 2)}
               onChange={e => {
-                try { setContent(JSON.parse(e.target.value)) } catch (err) { }
+                try { setContent(JSON.parse(e.target.value)) } catch { }
               }}
             />
           </div>

@@ -124,12 +124,6 @@ export function buildTextRunsForTableSplitFromTextNodes(textNodesOrdered, rootEl
   return runs
 }
 
-function runTouchesTableCell(run) {
-  if (!run || typeof run.runKey !== 'object' || !run.runKey) return false
-  const t = run.runKey.tagName
-  return t === 'TD' || t === 'TH'
-}
-
 /**
  * Trim [start, end) to exclude leading and trailing whitespace (e.g. double-click often
  * includes a trailing space in the range).

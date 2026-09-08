@@ -101,7 +101,7 @@ function injectHighlightsIntoHtml(html, highlights) {
   let doc
   try {
     doc = new DOMParser().parseFromString(`<!doctype html><body><div id="__tbroot">${html}</div>`, 'text/html')
-  } catch (e) {
+  } catch {
     return html
   }
   const root = doc.getElementById('__tbroot')
@@ -187,7 +187,7 @@ function injectHighlightsIntoHtml(html, highlights) {
       try {
         subRange.setStart(first.node, first.localStart)
         subRange.setEnd(last.node, last.localEnd)
-      } catch (e) {
+      } catch {
         continue
       }
       if (subRange.collapsed) continue
@@ -201,7 +201,7 @@ function injectHighlightsIntoHtml(html, highlights) {
       try {
         const frag = subRange.extractContents()
         mark.appendChild(frag)
-      } catch (e) {
+      } catch {
         continue
       }
 
@@ -219,7 +219,7 @@ function injectHighlightsIntoHtml(html, highlights) {
 
       try {
         subRange.insertNode(mark)
-      } catch (e) {
+      } catch {
         continue
       }
     }
@@ -275,7 +275,7 @@ function boundaryToFlatOffset(container, offset, textNodes) {
   try {
     r.setStart(container, offset)
     r.collapse(true)
-  } catch (e) {
+  } catch {
     return null
   }
   let acc = 0
@@ -286,7 +286,7 @@ function boundaryToFlatOffset(container, offset, textNodes) {
         if (r.comparePoint(tn, i) === 0) {
           return acc + i
         }
-      } catch (err) {
+      } catch {
         // not comparable; try next
       }
     }
@@ -551,7 +551,7 @@ function RenderBlockContent({ content, highlights = [], query = '', onHighlightC
       const parts = []
       let lastIndex = 0
 
-      activeHighlights.forEach((hl, i) => {
+      activeHighlights.forEach((hl) => {
         const hlStart = Math.max(0, hl.start_offset - nodeStart)
         const hlEnd = Math.min(text.length, hl.end_offset - nodeStart)
 
@@ -565,7 +565,7 @@ function RenderBlockContent({ content, highlights = [], query = '', onHighlightC
             const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             const regex = new RegExp(`(${escaped})`, 'gi')
             const gParts = gapText.split(regex)
-            gParts.forEach((gp, j) => {
+            gParts.forEach((gp) => {
               if (gp.toLowerCase() === query.toLowerCase()) {
                 parts.push({ type: 'search-hl', content: gp })
               } else if (gp) {

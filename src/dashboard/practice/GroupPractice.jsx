@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { authHeaders, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
@@ -71,11 +71,7 @@ export default function GroupPractice() {
       navigate('/dashboard/question-bank', { replace: true })
     }
   }, [isReviewer, navigate])
-  const studySetId = params.get('study_set_id')
-  const studySetName = params.get('study_set_name') || 'Group Study'
-  const numQuestions = parseInt(params.get('num_questions') || '25')
   const timerMinutes = parseInt(params.get('timer_minutes') || '0')
-  const includeAttempted = params.get('include_attempted') === '1'
 
   // Session state
   const [loading, setLoading] = useState(true)
@@ -88,7 +84,7 @@ export default function GroupPractice() {
   const [highlights, setHighlights] = useState({}) // { questionId: [{ start, end, text, id, note }] }
   const [popoverHl, setPopoverHl] = useState(null) // { questionId, highlight, rect }
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
-  const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
+  const [highlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
   const hasLoadedRef = useRef(false) // Prevent double-loading of session
 
@@ -129,7 +125,7 @@ export default function GroupPractice() {
       try {
         r.setStart(targetNode, nodeOffset)
         r.collapse(true)
-      } catch (e) {
+      } catch {
         return null
       }
       let pos = 0
@@ -181,16 +177,13 @@ export default function GroupPractice() {
   const [trkJump, setTrkJump] = useState('')
 
   // Session stats
-  const [sessionAnswered, setSessionAnswered] = useState(0)
-  const [sessionCorrect, setSessionCorrect] = useState(0)
-  const [sessionTotalMs, setSessionTotalMs] = useState(0)
   const [questionStartTime, setQuestionStartTime] = useState(Date.now())
 
   // Responsive tracker grid size - 50 questions per page for pagination
   const QUESTIONS_PER_PAGE = 50
   const [selectedRangeIdx, setSelectedRangeIdx] = useState(0)
 
-  const { display, running, toggle, seconds } = useCountdown(timerMinutes * 60, serverTimerEndTime)
+  const { display, seconds } = useCountdown(timerMinutes * 60, serverTimerEndTime)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   const SOCKET_URL = API_BASE.replace(/^http/, 'ws').replace(/:\d+$/, ':4000')
@@ -520,9 +513,6 @@ export default function GroupPractice() {
     }
   }
 
-  // Not used in group practice - using loadGroupSession instead
-  const loadSession = () => { }
-
   // Load the current question and restore user's previous answer if any
   const loadCurrentQuestion = (index, questionList = questions) => {
     if (!questionList || index < 0 || index >= questionList.length) return
@@ -676,7 +666,7 @@ export default function GroupPractice() {
   }
 
   // Text highlighting functionality (aligned with solo Practice.jsx)
-  const addHighlightFromSelection = useCallback((e) => {
+  const addHighlightFromSelection = useCallback(() => {
     const selection = window.getSelection()
     const currentQ = questions[currentIndex]
     if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
@@ -891,14 +881,6 @@ export default function GroupPractice() {
         return next
       }
       return { ...prev, [questionId]: filtered }
-    })
-    setPopoverHl(null)
-  }
-
-  const updateHighlightNote = (questionId, highlightId, note) => {
-    setHighlights(prev => {
-      const current = prev[questionId] || []
-      return { ...prev, [questionId]: current.map(hl => hl.id === highlightId ? { ...hl, note } : hl) }
     })
     setPopoverHl(null)
   }
@@ -1216,105 +1198,6 @@ export default function GroupPractice() {
     }
   }, [handleTextSelection])
 
-
-  // Calculate topic-level performance
-  const calculateTopicPerformance = () => {
-    const topicStats = {}
-
-    questions.forEach((q) => {
-      const topicId = q.topic_id
-      const topicName = q.topic_name || 'Unknown Topic'
-      const topicSlug = q.topic_slug || null
-      const specialtyId = q.specialty_id || null
-
-      if (!topicStats[topicId]) {
-        topicStats[topicId] = {
-          topic_id: topicId,
-          topic_name: topicName,
-          topic_slug: topicSlug,
-          specialty_id: specialtyId,
-          total: 0,
-          correct: 0,
-          incorrect: 0,
-          skipped: 0
-        }
-      }
-
-      const userAnswer = userAnswers[q.id]
-      topicStats[topicId].total += 1
-
-      if (userAnswer?.submitted) {
-        if (userAnswer.isCorrect) {
-          topicStats[topicId].correct += 1
-        } else {
-          topicStats[topicId].incorrect += 1
-        }
-      } else {
-        topicStats[topicId].skipped += 1
-      }
-    })
-
-    // Calculate accuracy and identify weak topics
-    const topicPerformance = Object.values(topicStats).map((stats) => {
-      const attempted = stats.correct + stats.incorrect
-      const accuracy = attempted > 0 ? Math.round((stats.correct / attempted) * 100) : null
-
-      return {
-        ...stats,
-        attempted,
-        accuracy
-      }
-    })
-
-    // Filter weak topics:
-    // - At least 2 questions attempted AND accuracy < 70%, OR
-    // - At least 3 incorrect answers (regardless of accuracy)
-    const weakTopics = topicPerformance
-      .filter(t => {
-        const hasLowAccuracy = t.attempted >= 2 && (t.accuracy === null || t.accuracy < 70)
-        const hasManyIncorrect = t.incorrect >= 3
-        return hasLowAccuracy || hasManyIncorrect
-      })
-      .sort((a, b) => {
-        // Sort by accuracy (null/0 first), then by incorrect count (highest first)
-        const aAcc = a.accuracy ?? 0
-        const bAcc = b.accuracy ?? 0
-        if (aAcc !== bAcc) return aAcc - bAcc
-        return b.incorrect - a.incorrect
-      })
-      .slice(0, 5) // Limit to top 5 weak topics
-
-    return { topicPerformance, weakTopics }
-  }
-
-  // Navigate to results with partial stats (for Exit or early finish)
-  const navigateToResults = () => {
-    const totalQuestions = questions.length
-    const correct = sessionCorrect
-    const skipped = Math.max(totalQuestions - sessionAnswered, 0)
-    const totalMs = sessionTotalMs
-    const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
-    const { topicPerformance, weakTopics } = calculateTopicPerformance()
-
-    navigate('/dashboard/question-bank/results', {
-      state: {
-        totalQuestions,
-        correct,
-        skipped,
-        totalMs,
-        perQuestionMs,
-        topicPerformance,
-        weakTopics,
-        specialtyId,
-        specialtyName,
-        studySetId,
-        studySetName,
-        questions,
-        userAnswers
-      }
-    })
-  }
-
   const submit = async () => {
     if (!questions[currentIndex] || submitting) return
 
@@ -1366,12 +1249,6 @@ export default function GroupPractice() {
         delete next[questionId]
         return next
       })
-
-      // Update session stats
-      const newAnswered = sessionAnswered + 1
-      setSessionAnswered(newAnswered)
-      setSessionCorrect(prev => prev + (isCorrect ? 1 : 0))
-      setSessionTotalMs(prev => prev + timeTaken)
 
       // Submit to backend for tracking (is_correct is computed server-side, not sent from client)
       const payload = {

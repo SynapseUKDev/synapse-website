@@ -73,7 +73,7 @@ function Callback() {
         } catch {
           navigate('/')
         }
-      } catch (e) {
+      } catch {
         setMessage('Could not complete sign-in. Please try signing in again.')
       }
     })()

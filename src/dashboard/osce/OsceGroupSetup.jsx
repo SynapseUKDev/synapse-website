@@ -132,7 +132,7 @@ export default function OsceGroupSetup() {
       } else {
         setError('Failed to load session')
       }
-    } catch (e) {
+    } catch {
       setError('Network error')
     } finally {
       setLoading(false)

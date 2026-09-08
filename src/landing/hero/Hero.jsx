@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import './Hero.css'
 import doctorIllustration from '../../assets/landing/hero-doctor.svg'
 import demoImage from '../../assets/landing/hero-demo.png'
@@ -48,13 +48,6 @@ function Hero() {
             .y0(0)
             .curve(curveBasis)(wave3)
 
-          const overlap = make(24, H - 12, 1.6, 1.2)
-          const overlapPath = d3Area()
-            .x((d) => d.x)
-            .y1((d) => d.y)
-            .y0(H + 60)
-            .curve(curveBasis)(overlap)
-
           return (
             <svg className="hero__svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
               <defs>
@@ -67,7 +60,6 @@ function Hero() {
                 <path fill="#7BD0F1" d={wave2Path || ''} />
               </g>
               <path fill="#3CA2CA" d={wave3Path || ''} />
-              {/* <path fill="#ffffff" d={overlapPath || ''} /> */}
             </svg>
           )
         })()}

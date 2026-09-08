@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import './Auth.css'
 import './auth-panel/AuthPanel.css'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
-import { authHeaders, authenticatedFetch, setTokens } from './token'
+import { authenticatedFetch, setTokens } from './token'
 import logo from '../assets/logo/logo.png'
 import { Turnstile } from '@marsidev/react-turnstile'
 

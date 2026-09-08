@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
-import AdminImageGallery, {
+import AdminImageGallery from './AdminImageGallery.jsx'
+import {
   galleryImagesToQuestionAssets,
   questionAssetsToGalleryImages,
-} from './AdminImageGallery.jsx'
+} from './adminImageGalleryUtils.js'
 import './Admin.css'
 
 function normaliseOptions(options) {

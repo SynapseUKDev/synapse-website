@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
@@ -43,7 +43,6 @@ function collapseExpandScrollOffset(itemCount) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user, institution } = useOutletContext()
-  const isReviewer = !!user?.capabilities?.can_review
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   const summaryReq = useStaleJson(`${API_BASE}/dashboard/summary`, {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -70,17 +69,6 @@ export default function Dashboard() {
   })
 
   const summary = summaryReq.data || { study_streak_days: 0, time_today_minutes: 0, questions_today: 0, last_specialty: null, targets: { time_minutes: 180, questions: 30 } }
-  // Topic-based analytics: /qbank/topics (accuracy_pct, avg_time_ms per topic)
-  const topicsReq = useStaleJson(`${API_BASE}/qbank/topics?limit=50`, {
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    staleMs: 5 * 60_000,
-    persist: 'session',
-    key: 'dashboard:topics',
-    transform: (t) => ({ topics: Array.isArray(t?.topics) ? t.topics : [] }),
-  })
-  const topicCards = topicsReq.data?.topics ?? []
-  const topicCardsWithAttempts = topicCards.filter((t) => (t.attempted_questions ?? 0) > 0).sort((a, b) => (b.attempted_questions ?? 0) - (a.attempted_questions ?? 0)).slice(0, 12)
-  const topicsLoading = topicsReq.loading && !topicsReq.data
 
   // Use API trend when available (real analytics); demo only while loading or on error
   const trend = trendReq.data?.days ?? buildDemoTrend()
@@ -116,8 +104,6 @@ export default function Dashboard() {
   const [isEditingTargets, setIsEditingTargets] = useState(null) // 'time' | 'questions' | null
   const [tempTargets, setTempTargets] = useState({ questions: 30, time_minutes: 180 })
   const editRef = useRef(null)
-  const [isLeaderboardExpanded, setIsLeaderboardExpanded] = useState(false)
-  const [isFriendsListExpanded, setIsFriendsListExpanded] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)

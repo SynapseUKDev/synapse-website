@@ -232,7 +232,7 @@ function injectReviewCommentsIntoHtml(html, reviewComments) {
   let doc
   try {
     doc = new DOMParser().parseFromString(`<!doctype html><body><div id="__tbroot">${html}</div>`, 'text/html')
-  } catch (e) {
+  } catch {
     return html
   }
   const root = doc.getElementById('__tbroot')
@@ -241,7 +241,7 @@ function injectReviewCommentsIntoHtml(html, reviewComments) {
   const collectTextNodes = () => {
     const nodes = []
     const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode: (n) => NodeFilter.FILTER_ACCEPT,
+      acceptNode: () => NodeFilter.FILTER_ACCEPT,
     })
     let n
     while ((n = walker.nextNode())) nodes.push(n)
@@ -285,7 +285,7 @@ function injectReviewCommentsIntoHtml(html, reviewComments) {
     .sort((a, b) => b.off.start - a.off.start)
 
   for (const { rc, off } of ordered) {
-    const { fullText, map } = buildIndex()
+    const { map } = buildIndex()
     if (!off || off.start >= off.end) continue
 
     const groups = []
@@ -307,8 +307,6 @@ function injectReviewCommentsIntoHtml(html, reviewComments) {
     if (cur) groups.push(cur)
     if (groups.length === 0) continue
 
-    const color = rc.color === 'reviewer' ? 'reviewer' : 'yellow'
-
     for (let gi = groups.length - 1; gi >= 0; gi--) {
       const grp = groups[gi]
       const first = grp.entries[0]
@@ -318,7 +316,7 @@ function injectReviewCommentsIntoHtml(html, reviewComments) {
       try {
         subRange.setStart(first.node, first.localStart)
         subRange.setEnd(last.node, last.localEnd)
-      } catch (e) {
+      } catch {
         continue
       }
       if (subRange.collapsed) continue
@@ -332,7 +330,7 @@ function injectReviewCommentsIntoHtml(html, reviewComments) {
         const frag = subRange.extractContents()
         mark.appendChild(frag)
         subRange.insertNode(mark)
-      } catch (e) {
+      } catch {
         continue
       }
     }

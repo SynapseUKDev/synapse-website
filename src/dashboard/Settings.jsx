@@ -269,7 +269,6 @@ export default function Settings() {
   const hasStripeSubscription = accessData?.subscription_status === 'trialing' && !!accessData?.current_period_end && !accessData?.cancel_at_period_end
   const isCanceledPaidSub = accessData?.subscription_status === 'canceled' && !!accessData?.current_period_end
   const isBetaTester = accessData?.is_beta_tester && accessData?.beta_access_ends_at
-  const canceledDuringTrial = accessData?.subscription_status === 'canceled' && !accessData?.last_payment_at
   const freeTrialEndsAt = accessData?.trial_ends_at ? new Date(accessData.trial_ends_at) : null
   const isFreeTrial = !!freeTrialEndsAt && freeTrialEndsAt > new Date()
     && !isPaidSubscriber && !hasStripeSubscription && !isCanceledPaidSub

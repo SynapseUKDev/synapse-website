@@ -2,10 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { LuX } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
-import AdminImageGallery, {
-  imageItemsFromTextbookBlock,
-  normalizeTextbookImageItems,
-} from '../admin/AdminImageGallery.jsx'
+import AdminImageGallery from '../admin/AdminImageGallery.jsx'
+import { imageItemsFromTextbookBlock } from '../admin/adminImageGalleryUtils.js'
 
 const SECTION_TYPES = [
   'overview',
@@ -48,10 +46,6 @@ function useSaveFlash() {
     timerRef.current = setTimeout(() => setFlashing(false), ms)
   }
   return [flashing, trigger]
-}
-
-function normalizeImageItems(data) {
-  return normalizeTextbookImageItems(data)
 }
 
 function imageItemsFromBlock(block) {

@@ -53,7 +53,7 @@ export default function OsceAdminStationEditor() {
       setItems(data.items || [])
       setFailCriteria(data.fail_criteria || [])
       setVivaQuestions(data.viva_questions || [])
-    } catch (e) {
+    } catch {
       setError('Network error loading station')
     }
   }, [id])

@@ -34,7 +34,7 @@ export function formatQuestionCountOnBlur(input, min, max) {
 /** Keep count in range when pool size or toggles change. */
 export function adjustQuestionCountInput(
   input,
-  { max, previousMax, min, snapToMaxIfWasMax = false, defaultWhenEmpty = 'max' }
+  { max, previousMax, snapToMaxIfWasMax = false, defaultWhenEmpty = 'max' }
 ) {
   if (max <= 0) return '0'
   const n = input === '' || input === '0' ? 0 : parseInt(input, 10)

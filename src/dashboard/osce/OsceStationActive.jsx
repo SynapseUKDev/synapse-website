@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft, LuChevronDown, LuPlay, LuPause, LuSquare, LuEye, LuEyeOff, LuMinus, LuPlus, LuRotateCcw } from 'react-icons/lu'
 import { io } from 'socket.io-client'
-import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens, authHeaders } from '../../auth/token'
+import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import OsceBlockRenderer from './OsceBlockRenderer'
 import './Osce.css'
@@ -892,7 +892,7 @@ function boundaryToFlatOffset(container, offset, textNodes) {
   try {
     r.setStart(container, offset)
     r.collapse(true)
-  } catch (e) {
+  } catch {
     return null
   }
   let acc = 0
@@ -903,8 +903,8 @@ function boundaryToFlatOffset(container, offset, textNodes) {
         if (r.comparePoint(tn, i) === 0) {
           return acc + i
         }
-      } catch (err) {
-        // not comparable; try next
+      } catch {
+        // not comparable; try next position/node
       }
     }
     acc += L

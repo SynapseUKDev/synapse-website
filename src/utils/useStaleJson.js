@@ -120,9 +120,10 @@ export default function useStaleJson(url, options = {}) {
     } catch (e) {
       if (mounted.current) setError(e)
     } finally {
-      if (!mounted.current) return
-      setLoading(false)
-      setRefreshing(false)
+      if (mounted.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
   }, [])
 

@@ -90,7 +90,7 @@ export default function ReviewableContent({
   // Attach mouseup listener
   useEffect(() => {
     if (!enabled) return
-    const handler = (e) => handleMouseUp()
+    const handler = () => handleMouseUp()
     document.addEventListener('mouseup', handler)
     return () => document.removeEventListener('mouseup', handler)
   }, [enabled, handleMouseUp])
@@ -188,7 +188,7 @@ export default function ReviewableContent({
       cleanupMarks(marksRef.current, container)
       marksRef.current = []
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [comments, pendingHighlight, blockId, enabled, contentKey, onCommentClick])
 
   return (
@@ -358,7 +358,7 @@ function buildTextNodeMap(root) {
  * Remove mark wrappers we injected, restoring original text nodes.
  * Normalises the parent afterwards to merge split text nodes.
  */
-function cleanupMarks(marks, container) {
+function cleanupMarks(marks) {
   const parents = new Set()
   for (const wrapper of marks) {
     if (!wrapper.parentNode) continue

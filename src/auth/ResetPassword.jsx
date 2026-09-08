@@ -16,7 +16,7 @@ function ResetPassword() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [checkingToken, setCheckingToken] = useState(true)
-  const [isResetting, setIsResetting] = useState(false)
+  const [, setIsResetting] = useState(false)
   // Store tokens in memory only - never in URL or localStorage
   const [recoveryTokens, setRecoveryTokens] = useState({ accessToken: null, refreshToken: null })
   const hasProcessedTokens = useRef(false)

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
@@ -24,90 +24,6 @@ import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
 import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
-
-// Custom Rehype plugin to apply highlights to text nodes
-const rehypeHighlightPlugin = (options) => {
-  const { highlights } = options || {}
-
-  return (tree) => {
-    if (!highlights || highlights.length === 0) return
-
-    let currentIndex = 0
-    const sortedHighlights = [...highlights].sort((a, b) => a.start - b.start)
-
-    const getTextLength = (node) => {
-      if (node.type === 'text') return node.value.length
-      if (node.children) return node.children.reduce((acc, child) => acc + getTextLength(child), 0)
-      return 0
-    }
-
-    const traverse = (node) => {
-      // Skip our own highlight wrappers to avoid checking inside them
-      if (node.tagName === 'span' && node.properties?.className?.includes('highlight-wrapper')) {
-        currentIndex += getTextLength(node)
-        return
-      }
-
-      if (node.children) {
-        let i = 0
-        while (i < node.children.length) {
-          const child = node.children[i]
-
-          if (child.type === 'text') {
-            const text = child.value
-            const start = currentIndex
-            const end = start + text.length
-
-            const highlight = sortedHighlights.find(h => h.start < end && h.end > start)
-
-            if (highlight) {
-              const relStart = Math.max(0, highlight.start - start)
-              const relEnd = Math.min(text.length, highlight.end - start)
-
-              const newNodes = []
-
-              if (relStart > 0) {
-                newNodes.push({ type: 'text', value: text.slice(0, relStart) })
-              }
-
-              const hlText = text.slice(relStart, relEnd)
-              newNodes.push({
-                type: 'element',
-                tagName: 'span',
-                properties: {
-                  className: ['highlight-wrapper'],
-                  'data-highlight-id': highlight.id
-                },
-                children: [{
-                  type: 'element',
-                  tagName: 'mark',
-                  properties: { className: ['highlight'] },
-                  children: [{ type: 'text', value: hlText }]
-                }]
-              })
-
-              if (relEnd < text.length) {
-                newNodes.push({ type: 'text', value: text.slice(relEnd) })
-              }
-
-              node.children.splice(i, 1, ...newNodes)
-              continue
-            }
-
-            currentIndex += text.length
-            i++
-
-          } else {
-            traverse(child)
-            i++
-          }
-        }
-      }
-    }
-
-    traverse(tree)
-  }
-}
 
 function useCountdown(initialSec = 1800) {
   const [seconds, setSeconds] = useState(initialSec)
@@ -169,7 +85,7 @@ export default function Practice() {
   const [highlights, setHighlights] = useState({}) // { questionId: [{ start, end, text, id, note }] }
   const [popoverHl, setPopoverHl] = useState(null) // { questionId, highlight, rect }
   const [showHighlightBtn, setShowHighlightBtn] = useState(false)
-  const [highlightBtnPos, setHighlightBtnPos] = useState({ x: 0, y: 0 })
+  const [highlightBtnPos] = useState({ x: 0, y: 0 })
   const stemRef = useRef(null)
   const hasLoadedRef = useRef(false) // Prevent double-loading of session
 
@@ -576,7 +492,7 @@ export default function Practice() {
   }
 
   // Text highlighting functionality
-  const addHighlightFromSelection = useCallback((e) => {
+  const addHighlightFromSelection = useCallback(() => {
     const selection = window.getSelection()
     const currentQ = questions[currentIndex]
     if (!selection || selection.isCollapsed || !currentQ || !stemRef.current) return
@@ -790,14 +706,6 @@ export default function Practice() {
         return next
       }
       return { ...prev, [currentQuestionId]: filtered }
-    })
-    setPopoverHl(null)
-  }
-
-  const updateHighlightNote = (questionId, highlightId, note) => {
-    setHighlights(prev => {
-      const current = prev[questionId] || []
-      return { ...prev, [questionId]: current.map(hl => hl.id === highlightId ? { ...hl, note } : hl) }
     })
     setPopoverHl(null)
   }
@@ -1170,7 +1078,7 @@ export default function Practice() {
   useEffect(() => {
     if (isReviewer) {
       // Reviewer: mouseup → open ReviewCommentPopover if text selected inside stem, options, or explanations
-      const handleReviewerSelection = (e) => {
+      const handleReviewerSelection = () => {
         const selection = window.getSelection()
         const currentQ = questions[currentIndex]
         if (!selection || selection.isCollapsed || !currentQ) return

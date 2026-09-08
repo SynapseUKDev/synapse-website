@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { authHeaders, authenticatedFetch } from '../../auth/token'
-import { useOutletContext, useNavigate } from 'react-router-dom'
+import { authHeaders } from '../../auth/token'
+import { useNavigate } from 'react-router-dom'
 import * as Lu from 'react-icons/lu'
 import { LuTarget, LuListCheck, LuTimer, LuUsers, LuBookOpen, LuSearch, LuLayers } from 'react-icons/lu'
 import './QuestionBank.css'
@@ -112,7 +112,6 @@ function SpecialtyCard({ item }) {
 
 export default function QuestionBank() {
   const navigate = useNavigate()
-  const { user } = useOutletContext()
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
   const summaryReq = useStaleJson(`${API_BASE}/qbank/summary`, {
@@ -145,7 +144,7 @@ export default function QuestionBank() {
     try {
       const regex = new RegExp(searchQuery, 'i')
       return regex.test(specialty.specialty_name || '')
-    } catch (e) {
+    } catch {
       // If regex is invalid, fall back to simple string matching
       return (specialty.specialty_name || '').toLowerCase().includes(searchQuery.toLowerCase())
     }
