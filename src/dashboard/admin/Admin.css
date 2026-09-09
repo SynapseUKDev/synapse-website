@@ -139,6 +139,11 @@
   color: var(--syn-navy-700);
 }
 
+.admin-btn-issue--danger {
+  background: #be123c;
+  color: #fff;
+}
+
 .admin-tabs button,
 .admin-search button,
 .admin-form button {

@@ -216,9 +216,36 @@ export default function AdminAnnouncements() {
       }
       const body = await res.json()
       applyAnnouncement(body.announcement)
-      setNotice('Archived. New users will not receive this announcement.')
+      setNotice('Archived. It is gone from every inbox and will not be sent again.')
     } catch {
       setError('Failed to archive announcement')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteAnnouncement = async () => {
+    if (!selectedId) return
+    const title = selected?.title ? `“${selected.title}”` : 'this announcement'
+    if (!window.confirm(`Remove ${title} from every inbox? This cannot be undone.`)) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/announcements/${selectedId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to remove announcement'))
+        return
+      }
+      setAnnouncements((prev) => prev.filter((a) => a.id !== selectedId))
+      setMode('create')
+      setSelectedId(null)
+      setForm(BLANK_FORM)
+      setNotice('Removed. It will no longer show in the notification panel.')
+    } catch {
+      setError('Failed to remove announcement')
     } finally {
       setBusy(false)
     }
@@ -368,6 +395,14 @@ export default function AdminAnnouncements() {
                   Archive
                 </button>
               ) : null}
+              <button
+                type="button"
+                className="admin-btn-issue admin-btn-issue--danger"
+                onClick={deleteAnnouncement}
+                disabled={busy}
+              >
+                Remove
+              </button>
             </div>
           )}
         </section>
