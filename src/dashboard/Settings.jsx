@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { authHeaders, clearTokens } from '../auth/token'
-import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuLoader, LuTrophy } from 'react-icons/lu'
+import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuLoader, LuTrophy, LuHeadset } from 'react-icons/lu'
 import { getStoredPreference, setPreference } from '../theme'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import ResetProgressCard from './ResetProgressCard.jsx'
+import ContactSupportModal from './ContactSupportModal.jsx'
+import './Settings.css'
 
 export default function Settings() {
   const { user } = useOutletContext()
@@ -36,6 +38,8 @@ export default function Settings() {
   const [deleteUnderstand, setDeleteUnderstand] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [supportOpen, setSupportOpen] = useState(false)
+  const [supportSent, setSupportSent] = useState(false)
 
   useEffect(() => {
     if (!deleteModalOpen) return
@@ -232,6 +236,18 @@ export default function Settings() {
       alert('Failed to open billing portal. Please try again.')
       setPortalLoading(false)
     }
+  }
+
+  const isMobileSettings = () =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+
+  const openSupport = () => {
+    if (isMobileSettings()) {
+      navigate('/dashboard/settings/support')
+      return
+    }
+    setSupportSent(false)
+    setSupportOpen(true)
   }
 
   const formatDate = (iso) => {
@@ -584,6 +600,30 @@ export default function Settings() {
               </button>
             )}
 
+            <div className="settings-account__support">
+              <div>
+                <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>Contact support</div>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5 }}>
+                  Questions about your account, billing, or access.
+                </p>
+                {supportSent && (
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 13, fontWeight: 600 }}>
+                    <LuCheck size={16} />
+                    Message sent. We will reply by email.
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="qb-btn qb-btn--sm cs-profile-btn"
+                style={{ width: 'auto', flex: 'none' }}
+                onClick={openSupport}
+              >
+                <LuHeadset size={16} aria-hidden />
+                Contact support
+              </button>
+            </div>
+
             <div className="settings-account__delete">
               <div>
                 <div style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>Delete account</div>
@@ -610,6 +650,18 @@ export default function Settings() {
 
         <ResetProgressCard />
       </div>
+
+      {supportOpen && (
+        <ContactSupportModal
+          replyToEmail={user?.email}
+          onClose={() => setSupportOpen(false)}
+          onSent={() => {
+            setSupportOpen(false)
+            setSupportSent(true)
+            setTimeout(() => setSupportSent(false), 4000)
+          }}
+        />
+      )}
 
       {/* Account Deletion Confirmation Modal */}
       {deleteModalOpen && (

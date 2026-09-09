@@ -28,6 +28,7 @@ import Textbook from './dashboard/textbook/Textbook.jsx'
 import TextbookTopic from './dashboard/textbook/TextbookTopic.jsx'
 import TextbookSearch from './dashboard/textbook/TextbookSearch.jsx'
 import Settings from './dashboard/Settings.jsx'
+import ContactSupportPage from './dashboard/ContactSupportPage.jsx'
 import Admin from './dashboard/admin/Admin.jsx'
 import InstitutionDashboard from './dashboard/institution/InstitutionDashboard.jsx'
 import OsceStations from './dashboard/osce/OsceStations.jsx'
@@ -143,6 +144,7 @@ function App() {
           <Route path="admin/osce" element={<OsceAdminPanel />} />
           <Route path="admin/osce/station/:id" element={<OsceAdminStationEditor />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="settings/support" element={<ContactSupportPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
