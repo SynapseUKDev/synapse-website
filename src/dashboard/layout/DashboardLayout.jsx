@@ -10,6 +10,11 @@ import { authHeaders, clearTokens, authenticatedFetch } from '../../auth/token'
 import { LuMenu } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import TermsConsentModal from '../../components/consent/TermsConsentModal'
+import AnnouncementModal from '../notifications/AnnouncementModal'
+import NotificationBell from '../notifications/NotificationBell'
+import NotificationInbox from '../notifications/NotificationInbox'
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 function DashboardLayout() {
   const navigate = useNavigate()
@@ -19,6 +24,11 @@ function DashboardLayout() {
   const [access, setAccess] = useState(null)
   const [institution, setInstitution] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [announcementBusy, setAnnouncementBusy] = useState(false)
+  const [inboxOpen, setInboxOpen] = useState(false)
+  const [inboxBusy, setInboxBusy] = useState(false)
 
   const fetchUser = useCallback(async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -88,6 +98,7 @@ function DashboardLayout() {
 
   useEffect(() => {
     setMobileMenuOpen(false)
+    setInboxOpen(false)
   }, [location.pathname])
 
   // Route guard: Redirect reviewers away from admin routes
@@ -104,6 +115,103 @@ function DashboardLayout() {
       navigate('/dashboard/institution', { replace: true })
     }
   }, [user, location.pathname, navigate])
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/notifications`, { cache: 'no-store' })
+      if (!res.ok) return
+      const body = await res.json()
+      setNotifications(body.notifications || [])
+      setUnreadCount(Number(body.unread_count) || 0)
+    } catch {
+      // Inbox and modal are best-effort; the dashboard still works without them.
+    }
+  }, [])
+
+  useEffect(() => {
+    if (loading || !user?.id || !access?.has_active_access || !user.terms_accepted_at) return
+    loadNotifications()
+  }, [loading, user?.id, user?.terms_accepted_at, access?.has_active_access, loadNotifications])
+
+  const markNotificationRead = async (id) => {
+    const wasUnread = notifications.some((n) => n.id === id && !n.read_at)
+    const res = await authenticatedFetch(`${API_BASE}/notifications/${id}/read`, { method: 'POST' })
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}))
+      throw new Error(errData.error || 'Failed to update notification')
+    }
+    const body = await res.json().catch(() => ({}))
+    const readAt = body.notification?.read_at || new Date().toISOString()
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, ...body.notification, read_at: readAt } : n)))
+    if (wasUnread) setUnreadCount((count) => Math.max(0, count - 1))
+  }
+
+  const handleDismissAnnouncement = async () => {
+    const pending = notifications.find((n) => n.type === 'announcement' && !n.read_at)
+    if (!pending) return
+    setAnnouncementBusy(true)
+    try {
+      await markNotificationRead(pending.id)
+    } finally {
+      setAnnouncementBusy(false)
+    }
+  }
+
+  const handleAnnouncementCta = async (url) => {
+    const pending = notifications.find((n) => n.type === 'announcement' && !n.read_at)
+    if (!pending) return
+    setAnnouncementBusy(true)
+    try {
+      await markNotificationRead(pending.id)
+      if (typeof url === 'string' && url.startsWith('/')) navigate(url)
+    } finally {
+      setAnnouncementBusy(false)
+    }
+  }
+
+  const openInbox = () => {
+    setMobileMenuOpen(false)
+    setInboxOpen(true)
+    loadNotifications()
+  }
+
+  const handleInboxSelect = async (item) => {
+    if (!item) return
+    setInboxBusy(true)
+    try {
+      if (!item.read_at) await markNotificationRead(item.id)
+      let url = item.action_url
+      if (item.type === 'friend_request') {
+        const requestId = typeof item.source_id === 'string' ? item.source_id : ''
+        url = requestId
+          ? `/dashboard?friends=requests&request=${encodeURIComponent(requestId)}`
+          : '/dashboard?friends=requests'
+      }
+      if (typeof url === 'string' && url.startsWith('/')) {
+        setInboxOpen(false)
+        navigate(url)
+      }
+    } catch {
+      // Keep the panel open so they can retry.
+    } finally {
+      setInboxBusy(false)
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    setInboxBusy(true)
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/notifications/read-all`, { method: 'POST' })
+      if (!res.ok) return
+      const now = new Date().toISOString()
+      setNotifications((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: now })))
+      setUnreadCount(0)
+    } catch {
+      // Keep existing unread state.
+    } finally {
+      setInboxBusy(false)
+    }
+  }
 
   const handleAcceptTerms = async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -135,6 +243,7 @@ function DashboardLayout() {
   if (loading) return <LoadingScreen message="Loading your dashboard..." />
 
   const showConsentModal = user && !user.terms_accepted_at
+  const pendingAnnouncement = notifications.find((n) => n.type === 'announcement' && !n.read_at) || null
   const background = getBackgroundForPath(location.pathname)
 
   return (
@@ -144,18 +253,44 @@ function DashboardLayout() {
         onAccept={handleAcceptTerms}
         onLogout={handleLogout}
       />
+      <AnnouncementModal
+        open={!showConsentModal && !!pendingAnnouncement}
+        announcement={pendingAnnouncement}
+        onDismiss={handleDismissAnnouncement}
+        onCta={handleAnnouncementCta}
+        busy={announcementBusy}
+      />
+      <NotificationInbox
+        open={inboxOpen}
+        onClose={() => setInboxOpen(false)}
+        notifications={notifications}
+        onSelect={handleInboxSelect}
+        onMarkAllRead={handleMarkAllRead}
+        busy={inboxBusy}
+      />
       <div className="dash__mobile-header">
         <div className="dash__mobile-header-content">
           <img src={logoImg} alt="Synapse UK" className="dash__mobile-logo" />
-          <button
-            type="button"
-            className="dash__mobile-burger"
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Open menu"
-            aria-expanded={mobileMenuOpen}
-          >
-            <LuMenu size={24} />
-          </button>
+          <div className="dash__mobile-header-actions">
+            <NotificationBell
+              className="dash__mobile-bell"
+              unreadCount={unreadCount}
+              onClick={openInbox}
+              size={20}
+            />
+            <button
+              type="button"
+              className="dash__mobile-burger"
+              onClick={() => {
+                setInboxOpen(false)
+                setMobileMenuOpen(true)
+              }}
+              aria-label="Open menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              <LuMenu size={24} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -166,7 +301,12 @@ function DashboardLayout() {
         onLogout={handleLogout}
       />
 
-      <Sidebar user={user} onLogout={handleLogout} />
+      <Sidebar
+        user={user}
+        onLogout={handleLogout}
+        unreadCount={unreadCount}
+        onOpenNotifications={openInbox}
+      />
       <main className="dash__content" data-background={background || undefined}>
         <Outlet context={{ user, access, institution, location }} />
       </main>

@@ -222,6 +222,7 @@
 }
 
 .sidebar__action-btn {
+  position: relative;
   width: 44px;
   height: 44px;
   border-radius: 10px;
@@ -245,6 +246,38 @@
   background: rgba(255, 189, 89, 0.12);
   border-color: rgba(255, 189, 89, 0.45);
   color: #ffe9c7;
+}
+
+.sidebar__bell {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 189, 89, 0.55);
+  background: rgba(255, 189, 89, 0.2);
+  color: #ffbd59;
+  flex-shrink: 0;
+}
+
+.sidebar__bell:hover {
+  background: rgba(255, 189, 89, 0.32);
+  border-color: rgba(255, 189, 89, 0.9);
+  color: #ffe9c7;
+}
+
+.sidebar__bell:has(.notif-bell__badge) {
+  box-shadow: 0 0 14px rgba(255, 189, 89, 0.4);
+}
+
+.sidebar__bell .notif-bell__badge {
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--syn-deep-navy);
+}
+
+.sidebar__user-compact .sidebar__bell {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
 }
 
 .sidebar__user-info {

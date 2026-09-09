@@ -7,6 +7,7 @@ import OsceAdminPanel from '../osce/OsceAdminPanel'
 import AdminReviewComments from './AdminReviewComments'
 import AdminInstitutions from './AdminInstitutions'
 import AdminStudyReports from './AdminStudyReports'
+import AdminAnnouncements from './AdminAnnouncements'
 import './Admin.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -48,6 +49,7 @@ export default function Admin() {
   const [activeTab, setActiveTabState] = useState(() => {
     const saved = localStorage.getItem('admin_active_tab')
     if (saved === 'institutions' && canManageInstitutions) return 'institutions'
+    if (saved === 'announcements' && isGlobalAdmin) return 'announcements'
     if (saved === 'reports' && isGlobalAdmin) return 'reports'
     if (saved === 'osce' && canManageOsce) return 'osce'
     if (saved === 'mock-papers' && canManageMockPapers) return 'mock-papers'
@@ -318,6 +320,7 @@ export default function Admin() {
             {activeTab === 'mock-papers' && 'Import mock exam'}
             {activeTab === 'osce' && 'Manage OSCE Stations'}
             {activeTab === 'institutions' && 'Institutions'}
+            {activeTab === 'announcements' && 'Announcements'}
             {activeTab === 'reports' && 'Study reports'}
             {isIssuesTab && 'Admin Issues'}
           </h1>
@@ -325,6 +328,7 @@ export default function Admin() {
             {activeTab === 'mock-papers' && 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'}
             {activeTab === 'osce' && 'Create, edit, and publish OSCE stations for all station types.'}
             {activeTab === 'institutions' && 'Create institution accounts and manage the staff admins who invite their students.'}
+            {activeTab === 'announcements' && 'Draft and publish in-app announcements. Users will see unread ones the next time they open the dashboard.'}
             {activeTab === 'reports' && 'Monthly AI study reports: run the batch, watch it finish, and see usage per month.'}
             {isIssuesTab && 'Review user-reported issues, then edit the related question or textbook page.'}
           </p>
@@ -383,6 +387,15 @@ export default function Admin() {
         {isGlobalAdmin && (
           <button
             type="button"
+            className={activeTab === 'announcements' ? 'is-active' : ''}
+            onClick={() => setActiveTab('announcements')}
+          >
+            Announcements
+          </button>
+        )}
+        {isGlobalAdmin && (
+          <button
+            type="button"
             className={activeTab === 'reports' ? 'is-active' : ''}
             onClick={() => setActiveTab('reports')}
           >
@@ -406,7 +419,7 @@ export default function Admin() {
         )}
       </div>
 
-      {activeTab !== 'institutions' && activeTab !== 'reports' && (
+      {activeTab !== 'institutions' && activeTab !== 'reports' && activeTab !== 'announcements' && (
         <div className="admin-subtabs">
           <button
             type="button"
@@ -429,6 +442,8 @@ export default function Admin() {
       )}
 
       {activeTab === 'institutions' && <AdminInstitutions />}
+
+      {activeTab === 'announcements' && <AdminAnnouncements />}
 
       {activeTab === 'reports' && <AdminStudyReports />}
 

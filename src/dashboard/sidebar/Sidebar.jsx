@@ -3,9 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { LuMenu, LuSettings, LuLogOut } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import { getDashboardNavItems } from './dashboardNavConfig'
+import NotificationBell from '../notifications/NotificationBell'
 import './Sidebar.css'
 
-function Sidebar({ user, onLogout }) {
+function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -80,6 +81,12 @@ function Sidebar({ user, onLogout }) {
             </div>
           </div>
           <div className="sidebar__user-actions-compact">
+            <NotificationBell
+              className="sidebar__bell"
+              unreadCount={unreadCount}
+              onClick={onOpenNotifications}
+              size={18}
+            />
             <button
               className="sidebar__action-btn"
               onClick={() => handleNavigate('/dashboard/settings')}
@@ -114,6 +121,12 @@ function Sidebar({ user, onLogout }) {
                 <div className="sidebar__reviewer-badge">Reviewer</div>
               )}
             </div>
+            <NotificationBell
+              className="sidebar__bell"
+              unreadCount={unreadCount}
+              onClick={onOpenNotifications}
+              size={18}
+            />
           </div>
           <div className="sidebar__user-actions">
             <button className="sidebar__settings" onClick={() => handleNavigate('/dashboard/settings')}>Settings</button>

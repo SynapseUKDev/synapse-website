@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
-import { useOutletContext, useNavigate } from 'react-router-dom'
+import { useOutletContext, useNavigate, useSearchParams } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import { authHeaders, authenticatedFetch } from '../auth/token'
@@ -42,6 +42,7 @@ function collapseExpandScrollOffset(itemCount) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, institution } = useOutletContext()
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   const summaryReq = useStaleJson(`${API_BASE}/dashboard/summary`, {
@@ -95,9 +96,11 @@ export default function Dashboard() {
   const [friendMessage, setFriendMessage] = useState(null) // { type: 'success'|'error', text }
   const [respondingId, setRespondingId] = useState(null)
   const [friendsTab, setFriendsTab] = useState('friends') // 'friends' | 'requests'
+  const [focusedRequestId, setFocusedRequestId] = useState(null)
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false)
   const [friendsListExpanded, setFriendsListExpanded] = useState(false)
   const friendsListRef = useRef(null)
+  const friendsCardRef = useRef(null)
   const leaderboardListRef = useRef(null)
   const shouldScrollFriendsRef = useRef(false)
   const shouldScrollLeaderboardRef = useRef(false)
@@ -106,8 +109,34 @@ export default function Dashboard() {
   const editRef = useRef(null)
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('friends')) return
     window.scrollTo(0, 0)
-  }, []);
+  }, [])
+
+  const friendsFocus = searchParams.get('friends')
+  const requestFocusId = searchParams.get('request')
+
+  useEffect(() => {
+    if (friendsFocus !== 'requests') return
+    setFriendsTab('requests')
+    if (requestFocusId) setFocusedRequestId(requestFocusId)
+  }, [friendsFocus, requestFocusId])
+
+  useEffect(() => {
+    if (friendsFocus !== 'requests') return
+    if (loading || requestsLoading) return
+
+    const timer = window.setTimeout(() => {
+      const row = requestFocusId
+        ? document.getElementById(`friend-request-${requestFocusId}`)
+        : null
+      const target = row || friendsCardRef.current
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setSearchParams({}, { replace: true })
+    }, 80)
+
+    return () => window.clearTimeout(timer)
+  }, [friendsFocus, requestFocusId, requestsLoading, loading, setSearchParams])
 
   useEffect(() => {
     let cancelled = false
@@ -775,7 +804,7 @@ export default function Dashboard() {
             </div>
           </aside>
 
-          <div className="db-friends">
+          <div className="db-friends" ref={friendsCardRef}>
             <div className="db-card db-friends__card">
             <div className="db-card__top">
               <div className="db-friends__title">
@@ -793,7 +822,10 @@ export default function Dashboard() {
                 <button
                   type="button"
                   className={`db-analytics__tab ${friendsTab === 'friends' ? 'is-active' : ''}`}
-                  onClick={() => setFriendsTab('friends')}
+                  onClick={() => {
+                    setFriendsTab('friends')
+                    setFocusedRequestId(null)
+                  }}
                 >
                   Friends
                 </button>
@@ -883,7 +915,11 @@ export default function Dashboard() {
                   ) : (
                     <div className="db-list">
                       {friendRequests.inbox?.map((r) => (
-                        <div key={r.id} className="db-list__item">
+                        <div
+                          key={r.id}
+                          id={`friend-request-${r.id}`}
+                          className={`db-list__item${focusedRequestId === r.id ? ' db-list__item--highlight' : ''}`}
+                        >
                           <div className="db-list__main">
                             <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
                             <div className="db-list__sub">Wants to be your friend</div>
