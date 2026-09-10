@@ -3,6 +3,7 @@ import { LuChevronRight, LuBuilding2, LuUserCog, LuTrash2, LuUsers, LuMail, LuPa
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import { bulkResendNotice, resendInviteChunks } from '../institution/resendInvites'
+import { assignCohortChunks } from '../institution/assignCohort'
 import './AdminInstitutions.css'
 
 /** Card section with a collapsible body. */
@@ -90,7 +91,11 @@ export default function AdminInstitutions() {
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [studentSearch, setStudentSearch] = useState('')
   const [studentStatus, setStudentStatus] = useState('')
-  const [newStudent, setNewStudent] = useState({ email: '', name: '', username: '' })
+  const [studentCohortFilter, setStudentCohortFilter] = useState('')
+  const [cohorts, setCohorts] = useState([])
+  const [newStudent, setNewStudent] = useState({ email: '', name: '', username: '', cohort_id: '' })
+  const [newCohortName, setNewCohortName] = useState('')
+  const [bulkCohortId, setBulkCohortId] = useState('')
   const [selectedStudentIds, setSelectedStudentIds] = useState(() => new Set())
   const [open, setOpen] = useState({ details: true, admins: true, students: true })
 
@@ -143,12 +148,13 @@ export default function AdminInstitutions() {
     }
   }, [])
 
-  const loadStudents = useCallback(async (id, status) => {
+  const loadStudents = useCallback(async (id, status, cohortId) => {
     if (!id) return
     setStudentsLoading(true)
     try {
       const params = new URLSearchParams()
       if (status) params.set('status', status)
+      if (cohortId) params.set('cohort_id', cohortId)
       const query = params.toString() ? `?${params.toString()}` : ''
       const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${id}/students${query}`, {
         cache: 'no-store',
@@ -166,18 +172,36 @@ export default function AdminInstitutions() {
     }
   }, [])
 
+  const loadCohorts = useCallback(async (id) => {
+    if (!id) return
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${id}/cohorts`, { cache: 'no-store' })
+      if (!res.ok) return
+      const body = await res.json()
+      setCohorts(body.cohorts || [])
+    } catch {
+      /* roster still works without year groups */
+    }
+  }, [])
+
   useEffect(() => {
     loadList()
   }, [loadList])
 
   useEffect(() => {
     if (mode !== 'detail' || !selectedId) return
-    loadStudents(selectedId, studentStatus)
-  }, [mode, selectedId, studentStatus, loadStudents])
+    loadStudents(selectedId, studentStatus, studentCohortFilter)
+    loadCohorts(selectedId)
+  }, [mode, selectedId, studentStatus, studentCohortFilter, loadStudents, loadCohorts])
 
   useEffect(() => {
     setSelectedStudentIds(new Set())
-  }, [selectedId, studentStatus])
+  }, [selectedId, studentStatus, studentCohortFilter])
+
+  useEffect(() => {
+    if (!studentCohortFilter || studentCohortFilter === 'none') return
+    if (!cohorts.some((c) => c.id === studentCohortFilter)) setStudentCohortFilter('')
+  }, [cohorts, studentCohortFilter])
 
   const openCreate = () => {
     setMode('create')
@@ -185,9 +209,13 @@ export default function AdminInstitutions() {
     setDetail(null)
     setForm(BLANK_FORM)
     setStudents([])
+    setCohorts([])
     setStudentSearch('')
     setStudentStatus('')
-    setNewStudent({ email: '', name: '', username: '' })
+    setStudentCohortFilter('')
+    setNewStudent({ email: '', name: '', username: '', cohort_id: '' })
+    setNewCohortName('')
+    setBulkCohortId('')
     setError('')
     setNotice('')
   }
@@ -332,7 +360,8 @@ export default function AdminInstitutions() {
   const refreshInstitution = async (id) => {
     await loadList()
     await loadDetail(id)
-    await loadStudents(id, studentStatus)
+    await loadStudents(id, studentStatus, studentCohortFilter)
+    await loadCohorts(id)
   }
 
   const addStudent = async (e) => {
@@ -345,6 +374,7 @@ export default function AdminInstitutions() {
       const payload = { email: newStudent.email.trim() }
       if (newStudent.name.trim()) payload.name = newStudent.name.trim()
       if (newStudent.username.trim()) payload.username = newStudent.username.trim()
+      if (newStudent.cohort_id) payload.cohort_id = newStudent.cohort_id
 
       const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/students`, {
         method: 'POST',
@@ -363,7 +393,7 @@ export default function AdminInstitutions() {
             ? `${payload.email} already had an account and was linked.`
             : `Invite sent to ${payload.email}.`
       )
-      setNewStudent({ email: '', name: '', username: '' })
+      setNewStudent((p) => ({ email: '', name: '', username: '', cohort_id: p.cohort_id }))
       await refreshInstitution(selectedId)
     } catch {
       setError('Failed to add student')
@@ -387,7 +417,7 @@ export default function AdminInstitutions() {
         return
       }
       setNotice(`Invite resent to ${student.email}.`)
-      await loadStudents(selectedId, studentStatus)
+      await loadStudents(selectedId, studentStatus, studentCohortFilter)
     } catch {
       setError('Failed to resend the invite')
     } finally {
@@ -406,11 +436,73 @@ export default function AdminInstitutions() {
 
   const resendSelectedStudents = async () => {
     if (!selectedId) return
+    const inviteIds = [...selectedStudentIds].filter(
+      (id) => students.find((s) => s.user_id === id)?.status === 'invited'
+    )
+    if (inviteIds.length === 0) {
+      setError('None of the selected students still need an invite')
+      return
+    }
+    const skipped = selectedStudentIds.size - inviteIds.length
+    const confirmMessage = skipped
+      ? `Resend invites to ${inviteIds.length} student${inviteIds.length === 1 ? '' : 's'} who have not set up their account? ${skipped} already set up will be skipped.`
+      : `Resend invites to ${inviteIds.length} student${inviteIds.length === 1 ? '' : 's'}? Each unused invite link will be replaced.`
+    if (!window.confirm(confirmMessage)) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const body = await resendInviteChunks({
+        url: `${API_BASE}/admin/institutions/${selectedId}/students/resend-invites`,
+        ids: inviteIds,
+        onProgress: (done, total) => {
+          if (total > 50) setNotice(`Resending ${done} of ${total}…`)
+        },
+      })
+      setNotice(bulkResendNotice(body))
+      setSelectedStudentIds(new Set())
+      await loadStudents(selectedId, studentStatus, studentCohortFilter)
+    } catch (err) {
+      setError(err.message || 'Failed to resend invites')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const setStudentCohort = async (student, cohortId) => {
+    if (!selectedId) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/students/${student.user_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cohort_id: cohortId }),
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to update year group'))
+        return
+      }
+      const label = cohortId ? cohorts.find((c) => c.id === cohortId)?.name || 'year group' : 'no year group'
+      setNotice(`${student.email} assigned to ${label}.`)
+      await loadStudents(selectedId, studentStatus, studentCohortFilter)
+    } catch {
+      setError('Failed to update year group')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const assignSelectedStudents = async () => {
+    if (!selectedId) return
     const ids = [...selectedStudentIds]
     if (ids.length === 0) return
+    const cohortId = bulkCohortId || null
+    const label = cohortId ? cohorts.find((c) => c.id === cohortId)?.name || 'year group' : 'no year group'
     if (
       !window.confirm(
-        `Resend invites to ${ids.length} student${ids.length === 1 ? '' : 's'}? Each unused invite link will be replaced.`
+        `Assign ${ids.length} student${ids.length === 1 ? '' : 's'} to ${label}?`
       )
     ) {
       return
@@ -419,18 +511,50 @@ export default function AdminInstitutions() {
     setError('')
     setNotice('')
     try {
-      const body = await resendInviteChunks({
-        url: `${API_BASE}/admin/institutions/${selectedId}/students/resend-invites`,
+      const body = await assignCohortChunks({
+        url: `${API_BASE}/admin/institutions/${selectedId}/students/assign-cohort`,
         ids,
+        cohortId,
         onProgress: (done, total) => {
-          if (total > 50) setNotice(`Resending ${done} of ${total}…`)
+          if (total > 200) setNotice(`Assigning ${done} of ${total}…`)
         },
       })
-      setNotice(bulkResendNotice(body))
+      setNotice(`Assigned ${body.updated} student${body.updated === 1 ? '' : 's'} to ${label}.`)
       setSelectedStudentIds(new Set())
-      await loadStudents(selectedId, studentStatus)
+      await loadStudents(selectedId, studentStatus, studentCohortFilter)
     } catch (err) {
-      setError(err.message || 'Failed to resend invites')
+      setError(err.message || 'Failed to assign year group')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const addCohort = async (e) => {
+    e?.preventDefault()
+    if (!selectedId || !newCohortName.trim()) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/cohorts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCohortName.trim() }),
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to add year group'))
+        return
+      }
+      const cohort = (await res.json().catch(() => ({})))?.cohort
+      setNotice(`Year group “${newCohortName.trim()}” added.`)
+      setNewCohortName('')
+      if (cohort?.id) {
+        setNewStudent((p) => ({ ...p, cohort_id: p.cohort_id || cohort.id }))
+        setBulkCohortId((prev) => prev || cohort.id)
+      }
+      await loadCohorts(selectedId)
+    } catch {
+      setError('Failed to add year group')
     } finally {
       setBusy(false)
     }
@@ -501,24 +625,27 @@ export default function AdminInstitutions() {
         .includes(term)
     )
   })
-  const invitedVisible = visibleStudents.filter((s) => s.status === 'invited')
-  const invitedLoaded = students.filter((s) => s.status === 'invited')
-  const allVisibleInvitedSelected =
-    invitedVisible.length > 0 && invitedVisible.every((s) => selectedStudentIds.has(s.user_id))
+  const selectableVisible = visibleStudents.filter((s) => s.status !== 'removed')
+  const selectableLoaded = students.filter((s) => s.status !== 'removed')
+  const allVisibleSelected =
+    selectableVisible.length > 0 && selectableVisible.every((s) => selectedStudentIds.has(s.user_id))
+  const invitedSelectedCount = [...selectedStudentIds].filter(
+    (id) => students.find((s) => s.user_id === id)?.status === 'invited'
+  ).length
 
-  const toggleAllVisibleInvited = () => {
+  const toggleAllVisibleStudents = () => {
     setSelectedStudentIds((prev) => {
-      if (allVisibleInvitedSelected) {
+      if (allVisibleSelected) {
         const next = new Set(prev)
-        invitedVisible.forEach((s) => next.delete(s.user_id))
+        selectableVisible.forEach((s) => next.delete(s.user_id))
         return next
       }
-      return new Set([...prev, ...invitedVisible.map((s) => s.user_id)])
+      return new Set([...prev, ...selectableVisible.map((s) => s.user_id)])
     })
   }
 
-  const selectAllLoadedInvited = () => {
-    setSelectedStudentIds(new Set(invitedLoaded.map((s) => s.user_id)))
+  const selectAllLoadedStudents = () => {
+    setSelectedStudentIds(new Set(selectableLoaded.map((s) => s.user_id)))
   }
 
   const detailsForm = (
@@ -780,178 +907,268 @@ export default function AdminInstitutions() {
               open={open.students}
               onToggle={() => toggle('students')}
             >
-              <p className="insta-summary">
-                Same roster controls as an institution admin: invite, resend, suspend, or remove when they cannot.
-              </p>
+              <div className="insta-actions">
+                <form className="insta-panel" onSubmit={addStudent}>
+                  <div className="insta-panel__head">Invite student</div>
+                  <div className="insta-invite">
+                    <label>
+                      Email
+                      <input
+                        type="email"
+                        value={newStudent.email}
+                        onChange={(e) => setNewStudent((p) => ({ ...p, email: e.target.value }))}
+                        placeholder="student@uni.ac.uk"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Name
+                      <input
+                        type="text"
+                        value={newStudent.name}
+                        onChange={(e) => setNewStudent((p) => ({ ...p, name: e.target.value }))}
+                        placeholder="optional"
+                      />
+                    </label>
+                    <label>
+                      Username
+                      <input
+                        type="text"
+                        value={newStudent.username}
+                        onChange={(e) => setNewStudent((p) => ({ ...p, username: e.target.value }))}
+                        placeholder="auto if blank"
+                      />
+                    </label>
+                    <label>
+                      Year group
+                      <select
+                        value={newStudent.cohort_id}
+                        onChange={(e) => setNewStudent((p) => ({ ...p, cohort_id: e.target.value }))}
+                      >
+                        <option value="">{cohorts.length === 0 ? 'None set up yet' : 'No year group'}</option>
+                        {cohorts.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button type="submit" disabled={busy || !newStudent.email.trim()}>
+                      Send invite
+                    </button>
+                  </div>
+                </form>
 
-              <div className="insta-toolbar">
-                <select
-                  value={studentStatus}
-                  onChange={(e) => setStudentStatus(e.target.value)}
-                  aria-label="Filter students by status"
-                >
-                  <option value="">All current students</option>
-                  <option value="invited">Invited</option>
-                  <option value="active">Active</option>
-                  <option value="suspended">Suspended</option>
-                  <option value="removed">Removed</option>
-                </select>
-                <input
-                  type="search"
-                  value={studentSearch}
-                  onChange={(e) => setStudentSearch(e.target.value)}
-                  placeholder="Search by email, username or name"
-                  aria-label="Search students"
-                />
+                <form className="insta-panel" onSubmit={addCohort}>
+                  <div className="insta-panel__head">Add year group</div>
+                  <div className="insta-cohort-add">
+                    <label>
+                      Name
+                      <input
+                        type="text"
+                        value={newCohortName}
+                        onChange={(e) => setNewCohortName(e.target.value)}
+                        placeholder="e.g. Year 1"
+                        maxLength={50}
+                      />
+                    </label>
+                    <button type="submit" disabled={busy || !newCohortName.trim()}>
+                      Add
+                    </button>
+                  </div>
+                </form>
               </div>
 
-              {invitedLoaded.length > 0 && (
-                <div className="insta-bulk">
-                  <span className="insta-bulk__count">
-                    {selectedStudentIds.size} selected
-                    {invitedVisible.length !== invitedLoaded.length
-                      ? ` · ${invitedVisible.length} invited in this list`
-                      : ` · ${invitedLoaded.length} invited`}
-                  </span>
-                  {invitedVisible.length > 0 && (
-                    <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={toggleAllVisibleInvited}>
-                      {allVisibleInvitedSelected ? 'Clear all' : 'Select all'}
-                    </button>
-                  )}
-                  {invitedLoaded.length > invitedVisible.length && (
-                    <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={selectAllLoadedInvited}>
-                      Select all {invitedLoaded.length} invited
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="admin-btn-issue admin-btn-issue--ghost"
-                    onClick={resendSelectedStudents}
-                    disabled={busy || selectedStudentIds.size === 0}
+              <div className="insta-roster">
+                <div className="insta-panel__head">Roster</div>
+                <div className="insta-toolbar">
+                  <select
+                    value={studentStatus}
+                    onChange={(e) => setStudentStatus(e.target.value)}
+                    aria-label="Filter students by status"
                   >
-                    <LuMail size={14} aria-hidden />{' '}
-                    {busy && selectedStudentIds.size > 0
-                      ? 'Resending...'
-                      : `Resend ${selectedStudentIds.size} invite${selectedStudentIds.size === 1 ? '' : 's'}`}
-                  </button>
+                    <option value="">All current students</option>
+                    <option value="invited">Invited</option>
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="removed">Removed</option>
+                  </select>
+                  <select
+                    value={studentCohortFilter}
+                    onChange={(e) => setStudentCohortFilter(e.target.value)}
+                    aria-label="Filter students by year group"
+                  >
+                    <option value="">All year groups</option>
+                    {cohorts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                    <option value="none">No year group</option>
+                  </select>
+                  <input
+                    type="search"
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    placeholder="Search by email, username or name"
+                    aria-label="Search students"
+                  />
                 </div>
-              )}
 
-              {studentsLoading ? (
-                <LoadingScreen message="Loading students..." compact />
-              ) : students.length === 0 ? (
-                <p className="insta-empty">
-                  {studentStatus ? 'No students match this filter.' : 'No students yet. Invite one below.'}
-                </p>
-              ) : visibleStudents.length === 0 ? (
-                <p className="insta-empty">No students match “{studentSearch}”.</p>
-              ) : (
-                <div className="insta-members">
-                  {visibleStudents.map((student) => (
-                    <div key={student.user_id} className="insta-member">
-                      {student.status === 'invited' ? (
-                        <label className="insta-member__check">
-                          <input
-                            type="checkbox"
-                            checked={selectedStudentIds.has(student.user_id)}
-                            onChange={() => toggleStudentSelected(student.user_id)}
-                            disabled={busy}
-                            aria-label={`Select ${student.email || 'student'}`}
-                          />
-                        </label>
-                      ) : (
-                        <span className="insta-member__check" aria-hidden />
-                      )}
-                      <div className="insta-member__info">
-                        <div className="insta-member__email">{student.email || 'No email'}</div>
-                        <div className="insta-member__meta">
-                          <span className={`insta-status insta-status--${student.status}`}>{student.status}</span>
-                          {student.student_name ? <span>{student.student_name}</span> : null}
-                          {student.username ? <span>{student.username}</span> : null}
-                          {student.cohort_name ? <span>{student.cohort_name}</span> : null}
+                {selectableLoaded.length > 0 && (
+                  <div className="insta-bulk">
+                    <span className="insta-bulk__count">
+                      {selectedStudentIds.size} selected
+                      {selectableVisible.length !== selectableLoaded.length
+                        ? ` · ${selectableVisible.length} in this list`
+                        : ` · ${selectableLoaded.length} in this list`}
+                      {invitedSelectedCount > 0 ? ` · ${invitedSelectedCount} still to set up` : ''}
+                    </span>
+                    {selectableVisible.length > 0 && (
+                      <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={toggleAllVisibleStudents}>
+                        {allVisibleSelected ? 'Clear all' : 'Select all'}
+                      </button>
+                    )}
+                    {selectableLoaded.length > selectableVisible.length && (
+                      <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={selectAllLoadedStudents}>
+                        Select all {selectableLoaded.length}
+                      </button>
+                    )}
+                    <label className="insta-bulk__assign">
+                      <span className="insta-bulk__assign-label">Year group</span>
+                      <select
+                        value={bulkCohortId}
+                        onChange={(e) => setBulkCohortId(e.target.value)}
+                        aria-label="Year group to assign"
+                      >
+                        <option value="">{cohorts.length === 0 ? 'No year groups yet' : 'No year group'}</option>
+                        {cohorts.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="admin-btn-issue admin-btn-issue--ghost"
+                        onClick={assignSelectedStudents}
+                        disabled={busy || selectedStudentIds.size === 0}
+                      >
+                        Assign
+                      </button>
+                    </label>
+                    <button
+                      type="button"
+                      className="admin-btn-issue admin-btn-issue--ghost"
+                      onClick={resendSelectedStudents}
+                      disabled={busy || invitedSelectedCount === 0}
+                    >
+                      <LuMail size={14} aria-hidden />{' '}
+                      {`Resend ${invitedSelectedCount} invite${invitedSelectedCount === 1 ? '' : 's'}`}
+                    </button>
+                  </div>
+                )}
+
+                {studentsLoading ? (
+                  <LoadingScreen message="Loading students..." compact />
+                ) : students.length === 0 ? (
+                  <p className="insta-empty">
+                    {studentStatus || studentCohortFilter
+                      ? 'No students match this filter.'
+                      : 'No students yet. Invite one above.'}
+                  </p>
+                ) : visibleStudents.length === 0 ? (
+                  <p className="insta-empty">No students match “{studentSearch}”.</p>
+                ) : (
+                  <div className="insta-members">
+                    {visibleStudents.map((student) => (
+                      <div key={student.user_id} className="insta-member">
+                        {student.status !== 'removed' ? (
+                          <label className="insta-member__check">
+                            <input
+                              type="checkbox"
+                              checked={selectedStudentIds.has(student.user_id)}
+                              onChange={() => toggleStudentSelected(student.user_id)}
+                              disabled={busy}
+                              aria-label={`Select ${student.email || 'student'}`}
+                            />
+                          </label>
+                        ) : (
+                          <span className="insta-member__check" aria-hidden />
+                        )}
+                        <div className="insta-member__info">
+                          <div className="insta-member__email">{student.email || 'No email'}</div>
+                          <div className="insta-member__meta">
+                            <span className={`insta-status insta-status--${student.status}`}>{student.status}</span>
+                            {student.student_name ? <span>{student.student_name}</span> : null}
+                            {student.username ? <span>{student.username}</span> : null}
+                            {student.status !== 'removed' ? (
+                              <select
+                                className="insta-member__cohort"
+                                value={student.cohort_id || ''}
+                                onChange={(e) => setStudentCohort(student, e.target.value || null)}
+                                disabled={busy}
+                                aria-label={`Year group for ${student.email || 'student'}`}
+                              >
+                                <option value="">{cohorts.length === 0 ? 'No year groups yet' : 'No year group'}</option>
+                                {cohorts.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : student.cohort_name ? (
+                              <span>{student.cohort_name}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="insta-member__actions">
+                          {student.status === 'invited' && (
+                            <button
+                              type="button"
+                              className="admin-btn-issue admin-btn-issue--ghost"
+                              onClick={() => resendStudentInvite(student)}
+                              disabled={busy}
+                            >
+                              <LuMail size={14} aria-hidden /> Resend
+                            </button>
+                          )}
+                          {student.status === 'active' && (
+                            <button
+                              type="button"
+                              className="admin-btn-issue admin-btn-issue--ghost"
+                              onClick={() => setStudentMemberStatus(student, 'suspended')}
+                              disabled={busy}
+                            >
+                              <LuPause size={14} aria-hidden /> Suspend
+                            </button>
+                          )}
+                          {student.status === 'suspended' && (
+                            <button
+                              type="button"
+                              className="admin-btn-issue admin-btn-issue--ghost"
+                              onClick={() => setStudentMemberStatus(student, 'active')}
+                              disabled={busy}
+                            >
+                              <LuPlay size={14} aria-hidden /> Activate
+                            </button>
+                          )}
+                          {student.status !== 'removed' && (
+                            <button
+                              type="button"
+                              className="admin-btn-issue admin-btn-issue--danger"
+                              onClick={() => removeStudent(student)}
+                              disabled={busy}
+                            >
+                              <LuTrash2 size={14} aria-hidden /> Remove
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <div className="insta-member__actions">
-                        {student.status === 'invited' && (
-                          <button
-                            type="button"
-                            className="admin-btn-issue admin-btn-issue--ghost"
-                            onClick={() => resendStudentInvite(student)}
-                            disabled={busy}
-                          >
-                            <LuMail size={14} aria-hidden /> Resend
-                          </button>
-                        )}
-                        {student.status === 'active' && (
-                          <button
-                            type="button"
-                            className="admin-btn-issue admin-btn-issue--ghost"
-                            onClick={() => setStudentMemberStatus(student, 'suspended')}
-                            disabled={busy}
-                          >
-                            <LuPause size={14} aria-hidden /> Suspend
-                          </button>
-                        )}
-                        {student.status === 'suspended' && (
-                          <button
-                            type="button"
-                            className="admin-btn-issue admin-btn-issue--ghost"
-                            onClick={() => setStudentMemberStatus(student, 'active')}
-                            disabled={busy}
-                          >
-                            <LuPlay size={14} aria-hidden /> Activate
-                          </button>
-                        )}
-                        {student.status !== 'removed' && (
-                          <button
-                            type="button"
-                            className="admin-btn-issue admin-btn-issue--danger"
-                            onClick={() => removeStudent(student)}
-                            disabled={busy}
-                          >
-                            <LuTrash2 size={14} aria-hidden /> Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <form className="admin-form admin-form--small insta-add" onSubmit={addStudent}>
-                <div className="admin-form__row">
-                  <label>
-                    Student email
-                    <input
-                      type="email"
-                      value={newStudent.email}
-                      onChange={(e) => setNewStudent((p) => ({ ...p, email: e.target.value }))}
-                      placeholder="student@uni.ac.uk"
-                    />
-                  </label>
-                  <label>
-                    Name
-                    <input
-                      type="text"
-                      value={newStudent.name}
-                      onChange={(e) => setNewStudent((p) => ({ ...p, name: e.target.value }))}
-                      placeholder="optional"
-                    />
-                  </label>
-                </div>
-                <label>
-                  Username
-                  <input
-                    type="text"
-                    value={newStudent.username}
-                    onChange={(e) => setNewStudent((p) => ({ ...p, username: e.target.value }))}
-                    placeholder="optional — auto-generated if blank"
-                  />
-                </label>
-                <button type="submit" disabled={busy || !newStudent.email.trim()}>
-                  Send student invite
-                </button>
-              </form>
+                    ))}
+                  </div>
+                )}
+              </div>
             </Section>
           </div>
         )}

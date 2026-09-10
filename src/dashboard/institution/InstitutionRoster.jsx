@@ -4,6 +4,7 @@ import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import InstitutionStudentDetail from './InstitutionStudentDetail'
 import { bulkResendNotice, resendInviteChunks } from './resendInvites'
+import { assignCohortChunks } from './assignCohort'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -42,6 +43,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
   const [editForm, setEditForm] = useState({ username: '', cohort_id: '' })
   const [detailId, setDetailId] = useState(null)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [bulkCohortId, setBulkCohortId] = useState('')
 
   const load = useCallback(async () => {
     setError('')
@@ -87,25 +89,28 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
     )
   }, [students, search])
 
-  const invitedVisible = useMemo(
-    () => visible.filter((s) => s.status === 'invited'),
+  const selectableVisible = useMemo(
+    () => visible.filter((s) => s.status !== 'removed'),
     [visible]
   )
-  const invitedLoaded = useMemo(
-    () => students.filter((s) => s.status === 'invited'),
+  const selectableLoaded = useMemo(
+    () => students.filter((s) => s.status !== 'removed'),
     [students]
   )
-  const allVisibleInvitedSelected =
-    invitedVisible.length > 0 && invitedVisible.every((s) => selectedIds.has(s.user_id))
+  const allVisibleSelected =
+    selectableVisible.length > 0 && selectableVisible.every((s) => selectedIds.has(s.user_id))
+  const invitedSelectedCount = [...selectedIds].filter(
+    (id) => students.find((s) => s.user_id === id)?.status === 'invited'
+  ).length
 
   useEffect(() => {
-    const allowed = new Set(invitedLoaded.map((s) => s.user_id))
+    const allowed = new Set(selectableLoaded.map((s) => s.user_id))
     setSelectedIds((prev) => {
       const next = new Set([...prev].filter((id) => allowed.has(id)))
       const same = next.size === prev.size && [...next].every((id) => prev.has(id))
       return same ? prev : next
     })
-  }, [invitedLoaded])
+  }, [selectableLoaded])
 
   /** Runs a mutation, then refreshes both the roster and the parent's counts. */
   const run = async (userId, fn, successMessage) => {
@@ -151,38 +156,41 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
     })
   }
 
-  const toggleAllVisibleInvited = () => {
+  const toggleAllVisible = () => {
     setSelectedIds((prev) => {
-      if (allVisibleInvitedSelected) {
+      if (allVisibleSelected) {
         const next = new Set(prev)
-        invitedVisible.forEach((s) => next.delete(s.user_id))
+        selectableVisible.forEach((s) => next.delete(s.user_id))
         return next
       }
-      return new Set([...prev, ...invitedVisible.map((s) => s.user_id)])
+      return new Set([...prev, ...selectableVisible.map((s) => s.user_id)])
     })
   }
 
-  const selectAllLoadedInvited = () => {
-    setSelectedIds(new Set(invitedLoaded.map((s) => s.user_id)))
+  const selectAllLoaded = () => {
+    setSelectedIds(new Set(selectableLoaded.map((s) => s.user_id)))
   }
 
   const resendSelected = () => {
-    const ids = [...selectedIds]
-    if (ids.length === 0) return
-    if (
-      !window.confirm(
-        `Resend invites to ${ids.length} student${ids.length === 1 ? '' : 's'}? Each unused invite link will be replaced.`
-      )
-    ) {
+    const inviteIds = [...selectedIds].filter(
+      (id) => students.find((s) => s.user_id === id)?.status === 'invited'
+    )
+    if (inviteIds.length === 0) {
+      setError('None of the selected students still need an invite')
       return
     }
+    const skipped = selectedIds.size - inviteIds.length
+    const confirmMessage = skipped
+      ? `Resend invites to ${inviteIds.length} student${inviteIds.length === 1 ? '' : 's'} who have not set up their account? ${skipped} already set up will be skipped.`
+      : `Resend invites to ${inviteIds.length} student${inviteIds.length === 1 ? '' : 's'}? Each unused invite link will be replaced.`
+    if (!window.confirm(confirmMessage)) return
     return run(
       'bulk',
       async () => {
         try {
           const body = await resendInviteChunks({
             url: `${API_BASE}/institution/students/resend-invites`,
-            ids,
+            ids: inviteIds,
             onProgress: (done, total) => {
               if (total > 50) setNotice(`Resending ${done} of ${total}…`)
             },
@@ -193,6 +201,37 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
           onChanged?.()
         } catch (err) {
           setError(err.message || 'Failed to resend invites')
+        }
+        return false
+      },
+      ''
+    )
+  }
+
+  const assignSelected = () => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    const cohortId = bulkCohortId || null
+    const label = cohortId ? cohorts.find((c) => c.id === cohortId)?.name || 'year group' : 'no year group'
+    if (!window.confirm(`Assign ${ids.length} student${ids.length === 1 ? '' : 's'} to ${label}?`)) return
+    return run(
+      'assign',
+      async () => {
+        try {
+          const body = await assignCohortChunks({
+            url: `${API_BASE}/institution/students/assign-cohort`,
+            ids,
+            cohortId,
+            onProgress: (done, total) => {
+              if (total > 200) setNotice(`Assigning ${done} of ${total}…`)
+            },
+          })
+          setNotice(`Assigned ${body.updated} student${body.updated === 1 ? '' : 's'} to ${label}.`)
+          setSelectedIds(new Set())
+          await load()
+          onChanged?.()
+        } catch (err) {
+          setError(err.message || 'Failed to assign year group')
         }
         return false
       },
@@ -346,33 +385,58 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
         </span>
       </div>
 
-      {invitedLoaded.length > 0 && (
+      {selectableLoaded.length > 0 && (
         <div className="inst-bulk">
           <span className="inst-bulk__count">
             {selectedIds.size} selected
-            {invitedVisible.length !== invitedLoaded.length
-              ? ` · ${invitedVisible.length} invited on this page`
-              : ` · ${invitedLoaded.length} invited`}
+            {selectableVisible.length !== selectableLoaded.length
+              ? ` · ${selectableVisible.length} on this page`
+              : ` · ${selectableLoaded.length} on this page`}
+            {invitedSelectedCount > 0 ? ` · ${invitedSelectedCount} still to set up` : ''}
           </span>
-          {invitedVisible.length > 0 && (
-            <button type="button" className="inst-btn" onClick={toggleAllVisibleInvited}>
-              {allVisibleInvitedSelected ? 'Clear all' : 'Select all'}
+          {selectableVisible.length > 0 && (
+            <button type="button" className="inst-btn" onClick={toggleAllVisible}>
+              {allVisibleSelected ? 'Clear all' : 'Select all'}
             </button>
           )}
-          {invitedLoaded.length > invitedVisible.length && (
-            <button type="button" className="inst-btn" onClick={selectAllLoadedInvited}>
-              Select all {invitedLoaded.length} invited
+          {selectableLoaded.length > selectableVisible.length && (
+            <button type="button" className="inst-btn" onClick={selectAllLoaded}>
+              Select all {selectableLoaded.length}
             </button>
           )}
+          <label className="inst-bulk__assign">
+            <span className="inst-bulk__assign-label">Year group</span>
+            <select
+              className="db-select"
+              value={bulkCohortId}
+              onChange={(e) => setBulkCohortId(e.target.value)}
+              aria-label="Year group to assign"
+            >
+              <option value="">{cohorts.length === 0 ? 'No year groups yet' : 'No year group'}</option>
+              {cohorts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="inst-btn"
+              onClick={assignSelected}
+              disabled={busyId !== null || selectedIds.size === 0}
+            >
+              {busyId === 'assign' ? 'Assigning...' : 'Assign'}
+            </button>
+          </label>
           <button
             type="button"
             className="qb-btn qb-btn--sm"
             onClick={resendSelected}
-            disabled={busyId !== null || selectedIds.size === 0}
+            disabled={busyId !== null || invitedSelectedCount === 0}
           >
             {busyId === 'bulk'
               ? 'Resending...'
-              : `Resend ${selectedIds.size} invite${selectedIds.size === 1 ? '' : 's'}`}
+              : `Resend ${invitedSelectedCount} invite${invitedSelectedCount === 1 ? '' : 's'}`}
           </button>
         </div>
       )}
@@ -404,12 +468,12 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
             <thead>
               <tr>
                 <th className="inst-table__check">
-                  {invitedVisible.length > 0 ? (
+                  {selectableVisible.length > 0 ? (
                     <input
                       type="checkbox"
-                      checked={allVisibleInvitedSelected}
-                      onChange={toggleAllVisibleInvited}
-                      aria-label="Select all invited students on this list"
+                      checked={allVisibleSelected}
+                      onChange={toggleAllVisible}
+                      aria-label="Select all students on this list"
                     />
                   ) : null}
                 </th>
@@ -425,13 +489,13 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
             </thead>
             <tbody>
               {visible.map((student) => {
-                const isBusy = busyId === student.user_id || busyId === 'bulk'
+                const isBusy = busyId === student.user_id || busyId === 'bulk' || busyId === 'assign'
                 const isEditing = editingId === student.user_id
                 return (
                   <React.Fragment key={student.user_id}>
                     <tr>
                       <td className="inst-table__check">
-                        {student.status === 'invited' ? (
+                        {student.status !== 'removed' ? (
                           <input
                             type="checkbox"
                             checked={selectedIds.has(student.user_id)}
