@@ -4,6 +4,7 @@ import './Auth.css'
 import './auth-panel/AuthPanel.css'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { setTokens } from './token'
+import { verifyEmailLink } from './verifyEmailLink'
 import logo from '../assets/logo/logo.png'
 
 /** How long the invited access lasts, as "1 year", "6 months" or "12 days". */
@@ -74,6 +75,32 @@ function SetupAccount() {
     const [inviteTokens, setInviteTokens] = useState({ accessToken: null, refreshToken: null })
     const hasProcessedTokens = useRef(false)
 
+    const applyInviteTokens = (accessToken, refreshToken) => {
+        setInviteTokens({ accessToken, refreshToken })
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+        fetch(`${API_BASE}/auth/get-user-from-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: accessToken })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.email) {
+                    setEmail(data.email)
+                    setUsername(data.email.split('@')[0])
+                }
+                if (data.username) {
+                    setUsername(data.username)
+                    setUsernameAssigned(true)
+                }
+                setAccess(data.access || null)
+                setCheckingToken(false)
+            })
+            .catch(() => {
+                setCheckingToken(false)
+            })
+    }
+
     useEffect(() => {
         if (hasProcessedTokens.current) return
 
@@ -85,37 +112,29 @@ function SetupAccount() {
 
         const accessToken = hashParams.get('access_token') || searchParams.get('access_token')
         const refreshToken = hashParams.get('refresh_token') || searchParams.get('refresh_token')
+        const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash')
+        const linkType = searchParams.get('type') || hashParams.get('type')
 
-        if (accessToken && refreshToken) {
-            setInviteTokens({ accessToken, refreshToken })
+        const cleanUrl = window.location.origin + window.location.pathname
+
+        if (tokenHash) {
             hasProcessedTokens.current = true
-            // Clean URL
-            const cleanUrl = window.location.origin + window.location.pathname
             window.history.replaceState({}, '', cleanUrl)
-
-            // Fetch user info from API to get email
-            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-            fetch(`${API_BASE}/auth/get-user-from-token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ access_token: accessToken })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.email) {
-                        setEmail(data.email)
-                        setUsername(data.email.split('@')[0])
-                    }
-                    if (data.username) {
-                        setUsername(data.username)
-                        setUsernameAssigned(true)
-                    }
-                    setAccess(data.access || null)
-                    setCheckingToken(false)
+            verifyEmailLink({ tokenHash, type: linkType || 'invite' })
+                .then((session) => {
+                    applyInviteTokens(session.access_token, session.refresh_token)
                 })
                 .catch(() => {
+                    setError('Invalid or missing setup link. Please use the link from your invite email.')
                     setCheckingToken(false)
                 })
+            return
+        }
+
+        if (accessToken && refreshToken) {
+            hasProcessedTokens.current = true
+            window.history.replaceState({}, '', cleanUrl)
+            applyInviteTokens(accessToken, refreshToken)
         } else {
             setError('Invalid or missing setup link. Please use the link from your invite email.')
             setCheckingToken(false)

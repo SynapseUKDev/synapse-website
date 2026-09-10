@@ -52,6 +52,28 @@ function HashRedirector() {
   const location = useLocation()
   const navigate = useNavigate()
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    const tokenHash = searchParams.get('token_hash')
+    if (tokenHash) {
+      const type = searchParams.get('type')
+      if (type === 'recovery' && location.pathname !== '/auth/reset-password') {
+        navigate(`/auth/reset-password${location.search}`, { replace: true })
+      } else if (
+        (type === 'invite' || type === 'magiclink') &&
+        location.pathname !== '/auth/setup-account'
+      ) {
+        navigate(`/auth/setup-account${location.search}`, { replace: true })
+      } else if (
+        type !== 'recovery' &&
+        type !== 'invite' &&
+        type !== 'magiclink' &&
+        !AUTH_LANDING_PAGES.includes(location.pathname)
+      ) {
+        navigate(`/auth/callback${location.search}`, { replace: true })
+      }
+      return
+    }
+
     const hash = location.hash?.startsWith('#') ? location.hash.slice(1) : ''
     if (!hash) return
     const hashParams = new URLSearchParams(hash)

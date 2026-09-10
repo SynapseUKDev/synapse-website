@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { setTokens } from './token'
+import { verifyEmailLink } from './verifyEmailLink'
 
 function Callback() {
   const navigate = useNavigate()
@@ -13,46 +14,49 @@ function Callback() {
     const search = location.search && location.search.startsWith('?') ? location.search.slice(1) : ''
     const hash = location.hash && location.hash.startsWith('#') ? location.hash.slice(1) : ''
     const params = new URLSearchParams(hash || search)
-    
-    // Don't process recovery tokens - those are for password reset only
-    const type = params.get('type')
+    const searchParams = new URLSearchParams(search)
+    const hashParams = new URLSearchParams(hash)
+
+    const type = params.get('type') || searchParams.get('type') || hashParams.get('type')
     if (type === 'recovery') {
       setMessage('Invalid callback type. Please use the password reset link.')
       return
     }
-    
-    const access_token = params.get('access_token')
-    const refresh_token = params.get('refresh_token')
-    if (!access_token || !refresh_token) {
-      const searchParams = new URLSearchParams(search)
-      const hashParams = new URLSearchParams(hash)
-      const access = access_token || searchParams.get('access_token') || hashParams.get('access_token')
-      const refresh = refresh_token || searchParams.get('refresh_token') || hashParams.get('refresh_token')
-      if (!access || !refresh) {
-        setMessage('Missing tokens in callback.')
-        return
-      }
-      params.set('access_token', access)
-      params.set('refresh_token', refresh)
-    }
+
+    const tokenHash = params.get('token_hash') || searchParams.get('token_hash') || hashParams.get('token_hash')
+
     ;(async () => {
       try {
+        let access = params.get('access_token') || searchParams.get('access_token') || hashParams.get('access_token')
+        let refresh = params.get('refresh_token') || searchParams.get('refresh_token') || hashParams.get('refresh_token')
+
+        if (tokenHash) {
+          const session = await verifyEmailLink({ tokenHash, type: type || 'magiclink' })
+          access = session.access_token
+          refresh = session.refresh_token
+          window.history.replaceState({}, '', window.location.origin + window.location.pathname)
+        }
+
+        if (!access || !refresh) {
+          setMessage('Missing tokens in callback.')
+          return
+        }
+
         const res = await fetch(`${API_BASE}/auth/set-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
-            access_token: params.get('access_token'),
-            refresh_token: params.get('refresh_token'),
+            access_token: access,
+            refresh_token: refresh,
             remember: true,
           })
         })
         if (!res.ok) throw new Error('Failed to establish session')
         setTokens({
-          accessToken: params.get('access_token') || '',
-          refreshToken: params.get('refresh_token') || ''
+          accessToken: access,
+          refreshToken: refresh,
         })
-        // Check access via /me and route accordingly
         try {
           const me = await fetch(`${API_BASE}/me`, {
             credentials: 'include',
@@ -77,7 +81,7 @@ function Callback() {
         setMessage('Could not complete sign-in. Please try signing in again.')
       }
     })()
-  }, [location.hash, navigate])
+  }, [location.hash, location.search, navigate])
 
   return <LoadingScreen message={message} />
 }

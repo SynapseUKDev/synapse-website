@@ -4,6 +4,7 @@ import './Auth.css'
 import './auth-panel/AuthPanel.css'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { clearTokens } from './token'
+import { verifyEmailLink } from './verifyEmailLink'
 import logo from '../assets/logo/logo.png'
 
 function ResetPassword() {
@@ -52,18 +53,29 @@ function ResetPassword() {
     const accessToken = hashParams.get('access_token') || searchParamsObj.get('access_token')
     const refreshToken = hashParams.get('refresh_token') || searchParamsObj.get('refresh_token')
     const type = hashParams.get('type') || searchParamsObj.get('type')
+    const tokenHash = searchParamsObj.get('token_hash') || hashParams.get('token_hash')
 
-
-    if (type === 'recovery' && accessToken && refreshToken) {
-      setRecoveryTokens({ accessToken, refreshToken })
-
+    const applyRecoveryTokens = (nextAccess, nextRefresh) => {
+      setRecoveryTokens({ accessToken: nextAccess, refreshToken: nextRefresh })
       hasProcessedTokens.current = true
-
       const cleanUrl = window.location.origin + window.location.pathname
       window.history.replaceState({}, '', cleanUrl)
-
       setCheckingToken(false)
       setIsResetting(true)
+    }
+
+    if (tokenHash) {
+      hasProcessedTokens.current = true
+      verifyEmailLink({ tokenHash, type: type || 'recovery' })
+        .then((session) => {
+          applyRecoveryTokens(session.access_token, session.refresh_token)
+        })
+        .catch(() => {
+          setError('Invalid or missing reset link. Please request a new password reset.')
+          setCheckingToken(false)
+        })
+    } else if (type === 'recovery' && accessToken && refreshToken) {
+      applyRecoveryTokens(accessToken, refreshToken)
     } else {
       setError('Invalid or missing reset link. Please request a new password reset.')
       setCheckingToken(false)
