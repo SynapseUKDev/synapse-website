@@ -274,6 +274,7 @@ function AuthPanel() {
               className="auth-panel__link"
               onClick={() => {
                 setForgotPasswordMode(true)
+                setCaptchaToken(null)
                 setError('')
                 setWarning('')
               }}
@@ -301,6 +302,15 @@ function AuthPanel() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken(null)}
+              onError={() => setCaptchaToken(null)}
+              options={{ theme: 'auto', size: 'normal' }}
+              style={{ marginBottom: '12px' }}
+            />
             <button
               className="auth-panel__cta"
               type="button"
@@ -309,6 +319,10 @@ function AuthPanel() {
                 setWarning('')
                 if (!email) {
                   setError('Please enter your email address')
+                  return
+                }
+                if (!captchaToken) {
+                  setError('Please complete the captcha')
                   return
                 }
                 setLoading(true)
@@ -334,7 +348,7 @@ function AuthPanel() {
                   setLoading(false)
                 }
               }}
-              disabled={loading}
+              disabled={loading || !captchaToken}
             >
               {loading ? 'Sending...' : 'Send reset link'}
             </button>
@@ -343,6 +357,7 @@ function AuthPanel() {
               className="auth-panel__link"
               onClick={() => {
                 setForgotPasswordMode(false)
+                setCaptchaToken(null)
                 setError('')
                 setWarning('')
                 setStep('form')
