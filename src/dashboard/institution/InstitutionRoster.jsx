@@ -28,6 +28,16 @@ async function readError(res, fallback) {
   return typeof body?.error === 'string' ? body.error : fallback
 }
 
+function bulkResendNotice(body) {
+  const sent = body.sent ?? 0
+  const skipped = body.skipped ?? 0
+  const failed = body.failed ?? 0
+  const parts = [`Resent ${sent} invite${sent === 1 ? '' : 's'}.`]
+  if (skipped) parts.push(`${skipped} already set up.`)
+  if (failed) parts.push(`${failed} failed.`)
+  return parts.join(' ')
+}
+
 export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged }) {
   const [loading, setLoading] = useState(true)
   const [students, setStudents] = useState([])
@@ -40,6 +50,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({ username: '', cohort_id: '' })
   const [detailId, setDetailId] = useState(null)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
 
   const load = useCallback(async () => {
     setError('')
@@ -85,6 +96,26 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
     )
   }, [students, search])
 
+  const invitedVisible = useMemo(
+    () => visible.filter((s) => s.status === 'invited'),
+    [visible]
+  )
+  const invitedLoaded = useMemo(
+    () => students.filter((s) => s.status === 'invited'),
+    [students]
+  )
+  const allVisibleInvitedSelected =
+    invitedVisible.length > 0 && invitedVisible.every((s) => selectedIds.has(s.user_id))
+
+  useEffect(() => {
+    const allowed = new Set(invitedLoaded.map((s) => s.user_id))
+    setSelectedIds((prev) => {
+      const next = new Set([...prev].filter((id) => allowed.has(id)))
+      const same = next.size === prev.size && [...next].every((id) => prev.has(id))
+      return same ? prev : next
+    })
+  }, [invitedLoaded])
+
   /** Runs a mutation, then refreshes both the roster and the parent's counts. */
   const run = async (userId, fn, successMessage) => {
     setBusyId(userId)
@@ -119,6 +150,63 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
       },
       `Invite resent to ${student.email}.`
     )
+
+  const toggleSelected = (userId) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(userId)) next.delete(userId)
+      else next.add(userId)
+      return next
+    })
+  }
+
+  const toggleAllVisibleInvited = () => {
+    setSelectedIds((prev) => {
+      if (allVisibleInvitedSelected) {
+        const next = new Set(prev)
+        invitedVisible.forEach((s) => next.delete(s.user_id))
+        return next
+      }
+      return new Set([...prev, ...invitedVisible.map((s) => s.user_id)])
+    })
+  }
+
+  const selectAllLoadedInvited = () => {
+    setSelectedIds(new Set(invitedLoaded.map((s) => s.user_id)))
+  }
+
+  const resendSelected = () => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    if (
+      !window.confirm(
+        `Resend invites to ${ids.length} student${ids.length === 1 ? '' : 's'}? Each unused invite link will be replaced.`
+      )
+    ) {
+      return
+    }
+    return run(
+      'bulk',
+      async () => {
+        const res = await authenticatedFetch(`${API_BASE}/institution/students/resend-invites`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_ids: ids }),
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          setError(typeof body?.error === 'string' ? body.error : 'Failed to resend invites')
+          return false
+        }
+        setNotice(bulkResendNotice(body))
+        setSelectedIds(new Set())
+        await load()
+        onChanged?.()
+        return false
+      },
+      ''
+    )
+  }
 
   const setStatus = (student, status) =>
     run(
@@ -266,6 +354,37 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
         </span>
       </div>
 
+      {invitedLoaded.length > 0 && (
+        <div className="inst-bulk">
+          <span className="inst-bulk__count">
+            {selectedIds.size} selected
+            {invitedVisible.length !== invitedLoaded.length
+              ? ` · ${invitedVisible.length} invited on this page`
+              : ` · ${invitedLoaded.length} invited`}
+          </span>
+          {invitedVisible.length > 0 && (
+            <button type="button" className="inst-btn" onClick={toggleAllVisibleInvited}>
+              {allVisibleInvitedSelected ? 'Clear all' : 'Select all'}
+            </button>
+          )}
+          {invitedLoaded.length > invitedVisible.length && (
+            <button type="button" className="inst-btn" onClick={selectAllLoadedInvited}>
+              Select all {invitedLoaded.length} invited
+            </button>
+          )}
+          <button
+            type="button"
+            className="qb-btn qb-btn--sm"
+            onClick={resendSelected}
+            disabled={busyId !== null || selectedIds.size === 0}
+          >
+            {busyId === 'bulk'
+              ? 'Resending...'
+              : `Resend ${selectedIds.size} invite${selectedIds.size === 1 ? '' : 's'}`}
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="inst-alert inst-alert--error" role="alert">
           <div>{error}</div>
@@ -292,6 +411,16 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
           <table className="inst-table">
             <thead>
               <tr>
+                <th className="inst-table__check">
+                  {invitedVisible.length > 0 ? (
+                    <input
+                      type="checkbox"
+                      checked={allVisibleInvitedSelected}
+                      onChange={toggleAllVisibleInvited}
+                      aria-label="Select all invited students on this list"
+                    />
+                  ) : null}
+                </th>
                 <th>Name</th>
                 <th>Student</th>
                 <th>Year group</th>
@@ -304,11 +433,22 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
             </thead>
             <tbody>
               {visible.map((student) => {
-                const isBusy = busyId === student.user_id
+                const isBusy = busyId === student.user_id || busyId === 'bulk'
                 const isEditing = editingId === student.user_id
                 return (
                   <React.Fragment key={student.user_id}>
                     <tr>
+                      <td className="inst-table__check">
+                        {student.status === 'invited' ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(student.user_id)}
+                            onChange={() => toggleSelected(student.user_id)}
+                            disabled={isBusy}
+                            aria-label={`Select ${student.email || 'student'}`}
+                          />
+                        ) : null}
+                      </td>
                       <td>{student.student_name || '—'}</td>
                       <td>
                         <div className="inst-table__email">{student.email || '—'}</div>
@@ -395,7 +535,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
                     </tr>
                     {isEditing && (
                       <tr className="inst-edit">
-                        <td colSpan={8}>
+                        <td colSpan={9}>
                           <div className="inst-edit__grid">
                             <div className="inst-edit__field">
                               <span className="inst-edit__label">Username</span>

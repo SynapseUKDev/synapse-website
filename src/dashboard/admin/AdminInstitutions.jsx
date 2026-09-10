@@ -45,6 +45,16 @@ async function readError(res, fallback) {
   return typeof body?.error === 'string' ? body.error : fallback
 }
 
+function bulkResendNotice(body) {
+  const sent = body.sent ?? 0
+  const skipped = body.skipped ?? 0
+  const failed = body.failed ?? 0
+  const parts = [`Resent ${sent} invite${sent === 1 ? '' : 's'}.`]
+  if (skipped) parts.push(`${skipped} already set up.`)
+  if (failed) parts.push(`${failed} failed.`)
+  return parts.join(' ')
+}
+
 /** Restricted as you type, so the live example is always a username that could exist. */
 function normaliseTag(value) {
   return String(value || '')
@@ -90,6 +100,7 @@ export default function AdminInstitutions() {
   const [studentSearch, setStudentSearch] = useState('')
   const [studentStatus, setStudentStatus] = useState('')
   const [newStudent, setNewStudent] = useState({ email: '', name: '', username: '' })
+  const [selectedStudentIds, setSelectedStudentIds] = useState(() => new Set())
   const [open, setOpen] = useState({ details: true, admins: true, students: true })
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
@@ -172,6 +183,10 @@ export default function AdminInstitutions() {
     if (mode !== 'detail' || !selectedId) return
     loadStudents(selectedId, studentStatus)
   }, [mode, selectedId, studentStatus, loadStudents])
+
+  useEffect(() => {
+    setSelectedStudentIds(new Set())
+  }, [selectedId, studentStatus])
 
   const openCreate = () => {
     setMode('create')
@@ -389,6 +404,50 @@ export default function AdminInstitutions() {
     }
   }
 
+  const toggleStudentSelected = (userId) => {
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(userId)) next.delete(userId)
+      else next.add(userId)
+      return next
+    })
+  }
+
+  const resendSelectedStudents = async () => {
+    if (!selectedId) return
+    const ids = [...selectedStudentIds]
+    if (ids.length === 0) return
+    if (
+      !window.confirm(
+        `Resend invites to ${ids.length} student${ids.length === 1 ? '' : 's'}? Each unused invite link will be replaced.`
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/students/resend-invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_ids: ids }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(typeof body?.error === 'string' ? body.error : 'Failed to resend invites')
+        return
+      }
+      setNotice(bulkResendNotice(body))
+      setSelectedStudentIds(new Set())
+      await loadStudents(selectedId, studentStatus)
+    } catch {
+      setError('Failed to resend invites')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const setStudentMemberStatus = async (student, status) => {
     if (!selectedId) return
     setBusy(true)
@@ -454,6 +513,25 @@ export default function AdminInstitutions() {
         .includes(term)
     )
   })
+  const invitedVisible = visibleStudents.filter((s) => s.status === 'invited')
+  const invitedLoaded = students.filter((s) => s.status === 'invited')
+  const allVisibleInvitedSelected =
+    invitedVisible.length > 0 && invitedVisible.every((s) => selectedStudentIds.has(s.user_id))
+
+  const toggleAllVisibleInvited = () => {
+    setSelectedStudentIds((prev) => {
+      if (allVisibleInvitedSelected) {
+        const next = new Set(prev)
+        invitedVisible.forEach((s) => next.delete(s.user_id))
+        return next
+      }
+      return new Set([...prev, ...invitedVisible.map((s) => s.user_id)])
+    })
+  }
+
+  const selectAllLoadedInvited = () => {
+    setSelectedStudentIds(new Set(invitedLoaded.map((s) => s.user_id)))
+  }
 
   const detailsForm = (
     <form className="admin-form" onSubmit={isCreate ? createInstitution : saveInstitution}>
@@ -739,6 +817,38 @@ export default function AdminInstitutions() {
                 />
               </div>
 
+              {invitedLoaded.length > 0 && (
+                <div className="insta-bulk">
+                  <span className="insta-bulk__count">
+                    {selectedStudentIds.size} selected
+                    {invitedVisible.length !== invitedLoaded.length
+                      ? ` · ${invitedVisible.length} invited in this list`
+                      : ` · ${invitedLoaded.length} invited`}
+                  </span>
+                  {invitedVisible.length > 0 && (
+                    <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={toggleAllVisibleInvited}>
+                      {allVisibleInvitedSelected ? 'Clear visible' : 'Select visible invited'}
+                    </button>
+                  )}
+                  {invitedLoaded.length > invitedVisible.length && (
+                    <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={selectAllLoadedInvited}>
+                      Select all {invitedLoaded.length} invited
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="admin-btn-issue admin-btn-issue--ghost"
+                    onClick={resendSelectedStudents}
+                    disabled={busy || selectedStudentIds.size === 0}
+                  >
+                    <LuMail size={14} aria-hidden />{' '}
+                    {busy && selectedStudentIds.size > 0
+                      ? 'Resending...'
+                      : `Resend ${selectedStudentIds.size} invite${selectedStudentIds.size === 1 ? '' : 's'}`}
+                  </button>
+                </div>
+              )}
+
               {studentsLoading ? (
                 <LoadingScreen message="Loading students..." compact />
               ) : students.length === 0 ? (
@@ -751,6 +861,19 @@ export default function AdminInstitutions() {
                 <div className="insta-members">
                   {visibleStudents.map((student) => (
                     <div key={student.user_id} className="insta-member">
+                      {student.status === 'invited' ? (
+                        <label className="insta-member__check">
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentIds.has(student.user_id)}
+                            onChange={() => toggleStudentSelected(student.user_id)}
+                            disabled={busy}
+                            aria-label={`Select ${student.email || 'student'}`}
+                          />
+                        </label>
+                      ) : (
+                        <span className="insta-member__check" aria-hidden />
+                      )}
                       <div className="insta-member__info">
                         <div className="insta-member__email">{student.email || 'No email'}</div>
                         <div className="insta-member__meta">

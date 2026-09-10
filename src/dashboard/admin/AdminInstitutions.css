@@ -86,6 +86,35 @@
 
 .insta-member__info {
   min-width: 0;
+  flex: 1;
+}
+
+.insta-member__check {
+  flex: none;
+  width: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.insta-member__check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--syn-blue, #1b4de7);
+  cursor: pointer;
+}
+
+.insta-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.insta-bulk__count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--syn-muted);
 }
 
 .insta-member__email {

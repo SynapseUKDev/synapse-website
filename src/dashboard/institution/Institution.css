@@ -147,6 +147,33 @@ html[data-theme='dark'] .inst-alert--success {
   gap: 6px;
 }
 
+.inst-table__check {
+  width: 36px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.inst-table__check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--syn-blue, #1b4de7);
+  cursor: pointer;
+}
+
+.inst-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.inst-bulk__count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--syn-muted);
+}
+
 /* ── Status pill ──────────────────────────────────────────── */
 
 .inst-status {
