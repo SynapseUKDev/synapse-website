@@ -5,7 +5,9 @@ export function normalizeAnnouncementCtaUrl(value) {
   if (typeof value !== 'string') return ''
   const trimmed = value.trim()
   if (!trimmed) return ''
-  if (trimmed.startsWith('/') || /^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('/') || /^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^HTTPS:\/\//i, 'https://').replace(/^HTTP:\/\//i, 'http://')
+  }
   if (!trimmed.includes(' ') && DOMAIN_LIKE.test(trimmed)) return `https://${trimmed}`
   return trimmed
 }
