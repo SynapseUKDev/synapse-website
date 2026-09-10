@@ -3,6 +3,7 @@ import { LuUsers, LuMail, LuPencil, LuTrash2, LuChartBar, LuPause, LuPlay } from
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import InstitutionStudentDetail from './InstitutionStudentDetail'
+import { bulkResendNotice, resendInviteChunks } from './resendInvites'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -26,16 +27,6 @@ function formatDate(iso) {
 async function readError(res, fallback) {
   const body = await res.json().catch(() => ({}))
   return typeof body?.error === 'string' ? body.error : fallback
-}
-
-function bulkResendNotice(body) {
-  const sent = body.sent ?? 0
-  const skipped = body.skipped ?? 0
-  const failed = body.failed ?? 0
-  const parts = [`Resent ${sent} invite${sent === 1 ? '' : 's'}.`]
-  if (skipped) parts.push(`${skipped} already set up.`)
-  if (failed) parts.push(`${failed} failed.`)
-  return parts.join(' ')
 }
 
 export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged }) {
@@ -188,20 +179,21 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
     return run(
       'bulk',
       async () => {
-        const res = await authenticatedFetch(`${API_BASE}/institution/students/resend-invites`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_ids: ids }),
-        })
-        const body = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          setError(typeof body?.error === 'string' ? body.error : 'Failed to resend invites')
-          return false
+        try {
+          const body = await resendInviteChunks({
+            url: `${API_BASE}/institution/students/resend-invites`,
+            ids,
+            onProgress: (done, total) => {
+              if (total > 50) setNotice(`Resending ${done} of ${total}…`)
+            },
+          })
+          setNotice(bulkResendNotice(body))
+          setSelectedIds(new Set())
+          await load()
+          onChanged?.()
+        } catch (err) {
+          setError(err.message || 'Failed to resend invites')
         }
-        setNotice(bulkResendNotice(body))
-        setSelectedIds(new Set())
-        await load()
-        onChanged?.()
         return false
       },
       ''

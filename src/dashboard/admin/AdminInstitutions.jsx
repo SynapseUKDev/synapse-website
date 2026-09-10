@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { LuChevronRight, LuBuilding2, LuUserCog, LuTrash2, LuUsers, LuMail, LuPause, LuPlay } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import { bulkResendNotice, resendInviteChunks } from '../institution/resendInvites'
 import './AdminInstitutions.css'
 
 /** Card section with a collapsible body. */
@@ -43,16 +44,6 @@ const BLANK_FORM = {
 async function readError(res, fallback) {
   const body = await res.json().catch(() => ({}))
   return typeof body?.error === 'string' ? body.error : fallback
-}
-
-function bulkResendNotice(body) {
-  const sent = body.sent ?? 0
-  const skipped = body.skipped ?? 0
-  const failed = body.failed ?? 0
-  const parts = [`Resent ${sent} invite${sent === 1 ? '' : 's'}.`]
-  if (skipped) parts.push(`${skipped} already set up.`)
-  if (failed) parts.push(`${failed} failed.`)
-  return parts.join(' ')
 }
 
 /** Restricted as you type, so the live example is always a username that could exist. */
@@ -428,21 +419,18 @@ export default function AdminInstitutions() {
     setError('')
     setNotice('')
     try {
-      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/students/resend-invites`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_ids: ids }),
+      const body = await resendInviteChunks({
+        url: `${API_BASE}/admin/institutions/${selectedId}/students/resend-invites`,
+        ids,
+        onProgress: (done, total) => {
+          if (total > 50) setNotice(`Resending ${done} of ${total}…`)
+        },
       })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(typeof body?.error === 'string' ? body.error : 'Failed to resend invites')
-        return
-      }
       setNotice(bulkResendNotice(body))
       setSelectedStudentIds(new Set())
       await loadStudents(selectedId, studentStatus)
-    } catch {
-      setError('Failed to resend invites')
+    } catch (err) {
+      setError(err.message || 'Failed to resend invites')
     } finally {
       setBusy(false)
     }
@@ -827,7 +815,7 @@ export default function AdminInstitutions() {
                   </span>
                   {invitedVisible.length > 0 && (
                     <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={toggleAllVisibleInvited}>
-                      {allVisibleInvitedSelected ? 'Clear visible' : 'Select visible invited'}
+                      {allVisibleInvitedSelected ? 'Clear all' : 'Select all'}
                     </button>
                   )}
                   {invitedLoaded.length > invitedVisible.length && (
