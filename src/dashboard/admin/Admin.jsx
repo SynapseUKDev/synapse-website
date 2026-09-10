@@ -327,7 +327,7 @@ export default function Admin() {
           <p className="admin__muted">
             {activeTab === 'mock-papers' && 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'}
             {activeTab === 'osce' && 'Create, edit, and publish OSCE stations for all station types.'}
-            {activeTab === 'institutions' && 'Create institution accounts and manage the staff admins who invite their students.'}
+            {activeTab === 'institutions' && 'Create institution accounts, manage staff admins, and help with student invites when they cannot.'}
             {activeTab === 'announcements' && 'Draft and publish in-app announcements. Users will see unread ones the next time they open the dashboard.'}
             {activeTab === 'reports' && 'Monthly AI study reports: run the batch, watch it finish, and see usage per month.'}
             {isIssuesTab && 'Review user-reported issues, then edit the related question or textbook page.'}

@@ -103,6 +103,10 @@
 }
 
 .insta-member__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
   flex: none;
 }
 
@@ -166,6 +170,29 @@ html[data-theme='dark'] .insta-status--suspended {
 
 .insta-btn-block {
   width: 100%;
+}
+
+.insta-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.insta-toolbar select,
+.insta-toolbar input {
+  height: 36px;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: inherit;
+  font: inherit;
+  padding: 0 10px;
+}
+
+.insta-toolbar input {
+  flex: 1;
+  min-width: 180px;
 }
 
 @media (max-width: 900px) {

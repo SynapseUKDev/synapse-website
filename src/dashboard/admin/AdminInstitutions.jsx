@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { LuChevronRight, LuBuilding2, LuUserCog, LuTrash2 } from 'react-icons/lu'
+import { LuChevronRight, LuBuilding2, LuUserCog, LuTrash2, LuUsers, LuMail, LuPause, LuPlay } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import './AdminInstitutions.css'
@@ -85,7 +85,12 @@ export default function AdminInstitutions() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [newAdmin, setNewAdmin] = useState({ email: '', username: '' })
-  const [open, setOpen] = useState({ details: true, admins: true })
+  const [students, setStudents] = useState([])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [studentSearch, setStudentSearch] = useState('')
+  const [studentStatus, setStudentStatus] = useState('')
+  const [newStudent, setNewStudent] = useState({ email: '', name: '', username: '' })
+  const [open, setOpen] = useState({ details: true, admins: true, students: true })
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
   const toggle = (key) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -136,15 +141,47 @@ export default function AdminInstitutions() {
     }
   }, [])
 
+  const loadStudents = useCallback(async (id, status) => {
+    if (!id) return
+    setStudentsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (status) params.set('status', status)
+      const query = params.toString() ? `?${params.toString()}` : ''
+      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${id}/students${query}`, {
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to load students'))
+        return
+      }
+      const body = await res.json()
+      setStudents(body.students || [])
+    } catch {
+      setError('Failed to load students')
+    } finally {
+      setStudentsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     loadList()
   }, [loadList])
+
+  useEffect(() => {
+    if (mode !== 'detail' || !selectedId) return
+    loadStudents(selectedId, studentStatus)
+  }, [mode, selectedId, studentStatus, loadStudents])
 
   const openCreate = () => {
     setMode('create')
     setSelectedId(null)
     setDetail(null)
     setForm(BLANK_FORM)
+    setStudents([])
+    setStudentSearch('')
+    setStudentStatus('')
+    setNewStudent({ email: '', name: '', username: '' })
     setError('')
     setNotice('')
   }
@@ -286,9 +323,137 @@ export default function AdminInstitutions() {
     }
   }
 
+  const refreshInstitution = async (id) => {
+    await loadList()
+    await loadDetail(id)
+    await loadStudents(id, studentStatus)
+  }
+
+  const addStudent = async (e) => {
+    e?.preventDefault()
+    if (!selectedId || !newStudent.email.trim()) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const payload = { email: newStudent.email.trim() }
+      if (newStudent.name.trim()) payload.name = newStudent.name.trim()
+      if (newStudent.username.trim()) payload.username = newStudent.username.trim()
+
+      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/students`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to add student'))
+        return
+      }
+      const student = (await res.json().catch(() => ({})))?.student
+      setNotice(
+        student?.email_sent === false
+          ? `${payload.email} was added, but the email could not be sent (${student.email_error || 'unknown error'}). Use Resend invite.`
+          : student?.linked_existing
+            ? `${payload.email} already had an account and was linked.`
+            : `Invite sent to ${payload.email}.`
+      )
+      setNewStudent({ email: '', name: '', username: '' })
+      await refreshInstitution(selectedId)
+    } catch {
+      setError('Failed to add student')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resendStudentInvite = async (student) => {
+    if (!selectedId) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await authenticatedFetch(
+        `${API_BASE}/admin/institutions/${selectedId}/students/${student.user_id}/resend-invite`,
+        { method: 'POST' }
+      )
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to resend the invite'))
+        return
+      }
+      setNotice(`Invite resent to ${student.email}.`)
+      await loadStudents(selectedId, studentStatus)
+    } catch {
+      setError('Failed to resend the invite')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const setStudentMemberStatus = async (student, status) => {
+    if (!selectedId) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/students/${student.user_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to update this student'))
+        return
+      }
+      setNotice(status === 'suspended' ? `${student.email} has been suspended.` : `${student.email} is active again.`)
+      await refreshInstitution(selectedId)
+    } catch {
+      setError('Failed to update this student')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const removeStudent = async (student) => {
+    if (!selectedId) return
+    if (
+      !window.confirm(
+        `Remove ${student.email}? They lose access immediately and their seat is freed. This cannot be undone from here.`
+      )
+    ) {
+      return
+    }
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/students/${student.user_id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        setError(await readError(res, 'Failed to remove this student'))
+        return
+      }
+      setNotice(`${student.email} has been removed.`)
+      await refreshInstitution(selectedId)
+    } catch {
+      setError('Failed to remove this student')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading) return <LoadingScreen message="Loading institutions..." inline />
 
   const isCreate = mode === 'create'
+  const visibleStudents = students.filter((s) => {
+    const term = studentSearch.trim().toLowerCase()
+    if (!term) return true
+    return [s.email, s.username, s.student_name, s.cohort_name].some((field) =>
+      String(field || '')
+        .toLowerCase()
+        .includes(term)
+    )
+  })
 
   const detailsForm = (
     <form className="admin-form" onSubmit={isCreate ? createInstitution : saveInstitution}>
@@ -538,6 +703,142 @@ export default function AdminInstitutions() {
                 </div>
                 <button type="submit" disabled={busy || !newAdmin.email.trim()}>
                   Send admin invite
+                </button>
+              </form>
+            </Section>
+
+            <Section
+              icon={LuUsers}
+              title="Students"
+              count={students.length}
+              open={open.students}
+              onToggle={() => toggle('students')}
+            >
+              <p className="insta-summary">
+                Same roster controls as an institution admin: invite, resend, suspend, or remove when they cannot.
+              </p>
+
+              <div className="insta-toolbar">
+                <select
+                  value={studentStatus}
+                  onChange={(e) => setStudentStatus(e.target.value)}
+                  aria-label="Filter students by status"
+                >
+                  <option value="">All current students</option>
+                  <option value="invited">Invited</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="removed">Removed</option>
+                </select>
+                <input
+                  type="search"
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  placeholder="Search by email, username or name"
+                  aria-label="Search students"
+                />
+              </div>
+
+              {studentsLoading ? (
+                <LoadingScreen message="Loading students..." compact />
+              ) : students.length === 0 ? (
+                <p className="insta-empty">
+                  {studentStatus ? 'No students match this filter.' : 'No students yet. Invite one below.'}
+                </p>
+              ) : visibleStudents.length === 0 ? (
+                <p className="insta-empty">No students match “{studentSearch}”.</p>
+              ) : (
+                <div className="insta-members">
+                  {visibleStudents.map((student) => (
+                    <div key={student.user_id} className="insta-member">
+                      <div className="insta-member__info">
+                        <div className="insta-member__email">{student.email || 'No email'}</div>
+                        <div className="insta-member__meta">
+                          <span className={`insta-status insta-status--${student.status}`}>{student.status}</span>
+                          {student.student_name ? <span>{student.student_name}</span> : null}
+                          {student.username ? <span>{student.username}</span> : null}
+                          {student.cohort_name ? <span>{student.cohort_name}</span> : null}
+                        </div>
+                      </div>
+                      <div className="insta-member__actions">
+                        {student.status === 'invited' && (
+                          <button
+                            type="button"
+                            className="admin-btn-issue admin-btn-issue--ghost"
+                            onClick={() => resendStudentInvite(student)}
+                            disabled={busy}
+                          >
+                            <LuMail size={14} aria-hidden /> Resend
+                          </button>
+                        )}
+                        {student.status === 'active' && (
+                          <button
+                            type="button"
+                            className="admin-btn-issue admin-btn-issue--ghost"
+                            onClick={() => setStudentMemberStatus(student, 'suspended')}
+                            disabled={busy}
+                          >
+                            <LuPause size={14} aria-hidden /> Suspend
+                          </button>
+                        )}
+                        {student.status === 'suspended' && (
+                          <button
+                            type="button"
+                            className="admin-btn-issue admin-btn-issue--ghost"
+                            onClick={() => setStudentMemberStatus(student, 'active')}
+                            disabled={busy}
+                          >
+                            <LuPlay size={14} aria-hidden /> Activate
+                          </button>
+                        )}
+                        {student.status !== 'removed' && (
+                          <button
+                            type="button"
+                            className="admin-btn-issue admin-btn-issue--danger"
+                            onClick={() => removeStudent(student)}
+                            disabled={busy}
+                          >
+                            <LuTrash2 size={14} aria-hidden /> Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <form className="admin-form admin-form--small insta-add" onSubmit={addStudent}>
+                <div className="admin-form__row">
+                  <label>
+                    Student email
+                    <input
+                      type="email"
+                      value={newStudent.email}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="student@uni.ac.uk"
+                    />
+                  </label>
+                  <label>
+                    Name
+                    <input
+                      type="text"
+                      value={newStudent.name}
+                      onChange={(e) => setNewStudent((p) => ({ ...p, name: e.target.value }))}
+                      placeholder="optional"
+                    />
+                  </label>
+                </div>
+                <label>
+                  Username
+                  <input
+                    type="text"
+                    value={newStudent.username}
+                    onChange={(e) => setNewStudent((p) => ({ ...p, username: e.target.value }))}
+                    placeholder="optional — auto-generated if blank"
+                  />
+                </label>
+                <button type="submit" disabled={busy || !newStudent.email.trim()}>
+                  Send student invite
                 </button>
               </form>
             </Section>
