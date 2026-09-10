@@ -146,7 +146,7 @@
 
 .admin-tabs button,
 .admin-search button,
-.admin-form button {
+.admin-form > button {
   border: 1px solid var(--syn-border);
   border-radius: 10px;
   background: var(--surface-card);
@@ -158,13 +158,13 @@
 }
 
 .admin-tabs button.is-active,
-.admin-form button {
+.admin-form > button {
   background: var(--syn-deep-navy);
   border-color: var(--syn-deep-navy);
   color: #fff;
 }
 
-.admin-form button:disabled {
+.admin-form > button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
@@ -299,6 +299,110 @@ html[data-theme="dark"] .admin-list button.is-active {
 .admin-form__section-hint {
   margin: 0;
   font-size: 13px;
+}
+
+.admin-announcement-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 800;
+  color: var(--syn-navy-700);
+}
+
+.admin-announcement-editor .w-md-editor {
+  box-shadow: none;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  overflow: hidden;
+  color: var(--syn-navy-700);
+  background: var(--surface-card);
+  --color-fg-default: var(--syn-navy-700);
+  --color-fg-muted: var(--syn-muted);
+  --color-canvas-default: var(--surface-card);
+  --color-border-default: var(--syn-border);
+  --color-neutral-muted: var(--surface-tint-blue);
+  --color-accent-fg: #143db8;
+  --md-editor-background-color: var(--surface-card);
+  --md-editor-box-shadow-color: var(--syn-border);
+}
+
+.admin-announcement-editor .w-md-editor-toolbar {
+  background: var(--surface-bg, var(--surface-app));
+  border-bottom: 1px solid var(--syn-border);
+}
+
+.admin-announcement-editor .w-md-editor-toolbar li > button {
+  color: var(--syn-navy-700);
+}
+
+.admin-announcement-editor .w-md-editor-content,
+.admin-announcement-editor .w-md-editor-preview,
+.admin-announcement-editor .wmde-markdown {
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+}
+
+/* Admin form textarea rules must not cover the highlighted overlay. */
+.admin-announcement-editor .w-md-editor-text-input {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: inherit !important;
+  width: 100% !important;
+  color: inherit !important;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--syn-navy-700);
+}
+
+.admin-announcement-editor .w-md-editor-text-pre,
+.admin-announcement-editor .w-md-editor-text-pre code {
+  color: var(--syn-navy-700);
+}
+
+html[data-theme="light"] .admin-announcement-editor .wmde-markdown,
+html[data-theme="light"] .admin-announcement-editor .wmde-markdown-var,
+html[data-theme="dark"] .admin-announcement-editor .wmde-markdown,
+html[data-theme="dark"] .admin-announcement-editor .wmde-markdown-var {
+  --color-fg-default: var(--syn-navy-700);
+  --color-fg-muted: var(--syn-muted);
+  --color-canvas-default: var(--surface-card);
+  --color-border-default: var(--syn-border);
+  color: var(--syn-navy-700);
+}
+
+html[data-theme="dark"] .admin-announcement-editor .w-md-editor {
+  --color-accent-fg: var(--dm-primary);
+  --color-neutral-muted: var(--dm-surface-container-high);
+}
+
+html[data-theme="dark"] .admin-announcement-editor .w-md-editor-toolbar {
+  background: var(--dm-surface-container-low);
+}
+
+.admin-announcement-size-label {
+  display: inline-block;
+  min-width: 1.1em;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.admin-announcement-editor .wmde-markdown .announcement-size--sm {
+  font-size: 15px;
+}
+
+.admin-announcement-editor .wmde-markdown .announcement-size--md {
+  font-size: 16px;
+}
+
+.admin-announcement-editor .wmde-markdown .announcement-size--lg {
+  font-size: 20px;
+}
+
+.admin-announcement-editor .wmde-markdown .announcement-size--xl {
+  font-size: 24px;
+  line-height: 1.3;
 }
 
 .admin-check {

@@ -13,6 +13,7 @@ import TermsConsentModal from '../../components/consent/TermsConsentModal'
 import AnnouncementModal from '../notifications/AnnouncementModal'
 import NotificationBell from '../notifications/NotificationBell'
 import NotificationInbox from '../notifications/NotificationInbox'
+import { isAllowedAnnouncementCtaUrl, openAnnouncementCtaUrl } from '../notifications/announcementLinks'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -163,7 +164,7 @@ function DashboardLayout() {
     setAnnouncementBusy(true)
     try {
       await markNotificationRead(pending.id)
-      if (typeof url === 'string' && url.startsWith('/')) navigate(url)
+      openAnnouncementCtaUrl(url, navigate)
     } finally {
       setAnnouncementBusy(false)
     }
@@ -187,9 +188,9 @@ function DashboardLayout() {
           ? `/dashboard?friends=requests&request=${encodeURIComponent(requestId)}`
           : '/dashboard?friends=requests'
       }
-      if (typeof url === 'string' && url.startsWith('/')) {
+      if (isAllowedAnnouncementCtaUrl(url)) {
         setInboxOpen(false)
-        navigate(url)
+        openAnnouncementCtaUrl(url, navigate)
       }
     } catch {
       // Keep the panel open so they can retry.

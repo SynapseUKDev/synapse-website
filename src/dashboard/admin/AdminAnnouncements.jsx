@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import AnnouncementModal from '../notifications/AnnouncementModal'
+import { isAllowedAnnouncementCtaUrl, normalizeAnnouncementCtaUrl, openAnnouncementCtaUrl } from '../notifications/announcementLinks'
+import AnnouncementEditor from './AnnouncementEditor'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
 const BLANK_FORM = {
   title: '',
+  subtitle: '',
   body: '',
   cta_label: '',
   cta_url: '',
@@ -29,13 +33,43 @@ function formatDate(value) {
   }
 }
 
+function formFromRow(row = {}) {
+  return {
+    title: row.title || '',
+    subtitle: row.subtitle || '',
+    body: row.body || '',
+    cta_label: row.cta_label || '',
+    cta_url: row.cta_url || '',
+    dismiss_label: row.dismiss_label || '',
+  }
+}
+
 function formToPayload(form) {
   return {
     title: form.title.trim(),
+    subtitle: form.subtitle.trim() || null,
     body: form.body.trim(),
     cta_label: form.cta_label.trim() || null,
-    cta_url: form.cta_url.trim() || null,
+    cta_url: normalizeAnnouncementCtaUrl(form.cta_url) || null,
     dismiss_label: form.dismiss_label.trim() || null,
+  }
+}
+
+function formToPreviewAnnouncement(form) {
+  const ctaLabel = form.cta_label.trim()
+  const dismissLabel = form.dismiss_label.trim()
+  const subtitle = form.subtitle.trim()
+  return {
+    id: 'admin-preview',
+    title: form.title.trim() || 'Announcement',
+    subtitle,
+    body: form.body.trim(),
+    action_url: normalizeAnnouncementCtaUrl(form.cta_url) || null,
+    metadata: {
+      ...(subtitle ? { subtitle } : {}),
+      ...(ctaLabel ? { cta_label: ctaLabel } : {}),
+      ...(dismissLabel ? { dismiss_label: dismissLabel } : {}),
+    },
   }
 }
 
@@ -48,6 +82,7 @@ export default function AdminAnnouncements() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
 
@@ -79,20 +114,16 @@ export default function AdminAnnouncements() {
     setForm(BLANK_FORM)
     setError('')
     setNotice('')
+    setPreviewOpen(false)
   }
 
   const openDetail = (row) => {
     setMode('detail')
     setSelectedId(row.id)
-    setForm({
-      title: row.title || '',
-      body: row.body || '',
-      cta_label: row.cta_label || '',
-      cta_url: row.cta_url || '',
-      dismiss_label: row.dismiss_label || '',
-    })
+    setForm(formFromRow(row))
     setError('')
     setNotice('')
+    setPreviewOpen(false)
   }
 
   const applyAnnouncement = (announcement) => {
@@ -106,13 +137,7 @@ export default function AdminAnnouncements() {
     })
     setSelectedId(announcement.id)
     setMode('detail')
-    setForm({
-      title: announcement.title || '',
-      body: announcement.body || '',
-      cta_label: announcement.cta_label || '',
-      cta_url: announcement.cta_url || '',
-      dismiss_label: announcement.dismiss_label || '',
-    })
+    setForm(formFromRow(announcement))
   }
 
   const createAnnouncement = async (e) => {
@@ -133,7 +158,8 @@ export default function AdminAnnouncements() {
       }
       const body = await res.json()
       applyAnnouncement(body.announcement)
-      setNotice('Draft saved. Publish when you want users to see it.')
+      setNotice('Draft saved. This is the popup users will see.')
+      setPreviewOpen(true)
     } catch {
       setError('Failed to create announcement')
     } finally {
@@ -159,7 +185,8 @@ export default function AdminAnnouncements() {
       }
       const body = await res.json()
       applyAnnouncement(body.announcement)
-      setNotice('Changes saved.')
+      setNotice('Changes saved. This is the popup users will see.')
+      setPreviewOpen(true)
     } catch {
       setError('Failed to save announcement')
     } finally {
@@ -243,6 +270,7 @@ export default function AdminAnnouncements() {
       setMode('create')
       setSelectedId(null)
       setForm(BLANK_FORM)
+      setPreviewOpen(false)
       setNotice('Removed. It will no longer show in the notification panel.')
     } catch {
       setError('Failed to remove announcement')
@@ -256,6 +284,14 @@ export default function AdminAnnouncements() {
   const isCreate = mode === 'create'
   const canPublish = selected && selected.status !== 'published'
   const canArchive = selected && selected.status !== 'archived'
+  const canPreview = Boolean(form.title.trim() && form.body.trim())
+
+  const closePreview = () => setPreviewOpen(false)
+
+  const handlePreviewCta = async (url) => {
+    openAnnouncementCtaUrl(url)
+    setPreviewOpen(false)
+  }
 
   return (
     <>
@@ -323,16 +359,24 @@ export default function AdminAnnouncements() {
             </label>
 
             <label>
-              Body
-              <textarea
-                rows={8}
-                maxLength={8000}
-                value={form.body}
-                onChange={(e) => setField('body', e.target.value)}
-                placeholder="Write the announcement students will see when they next open the dashboard."
-                required
+              Subtitle (optional)
+              <input
+                type="text"
+                maxLength={160}
+                value={form.subtitle}
+                onChange={(e) => setField('subtitle', e.target.value)}
+                placeholder="A short line under the title"
               />
             </label>
+
+            <AnnouncementEditor
+              value={form.body}
+              onChange={(value) => setField('body', value)}
+              placeholder="Write the announcement students will see when they next open the dashboard."
+            />
+            <p className="admin__muted admin-form__section-hint">
+              Use the toolbar for bold, italics, underline, centre, font size (Aa), lists, links and more. Select text first, then pick a size. Leave a blank line around centred or sized blocks.
+            </p>
 
             <label>
               Dismiss button
@@ -360,41 +404,55 @@ export default function AdminAnnouncements() {
                 />
               </label>
               <label>
-                Link path (optional)
+                Link URL (optional)
                 <input
                   type="text"
+                  maxLength={500}
                   value={form.cta_url}
                   onChange={(e) => setField('cta_url', e.target.value)}
-                  placeholder="/dashboard"
+                  placeholder="https://example.com or /dashboard"
                 />
               </label>
             </div>
             <p className="admin__muted admin-form__section-hint">
-              Extra button that opens an in-app path starting with /. Leave both blank if there is no link.
+              Extra button. Add both a label and a URL so it appears for users. Use an in-app path starting with / or a website such as https://example.com.
             </p>
+            {form.cta_label.trim() && !isAllowedAnnouncementCtaUrl(form.cta_url) ? (
+              <p className="admin__muted admin-form__section-hint">
+                Add a Link URL so students get this button. Preview still shows it so you can check the layout.
+              </p>
+            ) : null}
 
-            <button type="submit" disabled={busy || !form.title.trim() || !form.body.trim()}>
+            <button type="submit" disabled={busy || !canPreview}>
               {busy ? 'Saving...' : isCreate ? 'Save draft' : 'Save changes'}
             </button>
           </form>
 
-          {!isCreate && (
-            <div className="admin-issue-actions" style={{ marginTop: 12 }}>
-              {canPublish ? (
-                <button type="button" className="admin-btn-issue" onClick={publishAnnouncement} disabled={busy}>
-                  Publish
-                </button>
-              ) : null}
-              {canArchive ? (
-                <button
-                  type="button"
-                  className="admin-btn-issue admin-btn-issue--ghost"
-                  onClick={archiveAnnouncement}
-                  disabled={busy}
-                >
-                  Archive
-                </button>
-              ) : null}
+          <div className="admin-issue-actions" style={{ marginTop: 12, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="admin-btn-issue admin-btn-issue--ghost"
+              onClick={() => setPreviewOpen(true)}
+              disabled={!canPreview}
+            >
+              Preview popup
+            </button>
+            {!isCreate && canPublish ? (
+              <button type="button" className="admin-btn-issue" onClick={publishAnnouncement} disabled={busy}>
+                Publish
+              </button>
+            ) : null}
+            {!isCreate && canArchive ? (
+              <button
+                type="button"
+                className="admin-btn-issue admin-btn-issue--ghost"
+                onClick={archiveAnnouncement}
+                disabled={busy}
+              >
+                Archive
+              </button>
+            ) : null}
+            {!isCreate ? (
               <button
                 type="button"
                 className="admin-btn-issue admin-btn-issue--danger"
@@ -403,10 +461,19 @@ export default function AdminAnnouncements() {
               >
                 Remove
               </button>
-            </div>
-          )}
+            ) : null}
+          </div>
         </section>
       </div>
+
+      <AnnouncementModal
+        open={previewOpen && canPreview}
+        announcement={formToPreviewAnnouncement(form)}
+        preview
+        busy={false}
+        onDismiss={closePreview}
+        onCta={handlePreviewCta}
+      />
     </>
   )
 }

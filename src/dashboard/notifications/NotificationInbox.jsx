@@ -10,6 +10,7 @@ import {
   LuX,
 } from 'react-icons/lu'
 import './NotificationInbox.css'
+import { announcementPlainPreview } from './AnnouncementMarkdown'
 
 const TYPE_META = {
   announcement: { label: 'Announcement', Icon: LuMegaphone },
@@ -43,6 +44,13 @@ function formatRelative(value) {
 function unreadSummary(count) {
   if (!count) return 'You are up to date'
   return count === 1 ? '1 unread' : `${count} unread`
+}
+
+function inboxPreview(item) {
+  const subtitle = typeof item?.metadata?.subtitle === 'string' ? item.metadata.subtitle.trim() : ''
+  if (subtitle) return subtitle
+  if (item?.type === 'announcement') return announcementPlainPreview(item.body)
+  return item?.body || ''
 }
 
 export default function NotificationInbox({
@@ -180,6 +188,7 @@ export default function NotificationInbox({
                 visible.map((n) => {
                   const { label, Icon } = typeMeta(n.type)
                   const unreadItem = !n.read_at
+                  const preview = inboxPreview(n)
                   return (
                     <button
                       key={n.id}
@@ -193,7 +202,7 @@ export default function NotificationInbox({
                       </span>
                       <span className="notif-inbox__body">
                         <span className="notif-inbox__item-title">{n.title}</span>
-                        {n.body ? <span className="notif-inbox__item-preview">{n.body}</span> : null}
+                        {preview ? <span className="notif-inbox__item-preview">{preview}</span> : null}
                         <span className="notif-inbox__meta">
                           {label}
                           {n.created_at ? ` · ${formatRelative(n.created_at)}` : ''}
