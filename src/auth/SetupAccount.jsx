@@ -71,6 +71,7 @@ function SetupAccount() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
+    const [successGoesToLogin, setSuccessGoesToLogin] = useState(false)
     const [checkingToken, setCheckingToken] = useState(true)
     const [inviteTokens, setInviteTokens] = useState({ accessToken: null, refreshToken: null })
     const hasProcessedTokens = useRef(false)
@@ -192,11 +193,13 @@ function SetupAccount() {
             if (data.access_token && data.refresh_token) {
                 setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
                 window.dispatchEvent(new Event('auth:changed'))
+                setSuccessGoesToLogin(false)
                 setSuccess(true)
                 setTimeout(() => {
                     navigate('/dashboard', { replace: true })
                 }, 1500)
             } else {
+                setSuccessGoesToLogin(true)
                 setSuccess(true)
                 setTimeout(() => {
                     navigate('/login', { replace: true })
@@ -269,7 +272,9 @@ function SetupAccount() {
                                     <h3>Account Setup Complete!</h3>
                                 </div>
                                 <p>
-                                    Welcome to Synapse UK! You're being redirected to your dashboard...
+                                    {successGoesToLogin
+                                        ? 'Your password is set. Sign in with your new password to continue.'
+                                        : "Welcome to Synapse UK! You're being redirected to your dashboard..."}
                                 </p>
                             </div>
                         </div>
