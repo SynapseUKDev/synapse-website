@@ -189,16 +189,19 @@ function SetupAccount() {
 
             const data = await res.json()
 
-            // Set tokens from response
             if (data.access_token && data.refresh_token) {
                 setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
+                window.dispatchEvent(new Event('auth:changed'))
+                setSuccess(true)
+                setTimeout(() => {
+                    navigate('/dashboard', { replace: true })
+                }, 1500)
+            } else {
+                setSuccess(true)
+                setTimeout(() => {
+                    navigate('/login', { replace: true })
+                }, 1500)
             }
-
-            setSuccess(true)
-            // Redirect to dashboard after short delay
-            setTimeout(() => {
-                navigate('/dashboard', { replace: true })
-            }, 1500)
         } catch (err) {
             console.error('Setup account error:', err)
             setError(err.message || 'Something went wrong')
