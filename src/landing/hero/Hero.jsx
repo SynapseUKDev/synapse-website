@@ -39,7 +39,7 @@ function Hero() {
               Explore the Platform
             </a>
           </div>
-          <p className="hero__fine">Free plan available · No card required</p>
+          <p className="hero__fine">£15 for 6 months · Cancel anytime</p>
         </motion.div>
 
         <motion.div

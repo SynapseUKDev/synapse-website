@@ -6,21 +6,6 @@ import './Pricing.css'
 
 const PLANS = [
   {
-    id: 'free',
-    name: 'Free',
-    price: '£0',
-    period: '/month',
-    cta: 'Get Started',
-    to: '/login?mode=signup',
-    featured: false,
-    features: [
-      'Explore core platform features',
-      'Access selected learning content',
-      'Track basic progress',
-      'Upgrade whenever you need',
-    ],
-  },
-  {
     id: 'full',
     name: 'Full Access',
     price: '£15',
@@ -61,8 +46,8 @@ export default function Pricing() {
           <p className="lp-eyebrow">Simple, transparent pricing</p>
           <h2 className="lp-title">Choose the plan that works for you.</h2>
           <p className="lp-lead">
-            Keep it simple: start free, then unlock the full platform for £15 per 6 months.
-            Cancel anytime.
+            Full platform access for £15 per 6 months, or a custom plan for medical
+            schools. Cancel anytime.
           </p>
         </Reveal>
 

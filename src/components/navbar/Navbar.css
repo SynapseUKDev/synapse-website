@@ -110,7 +110,12 @@
 
 .nav__cta,
 .nav__user {
-  display: none;
+  display: inline-flex;
+}
+
+.nav a.nav__cta {
+  color: #fff;
+  white-space: nowrap;
 }
 
 .nav__user {
@@ -239,9 +244,23 @@
   padding: 0 16px;
 }
 
-.nav__drawer-actions .lp-btn {
+.nav__drawer-actions .lp-btn,
+.nav__drawer-actions .nav__user {
+  display: inline-flex;
   width: 100%;
   min-height: 48px;
+}
+
+.nav__drawer a.lp-btn--primary {
+  color: #fff;
+  background: #0c1540;
+  justify-content: center;
+}
+
+.nav__drawer a.lp-btn--primary:hover,
+.nav__drawer a.lp-btn--primary:focus-visible {
+  background: #151d52;
+  color: #fff;
 }
 
 @media (min-width: 960px) {
@@ -271,6 +290,7 @@
     min-height: 40px;
     padding: 0 14px;
     font-size: 0.86rem;
+    color: #fff;
   }
 
   .nav__cta svg {

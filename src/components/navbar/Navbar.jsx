@@ -108,7 +108,7 @@ function Navbar() {
             </button>
           ) : (
             <Link to="/login" className="lp-btn lp-btn--primary nav__cta">
-              Log in
+              <span>Log in</span>
               <LuArrowRight />
             </Link>
           )}
@@ -140,7 +140,7 @@ function Navbar() {
                 </button>
               ) : (
                 <Link to="/login" className="lp-btn lp-btn--primary" onClick={closeMenu}>
-                  Log in <LuArrowRight />
+                  <span>Log in</span> <LuArrowRight />
                 </Link>
               )}
             </div>
