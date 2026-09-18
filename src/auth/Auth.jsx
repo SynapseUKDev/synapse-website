@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
 import { authHeaders, clearTokens, getRefreshToken, setTokens } from './token'
-import logo from '../assets/logo/logo.png'
 import AuthPanel from './auth-panel/AuthPanel.jsx'
+import AuthShell from './AuthShell.jsx'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 
 function Auth() {
@@ -93,75 +93,9 @@ function Auth() {
   }
 
   return (
-    <section className="auth">
-      <div className="auth__split auth__split--left">
-        <div style={{ width: '100%', display: 'grid', placeItems: 'center' }}>
-          <AuthPanel />
-        </div>
-      </div>
-
-      <div className="auth__split auth__split--right">
-        <div className="auth__leftContent">
-          <div className="auth__brand">
-            <img src={logo} alt="Synapse UK" className="auth__logo" />
-          </div>
-
-          <div className="auth__hero">
-            <h1 className="auth__headline">
-              Master <span className="auth__gradient-text">Medical Excellence</span> with Confidence
-            </h1>
-            <p className="auth__subtitle">
-              Join thousands of medical students who trust Synapse UK for their learning journey.
-              Advanced practice questions, real-time analytics, and expert guidance.
-            </p>
-          </div>
-
-          <div className="auth__features">
-            <div className="auth__feature">
-              <div className="auth__feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" />
-                </svg>
-              </div>
-              <div className="auth__feature-text">
-                <div className="auth__feature-title">UKMLA-Focused</div>
-                <div className="auth__feature-desc">Questions crafted by UK medical professionals</div>
-              </div>
-            </div>
-
-            <div className="auth__feature">
-              <div className="auth__feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" />
-                </svg>
-              </div>
-              <div className="auth__feature-text">
-                <div className="auth__feature-title">Real-Time Analytics</div>
-                <div className="auth__feature-desc">Track your progress with advanced insights</div>
-              </div>
-            </div>
-
-            <div className="auth__feature">
-              <div className="auth__feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 11l3 3l8-8" />
-                  <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9s4.03-9 9-9c1.51 0 2.93.37 4.18 1.02" />
-                </svg>
-              </div>
-              <div className="auth__feature-text">
-                <div className="auth__feature-title">Instant Feedback</div>
-                <div className="auth__feature-desc">Comprehensive explanations with visual aids</div>
-              </div>
-            </div>
-          </div>
-
-          {/* <img src={authImg2} className="auth__art" alt="Medical student learning" /> */}
-        </div>
-      </div>
-
-
-    </section>
+    <AuthShell>
+      <AuthPanel />
+    </AuthShell>
   )
 }
 

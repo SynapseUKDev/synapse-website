@@ -1,19 +1,24 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import './Navbar.css'
 import logo from '../../assets/logo/logo.png'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { LuArrowRight, LuMenu, LuX } from 'react-icons/lu'
+
+const LINKS = [
+  { href: '#top', label: 'Home' },
+  { href: '#about', label: 'About' },
+  { href: '#pricing', label: 'Pricing' },
+]
 
 function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [user, setUser] = useState(null)
+  const [scrolled, setScrolled] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const checkAuth = useCallback(async () => {
-    // Don't check auth if we're on reset password page
-    if (window.__isResettingPassword) {
-      return
-    }
-    
+    if (window.__isResettingPassword) return
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
     try {
       const res = await fetch(`${API_BASE}/me`, { credentials: 'include', cache: 'no-store' })
@@ -44,35 +49,106 @@ function Navbar() {
     }
   }, [checkAuth])
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 18)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 960) setOpen(false)
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const closeMenu = () => setOpen(false)
+
+  const displayName = user?.username || user?.email?.split('@')[0] || 'Dashboard'
+  const initial = displayName.slice(0, 1).toUpperCase()
+
   return (
-    <header className="nav">
+    <header className={`nav ${scrolled ? 'nav--scrolled' : ''} ${open ? 'nav--open' : ''}`}>
       <div className="nav__container">
-        <Link to="/" className="nav__brand">
-          <img src={logo} alt="Synapse UK" className="nav__logo" />
+        <Link to="/" className="nav__brand" onClick={closeMenu}>
+          <img src={logo} alt="" className="nav__logo" />
+          <span className="nav__wordmark">EduSynapse</span>
         </Link>
 
-        {/* <nav className="nav__links">
-          <a href="#features">Features</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#about">About Us</a>
-        </nav> */}
+        <nav className="nav__links" aria-label="Primary">
+          {LINKS.map((link) => (
+            <a key={link.href} href={link.href}>{link.label}</a>
+          ))}
+        </nav>
 
-        {user ? (
+        <div className="nav__actions">
+          {user ? (
+            <button
+              className="nav__user"
+              onClick={() => { closeMenu(); navigate('/dashboard') }}
+              aria-label={`Go to dashboard as ${displayName}`}
+            >
+              <span className="nav__avatar" aria-hidden>{initial}</span>
+              <span className="nav__username">{displayName}</span>
+              <LuArrowRight />
+            </button>
+          ) : (
+            <Link to="/login" className="lp-btn lp-btn--primary nav__cta">
+              Log in
+              <LuArrowRight />
+            </Link>
+          )}
           <button
-            className="nav__user"
-            onClick={() => navigate('/dashboard')}
-            aria-label="Go to dashboard"
+            className="nav__menu-btn"
+            type="button"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span>{user.username || user.user_metadata?.username || user.email}</span>
+            {open ? <LuX /> : <LuMenu />}
           </button>
-        ) : (
-          <Link to="/login" className="nav__login">Login</Link>
-        )}
+        </div>
       </div>
+
+      {open && (
+        <div className="nav__sheet">
+          <button className="nav__backdrop" type="button" aria-label="Close menu" onClick={closeMenu} />
+          <div className="nav__drawer">
+            {LINKS.map((link) => (
+              <a key={link.href} href={link.href} onClick={closeMenu}>{link.label}</a>
+            ))}
+            <div className="nav__drawer-actions">
+              {user ? (
+                <button className="nav__user nav__user--drawer" onClick={() => { closeMenu(); navigate('/dashboard') }}>
+                  <span className="nav__avatar" aria-hidden>{initial}</span>
+                  Continue as {displayName}
+                  <LuArrowRight />
+                </button>
+              ) : (
+                <Link to="/login" className="lp-btn lp-btn--primary" onClick={closeMenu}>
+                  Log in <LuArrowRight />
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   )
 }
 
 export default Navbar
-

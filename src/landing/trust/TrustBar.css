@@ -1,0 +1,119 @@
+.trust {
+  padding: 12px 0 28px;
+  background: transparent;
+}
+
+.trust__inner {
+  position: relative;
+  width: min(1160px, calc(100% - clamp(16px, 4vw, 32px) * 2));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 20px;
+  padding: 22px 0 8px;
+}
+
+.trust__inner::before {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(12, 21, 64, 0.08) 18%, rgba(12, 21, 64, 0.08) 82%, transparent);
+}
+
+.trust__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  color: #334155;
+  font-weight: 750;
+  font-size: 0.84rem;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.trust__item::after {
+  content: '';
+  position: absolute;
+  top: 14%;
+  bottom: 14%;
+  right: -10px;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(15, 23, 58, 0.10) 16%,
+    rgba(15, 23, 58, 0.10) 84%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+.trust__item:nth-child(even)::after {
+  display: none;
+}
+
+.trust__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 14px rgba(15, 23, 58, 0.06);
+}
+
+.trust__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.trust__icon--blue {
+  background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+}
+
+.trust__icon--gold {
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+  color: #b45309;
+}
+
+.trust__icon--green {
+  background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #15803d;
+}
+
+.trust__icon--purple {
+  background: linear-gradient(180deg, #ede9fe 0%, #ddd6fe 100%);
+  color: #6d28d9;
+}
+
+.trust__label {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .trust__inner {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px 28px;
+    padding: 22px 0 8px;
+    align-items: center;
+  }
+
+  .trust__item {
+    font-size: 0.88rem;
+  }
+
+  .trust__item::after,
+  .trust__item:nth-child(even)::after {
+    display: block;
+    right: -14px;
+  }
+
+  .trust__item:last-child::after {
+    display: none;
+  }
+}

@@ -3,7 +3,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  background: #cde9fb;
+  background: #f3f5fb;
   z-index: 9999;
 }
 
@@ -53,9 +53,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 4px solid rgba(255, 255, 255, 0.9);
-  border-top-color: #2f57ff;
-  /* deep blue accent */
+  border: 4px solid #e8edf6;
+  border-top-color: #0c1540;
   animation: loading-spin 1s linear infinite;
 }
 

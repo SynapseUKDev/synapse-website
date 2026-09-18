@@ -1,0 +1,359 @@
+.platform {
+  padding: 56px 0 32px;
+  scroll-margin-top: 96px;
+  background: transparent;
+}
+
+.platform__intro {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 40px;
+  scroll-margin-top: 96px;
+}
+
+.platform__intro .lp-lead {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.platform__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.platform__grid > * {
+  height: 100%;
+}
+
+.platform__card {
+  background: #fff;
+  border: 1px solid #e8edf6;
+  border-radius: 28px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 16px 40px rgba(15, 23, 58, 0.05);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.platform__card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 48px rgba(15, 23, 58, 0.1);
+}
+
+.platform__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.platform__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: #eef2fa;
+  color: #0c1540;
+}
+
+.platform__icon--textbook { background: #fff4d6; color: #b45309; }
+.platform__icon--osce { background: #ece7ff; color: #6d28d9; }
+
+.platform__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.platform__explore {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #3b4d7a;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.platform__explore svg { width: 14px; height: 14px; }
+
+.platform__card h3 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  color: #0c1540;
+}
+
+.platform__card p {
+  margin: 10px 0 18px;
+  color: #66758c;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.plat-preview {
+  border-radius: 18px;
+  background: #eef3fb;
+  overflow: hidden;
+  margin-top: auto;
+  min-height: 308px;
+  display: flex;
+  flex-direction: column;
+}
+
+.plat-preview__bar {
+  height: 28px;
+  flex-shrink: 0;
+  background: #15204F;
+}
+
+.plat-preview__bar::before {
+  content: '';
+  display: block;
+  width: 42px;
+  height: 8px;
+  margin: 10px 0 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: 12px 0 0 rgba(255,255,255,0.18), 24px 0 0 rgba(255,255,255,0.12);
+}
+
+.plat-preview__body {
+  flex: 1;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plat-preview__chip {
+  display: inline-flex;
+  align-self: flex-start;
+  background: #d7fbe7;
+  color: #047857;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.plat-preview__chip.is-gold {
+  background: #fff1c7;
+  color: #b45309;
+}
+
+.plat-stem {
+  margin: 0;
+  color: #0c1540;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.plat-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e4eaf4;
+  color: #0c1540;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.plat-opt__key {
+  width: 18px;
+  flex-shrink: 0;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.plat-opt.is-correct {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.plat-opt.is-correct .plat-opt__key {
+  color: #15803d;
+}
+
+.plat-topic {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e4eaf4;
+  color: #0c1540;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.plat-topic__check {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1.5px solid #cbd5e1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.plat-topic__check svg {
+  width: 11px;
+  height: 11px;
+}
+
+.plat-topic.is-done {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.plat-topic.is-done .plat-topic__check {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+.plat-tabs {
+  display: flex;
+  gap: 0;
+  margin-top: auto;
+  padding-top: 6px;
+  color: #8b97ab;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.plat-tabs b {
+  flex: 1;
+  text-align: center;
+  padding: 6px 0 2px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.plat-tabs b.is-active {
+  color: #0c1540;
+  border-bottom-color: #15204F;
+}
+
+.plat-osce-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #0c1540;
+}
+
+.plat-osce-head strong {
+  font-size: 0.92rem;
+}
+
+.plat-osce-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.plat-osce-time svg {
+  width: 12px;
+  height: 12px;
+}
+
+.plat-osce-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plat-osce-tags span {
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.plat-osce-list {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.plat-osce-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e4eaf4;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.plat-osce-list li svg {
+  width: 12px;
+  height: 12px;
+  color: #16a34a;
+}
+
+.plat-osce-list li:not(.is-done)::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1.5px solid #cbd5e1;
+  flex-shrink: 0;
+}
+
+.plat-osce-list li.is-done {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+@media (min-width: 900px) {
+  .platform {
+    padding: 88px 0 40px;
+  }
+
+  .platform__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+  }
+}
+
+@media (max-width: 899px) and (min-width: 680px) {
+  .platform__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .platform__grid > *:last-child {
+    grid-column: 1 / -1;
+    max-width: 520px;
+    justify-self: center;
+    width: 100%;
+  }
+}

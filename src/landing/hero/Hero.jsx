@@ -1,106 +1,58 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
+import { motion, useReducedMotion } from 'framer-motion'
+import { LuArrowRight } from 'react-icons/lu'
 import './Hero.css'
-import doctorIllustration from '../../assets/landing/hero-doctor.svg'
-import demoImage from '../../assets/landing/hero-demo.png'
-import { area as d3Area, curveBasis } from 'd3-shape'
+import HeroVisual from './HeroVisual.jsx'
+import { easeOut } from '../motion.js'
 
 function Hero() {
+  const reduce = useReducedMotion()
+
   return (
-    <section className="hero">
-      <div className="hero__bg" aria-hidden="true">
-        {(() => {
-          const W = 1440
-          const H = 320
-          const steps = 16
-          const xs = Array.from({ length: steps + 1 }, (_, i) => (i / steps) * W)
-          const make = (amp, base, freq, phase = 0) =>
-            xs.map((x) => ({
-              x,
-              y:
-                base +
-                amp * Math.sin((x / W) * Math.PI * freq + phase) +
-                amp * 0.4 * Math.sin((x / W) * Math.PI * (freq * 0.5) + phase * 0.5),
-            }))
-
-          const wave1 = make(28, 110, 2.2)
-          const wave2 = make(34, 150, 2.0, 0.6)
-          const wave3 = make(38, 250, 1.8, 1.2)
-
-          const aTop = d3Area()
-            .x((d) => d.x)
-            .y1((d) => d.y)
-            .y0(0)
-            .curve(curveBasis)
-
-          const aBottom = d3Area()
-            .x((d) => d.x)
-            .y1((d) => d.y)
-            .y0(H + 40) 
-            .curve(curveBasis)
-
-          const wave1Path = aTop(wave1)
-          const wave2Path = aTop(wave2)
-          const wave3Path = aBottom(wave3)
-
-          const clipTopPath = d3Area()
-            .x((d) => d.x)
-            .y1((d) => d.y)
-            .y0(0)
-            .curve(curveBasis)(wave3)
-
-          return (
-            <svg className="hero__svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-              <defs>
-                <clipPath id="clip-above-wave3">
-                  <path d={clipTopPath || ''} />
-                </clipPath>
-              </defs>
-              <g clipPath="url(#clip-above-wave3)">
-                <path fill="#7BD0F1" d={wave1Path || ''} />
-                <path fill="#7BD0F1" d={wave2Path || ''} />
-              </g>
-              <path fill="#3CA2CA" d={wave3Path || ''} />
-            </svg>
-          )
-        })()}
-      </div>
-
+    <section className="hero" id="top">
       <div className="hero__container">
-        <div className="hero__left">
+        <motion.div
+          className="hero__left"
+          initial={reduce ? false : { opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: easeOut }}
+        >
           <div className="hero__badge">
-            <span className="hero__badge-icon" aria-hidden>🎖️</span>
-            UKMLA Aligned
+            <span className="hero__badge-dot" />
+            UKMLA-aligned medical learning
           </div>
           <h1 className="hero__title">
-            Master Your
-            <br />
-            <span className="hero__title-accent">Medical Future</span>
+            One platform to <span className="hero__title-accent">learn medicine</span>, think
+            clinically and prepare for the UKMLA.
           </h1>
           <p className="hero__subtitle">
-            The integrated learning platform built specifically for UK medical students. Combine
-            interactive textbooks with intelligent question banks to excel in your clinical years.
+            Bring your textbook, question bank and OSCE preparation together in
+            one intelligent learning platform built for UK medical students.
           </p>
           <div className="hero__actions">
-            <a href="/login?mode=signup" className="hero__cta-primary">
-              <span>Start Learning</span>
-              <span className="hero__cta-arrow" aria-hidden>➜</span>
+            <Link to="/login?mode=signup" className="lp-btn lp-btn--primary">
+              Start Learning
+              <LuArrowRight />
+            </Link>
+            <a href="#platform" className="lp-btn lp-btn--ghost">
+              Explore the Platform
             </a>
-            {/* <a href="#demo" className="hero__cta-secondary">
-              <span className="hero__play" aria-hidden>▶</span>
-              Watch Demo
-            </a> */}
           </div>
-        </div>
+          <p className="hero__fine">Free plan available · No card required</p>
+        </motion.div>
 
-        <div className="hero__right">
-          <img src={doctorIllustration} alt="Doctor illustration" className="hero__doctor" />
-          <img src={demoImage} alt="Today’s progress demo" className="hero__demo" />
-        </div>
+        <motion.div
+          className="hero__right"
+          initial={reduce ? false : { opacity: 0, scale: 0.96, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.12, ease: easeOut }}
+        >
+          <HeroVisual />
+        </motion.div>
       </div>
     </section>
   )
 }
 
 export default Hero
-
-

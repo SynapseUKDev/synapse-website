@@ -39,3 +39,6 @@ dist/
 *.key
 *.crt
 *.pfx
+
+*.DS_Store
+.preview/

@@ -1,129 +1,199 @@
-/* Auth Panel Component */
-
-.auth-panel { 
-  width: min(680px, 94%); 
-  background: #fff; 
-  border-radius: 20px; 
-  box-shadow: 0 40px 80px rgba(21, 35, 66, 0.12), 0 8px 24px rgba(21, 35, 66, 0.08); 
-  padding: 42px 40px 42px;
-  /* Always dark text on white card (body uses light --syn-navy-700 in dark site theme) */
+.auth-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  background: #fff;
+  border: 1px solid #e6ebf4;
+  border-radius: 28px;
+  box-shadow: 0 18px 50px rgba(15, 23, 58, 0.08);
+  padding: 28px 26px 26px;
   color: #0b1637;
+  font-family: 'Plus Jakarta Sans', 'Urbanist', ui-sans-serif, system-ui, sans-serif;
 }
 
 .auth-panel__tabs-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
 
 .auth-panel__trial-banner {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-  padding: 16px 18px;
-  border-radius: 14px;
-  border: 2px solid #a7f3d0;
-  margin-bottom: 20px;
+  background: #eef2fb;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #d7deec;
+  margin-bottom: 18px;
 }
 
 .auth-panel__trial-icon {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: white;
-  border: 2px solid #a7f3d0;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #d7deec;
   display: grid;
   place-items: center;
-  color: #059669;
+  color: #0c1540;
   flex-shrink: 0;
 }
 
 .auth-panel__trial-content {
   flex: 1;
+  min-width: 0;
 }
 
 .auth-panel__trial-title {
-  font-size: 16px;
+  font-size: 0.95rem;
   font-weight: 800;
-  color: #0e8a4b;
+  color: #0c1540;
   margin-bottom: 2px;
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
 }
 
-.auth-panel__trial-text {
-  font-size: 14px;
-  color: #059669;
+.auth-panel__trial-text,
+.auth-panel__trial-subtitle {
+  font-size: 0.86rem;
+  color: #4b5872;
   font-weight: 600;
   line-height: 1.4;
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+  overflow-wrap: anywhere;
 }
 
-.auth-panel__tabs { 
-  display: inline-flex; 
-  background: #E8EBF3; 
-  border: 1px solid #D1D6E3;
-  border-radius: 999px; 
-  padding: 4px; 
-  gap: 2px; 
-  width: fit-content;
+.auth-panel__captcha {
+  container-type: inline-size;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  margin: 4px 0 2px;
+  min-height: 65px;
+  border-radius: 12px;
 }
 
-.auth-panel__tab { 
-  appearance: none; 
-  border: 0; 
-  background: transparent; 
-  padding: 8px 20px; 
-  border-radius: 999px; 
-  font-weight: 700; 
-  font-size: 15px;
-  color: #42506b; 
-  cursor: pointer; 
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
-  transition: all 0.2s ease;
+.auth-panel__captcha > div,
+.auth-panel__captcha .cf-turnstile {
+  width: 100% !important;
+  max-width: 100%;
+}
+
+.auth-panel__captcha iframe,
+.auth-panel [id^="cf-chl"] {
+  max-width: 100% !important;
+}
+
+.auth-panel__captcha--compact {
+  min-height: 140px;
+}
+
+.auth-panel__captcha--compact > div,
+.auth-panel__captcha--compact .cf-turnstile {
+  width: 150px !important;
+}
+
+@container (max-width: 299px) {
+  .auth-panel__captcha:not(.auth-panel__captcha--compact) > div {
+    width: 300px !important;
+    max-width: none;
+    transform: scale(calc(100cqw / 300));
+    transform-origin: center center;
+  }
+}
+
+.auth-panel__swap {
+  overflow: hidden;
+  min-width: 0;
+  width: 100%;
+}
+
+.auth-panel__swap-inner {
+  min-width: 0;
+  width: 100%;
+}
+
+.auth-panel__tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #eef2fa;
+  border: 1px solid #e6ebf4;
+  border-radius: 999px;
+  padding: 4px;
+  width: min(100%, 280px);
+}
+
+.auth-panel__tab-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(12, 21, 64, 0.08);
+  pointer-events: none;
+}
+
+.auth-panel__tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #4b5872;
+  cursor: pointer;
+  font-family: inherit;
+  position: relative;
+  z-index: 1;
+  transition: color 180ms ease;
 }
 
 .auth-panel__tab:hover {
-  color: #0B1637;
+  color: #0c1540;
 }
 
-.auth-panel__tab.is-active { 
-  background: #fff; 
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04); 
-  color: #0B1637; 
+.auth-panel__tab.is-active {
+  color: #0c1540;
 }
 
-.auth-panel__header { 
-  margin: 0 0 16px; 
+.auth-panel__header {
+  margin: 0 0 8px;
   text-align: left;
 }
 
-.auth-panel__title { 
-  margin: 0; 
-  font-size: 32px; 
+.auth-panel__title {
+  margin: 0;
+  font-size: 1.7rem;
   font-weight: 800;
-  color: #0B1637;
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+  letter-spacing: -0.04em;
+  color: #0c1540;
 }
 
-.auth-panel__desc { 
-  color: #66708a; 
-  margin: 12px 0 0; 
-  font-size: 16px; 
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+.auth-panel__desc {
+  color: #66758c;
+  margin: 10px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  overflow-wrap: break-word;
 }
 
-.auth-panel__form { 
-  display: grid; 
-  gap: 14px; 
-  margin-top: 20px; 
+.auth-panel__form {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
 }
 
-.auth-panel__label { 
-  font-weight: 700; 
-  font-size: 16px; 
-  color: #0B1637; 
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+.auth-panel__label {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #0c1540;
 }
 
 .auth-panel__input-wrapper {
@@ -132,28 +202,34 @@
   align-items: center;
 }
 
-.auth-panel__input { 
-  height: 52px; 
-  padding: 14px 16px; 
-  border: 1px solid #e5e7ef; 
-  border-radius: 14px; 
-  background: #f9fbff; 
-  font-size: 16px; 
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
-  transition: all 0.2s ease;
+.auth-panel__input {
+  height: 48px;
+  padding: 12px 14px;
+  border: 1.5px solid #e6ebf4;
+  border-radius: 14px;
+  background: #f8fafc;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
   width: 100%;
   color: #0b1637;
 }
 
 .auth-panel__input-wrapper .auth-panel__input {
-  padding-right: 50px;
+  padding-right: 46px;
 }
 
-.auth-panel__input:focus { 
-  outline: none; 
-  border-color: #8bb8ff; 
-  box-shadow: 0 0 0 3px rgba(139, 184, 255, 0.3); 
+.auth-panel__input:focus {
+  outline: none;
+  border-color: #c3cce0;
+  box-shadow: 0 0 0 4px rgba(12, 21, 64, 0.06);
   background: #fff;
+}
+
+.auth-panel__input:disabled {
+  background: #f1f4f9;
+  color: #8b97ab;
+  cursor: not-allowed;
 }
 
 .auth-panel__input--invalid {
@@ -169,8 +245,7 @@
 }
 
 .auth-panel__input::placeholder {
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
-  color: #66708a;
+  color: #8b97ab;
   opacity: 1;
 }
 
@@ -182,151 +257,133 @@
 
 .auth-panel__eye-btn {
   position: absolute;
-  right: 14px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #66708a;
+  color: #66758c;
   cursor: pointer;
   padding: 4px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
 }
 
 .auth-panel__eye-btn:hover {
-  color: #42506b;
-  background: rgba(102, 112, 138, 0.1);
+  color: #0c1540;
+  background: rgba(12, 21, 64, 0.05);
 }
 
-.auth-panel__eye-btn:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(139, 184, 255, 0.3);
+.auth-panel__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.auth-panel__row { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  margin-top: 6px; 
+.auth-panel__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4b5872;
+  font-size: 0.88rem;
 }
 
-.auth-panel__checkbox { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 10px; 
-  color: #4b5673; 
-  font-size: 15px;
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
+.auth-panel__link {
+  color: #0c1540;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: inherit;
 }
 
-.auth-panel__link { 
-  color: #6c7ee2; 
-  text-decoration: none; 
-  font-size: 15px;
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
-  transition: all 0.2s ease;
+button.auth-panel__link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 }
 
-.auth-panel__link:hover { 
-  text-decoration: underline; 
-  color: #5a6dd8;
+.auth-panel__link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.auth-panel__cta { 
-  margin-top: 12px; 
-  height: 52px; 
-  border: 0; 
-  border-radius: 14px; 
-  background: linear-gradient(180deg, #1B4DE7, #061A86); 
-  color: #fff; 
-  font-weight: 800; 
-  font-size: 16px;
-  cursor: pointer; 
-  box-shadow: 0 8px 20px rgba(6, 26, 134, 0.25); 
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
-  transition: all 0.2s ease;
+.auth-panel__cta {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: #0c1540;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(12, 21, 64, 0.18);
+  font-family: inherit;
+  transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
-.auth-panel__cta:hover {
+.auth-panel__cta:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(6, 26, 134, 0.35);
-  background: linear-gradient(180deg, #2056f0, #0a1e92);
+  box-shadow: 0 14px 28px rgba(12, 21, 64, 0.22);
 }
 
-.auth-panel__cta:active {
-  transform: translateY(0);
-  box-shadow: 0 6px 16px rgba(6, 26, 134, 0.25);
-}
-
-@media (max-width: 768px) {
-  .auth-panel { 
-    padding: 32px 24px 32px; 
-    width: min(580px, 94%);
-  }
-  
-  .auth-panel__title { 
-    font-size: 28px; 
-  }
-  
-  .auth-panel__input,
-  .auth-panel__cta { 
-    height: 48px; 
-  }
-  
-  .auth-panel__tab {
-    padding: 6px 16px;
-    font-size: 14px;
-  }
+.auth-panel__cta:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .auth-panel__notice {
   margin-top: 16px;
   padding: 16px 18px;
-  border-radius: 14px;
-  background: #F3F6FF;
-  border: 1px solid #D8E2FF;
-  color: #0B1637;
+  border-radius: 16px;
+  background: #eef2fb;
+  border: 1px solid #d7deec;
+  color: #0c1540;
 }
+
 .auth-panel__notice-header {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
 .auth-panel__notice h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 0.95rem;
   font-weight: 800;
 }
+
 .auth-panel__notice p {
   margin: 8px 0 0;
-  color: #2e3b63;
+  color: #4b5872;
+  line-height: 1.55;
 }
 
-/* Notice variants */
 .auth-panel__notice--warning {
-  background: #FFF8E6;
-  border-color: #FFE2A8;
+  background: #fff8e6;
+  border-color: #ffe2a8;
 }
 
 .auth-panel__notice--error {
-  background: #FFEDEE;
-  border-color: #FFC8CD;
+  background: #ffedee;
+  border-color: #ffc8cd;
 }
 
-/* Consent checkbox (sign-up) */
 .auth-panel__consent {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 14px;
-  color: #4b5673;
+  font-size: 0.86rem;
+  color: #4b5872;
   line-height: 1.5;
   cursor: pointer;
-  font-family: 'Urbanist', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji';
 }
 
 .auth-panel__consent input[type="checkbox"] {
@@ -334,30 +391,50 @@
   width: 18px;
   height: 18px;
   margin-top: 2px;
-  accent-color: #1B4DE7;
+  accent-color: #0c1540;
   cursor: pointer;
 }
 
 .auth-panel__consent-link {
-  color: #1B4DE7;
+  color: #0c1540;
   text-decoration: underline;
   text-underline-offset: 2px;
-  font-weight: 600;
-  transition: color 0.15s ease;
-}
-
-.auth-panel__consent-link:hover {
-  color: #061A86;
+  font-weight: 700;
 }
 
 .auth-panel__consent--invalid {
   background: #fff5f5;
   border: 1.5px solid #e53e3e;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 10px 12px;
   color: #c53030;
 }
 
 .auth-panel__consent--invalid .auth-panel__consent-link {
   color: #c53030;
+}
+
+@media (max-width: 768px) {
+  .auth-panel {
+    padding: 22px 16px 20px;
+    border-radius: 22px;
+  }
+
+  .auth-panel__title {
+    font-size: 1.45rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .auth-panel {
+    padding: 20px 14px 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .auth-panel__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 }

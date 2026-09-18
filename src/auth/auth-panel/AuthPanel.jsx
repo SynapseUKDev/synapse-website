@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Turnstile } from '@marsidev/react-turnstile'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import './AuthPanel.css'
 import { setTokens } from '../token'
+import AuthCaptcha from './AuthCaptcha.jsx'
+
+const swapTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] }
 
 function AuthPanel() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [mode, setMode] = useState('signin')
+  const reduce = useReducedMotion()
+  const [mode, setMode] = useState(() => (
+    new URLSearchParams(location.search).get('mode') === 'signup' ? 'signup' : 'signin'
+  ))
+  const [direction, setDirection] = useState(1)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [email, setEmail] = useState('')
@@ -25,29 +32,64 @@ function AuthPanel() {
   const [captchaToken, setCaptchaToken] = useState(null)
   const turnstileRef = useRef(null)
 
-  // Check URL parameters on component mount
   useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    if (params.get('mode') === 'signup') {
-      setMode('signup')
-    }
+    const next = new URLSearchParams(location.search).get('mode') === 'signup' ? 'signup' : 'signin'
+    setMode(next)
   }, [location.search])
+
+  const setAuthMode = (next) => {
+    if (next === mode && !forgotPasswordMode) return
+    setDirection(next === 'signup' ? 1 : -1)
+    setMode(next)
+    setWarning('')
+    setError('')
+    setStep('form')
+    setSignupAttempted(false)
+    setForgotPasswordMode(false)
+    setCaptchaToken(null)
+    const params = new URLSearchParams(location.search)
+    if (next === 'signup') params.set('mode', 'signup')
+    else params.delete('mode')
+    const search = params.toString()
+    navigate({ pathname: '/login', search: search ? `?${search}` : '' }, { replace: true })
+  }
+
+  const panelKey = forgotPasswordMode ? 'forgot' : mode
+  const variants = reduce
+    ? {
+        enter: { opacity: 1, x: 0 },
+        center: { opacity: 1, x: 0 },
+        exit: { opacity: 1, x: 0 },
+      }
+    : {
+        enter: (dir) => ({ opacity: 0, x: dir * 28 }),
+        center: { opacity: 1, x: 0 },
+        exit: (dir) => ({ opacity: 0, x: dir * -28 }),
+      }
 
   return (
     <div className="auth-panel">
       {!forgotPasswordMode && (
         <div className="auth-panel__tabs-container">
           <div className="auth-panel__tabs" role="tablist">
+            <motion.span
+              className="auth-panel__tab-pill"
+              animate={{ x: mode === 'signin' ? 0 : '100%' }}
+              transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }}
+              aria-hidden
+            />
             <button
+              type="button"
               className={`auth-panel__tab ${mode === 'signin' ? 'is-active' : ''}`}
-              onClick={() => { setMode('signin'); setWarning(''); setError(''); setStep('form'); setSignupAttempted(false); }}
+              onClick={() => setAuthMode('signin')}
               aria-selected={mode === 'signin'}
             >
               Sign In
             </button>
             <button
+              type="button"
               className={`auth-panel__tab ${mode === 'signup' ? 'is-active' : ''}`}
-              onClick={() => { setMode('signup'); setWarning(''); setError(''); }}
+              onClick={() => setAuthMode('signup')}
               aria-selected={mode === 'signup'}
             >
               Sign Up
@@ -56,7 +98,19 @@ function AuthPanel() {
         </div>
       )}
 
-      {mode === 'signup' && (
+      <div className="auth-panel__swap">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={panelKey}
+            className="auth-panel__swap-inner"
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={reduce ? { duration: 0 } : swapTransition}
+          >
+      {mode === 'signup' && !forgotPasswordMode && (
         <div className="auth-panel__trial-banner">
           <div className="auth-panel__trial-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -80,7 +134,7 @@ function AuthPanel() {
           <p className="auth-panel__desc">
             {mode === 'signin'
               ? 'Enter your credentials to access your learning dashboard'
-              : 'Join Synapse and start your learning journey today'}
+              : 'Join EduSynapse and start your UKMLA learning journey'}
           </p>
         </div>
       )}
@@ -302,14 +356,11 @@ function AuthPanel() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <Turnstile
-              ref={turnstileRef}
-              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+            <AuthCaptcha
+              captchaRef={turnstileRef}
               onSuccess={(token) => setCaptchaToken(token)}
               onExpire={() => setCaptchaToken(null)}
               onError={() => setCaptchaToken(null)}
-              options={{ theme: 'auto', size: 'normal' }}
-              style={{ marginBottom: '12px' }}
             />
             <button
               className="auth-panel__cta"
@@ -410,14 +461,11 @@ function AuthPanel() {
 
         {!forgotPasswordMode && (
           <>
-            <Turnstile
-              ref={turnstileRef}
-              siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+            <AuthCaptcha
+              captchaRef={turnstileRef}
               onSuccess={(token) => setCaptchaToken(token)}
               onExpire={() => setCaptchaToken(null)}
               onError={() => setCaptchaToken(null)}
-              options={{ theme: 'auto', size: 'normal' }}
-              style={{ marginBottom: '12px' }}
             />
             <button
               className="auth-panel__cta"
@@ -468,6 +516,9 @@ function AuthPanel() {
           </p>
         </div>
       )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
