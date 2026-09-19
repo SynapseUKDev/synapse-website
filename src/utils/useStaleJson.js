@@ -51,6 +51,21 @@ export function readStaleJson(cacheKey) {
 }
 
 /**
+ * Memory first, then session/local storage. Returns { value, ts } or null.
+ * Hydrates the in-memory map so later reads in this tab are instant.
+ */
+export function getStaleJsonEntry(cacheKey, persist = 'session') {
+  const mem = memoryCache.get(cacheKey)
+  if (mem) return mem
+  if (!persist) return null
+  const stored = readStorage(persist, `${STORAGE_PREFIX}${cacheKey}`)
+  if (!stored || stored.value === undefined) return null
+  const entry = { value: stored.value, ts: stored.ts }
+  memoryCache.set(cacheKey, entry)
+  return entry
+}
+
+/**
  * Write a value into the cache. ttlMs 0 means "show this now, but refetch".
  */
 export function writeStaleJson(cacheKey, value, { persist = 'session', ttlMs = 0 } = {}) {

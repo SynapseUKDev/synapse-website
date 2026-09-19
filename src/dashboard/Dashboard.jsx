@@ -5,7 +5,8 @@ import './question-bank/QuestionBank.css'
 import { authHeaders, authenticatedFetch } from '../auth/token'
 import { LuFlame, LuTimer, LuTarget, LuCirclePlay, LuBookOpen, LuTrophy, LuArrowRight, LuUserPlus, LuCheck, LuX, LuPencil, LuChevronDown } from 'react-icons/lu'
 import LoadingScreen from '../components/loading/LoadingScreen'
-import useStaleJson from '../utils/useStaleJson'
+import useStaleJson, { getStaleJsonEntry, writeStaleJson } from '../utils/useStaleJson'
+import { anonymisedLeaderboardLabel } from '../utils/leaderboardAlias.js'
 import {
   buildDemoTrend,
   getLast7Days,
@@ -16,13 +17,23 @@ import {
 
 import { getEmailDomain, isUniversityEmail } from '../utils/emailDomain.js'
 
-/** Stable anonymised label for global / university leaderboards */
-function anonymisedLeaderboardLabel(userId) {
-  let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0
+const LEADERBOARD_STALE_MS = 60_000
+const LB_SCOPE_KEY = 'dashboard:leaderboard:scope'
+const LB_SPEC_KEY = 'dashboard:leaderboard:specialty'
+const LB_SORT_KEY = 'dashboard:leaderboard:sort'
+
+function readSession(key, fallback) {
+  try {
+    return sessionStorage.getItem(key) || fallback
+  } catch {
+    return fallback
   }
-  return `Student ${1000 + (hash % 9000)}`
+}
+
+function writeSession(key, value) {
+  try {
+    sessionStorage.setItem(key, value)
+  } catch { /* ignore */ }
 }
 
 /** Scopes where every peer is anonymised, regardless of their own preference. */
@@ -77,12 +88,22 @@ export default function Dashboard() {
   const loading = summaryReq.loading && !summaryReq.data
 
   // Leaderboard state
-  const [leaderboard, setLeaderboard] = useState([])
-  const [leaderboardLoading, setLeaderboardLoading] = useState(true)
+  // Leaderboard state — restore the last scope and any cached rows so switching
+  // away and back does not flash "Loading leaderboard…"
+  const [leaderboard, setLeaderboard] = useState(() => {
+    const scope = readSession(LB_SCOPE_KEY, 'friends')
+    const spec = readSession(LB_SPEC_KEY, 'all')
+    return getStaleJsonEntry(`dashboard:leaderboard:${scope}:${spec}`)?.value || []
+  })
+  const [leaderboardLoading, setLeaderboardLoading] = useState(() => {
+    const scope = readSession(LB_SCOPE_KEY, 'friends')
+    const spec = readSession(LB_SPEC_KEY, 'all')
+    return !getStaleJsonEntry(`dashboard:leaderboard:${scope}:${spec}`)
+  })
   const [specialties, setSpecialties] = useState([])
-  const [selectedSpecialty, setSelectedSpecialty] = useState('all')
-  const [sortBy, setSortBy] = useState('total_answered') // total_answered | correct | accuracy_pct
-  const [leaderboardScope, setLeaderboardScope] = useState('friends') // global | university | friends
+  const [selectedSpecialty, setSelectedSpecialty] = useState(() => readSession(LB_SPEC_KEY, 'all'))
+  const [sortBy, setSortBy] = useState(() => readSession(LB_SORT_KEY, 'total_answered')) // total_answered | correct | accuracy_pct
+  const [leaderboardScope, setLeaderboardScope] = useState(() => readSession(LB_SCOPE_KEY, 'friends')) // global | university | friends
 
   const [recentTopic, setRecentTopic] = useState(null)
   const [analyticsChart, setAnalyticsChart] = useState('questions') // 'questions' | 'accuracy' | 'time'
@@ -169,38 +190,6 @@ export default function Dashboard() {
     }
   }
 
-  const loadLeaderboard = async () => {
-    try {
-      setLeaderboardLoading(true)
-      const params = new URLSearchParams()
-      if (selectedSpecialty !== 'all') params.set('specialty_id', selectedSpecialty)
-      // 'mine' lets the backend resolve the viewer's cohort, so the client never
-      // needs to know cohort ids.
-      if (leaderboardScope === 'institution_year') params.set('cohort_id', 'mine')
-      const query = params.toString()
-      const basePaths = {
-        global: `${API_BASE}/friends/global-leaderboard`,
-        university: `${API_BASE}/friends/university-leaderboard`,
-        institution: `${API_BASE}/friends/institution-leaderboard`,
-        institution_year: `${API_BASE}/friends/institution-leaderboard`,
-        friends: `${API_BASE}/friends/leaderboard`,
-      }
-      const basePath = basePaths[leaderboardScope] || basePaths.friends
-      const url = query ? `${basePath}?${query}` : basePath
-      const res = await authenticatedFetch(url)
-      if (res.ok) {
-        const json = await res.json().catch(() => ({}))
-        setLeaderboard(json?.leaderboard || [])
-      } else {
-        setLeaderboard([])
-      }
-    } catch (_e) {
-      setLeaderboard([])
-    } finally {
-      setLeaderboardLoading(false)
-    }
-  }
-
   const userYearGroup = user?.year_group ? String(user.year_group).trim() : null
 
   const universityEligible = isUniversityEmail(user?.email)
@@ -217,6 +206,18 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
+    writeSession(LB_SCOPE_KEY, leaderboardScope)
+  }, [leaderboardScope])
+
+  useEffect(() => {
+    writeSession(LB_SPEC_KEY, selectedSpecialty)
+  }, [selectedSpecialty])
+
+  useEffect(() => {
+    writeSession(LB_SORT_KEY, sortBy)
+  }, [sortBy])
+
+  useEffect(() => {
     if (leaderboardScope === 'university' && !universityEligible) {
       setLeaderboardScope('friends')
     }
@@ -229,8 +230,53 @@ export default function Dashboard() {
   }, [leaderboardScope, universityEligible, institutionEligible, institution?.cohort_id])
 
   useEffect(() => {
-    loadLeaderboard()
-  }, [selectedSpecialty, leaderboardScope])
+    let cancelled = false
+    const cacheKey = `dashboard:leaderboard:${leaderboardScope}:${selectedSpecialty}`
+    const cached = getStaleJsonEntry(cacheKey)
+    const fresh = cached && Date.now() - cached.ts < LEADERBOARD_STALE_MS
+
+    if (cached) {
+      setLeaderboard(cached.value)
+      setLeaderboardLoading(false)
+      if (fresh) return undefined
+    } else {
+      setLeaderboard([])
+      setLeaderboardLoading(true)
+    }
+
+    const params = new URLSearchParams()
+    if (selectedSpecialty !== 'all') params.set('specialty_id', selectedSpecialty)
+    // 'mine' lets the backend resolve the viewer's cohort, so the client never
+    // needs to know cohort ids.
+    if (leaderboardScope === 'institution_year') params.set('cohort_id', 'mine')
+    const query = params.toString()
+    const basePaths = {
+      global: `${API_BASE}/friends/global-leaderboard`,
+      university: `${API_BASE}/friends/university-leaderboard`,
+      institution: `${API_BASE}/friends/institution-leaderboard`,
+      institution_year: `${API_BASE}/friends/institution-leaderboard`,
+      friends: `${API_BASE}/friends/leaderboard`,
+    }
+    const basePath = basePaths[leaderboardScope] || basePaths.friends
+    const url = query ? `${basePath}?${query}` : basePath
+
+    authenticatedFetch(url)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((json) => {
+        if (cancelled) return
+        const rows = json?.leaderboard || []
+        setLeaderboard(rows)
+        writeStaleJson(cacheKey, rows, { persist: 'session', ttlMs: LEADERBOARD_STALE_MS })
+      })
+      .catch(() => {
+        if (!cancelled && !cached) setLeaderboard([])
+      })
+      .finally(() => {
+        if (!cancelled) setLeaderboardLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [selectedSpecialty, leaderboardScope, API_BASE])
 
   const loadFriends = async () => {
     try {
