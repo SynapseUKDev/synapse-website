@@ -43,7 +43,20 @@ const SCREENS = [
 ]
 
 const INTERVAL_MS = 5200
-const Q_GRID = Array.from({ length: 25 }, (_, i) => i + 1)
+
+const SCREEN_URLS = {
+  dashboard: 'edusynapseuk.org/dashboard',
+  qbank: 'edusynapseuk.org/dashboard/question-bank/practice',
+  textbook: 'edusynapseuk.org/dashboard/textbook/topic/anaphylaxis',
+  osce: 'edusynapseuk.org/dashboard/osce/station/cardiovascular-history-01/practice',
+}
+const Q_GRID = [
+  'correct', 'correct', 'correct', 'correct', 'wrong',
+  'correct', 'correct', 'correct', 'correct', 'correct',
+  'correct', 'wrong', 'correct', 'correct', 'correct',
+  'correct', 'correct', 'current', 'open', 'open',
+  'open', 'open', 'open', 'open', 'open',
+]
 const TB_SECTIONS = [
   'Overview',
   'Pathophysiology',
@@ -196,7 +209,7 @@ function QbankScreen() {
       <header className="ap-page__head">
         <div>
           <h3>Question Bank</h3>
-          <p>Question 1 of 25</p>
+          <p>Question 18 of 25</p>
         </div>
         <span className="ap-exit"><LuX /> Exit</span>
       </header>
@@ -243,7 +256,7 @@ function QbankScreen() {
               ['D', 'Start warfarin'],
               ['E', 'Continue heparin'],
             ].map(([letter, text]) => (
-              <div key={letter} className="ap-opt">
+              <div key={letter} className={`ap-opt ${letter === 'B' ? 'is-selected' : ''}`}>
                 <span className="ap-opt__radio" />
                 <b>{letter}.</b>
                 <span className="ap-opt__text">{text}</span>
@@ -264,30 +277,44 @@ function QbankScreen() {
             </div>
           </div>
         </div>
-        <aside className="ap-rail">
-          <div className="ap-rail-card">
-            <div className="ap-rail-stats">
+        <aside className="ap-rail ap-rail--qbank">
+          <div className="ap-trk">
+            <div className="ap-trk-stats">
               <div>
-                <strong>0/25</strong>
+                <strong>17/25</strong>
                 <em>Completed</em>
               </div>
               <div>
-                <strong>0%</strong>
+                <strong className="is-green">88%</strong>
                 <em>Accuracy</em>
               </div>
               <div>
-                <strong>0s</strong>
+                <strong className="is-blue">41s</strong>
                 <em>Avg Time</em>
               </div>
             </div>
-            <div className="ap-trk-meta">
-              <span>Q 1–25</span>
-              <span>All</span>
+            <div className="ap-trk-bar"><span style={{ width: '68%' }} /></div>
+            <div className="ap-trk-jump">
+              <span className="ap-trk-select">Q 1–25</span>
+              <span className="ap-trk-hash">#</span>
+              <span className="ap-trk-go">Go</span>
+            </div>
+            <div className="ap-trk-chips">
+              {['All', 'Unanswered', 'Correct', 'Wrong', 'Flagged'].map((chip, i) => (
+                <span key={chip} className={i === 0 ? 'is-active' : ''}>{chip}</span>
+              ))}
             </div>
             <div className="ap-trk-grid">
-              {Q_GRID.map((n) => (
-                <i key={n} className={n === 1 ? 'is-current' : ''}>{n}</i>
+              {Q_GRID.map((status, i) => (
+                <i key={i} className={status === 'open' ? '' : `is-${status}`} />
               ))}
+            </div>
+            <div className="ap-trk-legend">
+              <span><i className="swatch-correct" /> Correct</span>
+              <span><i className="swatch-wrong" /> Wrong</span>
+              <span><i className="swatch-open" /> Unanswered</span>
+              <span><i className="swatch-current" /> Current</span>
+              <span><i className="swatch-flag" /> Flagged</span>
             </div>
           </div>
           <div className="ap-rail-card ap-rail-card--ref">
@@ -466,6 +493,10 @@ export default function AuthPreview() {
   const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
+    setCollapsed(active === 'qbank')
+  }, [active])
+
+  useEffect(() => {
     if (reduce || paused) return undefined
     const id = window.setInterval(() => {
       setActive((prev) => {
@@ -487,7 +518,7 @@ export default function AuthPreview() {
       <div className="auth-preview__window">
         <div className="auth-preview__chrome">
           <span /><span /><span />
-          <em>app.edusynapse.co.uk</em>
+          <em>{SCREEN_URLS[active]}</em>
         </div>
         <div className={`auth-preview__app ${collapsed ? 'is-collapsed' : ''}`}>
           <aside className="auth-preview__sidebar">

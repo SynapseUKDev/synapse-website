@@ -11,7 +11,13 @@ import {
 import { Reveal } from '../Reveal.jsx'
 import './Platform.css'
 
-const Q_GRID = Array.from({ length: 25 }, (_, i) => i + 1)
+const Q_GRID = [
+  'correct', 'correct', 'correct', 'correct', 'wrong',
+  'correct', 'correct', 'correct', 'correct', 'correct',
+  'correct', 'wrong', 'correct', 'correct', 'correct',
+  'correct', 'correct', 'current', 'open', 'open',
+  'open', 'open', 'open', 'open', 'open',
+]
 const TB_SECTIONS = [
   'Overview',
   'Pathophysiology',
@@ -59,7 +65,7 @@ function QbankPreview() {
             ['D', 'Start warfarin'],
             ['E', 'Continue heparin'],
           ].map(([letter, text]) => (
-            <div key={letter} className="plat-choice">
+            <div key={letter} className={`plat-choice ${letter === 'B' ? 'is-selected' : ''}`}>
               <i />
               <b>{letter}.</b>
               <span>{text}</span>
@@ -68,15 +74,28 @@ function QbankPreview() {
           ))}
         </div>
         <aside className="plat-rail">
-          <div className="plat-rail__card">
+          <div className="plat-rail__card plat-trk-card">
             <div className="plat-stats">
-              <div><strong>0/25</strong><em>Done</em></div>
-              <div><strong>0%</strong><em>Acc.</em></div>
+              <div><strong>17/25</strong><em>Completed</em></div>
+              <div><strong className="is-green">88%</strong><em>Accuracy</em></div>
+              <div><strong className="is-blue">41s</strong><em>Avg Time</em></div>
+            </div>
+            <div className="plat-trk-bar"><span style={{ width: '68%' }} /></div>
+            <div className="plat-trk-chips">
+              <span className="is-active">All</span>
+              <span>Unanswered</span>
+              <span>Correct</span>
             </div>
             <div className="plat-trk">
-              {Q_GRID.map((n) => (
-                <i key={n} className={n === 1 ? 'is-current' : ''}>{n}</i>
+              {Q_GRID.map((status, i) => (
+                <i key={i} className={status === 'open' ? '' : `is-${status}`} />
               ))}
+            </div>
+            <div className="plat-trk-legend">
+              <span><i className="swatch-correct" /> Correct</span>
+              <span><i className="swatch-wrong" /> Wrong</span>
+              <span><i className="swatch-open" /> Unanswered</span>
+              <span><i className="swatch-current" /> Current</span>
             </div>
           </div>
         </aside>
