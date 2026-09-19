@@ -4,7 +4,7 @@ import { Reveal } from '../Reveal.jsx'
 import './TrustBar.css'
 
 const ITEMS = [
-  { icon: FaBookMedical, label: '10,000+ UKMLA questions', tone: 'blue' },
+  { icon: FaBookMedical, label: '15,000+ UKMLA questions', tone: 'blue' },
   { icon: FaCertificate, label: 'UKMLA-aligned', tone: 'gold' },
   { icon: FaUserDoctor, label: 'Clinically reviewed', tone: 'green' },
   { icon: FaGraduationCap, label: 'Built for UK medical students', tone: 'purple' },
