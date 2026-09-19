@@ -191,7 +191,7 @@ function Subscribe() {
             <div className="auth__stat-label">6 months</div>
           </div>
           <div className="auth__stat">
-            <div className="auth__stat-number">10,000+</div>
+            <div className="auth__stat-number">15,000+</div>
             <div className="auth__stat-label">Questions</div>
           </div>
           <div className="auth__stat">
