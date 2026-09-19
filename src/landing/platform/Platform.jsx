@@ -1,7 +1,212 @@
 import React from 'react'
-import { LuArrowRight, LuCircleHelp, LuBookOpen, LuMic, LuCheck, LuTimer } from 'react-icons/lu'
+import {
+  LuBookOpen,
+  LuCircleHelp,
+  LuMic,
+  LuMinus,
+  LuPlay,
+  LuPlus,
+  LuSlash,
+} from 'react-icons/lu'
 import { Reveal } from '../Reveal.jsx'
 import './Platform.css'
+
+const Q_GRID = Array.from({ length: 25 }, (_, i) => i + 1)
+const TB_SECTIONS = [
+  'Overview',
+  'Pathophysiology',
+  'Epidemiology & Risk Factors',
+  'Clinical Features',
+  'Investigations',
+  'Management',
+  'Complications',
+]
+
+function QbankPreview() {
+  return (
+    <div className="plat-preview plat-preview--qbank">
+      <div className="plat-preview__chrome">
+        <span /><span /><span />
+        <em>Question Bank</em>
+      </div>
+      <div className="plat-shot">
+        <div className="plat-card plat-card--q">
+          <p className="plat-stem">
+            A 67-year-old woman develops new bruising and gum bleeding 7 days after starting heparin.
+          </p>
+          <p className="plat-kicker">Bloods</p>
+          <table className="plat-table">
+            <thead>
+              <tr>
+                <th>Test</th>
+                <th>Result</th>
+                <th>Ref</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Platelets</td>
+                <td>58 ×10⁹/L</td>
+                <td>150–400</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="plat-kicker">What is the single best next step?</p>
+          {[
+            ['A', 'Give vitamin K'],
+            ['B', 'Stop heparin'],
+            ['C', 'Give platelet transfusion'],
+            ['D', 'Start warfarin'],
+            ['E', 'Continue heparin'],
+          ].map(([letter, text]) => (
+            <div key={letter} className="plat-choice">
+              <i />
+              <b>{letter}.</b>
+              <span>{text}</span>
+              <LuSlash />
+            </div>
+          ))}
+        </div>
+        <aside className="plat-rail">
+          <div className="plat-rail__card">
+            <div className="plat-stats">
+              <div><strong>0/25</strong><em>Done</em></div>
+              <div><strong>0%</strong><em>Acc.</em></div>
+            </div>
+            <div className="plat-trk">
+              {Q_GRID.map((n) => (
+                <i key={n} className={n === 1 ? 'is-current' : ''}>{n}</i>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function TextbookPreview() {
+  return (
+    <div className="plat-preview plat-preview--textbook">
+      <div className="plat-preview__chrome">
+        <span /><span /><span />
+        <em>UKMLA Textbook</em>
+      </div>
+      <div className="plat-shot plat-shot--wash">
+        <div className="plat-stack">
+          <p className="plat-crumb">UKMLA Textbook <span>/</span> Acute &amp; Emergency <span>/</span> Anaphylaxis</p>
+          <h4 className="plat-app__title">Anaphylaxis</h4>
+          <section className="plat-card">
+            <h5>Overview</h5>
+            <p>
+              Anaphylaxis is a severe life-threatening systemic hypersensitivity reaction with rapid onset.
+              Immediate intramuscular adrenaline is the first-line treatment.
+            </p>
+          </section>
+          <section className="plat-card">
+            <h5>Pathophysiology</h5>
+            <ul>
+              <li><b>IgE-mediated:</b> re-exposure to allergen → mast cell degranulation.</li>
+              <li><b>Non-IgE mechanisms:</b> direct mast-cell activating drugs, radiocontrast.</li>
+            </ul>
+          </section>
+          <section className="plat-card">
+            <h5>Clinical Features</h5>
+            <table className="plat-table">
+              <tbody>
+                <tr>
+                  <td>Airway</td>
+                  <td>Stridor, hoarseness, throat tightness</td>
+                </tr>
+                <tr>
+                  <td>Breathing</td>
+                  <td>Wheeze, tachypnoea, hypoxia</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+        <aside className="plat-rail">
+          <div className="plat-rail__card">
+            <div className="plat-rail__label">Chapter Sections</div>
+            <ul className="plat-toc">
+              {TB_SECTIONS.map((item, i) => (
+                <li key={item} className={i === 0 ? 'is-active' : ''}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="plat-rail__card">
+            <div className="plat-rail__label">Reading status</div>
+            <div className="plat-status">
+              <span>Not read</span>
+              <span className="is-active">Reading</span>
+              <span>Read</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function OscePreview() {
+  return (
+    <div className="plat-preview plat-preview--osce">
+      <div className="plat-preview__chrome">
+        <span /><span /><span />
+        <em>OSCE Station</em>
+      </div>
+      <div className="plat-shot plat-shot--wash">
+        <div className="plat-stack">
+          <p className="plat-back">‹ Back to Station Options</p>
+          <div className="plat-osce-title">
+            <h4>Cardiovascular history 01</h4>
+            <div className="plat-tags">
+              <span>History Taking</span>
+              <span>Medium</span>
+            </div>
+          </div>
+          <section className="plat-card">
+            <h5>Patient Script</h5>
+            <p className="plat-script">
+              I’ve been getting more and more out of breath over the last couple of months.
+              I thought it was just because I’m getting older, but it’s starting to affect what I can do.
+            </p>
+            <dl className="plat-meta">
+              <div><dt>Name</dt><dd>Mr John Harris</dd></div>
+              <div><dt>Age</dt><dd>72 years old</dd></div>
+              <div><dt>Site</dt><dd>Chest</dd></div>
+              <div><dt>Onset</dt><dd>Gradual over the past 2 months</dd></div>
+            </dl>
+          </section>
+          <section className="plat-card">
+            <h5>Candidate must identify</h5>
+            <ul>
+              <li>Progressive exertional breathlessness</li>
+              <li>Orthopnoea</li>
+              <li>Paroxysmal nocturnal dyspnoea</li>
+            </ul>
+          </section>
+        </div>
+        <aside className="plat-rail">
+          <div className="plat-timer">
+            <strong>8:00</strong>
+            <div className="plat-timer__row">
+              <span><LuMinus /></span>
+              <span className="is-play"><LuPlay /></span>
+              <span><LuPlus /></span>
+            </div>
+          </div>
+          <div className="plat-fail">
+            <h5>Automatic Fail Criteria</h5>
+            <p>Fails to identify orthopnoea or paroxysmal nocturnal dyspnoea</p>
+            <p>Does not explore major cardiovascular red flag symptoms</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
 
 const CARDS = [
   {
@@ -9,85 +214,21 @@ const CARDS = [
     icon: LuCircleHelp,
     title: 'Question Bank',
     body: 'Build exam confidence with clinically realistic UKMLA-style questions, detailed explanations and smart performance tracking.',
-    preview: (
-      <div className="plat-preview plat-preview--qbank">
-        <div className="plat-preview__bar" />
-        <div className="plat-preview__body">
-          <span className="plat-preview__chip">Cardiology</span>
-          <p className="plat-stem">A 67-year-old man presents with sudden-onset central chest pain radiating to the left arm.</p>
-          <div className="plat-opt">
-            <span className="plat-opt__key">A</span>
-            <span>Pericarditis</span>
-          </div>
-          <div className="plat-opt is-correct">
-            <span className="plat-opt__key">B</span>
-            <span>Acute coronary syndrome</span>
-          </div>
-          <div className="plat-opt">
-            <span className="plat-opt__key">C</span>
-            <span>Aortic dissection</span>
-          </div>
-        </div>
-      </div>
-    ),
+    preview: <QbankPreview />,
   },
   {
     id: 'textbook',
     icon: LuBookOpen,
     title: 'UKMLA Textbook',
     body: 'High-yield, structured clinical content built around the UKMLA curriculum and designed for rapid, active revision.',
-    preview: (
-      <div className="plat-preview plat-preview--textbook">
-        <div className="plat-preview__bar" />
-        <div className="plat-preview__body">
-          <span className="plat-preview__chip is-gold">Acute Medicine</span>
-          <div className="plat-topic is-done">
-            <span className="plat-topic__check"><LuCheck /></span>
-            <span>Acute coronary syndrome</span>
-          </div>
-          <div className="plat-topic">
-            <span className="plat-topic__check" />
-            <span>Sepsis</span>
-          </div>
-          <div className="plat-topic">
-            <span className="plat-topic__check" />
-            <span>Anaphylaxis</span>
-          </div>
-          <div className="plat-tabs">
-            <b className="is-active">Presentation</b>
-            <b>Diagnosis</b>
-            <b>Management</b>
-          </div>
-        </div>
-      </div>
-    ),
+    preview: <TextbookPreview />,
   },
   {
     id: 'osce',
     icon: LuMic,
     title: 'OSCE',
     body: 'Practise clinical encounters with structured stations, checklists and focused preparation for real-world communication and examination skills.',
-    preview: (
-      <div className="plat-preview plat-preview--osce">
-        <div className="plat-preview__bar" />
-        <div className="plat-preview__body">
-          <div className="plat-osce-head">
-            <strong>Chest pain</strong>
-            <span className="plat-osce-time"><LuTimer /> 8 min</span>
-          </div>
-          <div className="plat-osce-tags">
-            <span>💬 History</span>
-            <span>Cardiology</span>
-          </div>
-          <ul className="plat-osce-list">
-            <li className="is-done"><LuCheck /> Opening & consent</li>
-            <li>History of presenting complaint</li>
-            <li>ICE and explanation</li>
-            <li>Close & summarise</li>
-          </ul>
-        </div>
-      </div>
-    ),
+    preview: <OscePreview />,
   },
 ]
 
