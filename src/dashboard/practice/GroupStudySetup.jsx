@@ -53,6 +53,8 @@ export default function GroupStudySetup() {
   const [copied, setCopied] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
+  const [isStarting, setIsStarting] = useState(false)
+  const [lobbyError, setLobbyError] = useState('')
 
   const socketRef = useRef(null)
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -139,6 +141,51 @@ export default function GroupStudySetup() {
       if (socketRef.current) {
         socketRef.current.disconnect()
       }
+    }
+  }, [sessionCreated, roomCode])
+
+  // Fallback for socket events that never arrive. Both the participant list and the
+  // start of the session are delivered only over the socket, so a single dropped event
+  // left joiners invisible to the host, or stranded in the lobby after everyone else
+  // had already started. Re-reading the session makes the lobby self-healing.
+  useEffect(() => {
+    if (!sessionCreated || !roomCode) return
+
+    let cancelled = false
+
+    const refreshLobby = async () => {
+      try {
+        const res = await authenticatedFetch(`${API_BASE}/qbank/group-session/${roomCode}`, {
+          headers: authHeaders()
+        })
+        if (cancelled || !res.ok) return
+
+        const data = await res.json()
+        if (cancelled) return
+
+        if (Array.isArray(data.participants)) {
+          setParticipants(data.participants)
+        }
+
+        if (data.status === 'active') {
+          goToPractice({
+            ...data,
+            room_code: roomCode,
+            timer_end_time:
+              data.timer_minutes > 0 && data.started_at
+                ? new Date(data.started_at).getTime() + data.timer_minutes * 60 * 1000
+                : null
+          })
+        }
+      } catch (e) {
+        console.error('Lobby refresh failed:', e)
+      }
+    }
+
+    const intervalId = setInterval(refreshLobby, 5000)
+    return () => {
+      cancelled = true
+      clearInterval(intervalId)
     }
   }, [sessionCreated, roomCode])
 
@@ -264,6 +311,27 @@ export default function GroupStudySetup() {
     topicsLoading,
   ])
 
+  const goToPractice = (data) => {
+    const params = new URLSearchParams({
+      room_code: data.room_code,
+      study_set_name: data.study_set_name || '',
+      num_questions: String(data.num_questions),
+      timer_minutes: String(data.timer_minutes),
+      include_attempted: data.include_attempted ? '1' : '0',
+      include_incorrect: data.incorrect_only ? '1' : '0'
+    })
+
+    if (data.study_set_id) {
+      params.append('study_set_id', data.study_set_id)
+    }
+
+    if (data.timer_end_time) {
+      sessionStorage.setItem('group_timer_end', data.timer_end_time.toString())
+    }
+
+    navigate(`/dashboard/question-bank/group-practice?${params.toString()}`)
+  }
+
   const connectSocket = () => {
     const userId = user.id
     const username = user.username || user.email || 'Anonymous'
@@ -307,29 +375,15 @@ export default function GroupStudySetup() {
 
     socketRef.current.on('session-started', (data) => {
       console.log('Session started:', data)
-      const params = new URLSearchParams({
-        room_code: data.room_code,
-        study_set_name: data.study_set_name,
-        num_questions: data.num_questions.toString(),
-        timer_minutes: data.timer_minutes.toString(),
-        include_attempted: data.include_attempted ? '1' : '0',
-        include_incorrect: data.incorrect_only ? '1' : '0'
-      })
-
-      if (data.study_set_id) {
-        params.append('study_set_id', data.study_set_id)
-      }
-
-      if (data.timer_end_time) {
-        sessionStorage.setItem('group_timer_end', data.timer_end_time.toString())
-      }
-
-      navigate(`/dashboard/question-bank/group-practice?${params.toString()}`)
+      goToPractice(data)
     })
 
     socketRef.current.on('error', (error) => {
       console.error('Socket error:', error)
-      alert(error.message || 'An error occurred')
+      // Not alert(): a blocking dialog here froze the lobby on a harmless duplicate
+      // start, and the host could not see the session had actually begun behind it.
+      setIsStarting(false)
+      setLobbyError(error?.message || 'An error occurred')
     })
 
     socketRef.current.on('connect_error', (error) => {
@@ -457,9 +511,10 @@ export default function GroupStudySetup() {
   }
 
   const startGroupSession = () => {
-    if (socketRef.current) {
-      socketRef.current.emit('start-session', { room_code: roomCode })
-    }
+    if (isStarting || !socketRef.current) return
+    setLobbyError('')
+    setIsStarting(true)
+    socketRef.current.emit('start-session', { room_code: roomCode })
   }
 
   const updateSliderProgress = (value, min, max) => {
@@ -551,14 +606,18 @@ export default function GroupStudySetup() {
                 </div>
               </div>
 
+              {lobbyError && (
+                <p className="setup__lobby-error" role="alert">{lobbyError}</p>
+              )}
+
               {isHost && (
                 <button
                   className="setup__start-btn"
                   onClick={startGroupSession}
-                  disabled={participants.length < 1}
+                  disabled={participants.length < 1 || isStarting}
                 >
                   <LuPlay />
-                  Start Session
+                  {isStarting ? 'Starting…' : 'Start Session'}
                 </button>
               )}
             </div>

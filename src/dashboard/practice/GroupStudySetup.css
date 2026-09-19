@@ -570,3 +570,21 @@ html[data-theme='dark'] .topic-checkbox-label.checked {
   background-color: var(--dm-surface-container-high);
 }
 
+
+/* Inline lobby error — replaces the blocking alert() that socket errors used to raise */
+.setup__lobby-error {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #dc2626;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+html[data-theme='dark'] .setup__lobby-error {
+  color: #fca5a5;
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.35);
+}

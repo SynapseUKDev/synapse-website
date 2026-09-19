@@ -95,6 +95,24 @@ export default function HighlightPopover({
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
+  // Close when clicking outside the popover.
+  // This used to be a full-screen backdrop element, but a backdrop sits on top of the
+  // whole page and swallows the first click anywhere — so clicking a button underneath
+  // (e.g. Exit in practice) only closed the popover and had to be clicked twice.
+  // A document listener closes the popover while letting the click reach its real target.
+  useEffect(() => {
+    const handler = (e) => {
+      if (popRef.current?.contains(e.target)) return
+      onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    document.addEventListener('touchstart', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('touchstart', handler)
+    }
+  }, [onClose])
+
   const handleSave = (c = color, n = note) => {
     onSave({ note: n.trim(), color: c })
   }
@@ -132,7 +150,6 @@ export default function HighlightPopover({
 
   return (
     <>
-      <div className="hl-popover-backdrop" onClick={onClose} />
       <div
         ref={popRef}
         className="hl-popover"

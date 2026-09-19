@@ -1,10 +1,4 @@
 /* HighlightPopover – shared popup for highlight actions (note, delete, color) */
-.hl-popover-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-}
-
 .hl-popover {
   position: fixed;
   z-index: 1000;
