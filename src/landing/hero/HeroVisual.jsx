@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { floatAnim } from '../motion.js'
-import doctorIllustration from '../../assets/landing/doctor.svg'
+import studentsIllustration from '../../assets/landing/students.svg'
 
 export default function HeroVisual() {
   const reduce = useReducedMotion()
@@ -27,7 +27,7 @@ export default function HeroVisual() {
         </motion.article>
 
         <div className="hero-visual__person">
-          <img src={doctorIllustration} alt="" className="hero-student" />
+          <img src={studentsIllustration} alt="" className="hero-student" />
         </div>
 
         <motion.article className="float-card float-card--perf" animate={float(0.3, 11)}>
