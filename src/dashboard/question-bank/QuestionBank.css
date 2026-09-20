@@ -1001,3 +1001,73 @@ html[data-theme="dark"] .delete-confirm-btn-cancel:hover {
     font-size: 14px;
   }
 }
+
+/* Resume banner: only rendered when the user's most recent activity was a custom
+   set, so it must read as a single obvious target rather than another stat tile. */
+/* Amber ink for the resume icon, on the gold tint behind it. Scoped to this
+   component: the global palette has no "on-tint-gold" ink token. */
+:root {
+  --qb-resume-icon-fg: #92400e;
+}
+
+html[data-theme="dark"] {
+  --qb-resume-icon-fg: var(--dm-tertiary);
+}
+
+.qb-resume {
+  width: 100%;
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--syn-border);
+  border-radius: 14px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qb-resume:hover {
+  border-color: var(--syn-gold);
+}
+
+.qb-resume__icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--surface-tint-gold);
+  color: var(--qb-resume-icon-fg);
+}
+
+.qb-resume__text {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.qb-resume__title {
+  font-size: 16px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qb-resume__meta {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--syn-muted);
+}
+
+.qb-resume__chevron {
+  flex-shrink: 0;
+  font-size: 22px;
+  color: var(--syn-muted);
+}

@@ -133,6 +133,7 @@ export default function QuestionBank() {
     total_answered: summaryReq.data?.total_answered || 0,
     accuracy_pct: summaryReq.data?.accuracy_pct || 0,
     avg_time_ms: summaryReq.data?.avg_time_ms || 0,
+    last_custom_set: summaryReq.data?.last_custom_set || null,
   }
   const allSpecialties = specialtiesReq.data || []
   const [searchQuery, setSearchQuery] = useState('')
@@ -215,6 +216,27 @@ export default function QuestionBank() {
           </div>
         </div>
       </div>
+
+      {summary?.last_custom_set?.id && (
+        <button
+          type="button"
+          className="qb-resume"
+          onClick={() =>
+            navigate(
+              `/dashboard/question-bank/setup?study_set_id=${encodeURIComponent(summary.last_custom_set.id)}&study_set_name=${encodeURIComponent(summary.last_custom_set.name || 'Custom set')}`
+            )
+          }
+        >
+          <div className="qb-resume__icon">
+            <LuLayers size={22} aria-hidden="true" />
+          </div>
+          <div className="qb-resume__text">
+            <div className="qb-resume__title">Resume {summary.last_custom_set.name || 'Custom set'}</div>
+            <div className="qb-resume__meta">Custom set — your most recent activity</div>
+          </div>
+          <span className="qb-resume__chevron" aria-hidden>›</span>
+        </button>
+      )}
 
       {/* Feature cards: col 1 = revision + flashcards; cols 2–3 = group + heatmap */}
       <div className="qb__features" style={{ marginTop: 32, marginBottom: 40 }}>

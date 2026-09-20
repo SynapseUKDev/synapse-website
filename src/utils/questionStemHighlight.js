@@ -159,26 +159,13 @@ export function reconcileSelectionRangeToFlat(flat, rawLo, rawHi, selectedText) 
   const t = s.trim()
   if (!t) return { start: lo0, end: hi0 }
   if (nFlat.slice(lo0, lo0 + t.length) === t) return { start: lo0, end: lo0 + t.length }
-  const r = 48
-  const from = Math.max(0, lo0 - r)
-  const to = Math.min(nFlat.length, lo0 + r)
-  const w = nFlat.slice(from, to)
-  const local = w.indexOf(t)
-  if (local !== -1) {
-    const start = from + local
-    return { start, end: start + t.length }
-  }
-  let best = -1
-  let bestD = Infinity
-  for (let p = 0; p <= nFlat.length - t.length; p++) {
-    if (nFlat.slice(p, p + t.length) !== t) continue
-    const d = Math.abs(p - lo0)
-    if (d < bestD) {
-      bestD = d
-      best = p
-    }
-  }
-  if (best !== -1) return { start: best, end: best + t.length }
+  // Nearest occurrence to the raw offset, never the first one inside a window. Scanning a
+  // window front-to-back with indexOf is biased towards text *before* the selection, so a
+  // decoy occurrence earlier in the stem wins over the real one: selecting the standalone
+  // "llm" in "His allmark score ... the llm tool" with only two characters of offset drift
+  // relocated the highlight 31 characters backwards, onto the "llm" buried in "allmark".
+  const near = findClosestSubstringIndex(nFlat, t, lo0)
+  if (near !== -1) return { start: near, end: near + t.length }
   return { start: lo0, end: hi0 }
 }
 

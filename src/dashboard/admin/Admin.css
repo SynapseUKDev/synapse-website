@@ -1,3 +1,15 @@
+/* Selected-state marker for the admin page.
+   --syn-gold bridges to --dm-tertiary in dark mode (see index.css), so the ring
+   re-themes on its own and needs no html[data-theme="dark"] override. */
+:root {
+  --admin-select-ring: var(--syn-gold);
+  --admin-focus-ring: rgba(20, 61, 184, 0.55);
+}
+
+html[data-theme="dark"] {
+  --admin-focus-ring: rgba(173, 198, 255, 0.65);
+}
+
 .admin {
   padding: 24px;
   color: var(--syn-navy-700);
@@ -51,7 +63,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  /* 10px, not 8px: the selected tab's 3px ring needs clearance from its neighbours. */
+  gap: 10px;
   margin-bottom: 16px;
 }
 
@@ -164,6 +177,19 @@
   color: #fff;
 }
 
+/* box-shadow rather than outline: it takes no layout space (the tab row never
+   reflows as the selection moves) and leaves the outline property free for focus. */
+.admin-tabs button.is-active {
+  box-shadow: 0 0 0 3px var(--admin-select-ring);
+}
+
+/* Keyboard focus on the already-selected tab: stack the focus ring outside the
+   gold one instead of letting the UA outline overlap it. */
+.admin-tabs button.is-active:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--admin-select-ring), 0 0 0 6px var(--admin-focus-ring);
+}
+
 .admin-form > button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
@@ -222,9 +248,12 @@
 .admin-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   max-height: 70vh;
   overflow: auto;
+  /* The selected row's ring paints outside its border box; without this padding
+     `overflow: auto` clips it against the container edges. */
+  padding: 3px;
 }
 
 .admin-list button {
@@ -238,12 +267,17 @@
 }
 
 .admin-list button.is-active {
-  border-color: #38bdf8;
-  background: #f0f9ff;
+  border-color: var(--admin-select-ring);
+  background: var(--surface-tint-gold);
+  box-shadow: 0 0 0 3px var(--admin-select-ring);
+}
+
+.admin-list button.is-active:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--admin-select-ring), 0 0 0 6px var(--admin-focus-ring);
 }
 
 html[data-theme="dark"] .admin-list button.is-active {
-  border-color: var(--dm-primary-container);
   background: var(--dm-surface-container-high);
 }
 
@@ -577,7 +611,7 @@ html[data-theme="dark"] .admin-announcement-editor .w-md-editor-toolbar {
 .admin-subtab-btn.is-active {
   font-weight: 800;
   color: var(--syn-navy-700);
-  border-bottom: 2.5px solid #f59e0b;
+  border-bottom: 3px solid var(--admin-select-ring);
 }
 
 

@@ -1418,6 +1418,9 @@ export default function Practice() {
         selected_option_id: currentQuestion.type === 'MCQ' ? selected : undefined,
         text_answer: currentQuestion.type === 'SAQ' ? saqText : undefined,
         time_taken_ms: timeTaken,
+        // Lets the backend stamp study_sets.last_practiced_at, which drives the
+        // dashboard Quick Action. Undefined for specialty practice.
+        study_set_id: studySetId || undefined,
       }
 
       // Don't await this - let it happen in background
