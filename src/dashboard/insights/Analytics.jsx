@@ -10,6 +10,7 @@ import WeakestTopics from './components/WeakestTopics'
 import ReadingVsPractice from './components/ReadingVsPractice'
 import ActivityCard from './components/ActivityCard'
 import SectionRule from './components/SectionRule'
+import ExamsSection from './components/ExamsSection'
 import './Analytics.css'
 
 const WINDOWS = [
@@ -75,6 +76,10 @@ export default function Analytics() {
 
       {d ? (
         <>
+          <div className="an-row">
+            <ActivityCard />
+          </div>
+
           <KpiDeck kpis={d.kpis} allTime={d.window.key === 'all'} />
 
           <SectionRule label="This period" />
@@ -92,10 +97,7 @@ export default function Analytics() {
             <ReadingVsPractice data={d.reading_vs_practice} />
           </div>
 
-          <SectionRule label="Consistency" />
-          <div className="an-row">
-            <ActivityCard />
-          </div>
+          <ExamsSection window={win} />
         </>
       ) : null}
     </div>

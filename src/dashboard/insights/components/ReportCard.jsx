@@ -11,11 +11,11 @@ import { Link } from 'react-router-dom'
 const COPY = {
   ok: (n) => ({
     title: 'Your first report is on its way',
-    body: `On the 1st of each month we look at your answers and write a plan for your weakest topics. Answer at least ${n} questions a month to receive one.`,
+    body: `On the 1st of each month we look at your work and write a plan for your weakest topics. Study at least ${n} times a month — questions, OSCE stations or mock papers — to receive one.`,
   }),
   insufficient_activity: (n) => ({
     title: 'Not enough practice last month',
-    body: `Answer at least ${n} questions a month to receive a report.`,
+    body: `Study at least ${n} times a month — questions, OSCE stations or mock papers — to receive a report.`,
   }),
   insufficient_coverage: () => ({
     title: 'Your practice was too narrow',

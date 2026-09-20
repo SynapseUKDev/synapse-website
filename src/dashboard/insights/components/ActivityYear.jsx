@@ -1,17 +1,9 @@
 import { useMemo } from 'react'
 import useStaleJson from '../../../utils/useStaleJson'
 import { authHeaders } from '../../../auth/token'
+import { levelFor, DEFAULT_DAILY_TARGET, describeDay } from '../../../components/heatmap/activityLevel'
 
 const DAYS_TOTAL = 365
-
-/** Map question count to heatmap level (fixed thresholds, not relative to max). */
-function levelFor(count) {
-  if (!count || count <= 0) return 0
-  if (count <= 49) return 1
-  if (count <= 99) return 2
-  if (count <= 199) return 3
-  return 4
-}
 
 /** Local YYYY-MM-DD key, matching ActivityHeatmap's formatDateKey. */
 function formatDateKey(date) {
@@ -32,12 +24,12 @@ export default function ActivityYear() {
     : '') || 'UTC'
 
   const req = useStaleJson(
-    `${API_BASE}/qbank/activity/daily?timezone=${encodeURIComponent(tz)}&days=365`,
+    `${API_BASE}/analytics/activity/daily?timezone=${encodeURIComponent(tz)}&days=365`,
     {
       headers: { ...authHeaders() },
       staleMs: 300_000,
       persist: 'session',
-      key: 'analytics:activity:365',
+      key: 'analytics:activity:v2:365',
     }
   )
 
@@ -60,12 +52,14 @@ export default function ActivityYear() {
     return { cells: out, columns: Math.ceil(out.length / 7) }
   }, [])
 
+  const dailyTarget = req.data?.daily_target || DEFAULT_DAILY_TARGET
+
   const counts = useMemo(() => {
     const map = {}
     const dates = req.data?.dates
     if (Array.isArray(dates)) {
       dates.forEach((item) => {
-        map[item.date] = item.count || 0
+        map[item.date] = { count: item.count || 0, byKind: item.by_kind || null }
       })
     }
     return map
@@ -78,7 +72,7 @@ export default function ActivityYear() {
     let current = 0
     cells.forEach((d) => {
       if (!d) return
-      const count = counts[formatDateKey(d)] || 0
+      const count = counts[formatDateKey(d)]?.count || 0
       total += count
       if (count > 0) {
         activeDays += 1
@@ -124,21 +118,22 @@ export default function ActivityYear() {
               </div>
             ))}
           </div>
-          <div className="ay-grid" role="grid" aria-label="Questions answered per day over the last year">
+          <div className="ay-grid" role="grid" aria-label="Study activity per day over the last year">
             {['Mon', '', 'Wed', '', 'Fri', '', ''].map((label, i) => (
               <div key={`wd-${i}`} className="ay-weekday-label">{label}</div>
             ))}
             {cells.map((d, idx) => {
               if (!d) return <div key={`pad-${idx}`} className="ay-pad" />
               const key = formatDateKey(d)
-              const count = counts[key] || 0
-              const level = levelFor(count)
+              const entry = counts[key]
+              const count = entry?.count || 0
+              const level = levelFor(count, dailyTarget)
               return (
                 <div
                   key={key}
                   role="gridcell"
                   className={`ay-cell ay-cell--l${level}`}
-                  title={`${formatTitleDate(d)}: ${count} questions`}
+                  title={`${formatTitleDate(d)}: ${describeDay(entry)}`}
                 />
               )
             })}
@@ -148,7 +143,7 @@ export default function ActivityYear() {
 
       <div className="ay-summary-row">
         <p className="ay-summary">
-          {stats.total} questions in the last year · {stats.activeDays} active days · longest streak {stats.longest} days
+          {stats.total} activities in the last year · {stats.activeDays} active days · longest streak {stats.longest} days
         </p>
         <div className="ay-legend">
           <span>Less</span>

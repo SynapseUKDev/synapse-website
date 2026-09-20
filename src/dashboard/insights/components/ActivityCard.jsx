@@ -6,7 +6,7 @@ export default function ActivityCard() {
       <div className="an-card__head">
         <div>
           <h2 className="an-card__title">Activity</h2>
-          <p className="an-card__sub">Questions answered each day · more questions moves you up the scale</p>
+          <p className="an-card__sub">Everything you studied each day · questions, OSCE stations and mock papers</p>
         </div>
       </div>
       <div className="an-activity">

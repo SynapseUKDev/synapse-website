@@ -4,13 +4,19 @@
   --an-weak-ink: #b91c1c; --an-dev-ink: #b45309; --an-strong-ink: #047857;
   --an-untested: #94a3b8; --an-untested-bg: #f1f5f9; --an-line: #143db8; --an-bars: #c7d2fe;
   --an-icon-cyan: #0ea5b5; --an-icon-mint: #059669; --an-icon-blue: #143db8; --an-tint-mint: #ecfdf5;
+  /* Shared with ActivityHeatmap.css on the dashboard — the two render the same days and
+     must not disagree. Levels are a share of the user's daily target, not absolute
+     counts, so level 3 (green) is "target met". See components/heatmap/activityLevel.js. */
   --an-heat0: #ffffff; --an-heat0-border: #e5e7eb; --an-heat1: #ef4444; --an-heat2: #eab308; --an-heat3: #86efac; --an-heat4: #22c55e;
   --an-card-bg: var(--surface-card); --an-card-border: var(--syn-border); --an-panel-bg: var(--surface-tint-blue); }
 html[data-theme='dark'] .an { --an-weak: #ff6b6b; --an-weak-bg: #4d2020; --an-dev: #ffb95f; --an-dev-bg: #463111; --an-strong: #4edea3; --an-strong-bg: #123d2c;
   --an-weak-ink: #ff6b6b; --an-dev-ink: #ffb95f; --an-strong-ink: #4edea3;
   --an-untested: #8f939c; --an-untested-bg: #2e2e2e; --an-line: #adc6ff; --an-bars: #2b3a5c;
   --an-icon-cyan: #4edea3; --an-icon-mint: #4edea3; --an-icon-blue: #adc6ff; --an-tint-mint: #1c1c1c;
-  --an-heat0: #ffffff; --an-heat0-border: rgba(255,255,255,0.2); --an-heat1: #ef4444; --an-heat2: #eab308; --an-heat3: #86efac; --an-heat4: #22c55e;
+  /* heat0 is the "nothing logged" cell and is most of a 365-day grid; #ffffff lit the whole
+     card up in dark mode. Mirrored in ActivityHeatmap.css. */
+  --an-heat0: var(--dm-surface-container-low, #141414); --an-heat0-border: rgba(255,255,255,0.16);
+  --an-heat1: #ef4444; --an-heat2: #eab308; --an-heat3: #86efac; --an-heat4: #22c55e;
   --an-card-bg: var(--dm-surface-container-high, #1c1c1c); --an-card-border: #33363d; --an-panel-bg: var(--dm-surface-container-highest, #252525); }
 
 /* Hero */
@@ -81,8 +87,16 @@ html[data-theme='dark'] .an { --an-weak: #ff6b6b; --an-weak-bg: #4d2020; --an-de
 /* AI report */
 .an-ai { background: var(--grad-primary); color: #fff; border: 0; }
 .an-ai .an-card__title { color: #fff; }
-.an-ai__eyebrow { color: rgba(255,255,255,.75); }
-.an-ai__sub { color: rgba(255,255,255,.8); }
+/* Scoped to .an-ai (specificity 0,2,0) rather than matching the modifier alone (0,1,0).
+   The modifier used to beat .an-eyebrow / .an-card__sub only by appearing later in this
+   file, so the card's legibility depended on source order and on every consumer writing
+   both class names. Now the card owns its text whatever the consumer writes.
+   Raised from .75/.8: those passed AA on the gradient (5.7:1, 6.2:1) but read as muddy
+   grey on saturated blue rather than as white. */
+.an-ai .an-eyebrow,
+.an-ai .an-ai__eyebrow { color: rgba(255,255,255,.95); }
+.an-ai .an-card__sub,
+.an-ai .an-ai__sub { color: rgba(255,255,255,.92); }
 .an-ai__prog { height: 10px; border-radius: 999px; background: rgba(255,255,255,.22); overflow: hidden; margin: 14px 0 8px; }
 .an-ai__prog i { display: block; height: 100%; background: var(--syn-gold); border-radius: 999px; }
 
@@ -169,8 +183,10 @@ html[data-theme='dark'] .an-chart,
 html[data-theme='dark'] .an-tp__rank { background: var(--an-panel-bg); }
 html[data-theme='dark'] .an-ai { background: #16223f; border: 1px solid #adc6ff; color: #e8e9ec; }
 html[data-theme='dark'] .an-ai .an-card__title { color: #fff; }
-html[data-theme='dark'] .an-ai__eyebrow,
-html[data-theme='dark'] .an-ai__sub { color: rgba(232,233,236,.75); }
+html[data-theme='dark'] .an-ai .an-eyebrow,
+html[data-theme='dark'] .an-ai .an-ai__eyebrow,
+html[data-theme='dark'] .an-ai .an-card__sub,
+html[data-theme='dark'] .an-ai .an-ai__sub { color: rgba(232,233,236,.92); }
 html[data-theme='dark'] .an-ai__prog { background: rgba(173,198,255,.2); }
 html[data-theme='dark'] .an-ai__prog i { background: var(--syn-gold); }
 
@@ -196,3 +212,73 @@ html[data-theme='dark'] .an-ai__prog i { background: var(--syn-gold); }
   .an-tp__cta { display: none; }
   .an-tp { padding: 9px 0; }
 }
+
+/* ============ Exams ============ */
+.an-exam__hero { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.an-exam__figure { font-size: 34px; font-weight: 800; line-height: 1; }
+.an-exam__delta { font-size: 13px; font-weight: 700; }
+.an-exam__delta.is-up { color: var(--an-strong-ink); }
+.an-exam__delta.is-down { color: var(--an-weak-ink); }
+.an-exam__delta.is-warn { color: var(--an-dev-ink); }
+.an-exam__svg { width: 100%; height: auto; display: block; }
+.an-exam__axis { stroke: var(--an-card-border); stroke-width: 1; }
+.an-exam__passline { stroke: var(--syn-navy-700); stroke-width: 2; stroke-dasharray: 5 4; opacity: .55; }
+.an-exam__passlabel { font-size: 10px; font-weight: 800; fill: var(--syn-navy-700); opacity: .7; }
+.an-exam__axislabel { font-size: 10px; font-weight: 700; fill: var(--syn-muted); }
+.an-exam__bar--pass { fill: #059669; }
+.an-exam__bar--fail { fill: #dc2626; }
+.an-exam__bar--pace { fill: #4d6fe0; }
+.an-exam__bar--warn { fill: #d97706; }
+.an-exam__legend { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+.an-exam__legend span { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--syn-muted); }
+.an-exam__sw { width: 10px; height: 10px; border-radius: 3px; }
+.an-exam__sw--pass { background: #059669; }
+.an-exam__sw--fail { background: #dc2626; }
+.an-exam__sw--pace { background: #4d6fe0; }
+.an-exam__sw--warn { background: #d97706; }
+.an-exam__empty { border-radius: 12px; background: var(--an-untested-bg); border: 1px dashed var(--an-card-border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px 18px; text-align: center; }
+.an-exam__empty p { margin: 0; font-size: 13px; font-weight: 700; color: var(--syn-muted); }
+
+.an-dom { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.an-dom__row { display: flex; align-items: center; gap: 12px; }
+.an-dom__name { width: 148px; flex-shrink: 0; font-size: 13px; font-weight: 700; }
+.an-dom__track { flex-grow: 1; height: 14px; border-radius: 7px; background: var(--an-untested-bg); position: relative; }
+.an-dom__track i { position: absolute; left: 0; top: 0; height: 14px; border-radius: 7px; background: var(--an-line); }
+.an-dom__pct { width: 38px; flex-shrink: 0; text-align: right; font-size: 13px; font-weight: 800; }
+.an-dom__n { width: 74px; flex-shrink: 0; text-align: right; font-size: 11px; font-weight: 700; color: var(--syn-muted); }
+.an-dom__n.is-thin { color: var(--an-dev-ink); }
+
+.an-cal { width: 100%; border-collapse: separate; border-spacing: 6px; table-layout: fixed; }
+.an-cal thead th { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--syn-muted); text-align: center; }
+.an-cal tbody th { width: 96px; font-size: 12px; font-weight: 800; text-align: left; }
+.an-cal__hide { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.an-cal__cell { height: 52px; border-radius: 10px; text-align: center; font-size: 16px; font-weight: 800; color: var(--syn-navy-700); }
+.an-cal__cell.is-over-3 { background: #fca5a5; }
+.an-cal__cell.is-over-2 { background: #fecaca; }
+.an-cal__cell.is-over-1 { background: #fee2e2; }
+.an-cal__cell.is-even { background: var(--an-untested-bg); }
+.an-cal__cell.is-under-1 { background: #eef3ff; }
+.an-cal__cell.is-under-2 { background: #dbe4ff; }
+.an-cal__cell.is-under-3 { background: #a9bdf5; }
+.an-cal__key { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.an-cal__key span { font-size: 11px; font-weight: 700; color: var(--syn-muted); }
+.an-cal__key i { flex-grow: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #fca5a5, #f1f5f9, #a9bdf5); }
+
+/* Dark: fills re-derived for the dark surface. The app's dark accents are text colours —
+   #adc6ff drops below the chroma floor as a fill and reads grey. */
+html[data-theme='dark'] .an .an-exam__bar--pass { fill: #2f9e6e; }
+html[data-theme='dark'] .an .an-exam__bar--fail { fill: #e5484d; }
+html[data-theme='dark'] .an .an-exam__bar--pace { fill: #6d8ff0; }
+html[data-theme='dark'] .an .an-exam__bar--warn { fill: #c47a1c; }
+html[data-theme='dark'] .an .an-exam__sw--pass { background: #2f9e6e; }
+html[data-theme='dark'] .an .an-exam__sw--fail { background: #e5484d; }
+html[data-theme='dark'] .an .an-exam__sw--pace { background: #6d8ff0; }
+html[data-theme='dark'] .an .an-exam__sw--warn { background: #c47a1c; }
+html[data-theme='dark'] .an .an-dom__track i { background: #6d8ff0; }
+html[data-theme='dark'] .an .an-cal__cell.is-over-3 { background: #7a2626; }
+html[data-theme='dark'] .an .an-cal__cell.is-over-2 { background: #5e2020; }
+html[data-theme='dark'] .an .an-cal__cell.is-over-1 { background: #3f1a1a; }
+html[data-theme='dark'] .an .an-cal__cell.is-under-1 { background: #1c2a4a; }
+html[data-theme='dark'] .an .an-cal__cell.is-under-2 { background: #24365e; }
+html[data-theme='dark'] .an .an-cal__cell.is-under-3 { background: #365292; }
+html[data-theme='dark'] .an .an-cal__key i { background: linear-gradient(90deg, #7a2626, #2e2e2e, #365292); }

@@ -311,8 +311,10 @@ html[data-theme="dark"] .activity-heatmap__day--future {
 }
 
 html[data-theme="dark"] .activity-heatmap__day--level-0 {
-  background: #ffffff;
-  border-color: rgba(255, 255, 255, 0.2);
+  /* "Nothing logged" is most of the grid, so a white cell lit up the whole card in dark
+     mode. Mirrored in Analytics.css (--an-heat0). */
+  background: var(--dm-surface-container-low, #141414);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 html[data-theme="dark"] .activity-heatmap__month-header {

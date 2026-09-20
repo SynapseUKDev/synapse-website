@@ -1,20 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
+import { levelFor, DEFAULT_DAILY_TARGET, describeDay } from './activityLevel'
 import './ActivityHeatmap.css'
 
 const MONTHS_SHOWN = 3
 
-/** Map question count to heatmap level (fixed thresholds, not relative to max). */
-function getIntensity(count) {
-  if (count <= 0) return 0
-  if (count <= 49) return 1
-  if (count <= 99) return 2
-  if (count <= 199) return 3
-  return 4
-}
-
 export default function ActivityHeatmap() {
   const [activityData, setActivityData] = useState({})
+  const [dailyTarget, setDailyTarget] = useState(DEFAULT_DAILY_TARGET)
   const [loading, setLoading] = useState(true)
   const [hoveredDay, setHoveredDay] = useState(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
@@ -31,7 +24,7 @@ export default function ActivityHeatmap() {
         ? Intl.DateTimeFormat().resolvedOptions().timeZone
         : 'UTC'
       const res = await authenticatedFetch(
-        `${API_BASE}/qbank/activity/daily?timezone=${encodeURIComponent(tz)}`,
+        `${API_BASE}/analytics/activity/daily?timezone=${encodeURIComponent(tz)}&days=95`,
         { credentials: 'include', headers: authHeaders() }
       )
       if (res.ok) {
@@ -39,10 +32,11 @@ export default function ActivityHeatmap() {
         const dataMap = {}
         if (data.dates && Array.isArray(data.dates)) {
           data.dates.forEach((item) => {
-            dataMap[item.date] = item.count || 0
+            dataMap[item.date] = { count: item.count || 0, byKind: item.by_kind || null }
           })
         }
         setActivityData(dataMap)
+        if (data.daily_target > 0) setDailyTarget(data.daily_target)
       }
     } catch (e) {
       console.error('Error loading activity data:', e)
@@ -117,12 +111,12 @@ export default function ActivityHeatmap() {
     })
   }
 
-  const handleMouseEnter = (e, date, count) => {
+  const handleMouseEnter = (e, date, entry) => {
     setTooltipPos({
       x: e.clientX,
       y: e.clientY - 12,
     })
-    setHoveredDay({ date, count })
+    setHoveredDay({ date, entry })
   }
 
   const handleMouseLeave = () => {
@@ -185,8 +179,9 @@ export default function ActivityHeatmap() {
                           }
 
                           const dateKey = formatDateKey(date)
-                          const count = activityData[dateKey] || 0
-                          const intensity = getIntensity(count)
+                          const entry = activityData[dateKey]
+                          const count = entry?.count || 0
+                          const intensity = levelFor(count, dailyTarget)
                           const isToday = formatDateKey(today) === dateKey
                           const d0 = new Date(date.getFullYear(), date.getMonth(), date.getDate())
                           const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -207,7 +202,7 @@ export default function ActivityHeatmap() {
                               className={`activity-heatmap__day activity-heatmap__day--level-${intensity} ${
                                 isToday ? 'activity-heatmap__day--today' : ''
                               }`}
-                              onMouseEnter={(e) => handleMouseEnter(e, date, count)}
+                              onMouseEnter={(e) => handleMouseEnter(e, date, entry)}
                               onMouseLeave={handleMouseLeave}
                             />
                           )
@@ -231,7 +226,7 @@ export default function ActivityHeatmap() {
           }}
         >
           <div className="activity-heatmap__tooltip-count">
-            {hoveredDay.count} question{hoveredDay.count !== 1 ? 's' : ''}
+            {describeDay(hoveredDay.entry)}
           </div>
           <div className="activity-heatmap__tooltip-date">
             {formatDisplayDate(hoveredDay.date)}

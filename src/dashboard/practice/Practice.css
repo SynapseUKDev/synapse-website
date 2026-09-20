@@ -388,6 +388,15 @@ html[data-theme='dark'] .q-carousel .q-asset {
   gap: 4px;
 }
 
+/* The sidebar cards must keep their natural height and let .pr__aside scroll.
+   Without this they shrink: .card sets overflow:hidden (for the rounded corners),
+   which makes a flex item's automatic minimum size resolve to 0 instead of its
+   content height, so expanding the Reference Ranges card squashed and clipped the
+   tracker card above it rather than growing the sidebar's scroll area. */
+.pr__aside>* {
+  flex-shrink: 0;
+}
+
 @media (min-width: 1024px) {
   .pr__aside {
     grid-column: 2;
@@ -922,6 +931,10 @@ html[data-theme='dark'] .option input[type='radio']:disabled {
 .btn--ghost {
   background: #fff;
   border: 1px solid #e5e7eb;
+  /* Declared explicitly: without it these fell through to the UA's `buttontext`,
+     which rendered them light blue. Dark mode already set this same token, which is
+     why only light mode looked wrong. The token flips to on-surface in dark mode. */
+  color: var(--syn-navy-700);
 }
 
 .btn--ghost:hover {
