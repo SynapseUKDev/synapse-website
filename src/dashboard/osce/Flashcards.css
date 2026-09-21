@@ -1362,37 +1362,30 @@ html[data-theme="dark"] .fc-summary__stats {
   line-height: 1.45;
 }
 
-/* 📚 Citation Footer ────────────────────────────────────────── */
-.fc-card__citation {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--syn-muted);
+/* 🚧 Draft preview ──────────────────────────────────────────── */
+.fc-card__draft {
   width: 100%;
   border-top: 1px solid var(--syn-border);
   padding-top: 14px;
   margin-top: 14px;
-}
-.fc-card__reviewed {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.fc-card__citation-link {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--syn-cyan);
-  text-decoration: none;
-  transition: opacity 0.2s;
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--syn-muted);
 }
-.fc-card__citation-link:hover {
-  opacity: 0.8;
-  text-decoration: underline;
+
+.fc-preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border: 1px dashed var(--syn-border);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--syn-muted);
 }
 
 /* ── Session & SRS Updates ──────────────────────────────────── */

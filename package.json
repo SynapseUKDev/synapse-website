@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "test:highlight": "node tests/questionStemHighlight.test.mjs",
+    "test:theme": "node tests/theme.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

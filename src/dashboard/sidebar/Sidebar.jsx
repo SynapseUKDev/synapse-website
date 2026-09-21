@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LuMenu, LuSettings, LuLogOut } from 'react-icons/lu'
+import { LuMenu, LuSettings, LuLogOut, LuSun, LuMoon } from 'react-icons/lu'
+import useTheme from '../../utils/useTheme'
 import logoImg from '../../assets/logo/logo.png'
 import { getDashboardNavItems } from './dashboardNavConfig'
 import NotificationBell from '../notifications/NotificationBell'
 import './Sidebar.css'
 
 function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
+  const [theme, setTheme] = useTheme()
+  const isDark = theme === 'dark'
+  // The label and icon name the destination, not the current state: clicking "Dark mode"
+  // gives you dark mode.
+  const themeLabel = isDark ? 'Light mode' : 'Dark mode'
+  const toggleTheme = () => setTheme(isDark ? 'light' : 'dark')
   const navigate = useNavigate()
   const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -89,6 +96,13 @@ function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
             />
             <button
               className="sidebar__action-btn"
+              onClick={toggleTheme}
+              title={`Switch to ${themeLabel.toLowerCase()}`}
+            >
+              {isDark ? <LuSun size={18} /> : <LuMoon size={18} />}
+            </button>
+            <button
+              className="sidebar__action-btn"
               onClick={() => handleNavigate('/dashboard/settings')}
               title="Settings"
             >
@@ -128,6 +142,10 @@ function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
               size={18}
             />
           </div>
+          <button className="sidebar__theme" onClick={toggleTheme}>
+            {isDark ? <LuSun size={16} aria-hidden /> : <LuMoon size={16} aria-hidden />}
+            {themeLabel}
+          </button>
           <div className="sidebar__user-actions">
             <button className="sidebar__settings" onClick={() => handleNavigate('/dashboard/settings')}>Settings</button>
             <button

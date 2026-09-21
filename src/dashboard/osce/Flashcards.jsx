@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LuArrowLeft, LuPlay, LuX, LuChevronDown, LuChevronRight, LuTriangleAlert,
-  LuRotateCcw, LuClock, LuZap, LuThumbsUp,
+  LuRotateCcw, LuZap, LuThumbsUp,
   LuThumbsDown, LuCircleCheck, LuCalendarClock, LuBrain, LuBookOpen,
 } from 'react-icons/lu';
 import './Flashcards.css';
@@ -103,9 +103,7 @@ function generateDeckFromSelection(conditions, selectedConditionIds, activeSecti
         question:  buildQuestion(cond.condition, field),
         answer:    answer.trim(),
         examTip:   cond.examTip ?? null,
-        guidelineSource: cond.guidelineSource ?? null,
-        guidelineUrl:    cond.guidelineUrl ?? null,
-        lastReviewed:    cond.lastReviewed ?? null,
+        isDraft:   cond.isDraft ?? false,
         difficulty: DIFFICULTY_BY_FIELD[field] ?? 'medium',
       });
     }
@@ -234,6 +232,9 @@ function Select({ label, value, onChange, options, disabled, placeholder = 'All'
 
 function PickerScreen({ onStart, srsStats, sessionMode, onModeChange }) {
   const { user } = useOutletContext();
+  const canPreviewDrafts = !!user?.is_admin
+    || !!user?.capabilities?.is_admin
+    || !!user?.capabilities?.can_manage_osce;
   const [conditions, setConditions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -251,14 +252,14 @@ function PickerScreen({ onStart, srsStats, sessionMode, onModeChange }) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    apiFetch('/flashcards/conditions')
+    apiFetch(canPreviewDrafts ? '/flashcards/conditions?preview=1' : '/flashcards/conditions')
       .then(({ conditions: data }) => {
         if (!cancelled) setConditions(data ?? []);
       })
       .catch((e) => { if (!cancelled) setError(e.message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, canPreviewDrafts]);
 
   // Build specialty → topic → condition hierarchy
   const specialtyGroups = useMemo(() => {
@@ -285,6 +286,11 @@ function PickerScreen({ onStart, srsStats, sessionMode, onModeChange }) {
 
   // All conditions flat (used for deck generation across all selected)
   const allConditions = useMemo(() => conditions, [conditions]);
+
+  const draftCount = useMemo(
+    () => conditions.filter((c) => c.isDraft).length,
+    [conditions],
+  );
 
   // Auto-expand first specialty on load
   useEffect(() => {
@@ -625,6 +631,12 @@ function PickerScreen({ onStart, srsStats, sessionMode, onModeChange }) {
 
   return (
     <div className="fc-picker fc-picker--browser">
+      {draftCount > 0 && (
+        <div className="fc-preview-banner" role="status">
+          Preview — {draftCount} unpublished draft{draftCount === 1 ? '' : 's'}{' '}
+          {draftCount === 1 ? 'is' : 'are'} visible to you only.
+        </div>
+      )}
       <div className="fc-picker__header">
         <h2 className="fc-picker__title">Flashcards</h2>
         <p className="fc-picker__subtitle">Choose how you want to study, then pick conditions from the deck browser.</p>
@@ -797,17 +809,8 @@ function FlashCard({ card, flipped }) {
           </div>
         )}
 
-        {/* Citation footer — source name + review date only (no external link) */}
-        {card.guidelineSource && (
-          <div className="fc-card__citation">
-            <span>{card.guidelineSource}</span>
-            {card.lastReviewed && (
-              <span className="fc-card__reviewed">
-                <LuClock size={12} /> Reviewed {card.lastReviewed}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Draft ribbon — admin preview only; drafts are not visible to students */}
+        {card.isDraft && <div className="fc-card__draft">Draft — not published</div>}
 
         <p className="fc-card__tap-hint fc-card__tap-hint--back">Tap or press Space to hide and retry</p>
       </div>
