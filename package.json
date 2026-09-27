@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test:admin-questions": "vitest run tests/admin-questions",
     "test:highlight": "node tests/questionStemHighlight.test.mjs",
+    "test:theme": "node tests/theme.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

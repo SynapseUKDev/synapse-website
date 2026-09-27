@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { authHeaders, clearTokens } from '../auth/token'
 import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuLoader, LuTrophy, LuHeadset } from 'react-icons/lu'
-import { getStoredPreference, setPreference } from '../theme'
+import useTheme from '../utils/useTheme'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import LoadingScreen from '../components/loading/LoadingScreen'
@@ -24,7 +24,8 @@ export default function Settings() {
   const [savingTargets, setSavingTargets] = useState(false)
   const [targetMessage, setTargetMessage] = useState({ type: '', text: '' })
   const [portalLoading, setPortalLoading] = useState(false)
-  const [appearance, setAppearance] = useState(() => getStoredPreference())
+  // Shared with the sidebar toggle: both are mounted at once, so neither may cache the value.
+  const [appearance, setAppearance] = useTheme()
   const [yearGroup, setYearGroup] = useState('')
   const [savingYearGroup, setSavingYearGroup] = useState(false)
   const [yearGroupMessage, setYearGroupMessage] = useState({ type: '', text: '' })
@@ -315,10 +316,7 @@ export default function Settings() {
               key={id}
               type="button"
               className={`settings-appearance__btn ${appearance === id ? 'is-active' : ''}`}
-              onClick={() => {
-                setPreference(id)
-                setAppearance(id)
-              }}
+              onClick={() => setAppearance(id)}
             >
               <Icon size={18} aria-hidden />
               {label}

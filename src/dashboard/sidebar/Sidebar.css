@@ -371,6 +371,32 @@
   color: #dbe6ff;
 }
 
+/* Theme toggle: its own full-width row above Settings/Logout, so those two keep the
+   side-by-side split they already have. Matches their metrics exactly. */
+.sidebar__theme {
+  width: 100%;
+  height: 32px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Urbanist', sans-serif;
+  color: #dbe6ff;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sidebar__theme:hover {
+  background: rgba(32, 229, 246, 0.1);
+  border-color: rgba(32, 229, 246, 0.45);
+}
+
 .sidebar__settings:hover,
 .sidebar__logout:hover {
   background: rgba(32, 229, 246, 0.1);
