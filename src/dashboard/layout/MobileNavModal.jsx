@@ -6,6 +6,7 @@ import { LuLogOut, LuX, LuSettings } from 'react-icons/lu'
 import logoImg from '../../assets/logo/logo.png'
 import { getDashboardNavItems } from '../sidebar/dashboardNavConfig'
 import './MobileNavModal.css'
+import { confirmNavigation } from '../navigationGuard'
 
 const list = {
   hidden: { opacity: 0 },
@@ -60,6 +61,7 @@ export default function MobileNavModal({ open, onClose, user, onLogout }) {
   }, [open, onClose])
 
   const go = (to) => {
+    if (!confirmNavigation()) return
     navigate(to)
     onClose()
   }

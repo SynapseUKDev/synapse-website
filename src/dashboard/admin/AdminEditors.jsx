@@ -1,176 +1,199 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import { useUnsavedChangesGuard } from '../navigationGuard'
 import AdminImageGallery from './AdminImageGallery.jsx'
+import AdminQuestionForm from './questions/AdminQuestionForm'
+import QuestionErrorSummary from './questions/QuestionErrorSummary'
+import QuestionStatusBadge from './questions/QuestionStatusBadge'
+import { ADMIN_QUESTIONS_PATH } from './questions/questionAdminAccess'
+import { fetchQuestion, fetchTaxonomyCached, updateQuestion } from './questions/questionAdminApi'
 import {
-  galleryImagesToQuestionAssets,
-  questionAssetsToGalleryImages,
-} from './adminImageGalleryUtils.js'
+  createEmptyForm,
+  formFromQuestion,
+  isFormDirty,
+  mapServerIssues,
+  normalizedSnapshot,
+  questionFormReducer,
+  summaryEntries,
+  toQuestionPayload,
+} from './questions/questionFormModel'
 import './Admin.css'
-
-function normaliseOptions(options) {
-  if (Array.isArray(options)) {
-    return options.map((option) => {
-      if (typeof option === 'string') return option
-      if (option && typeof option === 'object') {
-        return option.body || option.text || option.label || ''
-      }
-      return String(option ?? '')
-    }).filter(Boolean)
-  }
-  if (typeof options === 'string' && options.trim()) {
-    try {
-      const parsed = JSON.parse(options)
-      return normaliseOptions(parsed)
-    } catch {
-      return []
-    }
-  }
-  return []
-}
 
 async function readJsonError(res) {
   const json = await res.json().catch(() => ({}))
   return json?.error ? JSON.stringify(json.error) : 'Request failed'
 }
 
-function questionToForm(question) {
-  return {
-    stem: question?.stem || '',
-    optionsText: normaliseOptions(question?.options).join('\n'),
-    correct_answer: question?.correct_answer ?? '',
-    difficulty: question?.difficulty ?? '',
-    is_active: !!question?.is_active,
-    explanation_l2: question?.explanation_l2 || question?.explanations?.detailed || '',
-    explanation_eli5: question?.explanation_eli5 || question?.explanations?.eli5 || '',
-    explanation_points_by_option: question?.explanation_points_by_option
-      ? JSON.stringify(question.explanation_points_by_option, null, 2)
-      : question?.explanations?.points_by_option
-        ? JSON.stringify(question.explanations.points_by_option, null, 2)
-        : '',
-    images: questionAssetsToGalleryImages(question?.assets),
-  }
-}
-
-export function AdminQuestionInlineEditor({ questionId, initialQuestion = null, API_BASE, onSaved }) {
-  const [question, setQuestion] = useState(initialQuestion)
-  const [form, setForm] = useState(initialQuestion ? questionToForm(initialQuestion) : null)
+/**
+ * Inline question editor used beside practice questions, reported issues and
+ * review comments. It shares the full editor's form, validation, versioned
+ * saves and conflict handling; active questions are read-only until deactivated.
+ */
+export function AdminQuestionInlineEditor({ questionId, onSaved }) {
+  const [form, dispatch] = useReducer(questionFormReducer, undefined, createEmptyForm)
+  const [baseline, setBaseline] = useState(null)
+  const [meta, setMeta] = useState(null)
+  const [taxonomy, setTaxonomy] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [uploadBusy, setUploadBusy] = useState(false)
-  const [uploadError, setUploadError] = useState('')
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState({ fields: {}, options: {} })
+  const [summary, setSummary] = useState([])
+  const [notice, setNotice] = useState(null)
+  const summaryRef = useRef(null)
+
+  const applyLoadedQuestion = useCallback((question) => {
+    const next = formFromQuestion(question)
+    dispatch({ type: 'reset', form: next })
+    setBaseline(normalizedSnapshot(next))
+    setMeta(question)
+    setErrors({ fields: {}, options: {} })
+    setSummary([])
+  }, [])
+
+  const load = useCallback(async (signal) => {
+    if (!questionId) return
+    setLoading(true)
+    setLoadError(null)
+    setNotice(null)
+    try {
+      const [taxonomyData, questionData] = await Promise.all([
+        fetchTaxonomyCached().catch(() => ({ specialties: [] })),
+        fetchQuestion(questionId, { signal }),
+      ])
+      setTaxonomy(taxonomyData?.specialties || [])
+      applyLoadedQuestion(questionData.question)
+    } catch (error) {
+      if (error?.name !== 'AbortError') setLoadError(error)
+    } finally {
+      if (!signal?.aborted) setLoading(false)
+    }
+  }, [applyLoadedQuestion, questionId])
 
   useEffect(() => {
-    let cancelled = false
-    async function loadQuestion() {
-      if (!questionId) return
-      setLoading(true)
-      setError('')
-      try {
-        const res = await authenticatedFetch(`${API_BASE}/admin/questions/${questionId}`, { cache: 'no-store' })
-        if (!res.ok) throw new Error(await readJsonError(res))
-        const data = await res.json()
-        if (cancelled) return
-        setQuestion(data.question)
-        setForm(questionToForm(data.question))
-      } catch (e) {
-        if (!cancelled) setError(e.message || 'Could not load question.')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    loadQuestion()
-    return () => { cancelled = true }
-  }, [API_BASE, questionId])
+    const controller = new AbortController()
+    setMeta(null)
+    setBaseline(null)
+    load(controller.signal)
+    return () => controller.abort()
+  }, [load])
 
-  async function saveQuestion(e) {
-    e.preventDefault()
-    if (!questionId || !form) return
+  const dirty = !!baseline && isFormDirty(form, baseline)
+  useUnsavedChangesGuard(dirty)
+  const isActive = !!meta?.is_active
+
+  async function saveQuestion(event) {
+    event.preventDefault()
+    if (!meta || saving || isActive) return
+    const formAtSave = form
     setSaving(true)
-    setError('')
+    setNotice(null)
     try {
-      let pointsByOption = null
-      if (form.explanation_points_by_option.trim()) {
-        pointsByOption = JSON.parse(form.explanation_points_by_option)
-      }
-
-      const options = form.optionsText
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-
-      const payload = {
-        stem: form.stem,
-        options,
-        correct_answer: form.correct_answer === '' ? null : Number(form.correct_answer),
-        difficulty: form.difficulty === '' ? null : Number(form.difficulty),
-        is_active: form.is_active,
-        explanation_l2: form.explanation_l2 || null,
-        explanation_eli5: form.explanation_eli5 || null,
-        explanation_points_by_option: pointsByOption,
-        assets: galleryImagesToQuestionAssets(form.images),
-      }
-
-      const res = await authenticatedFetch(`${API_BASE}/admin/questions/${questionId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) throw new Error(await readJsonError(res))
-      const data = await res.json()
-      setQuestion(data.question)
-      setForm(questionToForm(data.question))
+      const data = await updateQuestion(questionId, meta.version, toQuestionPayload(formAtSave))
+      applyLoadedQuestion(data.question)
+      setNotice({ kind: 'success', version: data.question.version })
       onSaved?.(data.question)
-    } catch (e) {
-      setError(e.message || 'Could not save question.')
+    } catch (error) {
+      if (error.kind === 'validation') {
+        const mapped = mapServerIssues(error.issues, formAtSave)
+        setErrors(mapped)
+        const entries = summaryEntries(mapped, formAtSave)
+        setSummary(entries.length ? entries : [{ id: null, label: 'Question', message: error.message }])
+        requestAnimationFrame(() => summaryRef.current?.focus())
+      } else {
+        setNotice({ kind: error.kind, message: error.message, currentVersion: error.currentVersion })
+      }
     } finally {
       setSaving(false)
     }
   }
 
+  const loadLatest = () => {
+    if (!window.confirm('Load the latest saved version? Your unsaved changes here will be discarded.')) return
+    load()
+  }
+
   if (!questionId) return <p className="admin__muted">Select a question to edit.</p>
-  if (loading && !form) return <LoadingScreen message="Loading question editor..." inline />
+  if (loading && !meta) return <LoadingScreen message="Loading question editor..." inline />
+  if (loadError) {
+    return (
+      <div className="admin-inline-editor">
+        <div className="admin-alert" role="alert">
+          {loadError.kind === 'not_found' ? 'This question no longer exists.' : loadError.message}
+        </div>
+        <button type="button" className="aqe-button aqe-button--ghost" onClick={() => load()}>
+          Try again
+        </button>
+      </div>
+    )
+  }
+  if (!meta) return <p className="admin__muted">Question editor unavailable.</p>
+
+  const images = meta.images || []
 
   return (
     <div className="admin-inline-editor">
-      {question?.topics && (
-        <p className="admin__muted admin-inline-editor__context">
-          {question.topics?.specialties?.name ? `${question.topics.specialties.name} · ` : ''}{question.topics?.name}
-        </p>
+      <div className="aqe__status">
+        <QuestionStatusBadge active={isActive} />
+        <span className="admin__muted">Version {meta.version}</span>
+        {dirty && <span className="aqe__dirty">Unsaved changes</span>}
+        <Link className="aqe-inline__full" to={`${ADMIN_QUESTIONS_PATH}/${questionId}`}>
+          Open in full editor
+        </Link>
+      </div>
+
+      {isActive && (
+        <div className="admin-alert" role="status">
+          This question is active, so its content is read-only. Deactivate it before editing; it will then need a
+          fresh review before reactivation.
+        </div>
       )}
-      {error && <div className="admin-alert">{error}</div>}
-      {!form ? (
-        <p className="admin__muted">Question editor unavailable.</p>
-      ) : (
-        <form className="admin-form" onSubmit={saveQuestion}>
-          <label>Stem<textarea rows={6} value={form.stem} onChange={(e) => setForm({ ...form, stem: e.target.value })} /></label>
-          <label>Options, one per line<textarea rows={5} value={form.optionsText} onChange={(e) => setForm({ ...form, optionsText: e.target.value })} /></label>
-          <div className="admin-form__row">
-            <label>Correct answer index<input type="number" min="0" value={form.correct_answer} onChange={(e) => setForm({ ...form, correct_answer: e.target.value })} /></label>
-            <label>Difficulty<input type="number" min="1" max="5" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })} /></label>
-          </div>
-          <label className="admin-check"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Active</label>
-          <label>Detailed explanation<textarea rows={7} value={form.explanation_l2} onChange={(e) => setForm({ ...form, explanation_l2: e.target.value })} /></label>
-          <label>ELI5 explanation<textarea rows={4} value={form.explanation_eli5} onChange={(e) => setForm({ ...form, explanation_eli5: e.target.value })} /></label>
-          <label>Explanation points by option JSON<textarea rows={6} value={form.explanation_points_by_option} onChange={(e) => setForm({ ...form, explanation_points_by_option: e.target.value })} /></label>
-          <div className="admin-form__section">
-            <div className="admin-form__section-title">Question images</div>
-            <p className="admin__muted admin-form__section-hint">
-              Upload images shown in the question carousel. Two or more images display with navigation arrows.
-            </p>
-            <AdminImageGallery
-              API_BASE={API_BASE}
-              images={form.images}
-              setImages={(images) => setForm({ ...form, images })}
-              uploadError={uploadError}
-              setUploadError={setUploadError}
-              onBusyChange={setUploadBusy}
-              variant="question"
-            />
-          </div>
-          <button type="submit" disabled={saving || uploadBusy}>{saving ? 'Saving...' : 'Save question'}</button>
-        </form>
+
+      <QuestionErrorSummary entries={summary} summaryRef={summaryRef} />
+
+      {notice?.kind === 'success' && (
+        <div className="admin-alert admin-alert--success" role="status">
+          Saved (version {notice.version}).
+        </div>
       )}
+      {notice?.kind === 'conflict' && (
+        <div className="admin-alert" role="alert">
+          <p>
+            {notice.message}
+            {notice.currentVersion ? ` The latest saved version is ${notice.currentVersion}.` : ''} Your changes are still
+            here.
+          </p>
+          <button type="button" className="aqe-button" onClick={loadLatest}>
+            Load latest version
+          </button>
+        </div>
+      )}
+      {notice && !['success', 'conflict'].includes(notice.kind) && (
+        <div className="admin-alert" role="alert">
+          {notice.message}
+        </div>
+      )}
+
+      <form className="admin-form" onSubmit={saveQuestion} noValidate>
+        <AdminQuestionForm form={form} dispatch={dispatch} taxonomy={taxonomy} errors={errors} readOnly={isActive || saving} />
+
+        <div className="admin-form__section">
+          <div className="admin-form__section-title">Question images</div>
+          <p className="admin__muted admin-form__section-hint">
+            {images.length === 0
+              ? 'No images.'
+              : `${images.length} image${images.length === 1 ? '' : 's'} attached.`}{' '}
+            Image upload and ordering move to the new question image manager; existing images are unchanged by saving
+            here.
+          </p>
+        </div>
+
+        <button type="submit" disabled={saving || isActive || !dirty}>
+          {saving ? 'Saving...' : 'Save question'}
+        </button>
+      </form>
     </div>
   )
 }

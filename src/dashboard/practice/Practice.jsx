@@ -23,6 +23,7 @@ import {
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
+import { buildQuickPoints, hasMarkdown, mergeAdminQuestionUpdate, stemMarkdownComponents } from './questionPresentationUtils'
 import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
 
 function useCountdown(initialSec = 1800) {
@@ -201,36 +202,7 @@ export default function Practice() {
     if (!updatedQuestion?.id) return
     setQuestions((prev) => prev.map((question) => {
       if (String(question.id) !== String(updatedQuestion.id)) return question
-      const optionBodies = Array.isArray(updatedQuestion.options)
-        ? updatedQuestion.options.map((option) => {
-          if (typeof option === 'string') return option
-          return option?.body || option?.text || option?.label || ''
-        })
-        : []
-      return {
-        ...question,
-        ...updatedQuestion,
-        assets: (updatedQuestion.assets || []).map((asset, index) => ({
-          id: asset.id,
-          type: asset.asset_type || 'image',
-          url: asset.asset_url,
-          alt: asset.alt || null,
-          caption: asset.caption || null,
-          credit: asset.credit || null,
-          position: asset.position || index + 1,
-        })),
-        options: optionBodies.map((body, idx) => ({
-          id: idx,
-          label: String.fromCharCode(65 + idx),
-          body,
-        })),
-        explanations: {
-          ...(question.explanations || {}),
-          detailed: updatedQuestion.explanation_l2 || '',
-          eli5: updatedQuestion.explanation_eli5 || '',
-          points_by_option: updatedQuestion.explanation_points_by_option || null,
-        },
-      }
+      return mergeAdminQuestionUpdate(question, updatedQuestion)
     }))
   }, [])
 
@@ -727,10 +699,6 @@ export default function Practice() {
     })
   }
 
-  const hasMarkdown = (text = '') => {
-    // Detect headers, lists, bold, italics, code, links, and tables (|---|)
-    return /(^|\n)\s{0,3}#{1,6}\s+|(^|\n)\s*([-*+]\s+|\d+\.\s+)|\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|\[[^\]]+\]\([^)]+\)|\|[^|]+\|/m.test(text)
-  }
 
   const applyHighlightsToMarkdown = (text, questionHighlights) => {
     if (questionHighlights.length === 0) return text
@@ -914,60 +882,8 @@ export default function Practice() {
               }
               return <mark {...props}>{children}</mark>
             },
-            // Style other markdown elements
-            p: ({ node, ...props }) => <p style={{ marginBottom: '12px', lineHeight: '1.6' }} {...props} />,
-            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.5em', fontWeight: 800, marginBottom: '12px', marginTop: '16px' }} {...props} />,
-            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.3em', fontWeight: 800, marginBottom: '10px', marginTop: '14px' }} {...props} />,
-            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', fontWeight: 700, marginBottom: '8px', marginTop: '12px' }} {...props} />,
-            ul: ({ node, ...props }) => <ul style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
-            ol: ({ node, ...props }) => <ol style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
-            li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
-            table: ({ node, ...props }) => (
-              <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
-                <table
-                  style={{
-                    borderCollapse: 'collapse',
-                    width: '100%',
-                    border: '1px solid var(--stem-md-table-border)',
-                    color: 'var(--stem-md-td-fg)',
-                  }}
-                  {...props}
-                />
-              </div>
-            ),
-            th: ({ node, ...props }) => (
-              <th
-                style={{
-                  border: '1px solid var(--stem-md-table-border)',
-                  padding: '8px',
-                  backgroundColor: 'var(--stem-md-th-bg)',
-                  color: 'var(--stem-md-th-fg)',
-                  fontWeight: 700,
-                  textAlign: 'left',
-                }}
-                {...props}
-              />
-            ),
-            td: ({ node, ...props }) => (
-              <td
-                style={{
-                  border: '1px solid var(--stem-md-table-border)',
-                  padding: '8px',
-                  textAlign: 'left',
-                  color: 'var(--stem-md-td-fg)',
-                }}
-                {...props}
-              />
-            ),
-            blockquote: ({ node, ...props }) => (
-              <blockquote style={{ borderLeft: '4px solid #cbd5e1', paddingLeft: '12px', margin: '12px 0', color: '#64748b' }} {...props} />
-            ),
-            code: ({ node, inline, ...props }) => {
-              if (inline) {
-                return <code style={{ backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em' }} {...props} />
-              }
-              return <code style={{ display: 'block', backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '8px', overflowX: 'auto', marginBottom: '12px' }} {...props} />
-            },
+            // Shared learner markdown styling
+            ...stemMarkdownComponents,
           }}
         >
           {textWithHighlights}
@@ -1516,16 +1432,9 @@ export default function Practice() {
     explanations: currentQuestion.explanations
   } : null
 
-  // Build list of all five per-option quick points (always show all)
+  // Build the per-option quick points (first point for each option)
   const pointsByOption = currentQuestion?.explanations?.points_by_option || null
-  const allQuickPoints = pointsByOption
-    ? [0, 1, 2, 3, 4].map((idx) => ({
-      label: String.fromCharCode(65 + idx),
-      text: (pointsByOption[String(idx)]?.[0]) || null,
-      isCorrect: currentQuestion?.correct_answer === idx,
-    }))
-      .filter((p) => p.text)
-    : []
+  const allQuickPoints = buildQuickPoints(pointsByOption, currentQuestion?.correct_answer, currentQuestion?.options?.length || 0)
 
   // Calculate review stats
   const reviewStats = isReviewMode ? {
@@ -1875,8 +1784,6 @@ export default function Practice() {
                   </div>
                   <AdminQuestionInlineEditor
                     questionId={currentQuestionId}
-                    initialQuestion={currentQuestion}
-                    API_BASE={API_BASE}
                     onSaved={mergeAdminQuestion}
                   />
                 </div>
