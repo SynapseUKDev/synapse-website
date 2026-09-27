@@ -140,7 +140,7 @@ describe('AdminQuestionEditorPage', () => {
     vi.mocked(fetchQuestion).mockResolvedValue({ question: { ...saved, is_active: true } })
     renderAt(`/dashboard/admin/questions/${QUESTION_ID}`)
     expect(await screen.findByLabelText(/Question stem/)).toBeDisabled()
-    expect(screen.getByText(/Deactivate it before editing/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Deactivate to edit' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
   })
 

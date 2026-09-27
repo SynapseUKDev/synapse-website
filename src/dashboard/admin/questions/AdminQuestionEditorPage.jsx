@@ -4,10 +4,13 @@ import { LuChevronLeft } from 'react-icons/lu'
 import { useUnsavedChangesGuard } from '../../navigationGuard'
 import AdminQuestionForm from './AdminQuestionForm'
 import QuestionErrorSummary from './QuestionErrorSummary'
+import QuestionActivationPanel from './QuestionActivationPanel'
+import QuestionImageGallery from './QuestionImageGallery'
 import QuestionPreview from './QuestionPreview'
 import QuestionStatusBadge from './QuestionStatusBadge'
 import { ADMIN_QUESTIONS_PATH, canManageQbank } from './questionAdminAccess'
-import { createQuestion, fetchQuestion, fetchTaxonomy, updateQuestion } from './questionAdminApi'
+import { createQuestion, fetchQuestion, fetchTaxonomy, updateQuestion, uploadQuestionImage } from './questionAdminApi'
+import { toPreviewAssets } from './questionImageModel'
 import {
   createEmptyForm,
   formFromQuestion,
@@ -30,6 +33,8 @@ function formatDate(value) {
   }
 }
 
+const EMPTY_IMAGES = []
+
 function QuestionEditor({ questionId }) {
   const isNew = !questionId
   const navigate = useNavigate()
@@ -43,7 +48,14 @@ function QuestionEditor({ questionId }) {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({ fields: {}, options: {} })
   const [summary, setSummary] = useState([])
-  const [notice, setNotice] = useState(location.state?.savedVersion ? { kind: 'success', version: location.state.savedVersion } : null)
+  const [notice, setNotice] = useState(
+    location.state?.savedVersion
+      ? { kind: 'success', version: location.state.savedVersion, imageFailures: location.state.imageFailures || [] }
+      : null,
+  )
+  const [pendingImages, setPendingImages] = useState([])
+  const [imagesDirty, setImagesDirty] = useState(false)
+  const [galleryImages, setGalleryImages] = useState([])
   const summaryRef = useRef(null)
 
   const applyLoadedQuestion = useCallback((question) => {
@@ -77,7 +89,14 @@ function QuestionEditor({ questionId }) {
   }, [load])
 
   const dirty = !loading && isFormDirty(form, baseline)
-  useUnsavedChangesGuard(dirty)
+  useUnsavedChangesGuard(dirty || imagesDirty || pendingImages.length > 0)
+
+  // Image operations save immediately and bump the question version.
+  const onImagesSaved = useCallback(({ images, version }) => {
+    setMeta((current) => (current ? { ...current, images, version, has_image: images.length > 0 } : current))
+  }, [])
+
+  useEffect(() => () => pendingImages.forEach((image) => URL.revokeObjectURL(image.url)), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isActive = !!meta?.is_active
   const payload = useMemo(() => toQuestionPayload(form), [form])
@@ -94,9 +113,23 @@ function QuestionEditor({ questionId }) {
         : await updateQuestion(questionId, meta.version, toQuestionPayload(formAtSave))
       const saved = data.question
       if (isNew) {
+        // Upload images chosen before the first save, one at a time; a failed
+        // file is reported but never undoes the saved question or other images.
+        let version = saved.version
+        const imageFailures = []
+        for (const image of pendingImages) {
+          try {
+            const uploaded = await uploadQuestionImage(saved.id, { ...image, expectedVersion: version })
+            version = uploaded.question_version
+          } catch (err) {
+            imageFailures.push(`${image.file.name}: ${err.message}`)
+          }
+          URL.revokeObjectURL(image.url)
+        }
+        setPendingImages([])
         // The route change remounts the editor with the saved question loaded.
         applyLoadedQuestion(saved)
-        navigate(`${ADMIN_QUESTIONS_PATH}/${saved.id}`, { replace: true, state: { savedVersion: saved.version } })
+        navigate(`${ADMIN_QUESTIONS_PATH}/${saved.id}`, { replace: true, state: { savedVersion: version, imageFailures } })
         return
       }
       applyLoadedQuestion(saved)
@@ -159,8 +192,8 @@ function QuestionEditor({ questionId }) {
 
       {isActive && (
         <div className="admin-alert" role="status">
-          This question is active, so its content is read-only. Deactivate it before editing; it will then need a fresh review
-          before reactivation.
+          This question is active, so its content and images are read-only. Use “Deactivate to edit” to change it; it will
+          then need a fresh review before reactivation.
         </div>
       )}
 
@@ -169,6 +202,11 @@ function QuestionEditor({ questionId }) {
       {notice?.kind === 'success' && (
         <div className="admin-alert admin-alert--success" role="status">
           Saved as an inactive draft (version {notice.version}).
+        </div>
+      )}
+      {notice?.imageFailures?.length > 0 && (
+        <div className="admin-alert" role="alert">
+          The question was saved, but these images were not uploaded: {notice.imageFailures.join('; ')}. Add them again below.
         </div>
       )}
       {notice?.kind === 'conflict' && (
@@ -195,13 +233,40 @@ function QuestionEditor({ questionId }) {
       )}
 
       <div className="aqe__layout">
-        <div className="admin-card admin-form">
-          <AdminQuestionForm form={form} dispatch={dispatch} taxonomy={taxonomy} errors={errors} readOnly={isActive || saving} />
+        <div className="aqe__main">
+          <div className="admin-card admin-form">
+            <AdminQuestionForm form={form} dispatch={dispatch} taxonomy={taxonomy} errors={errors} readOnly={isActive || saving} />
+          </div>
+          <div className="admin-card">
+            <QuestionImageGallery
+              questionId={isNew ? null : questionId}
+              version={meta?.version}
+              savedImages={meta?.images || EMPTY_IMAGES}
+              pending={pendingImages}
+              onPendingChange={setPendingImages}
+              onSaved={onImagesSaved}
+              onDirtyChange={setImagesDirty}
+              onPreviewChange={setGalleryImages}
+              readOnly={isActive || saving}
+            />
+          </div>
         </div>
         <div className="aqe__preview">
           <h2 className="aqe__heading">Learner preview</h2>
           <p className="admin__muted">Shows your unsaved changes. Previewing never saves or records an attempt.</p>
-          <QuestionPreview question={payload} />
+          <QuestionPreview question={payload} images={isNew ? toPreviewAssets([], pendingImages) : toPreviewAssets(galleryImages)} />
+          {meta && (
+            <QuestionActivationPanel
+              question={meta}
+              blockedReason={
+                dirty || imagesDirty ? 'Save your changes first – activation reviews the saved version.' : null
+              }
+              onChanged={(question) => {
+                applyLoadedQuestion(question)
+                setNotice(null)
+              }}
+            />
+          )}
         </div>
       </div>
 

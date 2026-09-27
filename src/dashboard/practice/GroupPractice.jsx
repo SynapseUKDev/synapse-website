@@ -18,6 +18,7 @@ import { io } from 'socket.io-client'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
+import QuestionAssetCarousel from './QuestionAssetCarousel'
 import { buildQuickPoints, hasMarkdown, mergeAdminQuestionUpdate, stemMarkdownComponents } from './questionPresentationUtils'
 import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
 
@@ -164,7 +165,6 @@ export default function GroupPractice() {
   const [showRef, setShowRef] = useState(false)
   const [openGroupId, setOpenGroupId] = useState(null)
   // Image carousel state for question assets
-  const [assetIdx, setAssetIdx] = useState(0)
   const [adminEditorOpen, setAdminEditorOpen] = useState(false)
 
   // Current question state
@@ -506,7 +506,6 @@ export default function GroupPractice() {
     setQuestionStartTime(Date.now())
     setShowRef(false) // Reset reference ranges to collapsed on question change
     // Reset carousel index when question changes
-    setAssetIdx(0)
   }
 
   // Sync answer selection whenever the active question changes (fixes stale
@@ -1441,66 +1440,7 @@ export default function GroupPractice() {
                     onClose={() => setPopoverHl(null)}
                   />
                 )}
-                {Array.isArray(currentQuestion.assets) && currentQuestion.assets.length > 0 && (
-                  (() => {
-                    const assets = currentQuestion.assets.filter(a => a && a.url)
-                    const cur = assets[Math.min(assetIdx, Math.max(assets.length - 1, 0))]
-                    const prev = () => setAssetIdx((i) => assets.length > 0 ? (i - 1 + assets.length) % assets.length : 0)
-                    const next = () => setAssetIdx((i) => assets.length > 0 ? (i + 1) % assets.length : 0)
-                    if (!cur) return null
-                    return (
-                      <div className={`q-carousel ${assets.length <= 1 ? 'q-carousel--single' : ''}`} role="region" aria-label="Question images">
-                        {assets.length > 1 && (
-                          <button
-                            type="button"
-                            className="qc-nav qc-prev"
-                            onClick={prev}
-                            aria-label="Previous image"
-                          >
-                            ‹
-                          </button>
-                        )}
-                        <figure key={cur.id} className="q-asset">
-                          {cur.type === 'image' ? (
-                            <div className="q-carousel__viewport">
-                              <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
-                            </div>
-                          ) : null}
-                          {(cur.caption || cur.credit) && (
-                            <figcaption className="q-asset__cap">
-                              {cur.caption && <div className="q-asset__caption">{cur.caption}</div>}
-                              {cur.credit && <div className="q-asset__credit">{cur.credit}</div>}
-                            </figcaption>
-                          )}
-                        </figure>
-                        {assets.length > 1 && (
-                          <button
-                            type="button"
-                            className="qc-nav qc-next"
-                            onClick={next}
-                            aria-label="Next image"
-                          >
-                            ›
-                          </button>
-                        )}
-                        {assets.length > 1 && (
-                          <div className="qc-dots" role="tablist" aria-label="Image selector">
-                            {assets.map((_, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                className={`qc-dot ${i === assetIdx ? 'is-active' : ''}`}
-                                aria-label={`Go to image ${i + 1}`}
-                                aria-selected={i === assetIdx ? 'true' : 'false'}
-                                onClick={() => setAssetIdx(i)}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()
-                )}
+                <QuestionAssetCarousel key={currentQuestion.id} assets={currentQuestion.assets} />
                 {currentQuestion.options?.length > 0 ? (
                   <div style={{ display: 'grid', gap: 8 }}>
                     {currentQuestion.options.map((o) => {

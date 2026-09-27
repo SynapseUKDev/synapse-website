@@ -881,3 +881,167 @@ html[data-theme="dark"] .aqi-decision__ack {
 .aqi-record__preview[open] summary {
   margin-bottom: 10px;
 }
+
+/* ---- Image gallery ---- */
+
+.aqe__main {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.aqg {
+  display: grid;
+  gap: 10px;
+}
+
+.aqg__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.aqg-required {
+  color: #b45309;
+  font-weight: 700;
+  margin: 0;
+}
+
+html[data-theme="dark"] .aqg-required {
+  color: #fcd34d;
+}
+
+.aqg-status {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.aqg-status--failed {
+  color: #b91c1c;
+}
+
+.aqg-status--done {
+  color: #15803d;
+}
+
+.aqg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.aqg-item {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--syn-border);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--surface-card);
+}
+
+.aqg-item__thumb {
+  width: 120px;
+  height: 90px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--surface-tint-blue);
+}
+
+.aqg-item__body,
+.aqg-item__fields {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.aqg-item__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.aqg-item__fields label {
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.aqg-item__fields input {
+  width: 100%;
+  border: 1px solid var(--syn-border);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  font: inherit;
+  padding: 8px 10px;
+}
+
+@media (max-width: 640px) {
+  .aqg-item {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Activation ---- */
+
+.aqa {
+  display: grid;
+  gap: 10px;
+}
+
+.aqa .aqe__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aqa--active {
+  border-color: #22c55e;
+}
+
+.aqa p {
+  margin: 0;
+}
+
+.aqa__field {
+  display: grid;
+  gap: 4px;
+  font-weight: 800;
+}
+
+.aqa input[type='text'],
+.aqa > input {
+  width: 100%;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  font: inherit;
+  padding: 10px 12px;
+}
+
+.aqa__attest {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.aqa__attest input {
+  margin-top: 4px;
+}
+
+.aqa ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}

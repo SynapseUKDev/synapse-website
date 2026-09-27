@@ -146,8 +146,8 @@ export function AdminQuestionInlineEditor({ questionId, onSaved }) {
 
       {isActive && (
         <div className="admin-alert" role="status">
-          This question is active, so its content is read-only. Deactivate it before editing; it will then need a
-          fresh review before reactivation.
+          This question is active, so its content is read-only. Open it in the full editor to deactivate and edit it; it
+          will then need a fresh review before reactivation.
         </div>
       )}
 

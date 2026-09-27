@@ -211,7 +211,8 @@ export default function AdminQuestionManager() {
                 </td>
                 <td>
                   <Link className="aqm__edit" to={`${ADMIN_QUESTIONS_PATH}/${question.id}`}>
-                    Edit<span className="aqf-visually-hidden"> question: {question.stem.slice(0, 60)}</span>
+                    {question.is_active ? 'View' : 'Edit'}
+                    <span className="aqf-visually-hidden"> question: {question.stem.slice(0, 60)}</span>
                   </Link>
                 </td>
               </tr>

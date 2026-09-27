@@ -47,6 +47,17 @@ export function authHeaders() {
  * @param {RequestInit} options - Fetch options
  * @returns {Promise<Response>} - The fetch response
  */
+// FormData bodies (file uploads) must not get a JSON content type: the browser
+// sets multipart/form-data with the boundary itself.
+function requestHeaders(options, withAuth) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+  return {
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(withAuth ? authHeaders() : {}),
+    ...(options.headers || {}),
+  }
+}
+
 export async function authenticatedFetch(url, options = {}) {
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
   
@@ -54,11 +65,7 @@ export async function authenticatedFetch(url, options = {}) {
   let response = await fetch(url, {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-      ...(options.headers || {}),
-    },
+    headers: requestHeaders(options, true),
   })
 
   // If 401, try to refresh token and retry once
@@ -81,11 +88,7 @@ export async function authenticatedFetch(url, options = {}) {
           response = await fetch(url, {
             ...options,
             credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              ...authHeaders(),
-              ...(options.headers || {}),
-            },
+            headers: requestHeaders(options, true),
           })
         } else if (refreshRes.status === 401) {
           // Refresh token is also invalid, clear tokens
@@ -103,10 +106,7 @@ export async function authenticatedFetch(url, options = {}) {
       response = await fetch(url, {
         ...options,
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options.headers || {}),
-        },
+        headers: requestHeaders(options, false),
       })
       if (response.status !== 401) {
         return response

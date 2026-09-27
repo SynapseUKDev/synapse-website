@@ -85,7 +85,7 @@ export async function requestAdminQuestion(path = '', { method = 'GET', body, qu
     response = await authenticatedFetch(adminQuestionUrl(path, query), {
       method,
       signal,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     })
   } catch (error) {
     if (error?.name === 'AbortError') throw error
@@ -169,5 +169,52 @@ export function confirmImportBatch(batchId, decisions) {
   return requestAdminQuestion(`/imports/${encodeURIComponent(batchId)}/confirm`, {
     method: 'POST',
     body: { decisions },
+  })
+}
+
+// ---- Images ----
+
+export function uploadQuestionImage(questionId, { file, expectedVersion, alt, caption, credit, replaceImageId }) {
+  const form = new FormData()
+  form.append('expected_version', String(expectedVersion))
+  if (alt) form.append('alt', alt)
+  if (caption) form.append('caption', caption)
+  if (credit) form.append('credit', credit)
+  if (replaceImageId) form.append('replace_image_id', replaceImageId)
+  form.append('file', file)
+  return requestAdminQuestion(`/${encodeURIComponent(questionId)}/images`, { method: 'POST', body: form })
+}
+
+export function updateQuestionImages(questionId, expectedVersion, images) {
+  return requestAdminQuestion(`/${encodeURIComponent(questionId)}/images`, {
+    method: 'PUT',
+    body: { expected_version: expectedVersion, images },
+  })
+}
+
+export function removeQuestionImage(questionId, imageId, expectedVersion) {
+  return requestAdminQuestion(`/${encodeURIComponent(questionId)}/images/${encodeURIComponent(imageId)}`, {
+    method: 'DELETE',
+    query: { expected_version: expectedVersion },
+  })
+}
+
+// ---- Activation ----
+
+export function activateQuestion(questionId, { expectedVersion, clinicalSourceReference, attested }) {
+  return requestAdminQuestion(`/${encodeURIComponent(questionId)}/activate`, {
+    method: 'POST',
+    body: {
+      expected_version: expectedVersion,
+      clinical_source_reference: clinicalSourceReference,
+      clinical_review_attested: attested,
+    },
+  })
+}
+
+export function deactivateQuestion(questionId, expectedVersion) {
+  return requestAdminQuestion(`/${encodeURIComponent(questionId)}/deactivate`, {
+    method: 'POST',
+    body: { expected_version: expectedVersion },
   })
 }

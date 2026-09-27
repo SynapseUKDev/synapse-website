@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { QuestionExplanationPanel, QuestionOptionList, QuestionStem } from '../../practice/QuestionPresentation'
+import QuestionAssetCarousel from '../../practice/QuestionAssetCarousel'
 import './AdminQuestions.css'
 
 const MODES = [
@@ -9,10 +10,10 @@ const MODES = [
 
 /**
  * Learner-style preview of a question in stored shape (for example the output
- * of toQuestionPayload). It only renders: it never saves, activates, or
- * records an attempt.
+ * of toQuestionPayload) and its images in learner asset shape, in carousel
+ * order. It only renders: it never saves, activates, or records an attempt.
  */
-export default function QuestionPreview({ question, initialMode = 'question' }) {
+export default function QuestionPreview({ question, images = [], initialMode = 'question' }) {
   const [mode, setMode] = useState(initialMode)
   const [tab, setTab] = useState('quick')
   const revealAnswer = mode === 'answer'
@@ -44,6 +45,7 @@ export default function QuestionPreview({ question, initialMode = 'question' }) 
                 <p className="admin-question-preview__empty">No question stem entered yet.</p>
               )}
             </div>
+            <QuestionAssetCarousel key={images.map((image) => image.id || image.url).join('|')} assets={images} />
             <QuestionOptionList
               options={question.options || []}
               correctAnswer={question.correct_answer}
