@@ -201,14 +201,10 @@ export function removeQuestionImage(questionId, imageId, expectedVersion) {
 
 // ---- Activation ----
 
-export function activateQuestion(questionId, { expectedVersion, clinicalSourceReference, attested }) {
+export function activateQuestion(questionId, { expectedVersion }) {
   return requestAdminQuestion(`/${encodeURIComponent(questionId)}/activate`, {
     method: 'POST',
-    body: {
-      expected_version: expectedVersion,
-      clinical_source_reference: clinicalSourceReference,
-      clinical_review_attested: attested,
-    },
+    body: { expected_version: expectedVersion },
   })
 }
 

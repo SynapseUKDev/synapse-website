@@ -46,45 +46,35 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function attestation(version = 4) {
-  return screen.getByRole('checkbox', { name: new RegExp(`I have reviewed version ${version}`) })
-}
 
 describe('QuestionActivationPanel', () => {
-  test('requires a source and an unticked-by-default attestation for the current version', async () => {
+  test('activates the saved version after a confirmation, with no source or checkbox', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     const onChanged = vi.fn()
     vi.mocked(activateQuestion).mockResolvedValue({ question: active })
     render(<QuestionActivationPanel question={draft} onChanged={onChanged} />)
-
-    const button = screen.getByRole('button', { name: 'Activate version 4' })
-    expect(attestation()).not.toBeChecked()
-    expect(button).toBeDisabled()
-    fireEvent.change(screen.getByLabelText(/Clinical source/), { target: { value: '  NICE NG185  ' } })
-    expect(button).toBeDisabled()
-    fireEvent.click(attestation())
-    expect(button).toBeEnabled()
-
-    fireEvent.click(button)
+    expect(screen.queryByLabelText(/Clinical source/)).toBeNull()
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Activate' }))
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith(active))
-    expect(activateQuestion).toHaveBeenCalledWith('q1', { expectedVersion: 4, clinicalSourceReference: 'NICE NG185', attested: true })
+    expect(activateQuestion).toHaveBeenCalledWith('q1', { expectedVersion: 4 })
   })
 
-  test('clears the attestation when the version changes', () => {
-    const { rerender } = render(<QuestionActivationPanel question={draft} />)
-    fireEvent.click(attestation())
-    expect(attestation()).toBeChecked()
-    rerender(<QuestionActivationPanel question={{ ...draft, version: 5 }} />)
-    expect(attestation(5)).not.toBeChecked()
+  test('does nothing if the confirmation is cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<QuestionActivationPanel question={draft} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Activate' }))
+    expect(activateQuestion).not.toHaveBeenCalled()
   })
 
   test('is blocked while there are unsaved changes', () => {
     render(<QuestionActivationPanel question={draft} blockedReason="Save your changes first." />)
     expect(screen.getByText('Save your changes first.')).toBeInTheDocument()
-    expect(attestation()).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Activate version 4' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Activate' })).toBeDisabled()
   })
 
   test('lists blocking problems such as missing image alt text', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     vi.mocked(activateQuestion).mockRejectedValue(
       new AdminQuestionApiError({
         status: 400,
@@ -94,19 +84,16 @@ describe('QuestionActivationPanel', () => {
       }),
     )
     render(<QuestionActivationPanel question={draft} />)
-    fireEvent.change(screen.getByLabelText(/Clinical source/), { target: { value: 'NICE' } })
-    fireEvent.click(attestation())
-    fireEvent.click(screen.getByRole('button', { name: 'Activate version 4' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Activate' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Image 2 alt text: Image 2 needs alternative text before activation.')
   })
 
-  test('deactivates an active question after confirmation', async () => {
+  test('deactivates a live question after confirmation', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const onChanged = vi.fn()
     vi.mocked(deactivateQuestion).mockResolvedValue({ question: { ...draft, version: 6 } })
     render(<QuestionActivationPanel question={active} onChanged={onChanged} />)
-    expect(screen.getByText(/Clinical source: NICE NG185/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Deactivate to edit' }))
+    fireEvent.click(screen.getByRole('button', { name: /Deactivate \(hide from learners\)/ }))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     expect(deactivateQuestion).toHaveBeenCalledWith('q1', 5)
   })
@@ -129,18 +116,13 @@ describe('editor activation flow', () => {
     )
   }
 
-  test('deactivate, edit, and the form becomes editable; activation is blocked while edits are unsaved', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    vi.mocked(fetchQuestion).mockResolvedValue({ question: active })
-    vi.mocked(deactivateQuestion).mockResolvedValue({ question: { ...draft, version: 6 } })
+  test('a live question is editable, and activation is blocked only while edits are unsaved', async () => {
+    vi.mocked(fetchQuestion).mockResolvedValue({ question: draft })
     renderEditor()
-
-    expect(await screen.findByLabelText(/Question stem/)).toBeDisabled()
-    fireEvent.click(screen.getByRole('button', { name: 'Deactivate to edit' }))
-    await waitFor(() => expect(screen.getByLabelText(/Question stem/)).toBeEnabled())
-
-    fireEvent.change(screen.getByLabelText(/Question stem/), { target: { value: 'Which dose?' } })
+    const stem = await screen.findByLabelText(/Question stem/)
+    expect(screen.getByRole('button', { name: 'Activate' })).toBeEnabled()
+    fireEvent.change(stem, { target: { value: 'Which dose?' } })
     expect(screen.getByText(/Save your changes first/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Activate version 6' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Activate' })).toBeDisabled()
   })
 })

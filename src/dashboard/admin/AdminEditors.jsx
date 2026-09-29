@@ -86,7 +86,7 @@ export function AdminQuestionInlineEditor({ questionId, onSaved }) {
 
   async function saveQuestion(event) {
     event.preventDefault()
-    if (!meta || saving || isActive) return
+    if (!meta || saving) return
     const formAtSave = form
     setSaving(true)
     setNotice(null)
@@ -145,9 +145,8 @@ export function AdminQuestionInlineEditor({ questionId, onSaved }) {
       </div>
 
       {isActive && (
-        <div className="admin-alert" role="status">
-          This question is active, so its content is read-only. Open it in the full editor to deactivate and edit it; it
-          will then need a fresh review before reactivation.
+        <div className="aqe-live-note" role="status">
+          This question is live. Saved changes are visible to learners immediately.
         </div>
       )}
 
@@ -177,7 +176,7 @@ export function AdminQuestionInlineEditor({ questionId, onSaved }) {
       )}
 
       <form className="admin-form" onSubmit={saveQuestion} noValidate>
-        <AdminQuestionForm form={form} dispatch={dispatch} taxonomy={taxonomy} errors={errors} readOnly={isActive || saving} />
+        <AdminQuestionForm form={form} dispatch={dispatch} taxonomy={taxonomy} errors={errors} readOnly={saving} />
 
         <div className="admin-form__section">
           <div className="admin-form__section-title">Question images</div>
@@ -190,7 +189,7 @@ export function AdminQuestionInlineEditor({ questionId, onSaved }) {
           </p>
         </div>
 
-        <button type="submit" disabled={saving || isActive || !dirty}>
+        <button type="submit" disabled={saving || !dirty}>
           {saving ? 'Saving...' : 'Save question'}
         </button>
       </form>

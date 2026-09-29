@@ -103,7 +103,7 @@ function QuestionEditor({ questionId }) {
 
   const save = async (event) => {
     event.preventDefault()
-    if (saving || isActive) return
+    if (saving) return
     const formAtSave = form
     setSaving(true)
     setNotice(null)
@@ -191,9 +191,8 @@ function QuestionEditor({ questionId }) {
       )}
 
       {isActive && (
-        <div className="admin-alert" role="status">
-          This question is active, so its content and images are read-only. Use “Deactivate to edit” to change it; it will
-          then need a fresh review before reactivation.
+        <div className="aqe-live-note" role="status">
+          This question is live. Saved changes to its content and images are visible to learners immediately.
         </div>
       )}
 
@@ -201,7 +200,7 @@ function QuestionEditor({ questionId }) {
 
       {notice?.kind === 'success' && (
         <div className="admin-alert admin-alert--success" role="status">
-          Saved as an inactive draft (version {notice.version}).
+          {isActive ? 'Saved – learners now see this version' : 'Saved as an inactive draft'} (version {notice.version}).
         </div>
       )}
       {notice?.imageFailures?.length > 0 && (
@@ -235,7 +234,7 @@ function QuestionEditor({ questionId }) {
       <div className="aqe__layout">
         <div className="aqe__main">
           <div className="admin-card admin-form">
-            <AdminQuestionForm form={form} dispatch={dispatch} taxonomy={taxonomy} errors={errors} readOnly={isActive || saving} />
+            <AdminQuestionForm form={form} dispatch={dispatch} taxonomy={taxonomy} errors={errors} readOnly={saving} />
           </div>
           <div className="admin-card">
             <QuestionImageGallery
@@ -247,7 +246,8 @@ function QuestionEditor({ questionId }) {
               onSaved={onImagesSaved}
               onDirtyChange={setImagesDirty}
               onPreviewChange={setGalleryImages}
-              readOnly={isActive || saving}
+              readOnly={saving}
+              isActive={isActive}
             />
           </div>
         </div>
@@ -271,8 +271,8 @@ function QuestionEditor({ questionId }) {
       </div>
 
       <div className="aqe__actions aqe__actions--sticky">
-        <button type="submit" className="aqe-button" disabled={saving || isActive || (!dirty && !isNew)}>
-          {saving ? 'Saving…' : isNew ? 'Save inactive draft' : 'Save changes'}
+        <button type="submit" className="aqe-button" disabled={saving || (!dirty && !isNew)}>
+          {saving ? 'Saving…' : isNew ? 'Save inactive draft' : isActive ? 'Save live changes' : 'Save changes'}
         </button>
         <Link className="aqe-button aqe-button--ghost" to="/dashboard/admin">
           {dirty ? 'Cancel' : 'Back to questions'}

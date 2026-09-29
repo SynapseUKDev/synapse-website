@@ -61,12 +61,15 @@ export default function QuestionImageGallery({
   onDirtyChange,
   onPreviewChange,
   readOnly = false,
+  isActive = false,
 }) {
   const [images, setImages] = useState(() => toEditableImages(savedImages))
   const [baseline, setBaseline] = useState(() => imagesSnapshot(toEditableImages(savedImages)))
   const [statuses, setStatuses] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  // Live questions need alt text on every image, so new files are staged here until described.
+  const [staged, setStaged] = useState(NO_IMAGES)
   const addRef = useRef(null)
   const replaceRef = useRef(null)
   const replaceTarget = useRef(null)
@@ -81,7 +84,7 @@ export default function QuestionImageGallery({
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange])
   useEffect(() => onPreviewChange?.(images), [images, onPreviewChange])
 
-  const total = (questionId ? images.length : 0) + pending.length
+  const total = (questionId ? images.length : 0) + pending.length + staged.length
   const disabled = readOnly || busy
 
   const applySaved = (nextImages, nextVersion) => {
@@ -89,7 +92,9 @@ export default function QuestionImageGallery({
   }
 
   const reportError = (err) => {
-    setError(err.kind === 'conflict' ? 'This question changed elsewhere. Reload the question before changing images.' : err.message)
+    if (err.kind === 'conflict') return setError('This question changed elsewhere. Reload the question before changing images.')
+    const details = (err.issues || []).map((issue) => issue.message).filter(Boolean)
+    setError(details.length ? details.join(' ') : err.message)
   }
 
   const addFiles = async (files) => {
@@ -114,6 +119,22 @@ export default function QuestionImageGallery({
       })
       setStatuses([...results])
       onPendingChange?.([...pending, ...accepted])
+      return
+    }
+
+    if (isActive) {
+      const accepted = []
+      chosen.forEach((file, index) => {
+        const problem = precheckImageFile(file)
+        if (problem) results[index] = { ...results[index], state: 'failed', message: problem }
+        else {
+          pendingCounter += 1
+          accepted.push({ key: `staged-${pendingCounter}`, file, url: URL.createObjectURL(file), alt: '', caption: '', credit: '' })
+          results[index] = { ...results[index], state: 'ready', message: 'Add alt text, then upload' }
+        }
+      })
+      setStatuses([...results])
+      setStaged((current) => [...current, ...accepted])
       return
     }
 
@@ -147,6 +168,29 @@ export default function QuestionImageGallery({
       setStatuses([...results])
     }
     setStatuses([...results])
+    setBusy(false)
+  }
+
+  const uploadStaged = async () => {
+    setError(null)
+    setBusy(true)
+    let currentVersion = version
+    let currentImages = images
+    const remaining = []
+    for (const item of staged) {
+      try {
+        const data = await uploadQuestionImage(questionId, { ...item, expectedVersion: currentVersion })
+        currentVersion = data.question_version
+        currentImages = [...currentImages, data.asset]
+        URL.revokeObjectURL(item.url)
+        applySaved(currentImages, currentVersion)
+      } catch (err) {
+        remaining.push(item)
+        reportError(err)
+        if (err.kind === 'conflict') break
+      }
+    }
+    setStaged(remaining)
     setBusy(false)
   }
 
@@ -265,7 +309,7 @@ export default function QuestionImageGallery({
 
       {missingAlt > 0 && (
         <p className="aqg-required" role="status">
-          {missingAlt} image{missingAlt === 1 ? ' needs' : 's need'} alt text before this question can be activated.
+          {missingAlt} image{missingAlt === 1 ? ' needs' : 's need'} alt text{isActive ? ' – live questions cannot save images without it.' : ' before this question can be activated.'}
         </p>
       )}
 
@@ -326,7 +370,52 @@ export default function QuestionImageGallery({
             </div>
           </li>
         ))}
+        {staged.map((item, index) => (
+          <li key={item.key} className="aqg-item">
+            <img src={item.url} alt="" className="aqg-item__thumb" />
+            <div className="aqg-item__body">
+              <div className="aqg-item__bar">
+                <strong>New image {index + 1}</strong> <span className="aqf__hint">not uploaded yet</span>
+                <div className="aqf-option__actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      URL.revokeObjectURL(item.url)
+                      setStaged((current) => current.filter((entry) => entry.key !== item.key))
+                    }}
+                    disabled={disabled}
+                    aria-label={`Remove new image ${index + 1}`}
+                  >
+                    <LuTrash2 aria-hidden />
+                  </button>
+                </div>
+              </div>
+              <MetadataFields
+                idPrefix={`aqg-${item.key}`}
+                image={item}
+                disabled={disabled}
+                onChange={(patch) => setStaged((current) => current.map((entry) => (entry.key === item.key ? { ...entry, ...patch } : entry)))}
+              />
+            </div>
+          </li>
+        ))}
       </ol>
+
+      {staged.length > 0 && (
+        <div className="aqe__actions">
+          <button
+            type="button"
+            className="aqe-button"
+            onClick={uploadStaged}
+            disabled={disabled || staged.some((item) => !item.alt.trim())}
+          >
+            {busy ? 'Uploading…' : `Upload ${staged.length} image${staged.length === 1 ? '' : 's'}`}
+          </button>
+          {staged.some((item) => !item.alt.trim()) && (
+            <span className="aqf__hint">This question is live, so each new image needs alt text before upload.</span>
+          )}
+        </div>
+      )}
 
       {questionId && images.length > 0 && (
         <div className="aqe__actions">

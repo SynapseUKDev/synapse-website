@@ -175,7 +175,28 @@ describe('QuestionImageGallery (saved question)', () => {
     expect(screen.getByRole('button', { name: 'Remove image 1' })).toBeInTheDocument()
   })
 
-  test('is read-only for an active question', () => {
+  test('stages images for a live question until each has alt text, then uploads them', async () => {
+    vi.mocked(uploadQuestionImage).mockResolvedValue({ asset: asset('n1', 2), question_version: 4 })
+    function LiveGallery() {
+      const [state, setState] = useState({ images: [asset('a', 1)], version: 3 })
+      return (
+        <QuestionImageGallery questionId="q1" version={state.version} savedImages={state.images} isActive onSaved={setState} />
+      )
+    }
+    render(<LiveGallery />)
+    fireEvent.change(screen.getAllByLabelText('Add images', { selector: 'input' })[0], { target: { files: [png('live.png')] } })
+    const upload = screen.getByRole('button', { name: 'Upload 1 image' })
+    expect(upload).toBeDisabled()
+    expect(uploadQuestionImage).not.toHaveBeenCalled()
+
+    const altInputs = screen.getAllByLabelText(/Alt text/)
+    fireEvent.change(altInputs[altInputs.length - 1], { target: { value: 'Live ECG' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Upload 1 image' }))
+    await waitFor(() => expect(uploadQuestionImage).toHaveBeenCalledWith('q1', expect.objectContaining({ alt: 'Live ECG', expectedVersion: 3 })))
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Upload 1 image/ })).toBeNull())
+  })
+
+  test('is read-only while saving', () => {
     render(<QuestionImageGallery questionId="q1" version={3} savedImages={[asset('a', 1)]} readOnly />)
     expect(screen.getByRole('button', { name: /Add images/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Remove image 1' })).toBeDisabled()

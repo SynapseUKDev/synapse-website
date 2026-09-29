@@ -136,12 +136,15 @@ describe('AdminQuestionEditorPage', () => {
     await waitFor(() => expect(screen.getByLabelText(/Question stem/)).toHaveValue('Their edit'))
   })
 
-  test('an active question is read-only', async () => {
+  test('an active question is edited directly and saved live', async () => {
     vi.mocked(fetchQuestion).mockResolvedValue({ question: { ...saved, is_active: true } })
+    vi.mocked(updateQuestion).mockResolvedValue({ question: { ...saved, is_active: true, stem: 'Fixed typo', version: 4 } })
     renderAt(`/dashboard/admin/questions/${QUESTION_ID}`)
-    expect(await screen.findByLabelText(/Question stem/)).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Deactivate to edit' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+    expect(await screen.findByText(/Saved changes to its content and images are visible to learners immediately/)).toBeInTheDocument()
+    await editStem('Fixed typo')
+    fireEvent.click(screen.getByRole('button', { name: 'Save live changes' }))
+    expect(await screen.findByText('Saved – learners now see this version (version 4).')).toBeInTheDocument()
+    expect(updateQuestion).toHaveBeenCalledWith(QUESTION_ID, 3, expect.objectContaining({ stem: 'Fixed typo' }))
   })
 
   test('warns before leaving only while there are unsaved changes', async () => {

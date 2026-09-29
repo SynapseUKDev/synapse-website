@@ -85,12 +85,14 @@ describe('AdminQuestionInlineEditor', () => {
     expect(screen.getByLabelText(/Question stem/)).toHaveValue('Mine')
   })
 
-  test('an active question cannot be edited inline', async () => {
+  test('an active question can be edited inline and says changes go live', async () => {
     vi.mocked(fetchQuestion).mockResolvedValue({ question: { ...saved, is_active: true } })
     renderEditor()
-    expect(await screen.findByLabelText(/Question stem/)).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Save question' })).toBeDisabled()
-    expect(screen.getByText('Active')).toBeInTheDocument()
+    const stem = await screen.findByLabelText(/Question stem/)
+    expect(stem).toBeEnabled()
+    expect(screen.getByText(/Saved changes are visible to learners immediately/)).toBeInTheDocument()
+    fireEvent.change(stem, { target: { value: 'Fixed' } })
+    expect(screen.getByRole('button', { name: 'Save question' })).toBeEnabled()
   })
 })
 
