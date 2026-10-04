@@ -39,6 +39,7 @@ import OsceGroupResults from './dashboard/osce/OsceGroupResults.jsx'
 import OsceAdminPanel from './dashboard/osce/OsceAdminPanel.jsx'
 import OsceAdminStationEditor from './dashboard/osce/OsceAdminStationEditor.jsx'
 import Flashcards from './dashboard/osce/Flashcards.jsx'
+import FlashcardsV2 from './dashboard/osce/FlashcardsV2.jsx'
 import MockExams from './dashboard/mock-exams/MockExams.jsx'
 import MockExamBegin from './dashboard/mock-exams/MockExamBegin.jsx'
 import MockExamPractice from './dashboard/mock-exams/MockExamPractice.jsx'
@@ -157,6 +158,7 @@ function App() {
           <Route path="institution" element={<InstitutionDashboard />} />
           <Route path="osce" element={<OsceStations />} />
           <Route path="question-bank/flashcards" element={<Flashcards />} />
+          <Route path="question-bank/flashcards-v2" element={<FlashcardsV2 />} />
           <Route path="osce/flashcards" element={<Navigate to="/dashboard/question-bank/flashcards" replace />} />
           <Route path="osce/station/:slug" element={<OsceStationLanding />} />
           <Route path="osce/station/:slug/practice" element={<OsceStationActive />} />
