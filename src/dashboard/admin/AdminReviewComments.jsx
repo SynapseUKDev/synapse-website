@@ -276,7 +276,6 @@ export default function AdminReviewComments({ API_BASE, defaultContentType = nul
               {selectedComment.content_type === 'qbank_question' && (
                 <AdminQuestionInlineEditor
                   questionId={selectedComment.content_id}
-                  API_BASE={API_BASE}
                 />
               )}
 

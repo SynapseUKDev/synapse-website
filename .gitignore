@@ -33,6 +33,9 @@ jspm_packages/
 
 # Build output
 dist/
+build/
+coverage/
+.env*
 
 # Misc
 *.pem

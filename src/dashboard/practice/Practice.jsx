@@ -23,6 +23,8 @@ import {
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
+import QuestionAssetCarousel from './QuestionAssetCarousel'
+import { buildQuickPoints, hasMarkdown, mergeAdminQuestionUpdate, stemMarkdownComponents } from './questionPresentationUtils'
 import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
 
 function useCountdown(initialSec = 1800) {
@@ -170,7 +172,6 @@ export default function Practice() {
   const [showRef, setShowRef] = useState(false)
   const [openGroupId, setOpenGroupId] = useState(null)
   // Image carousel state for question assets
-  const [assetIdx, setAssetIdx] = useState(0)
   const [adminEditorOpen, setAdminEditorOpen] = useState(false)
 
   // Current question state
@@ -201,36 +202,7 @@ export default function Practice() {
     if (!updatedQuestion?.id) return
     setQuestions((prev) => prev.map((question) => {
       if (String(question.id) !== String(updatedQuestion.id)) return question
-      const optionBodies = Array.isArray(updatedQuestion.options)
-        ? updatedQuestion.options.map((option) => {
-          if (typeof option === 'string') return option
-          return option?.body || option?.text || option?.label || ''
-        })
-        : []
-      return {
-        ...question,
-        ...updatedQuestion,
-        assets: (updatedQuestion.assets || []).map((asset, index) => ({
-          id: asset.id,
-          type: asset.asset_type || 'image',
-          url: asset.asset_url,
-          alt: asset.alt || null,
-          caption: asset.caption || null,
-          credit: asset.credit || null,
-          position: asset.position || index + 1,
-        })),
-        options: optionBodies.map((body, idx) => ({
-          id: idx,
-          label: String.fromCharCode(65 + idx),
-          body,
-        })),
-        explanations: {
-          ...(question.explanations || {}),
-          detailed: updatedQuestion.explanation_l2 || '',
-          eli5: updatedQuestion.explanation_eli5 || '',
-          points_by_option: updatedQuestion.explanation_points_by_option || null,
-        },
-      }
+      return mergeAdminQuestionUpdate(question, updatedQuestion)
     }))
   }, [])
 
@@ -424,7 +396,6 @@ export default function Practice() {
     }
     setShowRef(false) // Reset reference ranges to collapsed on question change
     // Reset carousel index when question changes
-    setAssetIdx(0)
   }
 
   const goToPrevious = () => {
@@ -727,10 +698,6 @@ export default function Practice() {
     })
   }
 
-  const hasMarkdown = (text = '') => {
-    // Detect headers, lists, bold, italics, code, links, and tables (|---|)
-    return /(^|\n)\s{0,3}#{1,6}\s+|(^|\n)\s*([-*+]\s+|\d+\.\s+)|\*\*[^*]+\*\*|_[^_]+_|`[^`]+`|\[[^\]]+\]\([^)]+\)|\|[^|]+\|/m.test(text)
-  }
 
   const applyHighlightsToMarkdown = (text, questionHighlights) => {
     if (questionHighlights.length === 0) return text
@@ -914,60 +881,8 @@ export default function Practice() {
               }
               return <mark {...props}>{children}</mark>
             },
-            // Style other markdown elements
-            p: ({ node, ...props }) => <p style={{ marginBottom: '12px', lineHeight: '1.6' }} {...props} />,
-            h1: ({ node, ...props }) => <h1 style={{ fontSize: '1.5em', fontWeight: 800, marginBottom: '12px', marginTop: '16px' }} {...props} />,
-            h2: ({ node, ...props }) => <h2 style={{ fontSize: '1.3em', fontWeight: 800, marginBottom: '10px', marginTop: '14px' }} {...props} />,
-            h3: ({ node, ...props }) => <h3 style={{ fontSize: '1.1em', fontWeight: 700, marginBottom: '8px', marginTop: '12px' }} {...props} />,
-            ul: ({ node, ...props }) => <ul style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
-            ol: ({ node, ...props }) => <ol style={{ marginBottom: '12px', paddingLeft: '24px' }} {...props} />,
-            li: ({ node, ...props }) => <li style={{ marginBottom: '4px' }} {...props} />,
-            table: ({ node, ...props }) => (
-              <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
-                <table
-                  style={{
-                    borderCollapse: 'collapse',
-                    width: '100%',
-                    border: '1px solid var(--stem-md-table-border)',
-                    color: 'var(--stem-md-td-fg)',
-                  }}
-                  {...props}
-                />
-              </div>
-            ),
-            th: ({ node, ...props }) => (
-              <th
-                style={{
-                  border: '1px solid var(--stem-md-table-border)',
-                  padding: '8px',
-                  backgroundColor: 'var(--stem-md-th-bg)',
-                  color: 'var(--stem-md-th-fg)',
-                  fontWeight: 700,
-                  textAlign: 'left',
-                }}
-                {...props}
-              />
-            ),
-            td: ({ node, ...props }) => (
-              <td
-                style={{
-                  border: '1px solid var(--stem-md-table-border)',
-                  padding: '8px',
-                  textAlign: 'left',
-                  color: 'var(--stem-md-td-fg)',
-                }}
-                {...props}
-              />
-            ),
-            blockquote: ({ node, ...props }) => (
-              <blockquote style={{ borderLeft: '4px solid #cbd5e1', paddingLeft: '12px', margin: '12px 0', color: '#64748b' }} {...props} />
-            ),
-            code: ({ node, inline, ...props }) => {
-              if (inline) {
-                return <code style={{ backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em' }} {...props} />
-              }
-              return <code style={{ display: 'block', backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '8px', overflowX: 'auto', marginBottom: '12px' }} {...props} />
-            },
+            // Shared learner markdown styling
+            ...stemMarkdownComponents,
           }}
         >
           {textWithHighlights}
@@ -1516,16 +1431,9 @@ export default function Practice() {
     explanations: currentQuestion.explanations
   } : null
 
-  // Build list of all five per-option quick points (always show all)
+  // Build the per-option quick points (first point for each option)
   const pointsByOption = currentQuestion?.explanations?.points_by_option || null
-  const allQuickPoints = pointsByOption
-    ? [0, 1, 2, 3, 4].map((idx) => ({
-      label: String.fromCharCode(65 + idx),
-      text: (pointsByOption[String(idx)]?.[0]) || null,
-      isCorrect: currentQuestion?.correct_answer === idx,
-    }))
-      .filter((p) => p.text)
-    : []
+  const allQuickPoints = buildQuickPoints(pointsByOption, currentQuestion?.correct_answer, currentQuestion?.options?.length || 0)
 
   // Calculate review stats
   const reviewStats = isReviewMode ? {
@@ -1628,66 +1536,7 @@ export default function Practice() {
                     onDelete={reviewPopover.isViewOnly ? () => handleReviewCommentDelete(reviewPopover.id) : null}
                   />
                 )}
-                {Array.isArray(currentQuestion.assets) && currentQuestion.assets.length > 0 && (
-                  (() => {
-                    const assets = currentQuestion.assets.filter(a => a && a.url)
-                    const cur = assets[Math.min(assetIdx, Math.max(assets.length - 1, 0))]
-                    const prev = () => setAssetIdx((i) => assets.length > 0 ? (i - 1 + assets.length) % assets.length : 0)
-                    const next = () => setAssetIdx((i) => assets.length > 0 ? (i + 1) % assets.length : 0)
-                    if (!cur) return null
-                    return (
-                      <div className={`q-carousel ${assets.length <= 1 ? 'q-carousel--single' : ''}`} role="region" aria-label="Question images">
-                        {assets.length > 1 && (
-                          <button
-                            type="button"
-                            className="qc-nav qc-prev"
-                            onClick={prev}
-                            aria-label="Previous image"
-                          >
-                            ‹
-                          </button>
-                        )}
-                        <figure key={cur.id} className="q-asset">
-                          {cur.type === 'image' ? (
-                            <div className="q-carousel__viewport">
-                              <img src={cur.url} alt={cur.alt || ''} loading="lazy" decoding="async" />
-                            </div>
-                          ) : null}
-                          {(cur.caption || cur.credit) && (
-                            <figcaption className="q-asset__cap">
-                              {cur.caption && <div className="q-asset__caption">{cur.caption}</div>}
-                              {cur.credit && <div className="q-asset__credit">{cur.credit}</div>}
-                            </figcaption>
-                          )}
-                        </figure>
-                        {assets.length > 1 && (
-                          <button
-                            type="button"
-                            className="qc-nav qc-next"
-                            onClick={next}
-                            aria-label="Next image"
-                          >
-                            ›
-                          </button>
-                        )}
-                        {assets.length > 1 && (
-                          <div className="qc-dots" role="tablist" aria-label="Image selector">
-                            {assets.map((_, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                className={`qc-dot ${i === assetIdx ? 'is-active' : ''}`}
-                                aria-label={`Go to image ${i + 1}`}
-                                aria-selected={i === assetIdx ? 'true' : 'false'}
-                                onClick={() => setAssetIdx(i)}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()
-                )}
+                <QuestionAssetCarousel key={currentQuestion.id} assets={currentQuestion.assets} />
                 {currentQuestion.options?.length > 0 ? (
                   <div style={{ display: 'grid', gap: 8 }}>
                     {currentQuestion.options.map((o) => {
@@ -1875,8 +1724,6 @@ export default function Practice() {
                   </div>
                   <AdminQuestionInlineEditor
                     questionId={currentQuestionId}
-                    initialQuestion={currentQuestion}
-                    API_BASE={API_BASE}
                     onSaved={mergeAdminQuestion}
                   />
                 </div>

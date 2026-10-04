@@ -6,6 +6,7 @@ import logoImg from '../../assets/logo/logo.png'
 import { getDashboardNavItems } from './dashboardNavConfig'
 import NotificationBell from '../notifications/NotificationBell'
 import './Sidebar.css'
+import { confirmNavigation } from '../navigationGuard'
 
 function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
   const [theme, setTheme] = useTheme()
@@ -37,6 +38,7 @@ function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
   const initial = (displayUsername || user?.email || 'U').charAt(0).toUpperCase()
 
   const handleNavigate = (to) => {
+    if (!confirmNavigation()) return
     navigate(to)
   }
 

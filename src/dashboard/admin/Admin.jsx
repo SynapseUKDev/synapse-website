@@ -5,6 +5,8 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import { AdminQuestionInlineEditor, AdminTextbookInlineEditor } from './AdminEditors'
 import OsceAdminPanel from '../osce/OsceAdminPanel'
 import AdminReviewComments from './AdminReviewComments'
+import AdminQuestionImport from './questions/AdminQuestionImport'
+import AdminQuestionManager from './questions/AdminQuestionManager'
 import AdminInstitutions from './AdminInstitutions'
 import AdminStudyReports from './AdminStudyReports'
 import AdminAnnouncements from './AdminAnnouncements'
@@ -35,6 +37,8 @@ function formatDate(value) {
   }
 }
 
+const QBANK_SUBTAB_KEY = 'admin_qbank_subtab'
+
 export default function Admin() {
   const { user } = useOutletContext()
   const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_access_admin || !!user?.capabilities?.can_manage_osce || !!user?.capabilities?.can_manage_qbank || !!user?.capabilities?.can_manage_textbook || !!user?.capabilities?.can_manage_mock_papers
@@ -63,11 +67,31 @@ export default function Admin() {
     return 'question-issues'
   })
 
-  const [subTab, setSubTab] = useState('main') // main | review
+  // The Question Bank sub-tab survives a trip to the question editor and back.
+  const readQbankSubTab = () => {
+    try {
+      return sessionStorage.getItem(QBANK_SUBTAB_KEY) || 'main'
+    } catch {
+      return 'main'
+    }
+  }
+
+  const [subTab, setSubTabState] = useState(() => (activeTab === 'question-issues' ? readQbankSubTab() : 'main')) // questions | import | main | review
+
+  const setSubTab = (tab) => {
+    setSubTabState(tab)
+    if (activeTab === 'question-issues') {
+      try {
+        sessionStorage.setItem(QBANK_SUBTAB_KEY, tab)
+      } catch {
+        // storage unavailable: the sub-tab simply won't persist
+      }
+    }
+  }
 
   const setActiveTab = (tab) => {
     setActiveTabState(tab)
-    setSubTab('main')
+    setSubTabState(tab === 'question-issues' ? readQbankSubTab() : 'main')
     localStorage.setItem('admin_active_tab', tab)
   }
 
@@ -322,7 +346,7 @@ export default function Admin() {
             {activeTab === 'institutions' && 'Institutions'}
             {activeTab === 'announcements' && 'Announcements'}
             {activeTab === 'reports' && 'Study reports'}
-            {isIssuesTab && 'Admin Issues'}
+            {isIssuesTab && (activeTab === 'question-issues' && ['questions', 'import'].includes(subTab) ? 'Question Bank' : 'Admin Issues')}
           </h1>
           <p className="admin__muted">
             {activeTab === 'mock-papers' && 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'}
@@ -330,7 +354,11 @@ export default function Admin() {
             {activeTab === 'institutions' && 'Create institution accounts, manage staff admins, and help with student invites when they cannot.'}
             {activeTab === 'announcements' && 'Draft and publish in-app announcements. Users will see unread ones the next time they open the dashboard.'}
             {activeTab === 'reports' && 'Monthly AI study reports: run the batch, watch it finish, and see usage per month.'}
-            {isIssuesTab && 'Review user-reported issues, then edit the related question or textbook page.'}
+            {isIssuesTab && (activeTab === 'question-issues' && subTab === 'import'
+              ? 'Validate generated question files, review every record, then import the ones you choose as inactive drafts.'
+              : activeTab === 'question-issues' && subTab === 'questions'
+              ? 'Create, find and edit question-bank questions. New questions stay inactive until reviewed and activated.'
+              : 'Review user-reported issues, then edit the related question or textbook page.')}
           </p>
         </div>
         <div className="admin-badge">Admin</div>
@@ -421,6 +449,24 @@ export default function Admin() {
 
       {activeTab !== 'institutions' && activeTab !== 'reports' && activeTab !== 'announcements' && (
         <div className="admin-subtabs">
+          {activeTab === 'question-issues' && (
+            <button
+              type="button"
+              className={`admin-subtab-btn ${subTab === 'questions' ? 'is-active' : ''}`}
+              onClick={() => setSubTab('questions')}
+            >
+              Questions
+            </button>
+          )}
+          {activeTab === 'question-issues' && (
+            <button
+              type="button"
+              className={`admin-subtab-btn ${subTab === 'import' ? 'is-active' : ''}`}
+              onClick={() => setSubTab('import')}
+            >
+              Bulk import
+            </button>
+          )}
           <button
             type="button"
             className={`admin-subtab-btn ${subTab === 'main' ? 'is-active' : ''}`}
@@ -440,6 +486,10 @@ export default function Admin() {
           </button>
         </div>
       )}
+
+      {activeTab === 'question-issues' && subTab === 'questions' && canManageQbank && <AdminQuestionManager />}
+
+      {activeTab === 'question-issues' && subTab === 'import' && canManageQbank && <AdminQuestionImport />}
 
       {activeTab === 'institutions' && <AdminInstitutions />}
 
@@ -714,8 +764,6 @@ export default function Admin() {
                 {selectedQuestionIssue.question_id ? (
                   <AdminQuestionInlineEditor
                     questionId={selectedQuestionIssue.question_id}
-                    initialQuestion={selectedQuestionIssue.question}
-                    API_BASE={API_BASE}
                   />
                 ) : (
                   <p className="admin__muted">This issue is not linked to a question row.</p>
