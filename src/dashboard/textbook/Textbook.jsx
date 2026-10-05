@@ -924,7 +924,7 @@ export default function Textbook() {
           </div>
           <h1 className="tb-title">{data.specialty?.name}</h1>
           <p className="tb-sub">Track your progress and confidence in key {data.specialty?.name?.toLowerCase()} topics.</p>
-          <form className="tb-search" onSubmit={runSearch} role="search" aria-label="Search textbook">
+          <form className="tb-search" data-track="textbook.search" onSubmit={runSearch} role="search" aria-label="Search textbook">
             <input
               className="tb-search__input"
               type="search"
@@ -1027,7 +1027,7 @@ export default function Textbook() {
             {topicsReadCount === 0 ? 'No topics read yet' : `${topicsReadCount} topic${topicsReadCount !== 1 ? 's' : ''} read`}
           </p>
         )}
-        <form className="tb-search" onSubmit={runSearch} role="search" aria-label="Search textbook">
+        <form className="tb-search" data-track="textbook.search" onSubmit={runSearch} role="search" aria-label="Search textbook">
           <input
             className="tb-search__input"
             type="search"

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { authHeaders, clearTokens } from '../auth/token'
-import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuLoader, LuTrophy, LuHeadset } from 'react-icons/lu'
+import { LuUser, LuCreditCard, LuCheck, LuX, LuTarget, LuSun, LuMoon, LuLoader, LuShieldCheck, LuHeadset } from 'react-icons/lu'
 import useTheme from '../utils/useTheme'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import ResetProgressCard from './ResetProgressCard.jsx'
 import ContactSupportModal from './ContactSupportModal.jsx'
+import { setOptOut } from '../analytics/analytics.js'
 import './Settings.css'
 
 export default function Settings() {
@@ -32,6 +33,9 @@ export default function Settings() {
   const [anonymise, setAnonymise] = useState(false)
   const [savingPrivacy, setSavingPrivacy] = useState(false)
   const [privacyMessage, setPrivacyMessage] = useState({ type: '', text: '' })
+  const [shareAnalytics, setShareAnalytics] = useState(true)
+  const [savingAnalytics, setSavingAnalytics] = useState(false)
+  const [analyticsMessage, setAnalyticsMessage] = useState({ type: '', text: '' })
   const [institution, setInstitution] = useState(null)
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -92,6 +96,7 @@ export default function Settings() {
         setUsername(data.user?.username || '')
         setYearGroup(data.user?.year_group || '')
         setAnonymise(!!data.user?.anonymise_in_leaderboards)
+        setShareAnalytics(!data.user?.analytics_opt_out)
         setInstitution(data.institution || null)
         setTargets({
           questions: data.user?.daily_question_target || 30,
@@ -183,6 +188,35 @@ export default function Settings() {
     } finally {
       setSavingPrivacy(false)
       setTimeout(() => setPrivacyMessage({ type: '', text: '' }), 3000)
+    }
+  }
+
+  /** Usage analytics opt-out (spec 002): saved on the account, applied to this browser at once. */
+  const saveAnalytics = async (share) => {
+    setShareAnalytics(share)
+    setSavingAnalytics(true)
+    setAnalyticsMessage({ type: '', text: '' })
+    try {
+      const res = await fetch(`${API_BASE}/me/privacy`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ analytics_opt_out: !share }),
+      })
+      if (res.ok) {
+        setOptOut(!share)
+        setAnalyticsMessage({ type: 'success', text: share ? 'Usage analytics turned on.' : 'Usage analytics turned off.' })
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setShareAnalytics(!share)
+        setAnalyticsMessage({ type: 'error', text: json?.error || 'Failed to save' })
+      }
+    } catch {
+      setShareAnalytics(!share)
+      setAnalyticsMessage({ type: 'error', text: 'Failed to save' })
+    } finally {
+      setSavingAnalytics(false)
+      setTimeout(() => setAnalyticsMessage({ type: '', text: '' }), 3000)
     }
   }
 
@@ -434,15 +468,15 @@ export default function Settings() {
           </form>
         </div>
 
-        {/* Leaderboards card */}
+        {/* Privacy & leaderboards card */}
         <div className="qb-card">
           <div className="qb-card__head">
             <div className="qb-card__titlewrap">
               <div className="qb-card__icon" style={{ background: '#f0fdf4', border: '1.5px solid #10b981', color: '#10b981', borderRadius: '12px', boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)' }}>
-                <LuTrophy size={20} />
+                <LuShieldCheck size={20} />
               </div>
               <div>
-                <div className="qb-card__title">Leaderboards</div>
+                <div className="qb-card__title">Privacy</div>
               </div>
             </div>
           </div>
@@ -516,6 +550,36 @@ export default function Settings() {
                 </div>
               )}
             </div>
+
+            <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--syn-border)' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: savingAnalytics ? 'progress' : 'pointer' }}>
+                <input
+                  type="checkbox"
+                  data-track="settings.analytics_toggle"
+                  checked={shareAnalytics}
+                  disabled={savingAnalytics}
+                  onChange={(e) => saveAnalytics(e.target.checked)}
+                  style={{ marginTop: 3, width: 16, height: 16, flex: 'none', cursor: 'inherit' }}
+                />
+                <span>
+                  <span style={{ fontWeight: 800, color: 'var(--syn-navy-700)' }}>Share usage analytics to help improve SynapseUK</span>
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 13, color: 'var(--syn-muted)', lineHeight: 1.5 }}>
+                    We record which pages and features you use, never your answers or anything you type.{' '}
+                    <a href="https://www.synapseuk.org/privacy-policy" target="_blank" rel="noopener noreferrer">
+                      Privacy policy
+                    </a>
+                  </span>
+                </span>
+              </label>
+              <div role="status" aria-live="polite">
+                {analyticsMessage.text && (
+                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, color: analyticsMessage.type === 'success' ? '#10b981' : '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                    {analyticsMessage.type === 'success' ? <LuCheck size={16} /> : <LuX size={16} />}
+                    {analyticsMessage.text}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -531,7 +595,7 @@ export default function Settings() {
               </div>
             </div>
           </div>
-          <div className="settings-account">
+          <div className="settings-account ph-no-capture">
             <div className="settings-account__row">
               <div>
                 <div className="qb__subtitle" style={{ marginBottom: 4 }}>Status</div>

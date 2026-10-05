@@ -6,6 +6,8 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import useStaleJson from '../../utils/useStaleJson'
 import './CreateStudySet.css'
 import '../practice/Practice.css'
+import { track } from '../../analytics/analytics.js'
+import { EVENTS } from '../../analytics/events.js'
 
 export default function CreateStudySet() {
   const navigate = useNavigate()
@@ -251,6 +253,7 @@ export default function CreateStudySet() {
       })
 
       if (!res.ok) throw new Error('Failed to create set')
+      track(EVENTS.QBANK_STUDY_SET_CREATED)
 
       navigate(isGroupMode ? '/dashboard/group-study' : '/dashboard/study-sets')
     } catch (e) {

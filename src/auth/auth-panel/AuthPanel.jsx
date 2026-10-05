@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import './AuthPanel.css'
 import { setTokens } from '../token'
+import { track } from '../../analytics/analytics.js'
+import { EVENTS } from '../../analytics/events.js'
 import AuthCaptcha from './AuthCaptcha.jsx'
 
 const swapTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] }
@@ -211,6 +213,7 @@ function AuthPanel() {
               if (data?.access_token) {
                 setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
               }
+              track(EVENTS.ACCOUNT_SIGNED_IN, { method: 'password' })
               console.log('Signin successful, navigating to dashboard')
               navigate('/dashboard')
             }

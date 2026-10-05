@@ -124,6 +124,7 @@ function App() {
     <BrowserRouter>
       <HashRedirector />
       <ThemeWatcher />
+      {/* New routes must be added to ROUTE_PATTERNS in src/analytics/routePattern.js */}
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Auth />} />

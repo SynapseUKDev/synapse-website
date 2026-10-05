@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { authHeaders } from '../../auth/token'
 import './MockExams.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
+import { track } from '../../analytics/analytics.js'
+import { EVENTS } from '../../analytics/events.js'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 const TIMER_PRESETS = [60, 90, 120, 150, 180]
@@ -105,6 +107,7 @@ export default function MockExamBegin() {
       const id = data.attempt?.id
       if (!id) throw new Error('No attempt id returned')
       closeResumeChoice()
+      track(EVENTS.MOCK_STARTED, { timed: timerMinutes > 0 })
       navigate(`/dashboard/mock-exams/practice?attempt_id=${encodeURIComponent(id)}`)
     } catch (e) {
       alert(e.message || 'Could not start')
@@ -221,7 +224,7 @@ export default function MockExamBegin() {
               Continue attempt
             </button>
           ) : null}
-          <button type="button" className="me-btn" onClick={onStartNewAttempt} disabled={starting}>
+          <button type="button" className="me-btn" data-track="mock.begin" onClick={onStartNewAttempt} disabled={starting}>
             {starting ? 'Starting…' : paper.in_progress_attempt_id ? 'Start new attempt' : 'Begin timed exam'}
           </button>
         </div>
@@ -240,7 +243,7 @@ export default function MockExamBegin() {
               above.
             </p>
             <div className="me-modal-actions">
-              <button type="button" className="me-btn" onClick={onResumeFromModal}>
+              <button type="button" className="me-btn" data-track="mock.resume" onClick={onResumeFromModal}>
                 Continue previous attempt
               </button>
               <button type="button" className="me-btn me-btn--ghost" onClick={onAbandonFromModal} disabled={starting}>

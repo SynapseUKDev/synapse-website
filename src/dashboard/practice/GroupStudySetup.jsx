@@ -6,6 +6,8 @@ import './PracticeSetup.css'
 import './GroupStudySetup.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { io } from 'socket.io-client'
+import { track } from '../../analytics/analytics.js'
+import { EVENTS } from '../../analytics/events.js'
 import QuestionCountControl from './QuestionCountControl'
 import {
   adjustQuestionCountInput,
@@ -437,6 +439,7 @@ export default function GroupStudySetup() {
 
       setRoomCode(data.room_code)
       setIsHost(true)
+      track(EVENTS.GROUP_SESSION_JOINED, { kind: 'qbank', role: 'host' })
 
       setParticipants([{ id: data.host_id, name: data.host_name, is_host: true }])
       setSessionCreated(true)
@@ -473,6 +476,7 @@ export default function GroupStudySetup() {
         throw new Error(error.error || error.message || 'Failed to join session')
       }
       const data = await res.json()
+      track(EVENTS.GROUP_SESSION_JOINED, { kind: 'qbank', role: 'participant' })
 
       if (data.status === 'active') {
         const params = new URLSearchParams({
@@ -585,7 +589,7 @@ export default function GroupStudySetup() {
                 <p className="room-code__hint">Share this code with your study group</p>
               </div>
 
-              <div className="group-waiting__participants">
+              <div className="group-waiting__participants ph-no-capture">
                 <h3 className="participants__title">
                   Participants ({participants.length})
                 </h3>

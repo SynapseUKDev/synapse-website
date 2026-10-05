@@ -1,3 +1,5 @@
+import { resetAnalytics } from '../analytics/analytics.js'
+
 // Simple token utilities to work around iOS cookie restrictions
 export const ACCESS_TOKEN_KEY = 'sb_access_token'
 export const REFRESH_TOKEN_KEY = 'sb_refresh_token'
@@ -25,7 +27,10 @@ export function getRefreshToken() {
   }
 }
 
+// Every sign-out path calls clearTokens, so it also forgets the analytics identity
+// (a no-op when PostHog was never loaded) so the next person on this browser starts fresh.
 export function clearTokens() {
+  resetAnalytics()
   try {
     localStorage.removeItem(ACCESS_TOKEN_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)

@@ -13,6 +13,7 @@ import AnnouncementModal from '../notifications/AnnouncementModal'
 import NotificationBell from '../notifications/NotificationBell'
 import NotificationInbox from '../notifications/NotificationInbox'
 import { isAllowedAnnouncementCtaUrl, openAnnouncementCtaUrl } from '../notifications/announcementLinks'
+import { useUsageTracking } from '../../analytics/useUsageTracking'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -29,6 +30,7 @@ function DashboardLayout() {
   const [announcementBusy, setAnnouncementBusy] = useState(false)
   const [inboxOpen, setInboxOpen] = useState(false)
   const [inboxBusy, setInboxBusy] = useState(false)
+  useUsageTracking({ user })
 
   const fetchUser = useCallback(async () => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'

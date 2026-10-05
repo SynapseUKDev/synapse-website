@@ -8,6 +8,8 @@ import {
   clearStudySetQuestionIdsPrefetch,
   setStudySetQuestionIdsPrefetch,
 } from '../question-bank/studySetPrefetchStore'
+import { track } from '../../analytics/analytics.js'
+import { EVENTS } from '../../analytics/events.js'
 import QuestionCountControl from './QuestionCountControl'
 import {
   adjustQuestionCountInput,
@@ -395,6 +397,10 @@ export default function PracticeSetup() {
       params.append('topic_ids', Array.from(selectedTopics).join(','))
     }
 
+    track(EVENTS.QBANK_SESSION_STARTED, {
+      mode: studySetId ? 'study_set' : params.has('include_incorrect') ? 'incorrect_only' : 'solo',
+      question_count: numQuestions,
+    })
     navigate(`/dashboard/question-bank/practice?${params.toString()}`)
   }
 
@@ -791,6 +797,7 @@ export default function PracticeSetup() {
 
             <button
               className="setup__start-btn"
+              data-track="qbank.start_practice"
               onClick={startSession}
               disabled={!canStart}
             >

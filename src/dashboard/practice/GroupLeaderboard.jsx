@@ -92,7 +92,7 @@ export default function GroupLeaderboard() {
 
   if (loadingReview) {
     return (
-      <div className="group-leaderboard">
+      <div className="group-leaderboard ph-no-capture">
         <LoadingScreen message="Loading review data..." inline />
       </div>
     )
@@ -301,7 +301,7 @@ export default function GroupLeaderboard() {
 
   if (!scores || scores.length === 0) {
     return (
-      <div className="group-leaderboard">
+      <div className="group-leaderboard ph-no-capture">
         <div className="group-leaderboard__header">
           <button className="setup__back" onClick={() => navigate('/dashboard/question-bank')}>
             <LuChevronLeft /> Back to Question Bank
@@ -315,7 +315,7 @@ export default function GroupLeaderboard() {
   }
 
   return (
-    <div className="group-leaderboard">
+    <div className="group-leaderboard ph-no-capture">
       <div className="group-leaderboard__header">
         <button className="setup__back" onClick={() => navigate('/dashboard/question-bank')}>
           <LuChevronLeft /> Back to Question Bank

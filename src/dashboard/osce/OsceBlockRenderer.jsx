@@ -5,9 +5,18 @@ import { LuCheck } from 'react-icons/lu'
  * Renders a single OSCE content block based on its block_type.
  * Supported types: markdown, checklist, key_value, callout, image, table, list
  */
-export default function OsceBlockRenderer({ block, interactive = false, isReviewer = false, reviewComments = [] }) {
-  if (!block) return null
+// Station content: wrapped in ph-no-capture (display: contents keeps the layout) so
+// usage analytics never record it (specs/002 capture-policy).
+export default function OsceBlockRenderer(props) {
+  if (!props.block) return null
+  return (
+    <div className="ph-no-capture" style={{ display: 'contents' }}>
+      <BlockContent {...props} />
+    </div>
+  )
+}
 
+function BlockContent({ block, interactive = false, isReviewer = false, reviewComments = [] }) {
   switch (block.block_type) {
     case 'markdown':
       return <MarkdownBlock content={block.content} isReviewer={isReviewer} reviewComments={reviewComments} />

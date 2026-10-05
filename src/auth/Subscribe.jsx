@@ -4,9 +4,18 @@ import './Auth.css'
 import './auth-panel/AuthPanel.css'
 import AuthShell from './AuthShell.jsx'
 import { authHeaders, clearTokens } from './token'
+import { initAnalytics, track } from '../analytics/analytics.js'
+import { EVENTS } from '../analytics/events.js'
+
+// The only paid plan (STRIPE_PRICE_6MO_GBP15).
+const ANALYTICS_PLAN = '6_month'
 
 function Subscribe() {
   const [user, setUser] = useState(null)
+  // Outside the dashboard layout, so start usage analytics from this page's own /me.
+  useEffect(() => {
+    if (user) initAnalytics({ user })
+  }, [user])
   const [access, setAccess] = useState(null)
   const [banner, setBanner] = useState({ type: '', text: '' })
   const [processing, setProcessing] = useState(false)
@@ -55,6 +64,7 @@ function Subscribe() {
 
               if (resp.ok) {
                 console.log('Session confirmed successfully')
+                track(EVENTS.BILLING_UPGRADE_COMPLETED, { plan: ANALYTICS_PLAN })
                 const res = await fetch(`${API_BASE}/me?ts=${Date.now()}`, {
                   credentials: 'include',
                   cache: 'no-store',
@@ -211,6 +221,7 @@ function Subscribe() {
             setProcessing(true)
             try {
               const trialDays = daysLeft && daysLeft > 0 ? daysLeft : 0
+              track(EVENTS.BILLING_UPGRADE_STARTED, { plan: ANALYTICS_PLAN })
 
               const res = await fetch(`${API_BASE}/billing/create-checkout-session`, {
                 method: 'POST',

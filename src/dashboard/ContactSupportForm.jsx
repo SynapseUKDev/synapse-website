@@ -46,7 +46,7 @@ export default function ContactSupportForm({ replyToEmail, onCancel, onSuccess, 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="csf">
+    <form onSubmit={handleSubmit} className="csf ph-no-capture">
       {replyToEmail && (
         <p className="csf__hint">
           We will reply to <strong>{replyToEmail}</strong>
