@@ -30,7 +30,16 @@ export default function ContactSupportForm({ replyToEmail, onCancel, onSuccess, 
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ subject: subject.trim(), message: message.trim() }),
+        body: JSON.stringify({
+          subject: subject.trim(),
+          message: message.trim(),
+          // Lets support see the student's context without asking; browser and IP are read server-side.
+          diagnostics: {
+            page: window.location.pathname,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            screen: `${window.screen.width}x${window.screen.height} @${window.devicePixelRatio}x`,
+          },
+        }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
