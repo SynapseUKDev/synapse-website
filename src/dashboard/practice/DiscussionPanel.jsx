@@ -142,7 +142,7 @@ export default function DiscussionPanel({ questionId, API_BASE }) {
   const count = comments.length
 
   return (
-    <div className="card discussion-card">
+    <div className="card discussion-card ph-no-capture">
       <div className="card__header discussion-card__header">
         <div className="discussion-card__title">Student Discussion</div>
         <button className="btn btn--ghost btn--icon discussion-card__toggle" onClick={() => setExpanded((x) => !x)}>

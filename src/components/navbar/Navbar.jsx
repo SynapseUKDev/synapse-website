@@ -98,7 +98,7 @@ function Navbar() {
         <div className="nav__actions">
           {user ? (
             <button
-              className="nav__user"
+              className="nav__user ph-no-capture"
               onClick={() => { closeMenu(); navigate('/dashboard') }}
               aria-label={`Go to dashboard as ${displayName}`}
             >

@@ -171,6 +171,7 @@ export default function OsceStations() {
           <div className="osce-feature__actions">
             <button
               className="osce-btn osce-btn--sm"
+              data-track="osce.random_station"
               disabled={stations.length === 0}
               onClick={() => {
                 const rand = stations[Math.floor(Math.random() * stations.length)]
@@ -240,7 +241,7 @@ export default function OsceStations() {
             const attempts = progress.filter(a => a.station_id === station.id)
             const lastAttempt = attempts[0]
             return (
-              <div key={station.id} className="osce__card" onClick={() => navigate(`/dashboard/osce/station/${station.slug}`)}>
+              <div key={station.id} className="osce__card" data-track="osce.open_station" onClick={() => navigate(`/dashboard/osce/station/${station.slug}`)}>
                 <div className="osce__card-header">
                   <h3 className="osce__card-title">{station.title}</h3>
                   <div className="osce__card-time"><LuTimer size={14} />{station.time_minutes} min</div>

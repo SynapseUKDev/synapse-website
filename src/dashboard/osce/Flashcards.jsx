@@ -7,6 +7,8 @@ import {
 } from 'react-icons/lu';
 import './Flashcards.css';
 import { authenticatedFetch } from '../../auth/token';
+import { track } from '../../usage/client.js';
+import { EVENTS } from '../../usage/catalog.js';
 import { useOutletContext } from 'react-router-dom';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -785,7 +787,7 @@ function FlashCard({ card, flipped }) {
   return (
     <div className={`fc-card${flipped ? ' fc-card--flipped' : ''}`}>
       {/* Front */}
-      <div className="fc-card__face fc-card__face--front">
+      <div className="fc-card__face fc-card__face--front ph-no-capture">
         <div className="fc-card__section-badge">{card.section}</div>
         <p className="fc-card__topic">{card.specialty} · {card.topic}</p>
         <h3 className="fc-card__condition">{card.condition}</h3>
@@ -794,7 +796,7 @@ function FlashCard({ card, flipped }) {
       </div>
 
       {/* Back */}
-      <div className="fc-card__face fc-card__face--back">
+      <div className="fc-card__face fc-card__face--back ph-no-capture">
         <div className="fc-card__section-badge fc-card__section-badge--back">{card.section}</div>
         <p className="fc-card__answer">{card.answer}</p>
 
@@ -1090,8 +1092,14 @@ export default function Flashcards() {
     } catch { return null; }
   }
 
-  function handleStart(generatedDeck) { setDeck(generatedDeck); setView(VIEWS.SESSION); }
-  function handleComplete(res) { setResult(res); setView(VIEWS.SUMMARY); }
+  function handleStart(generatedDeck) {
+    track(EVENTS.FLASHCARDS_SESSION_STARTED, { card_count: generatedDeck.length });
+    setDeck(generatedDeck); setView(VIEWS.SESSION);
+  }
+  function handleComplete(res) {
+    track(EVENTS.FLASHCARDS_SESSION_COMPLETED, { card_count: res.total });
+    setResult(res); setView(VIEWS.SUMMARY);
+  }
   function handleAbandon()  { setDeck([]); setView(VIEWS.PICKER); }
   function handleRestart()  { setDeck([]); setResult(null); setView(VIEWS.PICKER); }
 

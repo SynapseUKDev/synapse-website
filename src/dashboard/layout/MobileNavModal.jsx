@@ -120,6 +120,7 @@ export default function MobileNavModal({ open, onClose, user, onLogout }) {
                         type="button"
                         className={`mobile-nav__item${active ? ' is-active' : ''}`}
                         aria-current={active ? 'page' : undefined}
+                        data-track={`nav.${item.id.replace(/-/g, '_')}`}
                         onClick={() => go(item.to)}
                       >
                         <Icon className="mobile-nav__item-icon" aria-hidden />
@@ -140,6 +141,7 @@ export default function MobileNavModal({ open, onClose, user, onLogout }) {
                   type="button"
                   variants={row}
                   className="mobile-nav__footer-btn"
+                  data-track="nav.settings"
                   onClick={() => go('/dashboard/settings')}
                 >
                   <LuSettings size={18} aria-hidden />
@@ -149,6 +151,7 @@ export default function MobileNavModal({ open, onClose, user, onLogout }) {
                   type="button"
                   variants={row}
                   className="mobile-nav__footer-btn mobile-nav__footer-btn--danger"
+                  data-track="nav.logout"
                   onClick={handleLogout}
                 >
                   <LuLogOut size={18} aria-hidden />

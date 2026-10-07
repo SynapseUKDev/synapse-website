@@ -239,14 +239,14 @@ export default function MockExamReview() {
           <div className="card question-card">
             <div className="card__body">
               <div className="question-content">
-                <div className="question-stem-wrapper">
+                <div className="question-stem-wrapper ph-no-capture">
                   <div ref={stemRef} className="question-stem mock-exam-stem">
                     {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
                   </div>
                   {renderPopover()}
                 </div>
                 {currentQuestion.options?.length > 0 ? (
-                  <div style={{ display: 'grid', gap: 8 }}>
+                  <div className="ph-no-capture" style={{ display: 'grid', gap: 8 }}>
                     {currentQuestion.options.map((o) => {
                       const isCorrectOption = currentQuestion.correct_answer === o.id
                       const userSelected = userAnswer?.selected === o.id
@@ -329,7 +329,7 @@ export default function MockExamReview() {
             </div>
           </div>
 
-          <div className="card explanation-card">
+          <div className="card explanation-card ph-no-capture">
             <div
               className="card__header"
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}

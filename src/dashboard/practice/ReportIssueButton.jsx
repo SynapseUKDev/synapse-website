@@ -113,7 +113,7 @@ export default function ReportIssueButton({ questionId, API_BASE }) {
       {/* Modal overlay */}
       {open && (
         <div className="report-modal-overlay" onClick={handleCancel}>
-          <div className="report-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="report-modal ph-no-capture" onClick={(e) => e.stopPropagation()}>
             <div className="report-modal__header">
               <h3 className="report-modal__title">Report an Issue</h3>
               <button

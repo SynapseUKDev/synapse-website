@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 import { practiceLink, textbookLink } from './analyticsFormat'
 import './Analytics.css'
 import './Report.css'
@@ -34,6 +36,7 @@ export default function Report() {
         if (!cancelled) {
           setData(json)
           setList(lj.reports || [])
+          track(EVENTS.INSIGHTS_REPORT_VIEWED)
         }
       } catch (e) {
         if (!cancelled) setError(e.message)
@@ -50,7 +53,7 @@ export default function Report() {
   const pct = plan.length ? Math.round((done / plan.length) * 100) : 0
 
   return (
-    <div className="an rp">
+    <div className="an rp ph-no-capture">
       <div className="an-hero">
         <div>
           <p className="an-eyebrow">Monthly AI report · {report.period.label}</p>

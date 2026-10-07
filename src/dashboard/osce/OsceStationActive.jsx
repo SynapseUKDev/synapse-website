@@ -7,6 +7,8 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import OsceBlockRenderer from './OsceBlockRenderer'
 import './Osce.css'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 
@@ -234,6 +236,7 @@ export default function OsceStationActive() {
       })
 
       s.on('osce-session-completed', () => {
+        track(EVENTS.OSCE_STATION_COMPLETED)
         navigate(`/dashboard/osce/group/${roomCode}/results`)
       })
 

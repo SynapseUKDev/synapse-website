@@ -4,6 +4,8 @@ import './auth-panel/AuthPanel.css'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { setTokens } from './token'
 import { verifyEmailLink } from './verifyEmailLink'
+import { track } from '../usage/client.js'
+import { EVENTS } from '../usage/catalog.js'
 import AuthShell from './AuthShell.jsx'
 
 function describeDuration(endsAt) {
@@ -192,6 +194,7 @@ function SetupAccount() {
             }
 
             const data = await res.json()
+            track(EVENTS.ACCOUNT_INVITE_ACCEPTED)
 
             if (data.access_token && data.refresh_token) {
                 setTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })

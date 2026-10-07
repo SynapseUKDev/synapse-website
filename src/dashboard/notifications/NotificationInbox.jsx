@@ -175,7 +175,7 @@ export default function NotificationInbox({
               ) : null}
             </div>
 
-            <div className="notif-inbox__list">
+            <div className="notif-inbox__list ph-no-capture">
               {visible.length === 0 ? (
                 <p className="notif-inbox__empty">
                   {tab === 'unread'
