@@ -74,7 +74,7 @@ export default function OsceGroupResults() {
             <div className="osce-participant__avatar" style={{ width: 32, height: 32 }}>
               <LuUser size={16} />
             </div>
-            <div className="osce-stat__value" style={{ fontSize: 18, margin: 0 }}>
+            <div className="osce-stat__value ph-no-capture" style={{ fontSize: 18, margin: 0 }}>
               {candidate?.users?.username || 'Candidate'}
             </div>
           </div>

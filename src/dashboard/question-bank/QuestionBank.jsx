@@ -97,7 +97,7 @@ function SpecialtyCard({ item }) {
         <div><div className="qb-metric__label">Avg Time</div><div className="qb-metric__value">{item.avg_time_ms ? Math.round(item.avg_time_ms / 1000) : '—'} min</div></div>
       </div>
       <div className="qb-card__actions">
-        <button className="qb-btn" onClick={() => navigate(`/dashboard/question-bank/setup?specialty_id=${item.specialty_id}&specialty_name=${encodeURIComponent(item.specialty_name)}`)}>Start Practicing</button>
+        <button className="qb-btn" data-track="qbank.open_setup" onClick={() => navigate(`/dashboard/question-bank/setup?specialty_id=${item.specialty_id}&specialty_name=${encodeURIComponent(item.specialty_name)}`)}>Start Practicing</button>
       </div>
       {/* <div className="qb-card__topics">
         <div className="qb-card__topics-title">Key Topics:</div>

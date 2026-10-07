@@ -26,6 +26,8 @@ import remarkGfm from 'remark-gfm'
 import QuestionAssetCarousel from './QuestionAssetCarousel'
 import { buildQuickPoints, hasMarkdown, mergeAdminQuestionUpdate, stemMarkdownComponents } from './questionPresentationUtils'
 import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 
 function useCountdown(initialSec = 1800) {
   const [seconds, setSeconds] = useState(initialSec)
@@ -188,6 +190,34 @@ export default function Practice() {
   const [sessionAnswered, setSessionAnswered] = useState(0)
   const [sessionCorrect, setSessionCorrect] = useState(0)
   const [sessionTotalMs, setSessionTotalMs] = useState(0)
+
+  // Usage analytics (spec 002): one completed/abandoned event per practice session,
+  // never in review mode. Refs let the unmount cleanup see the latest values.
+  const sessionTrackedRef = useRef(false)
+  const sessionSnapshotRef = useRef({ answered: 0, total: 0, review: isReviewMode })
+  sessionSnapshotRef.current = { answered: sessionAnswered, total: questions.length, review: isReviewMode }
+  const trackSessionEnd = (finished) => {
+    if (isReviewMode || sessionTrackedRef.current || questions.length === 0) return
+    sessionTrackedRef.current = true
+    if (finished || sessionAnswered >= questions.length) {
+      track(EVENTS.QBANK_SESSION_COMPLETED, {
+        question_count: questions.length,
+        duration_s: Math.round(sessionTotalMs / 1000),
+      })
+    } else {
+      track(EVENTS.QBANK_SESSION_ABANDONED, { answered_count: sessionAnswered })
+    }
+  }
+  useEffect(
+    () => () => {
+      const { answered, total, review } = sessionSnapshotRef.current
+      if (!review && total > 0 && !sessionTrackedRef.current) {
+        sessionTrackedRef.current = true
+        track(EVENTS.QBANK_SESSION_ABANDONED, { answered_count: answered })
+      }
+    },
+    []
+  )
   const [questionStartTime, setQuestionStartTime] = useState(Date.now())
 
   // Responsive tracker grid size - 50 questions per page for pagination
@@ -428,6 +458,7 @@ export default function Practice() {
       const totalMs = sessionTotalMs
       const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
       const { topicPerformance, weakTopics } = calculateTopicPerformance()
+      trackSessionEnd(true)
 
       navigate('/dashboard/question-bank/results', {
         state: {
@@ -1252,6 +1283,7 @@ export default function Practice() {
     const totalMs = sessionTotalMs
     const perQuestionMs = sessionAnswered ? sessionTotalMs / sessionAnswered : 0
     const { topicPerformance, weakTopics } = calculateTopicPerformance()
+    trackSessionEnd(false)
 
     navigate('/dashboard/question-bank/results', {
       state: {
@@ -1491,7 +1523,7 @@ export default function Practice() {
               <LuChevronLeft />Back to Results
             </button>
           ) : (
-            <button onClick={navigateToResults} className="btn btn--exit btn--icon" title="Exit and view results"><LuX />Exit</button>
+            <button data-track="qbank.exit" onClick={navigateToResults} className="btn btn--exit btn--icon" title="Exit and view results"><LuX />Exit</button>
           )}
         </div>
       </div>
@@ -1501,7 +1533,7 @@ export default function Practice() {
           <div className="card question-card">
             <div className="card__body">
               <div className="question-content">
-                <div className="question-stem-wrapper">
+                <div className="question-stem-wrapper ph-no-capture">
                   <div ref={stemRef} className="question-stem" >
                     {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
                   </div>
@@ -1556,7 +1588,7 @@ export default function Practice() {
                       if (isStruckOut) className += ' option--struck'
 
                       return (
-                        <div key={o.id} className="option-wrapper" data-option-id={o.id}>
+                        <div key={o.id} className="option-wrapper ph-no-capture" data-option-id={o.id}>
                           <label className={className}>
                             <input
                               type="radio"
@@ -1698,7 +1730,7 @@ export default function Practice() {
                       <button onClick={goToPrevious} disabled={currentIndex <= 0} className="btn btn--ghost btn--icon"><LuChevronLeft />Previous</button>
                       {!isSubmitted ? (
                         <>
-                          <button onClick={submit} disabled={submitting || (currentQuestion.options?.length > 0 ? selected === null || selected === undefined : saqText.trim() === '')} className="btn btn--primary">
+                          <button data-track="qbank.submit_answer" onClick={submit} disabled={submitting || (currentQuestion.options?.length > 0 ? selected === null || selected === undefined : saqText.trim() === '')} className="btn btn--primary">
                             {submitting ? 'Submitting...' : 'Submit'}
                           </button>
                           <button onClick={goToNext} disabled={submitting} className="btn btn--ghost">
@@ -1732,7 +1764,7 @@ export default function Practice() {
           </div>
 
           {(result || isReviewMode) && (
-            <div className="card explanation-card">
+            <div className="card explanation-card ph-no-capture">
               <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className={`ex-card__status ${result.is_correct ? 'ex-card__status--correct' : 'ex-card__status--incorrect'}`}>
                   {result.is_correct ? <LuCircleCheck /> : <LuCircleAlert />}

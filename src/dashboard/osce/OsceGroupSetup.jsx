@@ -4,6 +4,8 @@ import { LuChevronLeft, LuUsers, LuCopy, LuCheck, LuCrown, LuUser, LuChevronDown
 import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import { io } from 'socket.io-client'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 import './Osce.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -169,6 +171,7 @@ export default function OsceGroupSetup() {
       })
       if (res.ok) { 
         const d = await res.json();
+        track(EVENTS.GROUP_SESSION_JOINED, { kind: 'osce', role: 'host' })
         navigate(`/dashboard/osce/group/${d.room_code}`);
       }
       else { const err = await res.json().catch(() => ({})); setError(err.error || 'Failed to create session') }
@@ -181,7 +184,11 @@ export default function OsceGroupSetup() {
     setError(''); setJoining(true)
     try {
       const res = await authenticatedFetch(`${API_BASE}/osce/group-session/join`, { method: 'POST', body: JSON.stringify({ room_code: roomCode.trim().toUpperCase(), role: joinRole }) })
-      if (res.ok) { const d = await res.json(); navigate(`/dashboard/osce/group/${d.room_code}`) }
+      if (res.ok) {
+        const d = await res.json()
+        track(EVENTS.GROUP_SESSION_JOINED, { kind: 'osce', role: 'participant' })
+        navigate(`/dashboard/osce/group/${d.room_code}`)
+      }
       else { const err = await res.json().catch(() => ({})); setError(err.error || 'Failed to join session') }
     } catch { setError('Network error') }
     finally { setJoining(false) }
@@ -237,7 +244,7 @@ export default function OsceGroupSetup() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--syn-cyan)', background: 'var(--surface-tint-cyan)', padding: '4px 10px', borderRadius: 20 }}>{createdRoom.participants?.length || 0} Joined</span>
                 </div>
                 
-                <div className="participants-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="participants-list ph-no-capture" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {createdRoom.participants?.map((p) => {
                     const isMe = p.user_id === user?.id
                     const isHost = p.user_id === createdRoom.host_user_id || p.is_host

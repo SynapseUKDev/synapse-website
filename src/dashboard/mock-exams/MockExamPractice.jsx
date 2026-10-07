@@ -9,6 +9,8 @@ import ExamCalculator from './ExamCalculator.jsx'
 import useQuestionStemHighlight from '../practice/useQuestionStemHighlight.jsx'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import ReviewableContent from '../../components/highlight/ReviewableContent'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 const QUESTIONS_PER_PAGE = 30
@@ -369,6 +371,7 @@ export default function MockExamPractice() {
           })
           const data = await res.json().catch(() => ({}))
           if (!res.ok) throw new Error(data.error || res.statusText)
+          track(EVENTS.MOCK_COMPLETED, { duration_s: timerBudget })
           navigate(`/dashboard/mock-exams/results?attempt_id=${encodeURIComponent(attemptId)}`, { state: data })
         } catch (e) {
           alert(e.message || 'Could not finish')
@@ -461,6 +464,8 @@ export default function MockExamPractice() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || res.statusText)
+      // Untimed papers have no budget to measure against, so they send no duration.
+      track(EVENTS.MOCK_COMPLETED, timerBudget > 0 ? { duration_s: Math.max(0, timerBudget - secondsRef.current) } : {})
       navigate(`/dashboard/mock-exams/results?attempt_id=${encodeURIComponent(attemptId)}`, { state: data })
     } catch (e) {
       alert(e.message || 'Could not finish')
@@ -548,7 +553,7 @@ export default function MockExamPractice() {
         <div className="card question-card">
           <div className="card__body">
             <div className="question-content">
-              <div className="question-stem-wrapper">
+              <div className="question-stem-wrapper ph-no-capture">
                 <div ref={stemRef} className="question-stem mock-exam-stem">
                   {currentQ?.stem ? renderHighlightedText(currentQ.stem, currentQ.id) : null}
                 </div>
@@ -568,7 +573,7 @@ export default function MockExamPractice() {
                   />
                 )}
               </div>
-              <div className="mock-exam-options" style={{ display: 'grid', gap: 8 }}>
+              <div className="mock-exam-options ph-no-capture" style={{ display: 'grid', gap: 8 }}>
                 {(currentQ.options || []).map((o) => {
                   const userSelected = selected === o.id
                   let className = 'option'
@@ -654,11 +659,11 @@ export default function MockExamPractice() {
                     {readyToAdvance && !needsSaveAnswer ? (
                       <>
                         {currentIndex < questions.length - 1 ? (
-                          <button type="button" onClick={goNext} className="btn btn--primary btn--icon">
+                          <button type="button" data-track="mock.next" onClick={goNext} className="btn btn--primary btn--icon">
                             Next
                           </button>
                         ) : (
-                          <button type="button" onClick={finishExam} disabled={finishing} className="btn btn--primary">
+                          <button type="button" data-track="mock.finish" onClick={finishExam} disabled={finishing} className="btn btn--primary">
                             {finishing ? 'Finishing…' : 'Finish exam'}
                           </button>
                         )}
@@ -778,7 +783,7 @@ export default function MockExamPractice() {
                 <button
                   type="button"
                   className="btn btn--primary mock-exam-finish-sidebar"
-                  onClick={finishExam}
+                  data-track="mock.finish" onClick={finishExam}
                   disabled={finishing}
                 >
                   {finishing ? 'Finishing…' : 'Finish exam early'}

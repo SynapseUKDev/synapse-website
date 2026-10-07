@@ -8,6 +8,8 @@ import {
 } from 'react-icons/lu';
 import { authenticatedFetch } from '../../auth/token';
 import './Flashcards.css';
+import { track } from '../../usage/client.js';
+import { EVENTS } from '../../usage/catalog.js';
 
 // ─────────────────────────────────────────────────────────────
 // Flashcards V2 — real per-card rows.
@@ -252,14 +254,14 @@ function FlashCard({ card, flipped }) {
   const qa = card.qaStatus;
   return (
     <div className={`fc-card${flipped ? ' fc-card--flipped' : ''}`}>
-      <div className="fc-card__face fc-card__face--front">
+      <div className="fc-card__face fc-card__face--front ph-no-capture">
         {(card.isDraft || qa !== 'validated') && (
           <div className={`fc2-qa fc2-qa--${qa}`}>{QA_LABEL[qa] ?? qa}{card.isDraft ? ' · draft' : ''}</div>
         )}
         <p className="fc-card__question fc2-question">{card.question}</p>
         <p className="fc-card__tap-hint">Tap or press Space to reveal</p>
       </div>
-      <div className="fc-card__face fc-card__face--back">
+      <div className="fc-card__face fc-card__face--back ph-no-capture">
         <CardBack markdown={card.answerMarkdown} />
         {card.guidelineSensitive && (
           <div className="fc-card__draft">Guideline-sensitive — verify before publishing</div>
@@ -489,11 +491,11 @@ export default function FlashcardsV2() {
       <div className={`fc-page__card${view === VIEWS.PICKER ? ' fc-page__card--picker' : ''}`}>
         {view === VIEWS.PICKER && (
           <PickerScreen cards={cards} loading={loading} error={error} mode={mode} onModeChange={setMode} srsStats={srsStats}
-            onStart={(d) => { setDeck(d); setView(VIEWS.SESSION); }} />
+            onStart={(d) => { track(EVENTS.FLASHCARDS_SESSION_STARTED, { card_count: d.length }); setDeck(d); setView(VIEWS.SESSION); }} />
         )}
         {view === VIEWS.SESSION && deck.length > 0 && (
           <SessionScreen initialDeck={deck} onRate={handleRate}
-            onComplete={(r) => { setResult(r); setView(VIEWS.SUMMARY); }}
+            onComplete={(r) => { track(EVENTS.FLASHCARDS_SESSION_COMPLETED, { card_count: r.total }); setResult(r); setView(VIEWS.SUMMARY); }}
             onAbandon={() => { setDeck([]); setView(VIEWS.PICKER); }} />
         )}
         {view === VIEWS.SUMMARY && result && (

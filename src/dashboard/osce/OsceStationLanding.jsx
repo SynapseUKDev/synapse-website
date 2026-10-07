@@ -3,6 +3,8 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
 import { LuChevronLeft, LuUsers, LuUser, LuClock, LuStethoscope, LuClipboardList, LuEye, LuPencil } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 import './Osce.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -45,6 +47,7 @@ export default function OsceStationLanding() {
       const data = await res.json()
       setStation(data.station)
       setSections(data.sections || [])
+      track(EVENTS.OSCE_STATION_OPENED)
     } catch (e) {
       console.error('Failed to load station:', e)
     } finally {
@@ -130,6 +133,7 @@ export default function OsceStationLanding() {
 
             <button
               className="osce-role"
+              data-track="osce.start_as_candidate"
               onClick={() => navigate(`/dashboard/osce/station/${station.slug}/practice?role=candidate`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -146,7 +150,8 @@ export default function OsceStationLanding() {
             {hasPatientRole && (
               <button
                 className="osce-role"
-                onClick={() => navigate(`/dashboard/osce/station/${station.slug}/practice?role=patient`)}
+                data-track="osce.start_as_patient"
+              onClick={() => navigate(`/dashboard/osce/station/${station.slug}/practice?role=patient`)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                   <div className="osce-stat__icon osce-stat__icon--green">
@@ -162,6 +167,7 @@ export default function OsceStationLanding() {
 
             <button
               className="osce-role"
+              data-track="osce.start_as_examiner"
               onClick={() => navigate(`/dashboard/osce/station/${station.slug}/practice?role=examiner`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -177,6 +183,7 @@ export default function OsceStationLanding() {
 
             <button
               className="osce-role"
+              data-track="osce.start_as_all"
               onClick={() => navigate(`/dashboard/osce/station/${station.slug}/practice?role=all`)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

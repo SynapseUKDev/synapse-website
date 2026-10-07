@@ -8,6 +8,8 @@ import ReportTopicIssueButton from './ReportTopicIssueButton'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 import { reconcileSelectionRangeToFlat, splitFlatRangeByTableCellsAndSnap } from '../../utils/questionStemHighlight'
 import {
   InlinePageBar,
@@ -853,6 +855,7 @@ export default function TextbookTopic() {
         setError(null)
         await loadChapter()
         if (!cancelled && topicSlug) {
+          track(EVENTS.TEXTBOOK_CHAPTER_OPENED)
           fetch(`${API_BASE}/textbook/record-read`, {
             method: 'POST',
             credentials: 'include',
@@ -1380,7 +1383,7 @@ export default function TextbookTopic() {
               ) : (
                 <h2 className="tb-section__title">{s.title}</h2>
               )}
-              <div className="tb-section__content">
+              <div className="tb-section__content ph-no-capture">
                 {(blocksBySection[s.id] || []).map((b) => {
                   const rendered = (
                     <RenderBlock
@@ -1442,7 +1445,7 @@ export default function TextbookTopic() {
           ))}
 
           {Array.isArray(data.citations) && data.citations.length > 0 && (
-            <section className="tb-section tb-section--refs" id="sec-references">
+            <section className="tb-section tb-section--refs ph-no-capture" id="sec-references">
               <h2 className="tb-section__title">References</h2>
               <ol className="tb-refs">
                 {data.citations.map((c) => (

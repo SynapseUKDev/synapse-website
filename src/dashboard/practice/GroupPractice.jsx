@@ -1419,7 +1419,7 @@ export default function GroupPractice() {
           <div className="card question-card">
             <div className="card__body">
               <div className="question-content">
-                <div className="question-stem-wrapper">
+                <div className="question-stem-wrapper ph-no-capture">
                   <div ref={stemRef} className="question-stem">
                     {renderHighlightedText(currentQuestion.stem, currentQuestion.id)}
                   </div>
@@ -1450,7 +1450,7 @@ export default function GroupPractice() {
                       const className = `option ${selected === o.id ? 'option--selected' : ''} ${result ? (isCorrect ? 'option--correct' : isSelectedIncorrect ? 'option--incorrect' : '') : ''} ${isStruckOut ? 'option--struck' : ''}`;
 
                       return (
-                        <div key={o.id} className="option-wrapper">
+                        <div key={o.id} className="option-wrapper ph-no-capture">
                           <label className={className}>
                             <input
                               type="radio"
@@ -1598,7 +1598,7 @@ export default function GroupPractice() {
           </div>
 
           {result && (
-            <div className="card explanation-card">
+            <div className="card explanation-card ph-no-capture">
               <div className="card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className={`ex-card__status ${result.is_correct ? 'ex-card__status--correct' : 'ex-card__status--incorrect'}`}>
                   {result.is_correct ? <LuCircleCheck /> : <LuCircleAlert />}

@@ -39,7 +39,7 @@ function MockExamRow({ exam, listTab }) {
     if (listTab === 'available') {
       return (
         <div className="me-row__actions">
-          <button type="button" className="me-row__cta" onClick={goBegin}>
+          <button type="button" className="me-row__cta" data-track="mock.open_paper" onClick={goBegin}>
             Start new attempt
           </button>
         </div>
@@ -62,7 +62,7 @@ function MockExamRow({ exam, listTab }) {
           <button
             type="button"
             className={`me-row__cta ${hasProgress || hasSubmitted ? 'me-row__cta--ghost' : ''}`}
-            onClick={goBegin}
+            data-track="mock.open_paper" onClick={goBegin}
           >
             Start new attempt
           </button>
@@ -78,7 +78,7 @@ function MockExamRow({ exam, listTab }) {
               Continue attempt
             </button>
           ) : null}
-          <button type="button" className="me-row__cta me-row__cta--ghost" onClick={goBegin}>
+          <button type="button" className="me-row__cta me-row__cta--ghost" data-track="mock.open_paper" onClick={goBegin}>
             Start new attempt
           </button>
         </div>
@@ -93,7 +93,7 @@ function MockExamRow({ exam, listTab }) {
               View results
             </button>
           ) : null}
-          <button type="button" className="me-row__cta me-row__cta--ghost" onClick={goBegin}>
+          <button type="button" className="me-row__cta me-row__cta--ghost" data-track="mock.open_paper" onClick={goBegin}>
             Start new attempt
           </button>
         </div>

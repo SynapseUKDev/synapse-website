@@ -72,6 +72,7 @@ function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
               title={item.label}
               aria-label={item.label}
               aria-current={isActive ? 'page' : undefined}
+              data-track={`nav.${item.id.replace(/-/g, '_')}`}
               onClick={() => handleNavigate(item.to)}
             >
               <IconComponent className="sidebar__icon" aria-hidden />
@@ -85,7 +86,7 @@ function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
         {/* Compact view for collapsed sidebar on desktop */}
         <div className="sidebar__user-compact">
           <div className="sidebar__avatar sidebar__avatar--compact">
-            <div className="sidebar__avatar-placeholder">
+            <div className="sidebar__avatar-placeholder ph-no-capture">
               {initial}
             </div>
           </div>
@@ -98,20 +99,21 @@ function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
             />
             <button
               className="sidebar__action-btn"
-              onClick={toggleTheme}
+              data-track="nav.theme_toggle" onClick={toggleTheme}
               title={`Switch to ${themeLabel.toLowerCase()}`}
             >
               {isDark ? <LuSun size={18} /> : <LuMoon size={18} />}
             </button>
             <button
               className="sidebar__action-btn"
-              onClick={() => handleNavigate('/dashboard/settings')}
+              data-track="nav.settings" onClick={() => handleNavigate('/dashboard/settings')}
               title="Settings"
             >
               <LuSettings size={18} />
             </button>
             <button
               className="sidebar__action-btn sidebar__action-btn--logout"
+              data-track="nav.logout"
               onClick={() => {
                 onLogout()
               }}
@@ -126,11 +128,11 @@ function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
         <div className="sidebar__user-expanded">
           <div className="sidebar__user-info">
             <div className="sidebar__avatar">
-              <div className="sidebar__avatar-placeholder">
+              <div className="sidebar__avatar-placeholder ph-no-capture">
                 {initial}
               </div>
             </div>
-            <div className="sidebar__user-details">
+            <div className="sidebar__user-details ph-no-capture">
               <div className="sidebar__user-name">{displayUsername || user?.email || 'User'}</div>
               <div className="sidebar__user-role">{user?.email || 'No email'}</div>
               {user?.capabilities?.can_review && (
@@ -144,14 +146,15 @@ function Sidebar({ user, onLogout, unreadCount = 0, onOpenNotifications }) {
               size={18}
             />
           </div>
-          <button className="sidebar__theme" onClick={toggleTheme}>
+          <button className="sidebar__theme" data-track="nav.theme_toggle" onClick={toggleTheme}>
             {isDark ? <LuSun size={16} aria-hidden /> : <LuMoon size={16} aria-hidden />}
             {themeLabel}
           </button>
           <div className="sidebar__user-actions">
-            <button className="sidebar__settings" onClick={() => handleNavigate('/dashboard/settings')}>Settings</button>
+            <button className="sidebar__settings" data-track="nav.settings" onClick={() => handleNavigate('/dashboard/settings')}>Settings</button>
             <button
               className="sidebar__logout"
+              data-track="nav.logout"
               onClick={() => {
                 onLogout()
               }}

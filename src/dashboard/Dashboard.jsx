@@ -529,7 +529,7 @@ export default function Dashboard() {
         <div className="db-leaderboard__rank">
           {medal || `#${index + 1}`}
         </div>
-        <div className="db-leaderboard__user">
+        <div className="db-leaderboard__user ph-no-capture">
           <div className="db-leaderboard__username">
             {displayName}
             {isCurrentUser && displayName !== 'You' && <span className="db-leaderboard__you">(You)</span>}
@@ -938,7 +938,7 @@ export default function Dashboard() {
                         <div className="db-list db-friends__list" ref={friendsListRef}>
                           {friends.map((f) => (
                             <div key={f.id} className="db-list__item db-list__item--friend">
-                              <div className="db-list__main">
+                              <div className="db-list__main ph-no-capture">
                                 <div className="db-list__title">{f.friend_username || f.friend_email || 'Friend'}</div>
                                 <div className="db-list__sub">{f.friend_email}</div>
                               </div>
@@ -966,7 +966,7 @@ export default function Dashboard() {
                           id={`friend-request-${r.id}`}
                           className={`db-list__item${focusedRequestId === r.id ? ' db-list__item--highlight' : ''}`}
                         >
-                          <div className="db-list__main">
+                          <div className="db-list__main ph-no-capture">
                             <div className="db-list__title">{r.requester?.username || r.requester?.email || 'Someone'}</div>
                             <div className="db-list__sub">Wants to be your friend</div>
                           </div>
@@ -994,7 +994,7 @@ export default function Dashboard() {
                       ))}
                       {friendRequests.outbox?.map((r) => (
                         <div key={r.id} className="db-list__item">
-                          <div className="db-list__main">
+                          <div className="db-list__main ph-no-capture">
                             <div className="db-list__title">{r.target?.username || r.target?.email || 'User'}</div>
                             <div className="db-list__sub">Pending</div>
                           </div>
