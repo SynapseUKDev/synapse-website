@@ -4,8 +4,8 @@ import './Auth.css'
 import './auth-panel/AuthPanel.css'
 import AuthShell from './AuthShell.jsx'
 import { authHeaders, clearTokens } from './token'
-import { initAnalytics, track } from '../analytics/analytics.js'
-import { EVENTS } from '../analytics/events.js'
+import { initAnalytics, track } from '../usage/client.js'
+import { EVENTS } from '../usage/catalog.js'
 
 // The only paid plan (STRIPE_PRICE_6MO_GBP15).
 const ANALYTICS_PLAN = '6_month'

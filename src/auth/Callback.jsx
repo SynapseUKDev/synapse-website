@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { setTokens } from './token'
 import { verifyEmailLink } from './verifyEmailLink'
-import { track } from '../analytics/analytics.js'
-import { EVENTS } from '../analytics/events.js'
+import { track } from '../usage/client.js'
+import { EVENTS } from '../usage/catalog.js'
 
 function Callback() {
   const navigate = useNavigate()

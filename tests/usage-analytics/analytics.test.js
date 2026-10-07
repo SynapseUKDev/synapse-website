@@ -35,8 +35,8 @@ beforeEach(async () => {
   ph.opt_in_capturing.mockImplementation(() => (optedOut = false))
   ph.reset.mockImplementation(() => (optedOut = false))
   vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test')
-  vi.stubEnv('VITE_POSTHOG_HOST', '/ingest')
-  a = await import('../../src/analytics/analytics.js')
+  vi.stubEnv('VITE_POSTHOG_HOST', '/relay-sx')
+  a = await import('../../src/usage/client.js')
 })
 afterEach(() => vi.unstubAllEnvs())
 
@@ -59,7 +59,7 @@ describe('initAnalytics', () => {
     const [key, config] = ph.init.mock.calls[0]
     expect(key).toBe('phc_test')
     expect(config).toMatchObject({
-      api_host: '/ingest',
+      api_host: '/relay-sx',
       ui_host: 'https://eu.posthog.com',
       person_profiles: 'identified_only',
       persistence: 'localStorage',
@@ -67,7 +67,7 @@ describe('initAnalytics', () => {
       capture_pageview: false,
       capture_pageleave: true,
       enable_heatmaps: true,
-      capture_dead_clicks: true,
+      capture_dead_clicks: false,
       rageclick: true,
       disable_session_recording: true,
       disable_surveys: true,

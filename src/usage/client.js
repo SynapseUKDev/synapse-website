@@ -1,5 +1,5 @@
 import { beforeSend, sanitizeEventProps } from './beforeSend.js'
-import { CATALOG_VERSION } from './events.js'
+import { CATALOG_VERSION } from './catalog.js'
 
 // The only module that talks to PostHog (spec 002). posthog-js is loaded with a dynamic
 // import once /me confirms a signed-in user with analytics enabled, so signed-out pages
@@ -39,7 +39,7 @@ async function load(key) {
     capture_pageview: false,
     capture_pageleave: true,
     enable_heatmaps: true,
-    capture_dead_clicks: true,
+    capture_dead_clicks: false, // its add-on file name is on ad-block lists; rage clicks cover most of the same friction
     rageclick: true,
     disable_session_recording: true,
     disable_surveys: true,

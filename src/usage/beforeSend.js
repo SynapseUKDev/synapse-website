@@ -1,4 +1,4 @@
-import { EVENT_PROPS } from './events.js'
+import { EVENT_PROPS } from './catalog.js'
 import { toRoutePattern } from './routePattern.js'
 
 // PostHog `before_send` hook: the last check on every event before it leaves the browser.

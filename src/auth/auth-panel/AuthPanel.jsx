@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import './AuthPanel.css'
 import { setTokens } from '../token'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 import AuthCaptcha from './AuthCaptcha.jsx'
 
 const swapTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] }

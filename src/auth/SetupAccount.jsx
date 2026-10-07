@@ -4,8 +4,8 @@ import './auth-panel/AuthPanel.css'
 import LoadingScreen from '../components/loading/LoadingScreen.jsx'
 import { setTokens } from './token'
 import { verifyEmailLink } from './verifyEmailLink'
-import { track } from '../analytics/analytics.js'
-import { EVENTS } from '../analytics/events.js'
+import { track } from '../usage/client.js'
+import { EVENTS } from '../usage/catalog.js'
 import AuthShell from './AuthShell.jsx'
 
 function describeDuration(endsAt) {

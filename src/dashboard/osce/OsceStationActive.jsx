@@ -7,8 +7,8 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import OsceBlockRenderer from './OsceBlockRenderer'
 import './Osce.css'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 

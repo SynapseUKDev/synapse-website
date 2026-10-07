@@ -2,10 +2,10 @@ import React from 'react'
 import { act, render } from '@testing-library/react'
 import { MemoryRouter, useNavigate } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { useUsageTracking } from '../../src/analytics/useUsageTracking.js'
-import { capturePageleave, capturePageview, initAnalytics } from '../../src/analytics/analytics.js'
+import { useUsageTracking } from '../../src/usage/useUsage.js'
+import { capturePageleave, capturePageview, initAnalytics } from '../../src/usage/client.js'
 
-vi.mock('../../src/analytics/analytics.js', () => ({
+vi.mock('../../src/usage/client.js', () => ({
   initAnalytics: vi.fn(),
   capturePageview: vi.fn(),
   capturePageleave: vi.fn(),

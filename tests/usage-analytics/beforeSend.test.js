@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { beforeSend, sanitizeEventProps, SUPER_PROPERTY_KEYS } from '../../src/analytics/beforeSend.js'
+import { beforeSend, sanitizeEventProps, SUPER_PROPERTY_KEYS } from '../../src/usage/beforeSend.js'
 
 const base = 'https://app.synapseuk.org'
 

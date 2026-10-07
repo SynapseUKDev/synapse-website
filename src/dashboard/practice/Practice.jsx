@@ -26,8 +26,8 @@ import remarkGfm from 'remark-gfm'
 import QuestionAssetCarousel from './QuestionAssetCarousel'
 import { buildQuickPoints, hasMarkdown, mergeAdminQuestionUpdate, stemMarkdownComponents } from './questionPresentationUtils'
 import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 
 function useCountdown(initialSec = 1800) {
   const [seconds, setSeconds] = useState(initialSec)

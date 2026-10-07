@@ -8,8 +8,8 @@ import {
 } from 'react-icons/lu';
 import { authenticatedFetch } from '../../auth/token';
 import './Flashcards.css';
-import { track } from '../../analytics/analytics.js';
-import { EVENTS } from '../../analytics/events.js';
+import { track } from '../../usage/client.js';
+import { EVENTS } from '../../usage/catalog.js';
 
 // ─────────────────────────────────────────────────────────────
 // Flashcards V2 — real per-card rows.

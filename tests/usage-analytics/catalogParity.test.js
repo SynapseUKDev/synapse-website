@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
-import { CATALOG_VERSION, EVENTS, EVENT_PROPS } from '../../src/analytics/events.js'
+import { CATALOG_VERSION, EVENTS, EVENT_PROPS } from '../../src/usage/catalog.js'
 
 // The event catalogue is written down twice: as the contract in specs/002 and as
 // events.js, which the website and before_send use. They cannot share code, so this

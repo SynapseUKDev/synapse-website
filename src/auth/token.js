@@ -1,4 +1,4 @@
-import { resetAnalytics } from '../analytics/analytics.js'
+import { resetAnalytics } from '../usage/client.js'
 
 // Simple token utilities to work around iOS cookie restrictions
 export const ACCESS_TOKEN_KEY = 'sb_access_token'

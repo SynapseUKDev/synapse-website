@@ -9,8 +9,8 @@ import ExamCalculator from './ExamCalculator.jsx'
 import useQuestionStemHighlight from '../practice/useQuestionStemHighlight.jsx'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import ReviewableContent from '../../components/highlight/ReviewableContent'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 const QUESTIONS_PER_PAGE = 30

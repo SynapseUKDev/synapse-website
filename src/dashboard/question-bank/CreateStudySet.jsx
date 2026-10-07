@@ -6,8 +6,8 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import useStaleJson from '../../utils/useStaleJson'
 import './CreateStudySet.css'
 import '../practice/Practice.css'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 
 export default function CreateStudySet() {
   const navigate = useNavigate()

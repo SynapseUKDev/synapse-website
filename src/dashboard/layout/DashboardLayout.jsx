@@ -13,7 +13,7 @@ import AnnouncementModal from '../notifications/AnnouncementModal'
 import NotificationBell from '../notifications/NotificationBell'
 import NotificationInbox from '../notifications/NotificationInbox'
 import { isAllowedAnnouncementCtaUrl, openAnnouncementCtaUrl } from '../notifications/announcementLinks'
-import { useUsageTracking } from '../../analytics/useUsageTracking'
+import { useUsageTracking } from '../../usage/useUsage'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 

@@ -8,7 +8,7 @@ import './question-bank/QuestionBank.css'
 import LoadingScreen from '../components/loading/LoadingScreen'
 import ResetProgressCard from './ResetProgressCard.jsx'
 import ContactSupportModal from './ContactSupportModal.jsx'
-import { setOptOut } from '../analytics/analytics.js'
+import { resetAnalytics, setOptOut } from '../usage/client.js'
 import './Settings.css'
 
 export default function Settings() {
@@ -60,6 +60,9 @@ export default function Settings() {
     if (deleteConfirmText.toLowerCase() !== 'delete my account' || !deleteUnderstand || deleting) return
     setDeleting(true)
     setDeleteError('')
+    // Stop and forget usage analytics before the account (and its PostHog person) is
+    // erased, so no queued event can arrive afterwards and recreate the person.
+    resetAnalytics()
     try {
       const res = await fetch(`${API_BASE}/me`, {
         method: 'DELETE',
@@ -727,7 +730,7 @@ export default function Settings() {
 
       {/* Account Deletion Confirmation Modal */}
       {deleteModalOpen && (
-        <div className="delete-confirm-overlay">
+        <div className="delete-confirm-overlay ph-no-capture">
           <div className="delete-confirm-backdrop" onClick={() => !deleting && setDeleteModalOpen(false)} />
           <div className="delete-confirm-container">
             <div className="delete-confirm-card">

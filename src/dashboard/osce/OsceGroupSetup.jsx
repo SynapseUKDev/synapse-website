@@ -4,8 +4,8 @@ import { LuChevronLeft, LuUsers, LuCopy, LuCheck, LuCrown, LuUser, LuChevronDown
 import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import { io } from 'socket.io-client'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 import './Osce.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'

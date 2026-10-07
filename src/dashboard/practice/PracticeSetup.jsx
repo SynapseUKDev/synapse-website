@@ -8,8 +8,8 @@ import {
   clearStudySetQuestionIdsPrefetch,
   setStudySetQuestionIdsPrefetch,
 } from '../question-bank/studySetPrefetchStore'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 import QuestionCountControl from './QuestionCountControl'
 import {
   adjustQuestionCountInput,

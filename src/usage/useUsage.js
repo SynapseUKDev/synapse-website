@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { capturePageleave, capturePageview, initAnalytics } from './analytics.js'
+import { capturePageleave, capturePageview, initAnalytics } from './client.js'
 
 const IDLE_MS = 5 * 60_000
 const IDLE_CHECK_MS = 15_000

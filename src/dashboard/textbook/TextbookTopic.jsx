@@ -8,8 +8,8 @@ import ReportTopicIssueButton from './ReportTopicIssueButton'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 import { reconcileSelectionRangeToFlat, splitFlatRangeByTableCellsAndSnap } from '../../utils/questionStemHighlight'
 import {
   InlinePageBar,

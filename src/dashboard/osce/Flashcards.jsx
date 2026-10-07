@@ -7,8 +7,8 @@ import {
 } from 'react-icons/lu';
 import './Flashcards.css';
 import { authenticatedFetch } from '../../auth/token';
-import { track } from '../../analytics/analytics.js';
-import { EVENTS } from '../../analytics/events.js';
+import { track } from '../../usage/client.js';
+import { EVENTS } from '../../usage/catalog.js';
 import { useOutletContext } from 'react-router-dom';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';

@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { authHeaders } from '../../auth/token'
 import './MockExams.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
-import { track } from '../../analytics/analytics.js'
-import { EVENTS } from '../../analytics/events.js'
+import { track } from '../../usage/client.js'
+import { EVENTS } from '../../usage/catalog.js'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
 const TIMER_PRESETS = [60, 90, 120, 150, 180]
