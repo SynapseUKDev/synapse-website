@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test:admin-questions": "vitest run tests/admin-questions",
     "test:usage-analytics": "vitest run tests/usage-analytics",
+    "test:flashcards-v2": "vitest run tests/flashcards-v2",
     "test:highlight": "node tests/questionStemHighlight.test.mjs",
     "test:theme": "node tests/theme.test.mjs",
     "preview": "vite preview"

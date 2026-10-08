@@ -9,6 +9,7 @@ export default defineConfig({
     include: [
       'tests/admin-questions/**/*.{test,spec}.{js,jsx}',
       'tests/usage-analytics/**/*.{test,spec}.{js,jsx}',
+      'tests/flashcards-v2/**/*.{test,spec}.{js,jsx}',
     ],
   },
 })

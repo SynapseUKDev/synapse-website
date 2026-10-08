@@ -10,6 +10,7 @@ import AdminQuestionManager from './questions/AdminQuestionManager'
 import AdminInstitutions from './AdminInstitutions'
 import AdminStudyReports from './AdminStudyReports'
 import AdminAnnouncements from './AdminAnnouncements'
+import AdminFlashcardsV2 from './flashcards-v2/AdminFlashcardsV2'
 import './Admin.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -56,6 +57,7 @@ export default function Admin() {
     if (saved === 'announcements' && isGlobalAdmin) return 'announcements'
     if (saved === 'reports' && isGlobalAdmin) return 'reports'
     if (saved === 'osce' && canManageOsce) return 'osce'
+    if (saved === 'flashcards-v2' && canManageOsce) return 'flashcards-v2'
     if (saved === 'mock-papers' && canManageMockPapers) return 'mock-papers'
     if (saved === 'topic-issues' && canManageTextbook) return 'topic-issues'
     if (saved === 'question-issues' && canManageQbank) return 'question-issues'
@@ -346,6 +348,7 @@ export default function Admin() {
             {activeTab === 'institutions' && 'Institutions'}
             {activeTab === 'announcements' && 'Announcements'}
             {activeTab === 'reports' && 'Study reports'}
+            {activeTab === 'flashcards-v2' && 'Flashcards V2 review'}
             {isIssuesTab && (activeTab === 'question-issues' && ['questions', 'import'].includes(subTab) ? 'Question Bank' : 'Admin Issues')}
           </h1>
           <p className="admin__muted">
@@ -354,6 +357,7 @@ export default function Admin() {
             {activeTab === 'institutions' && 'Create institution accounts, manage staff admins, and help with student invites when they cannot.'}
             {activeTab === 'announcements' && 'Draft and publish in-app announcements. Users will see unread ones the next time they open the dashboard.'}
             {activeTab === 'reports' && 'Monthly AI study reports: run the batch, watch it finish, and see usage per month.'}
+            {activeTab === 'flashcards-v2' && 'Review generated decks, fix cards, retire legacy cards and publish topics. Nothing reaches learners until a topic is published here.'}
             {isIssuesTab && (activeTab === 'question-issues' && subTab === 'import'
               ? 'Validate generated question files, review every record, then import the ones you choose as inactive drafts.'
               : activeTab === 'question-issues' && subTab === 'questions'
@@ -430,6 +434,15 @@ export default function Admin() {
             Study reports
           </button>
         )}
+        {canManageOsce && (
+          <button
+            type="button"
+            className={activeTab === 'flashcards-v2' ? 'is-active' : ''}
+            onClick={() => setActiveTab('flashcards-v2')}
+          >
+            Flashcards V2
+          </button>
+        )}
         {isIssuesTab && subTab === 'main' && (
           <>
             <label className="admin-tabs__toggle">
@@ -447,7 +460,7 @@ export default function Admin() {
         )}
       </div>
 
-      {activeTab !== 'institutions' && activeTab !== 'reports' && activeTab !== 'announcements' && (
+      {activeTab !== 'institutions' && activeTab !== 'reports' && activeTab !== 'announcements' && activeTab !== 'flashcards-v2' && (
         <div className="admin-subtabs">
           {activeTab === 'question-issues' && (
             <button
@@ -496,6 +509,8 @@ export default function Admin() {
       {activeTab === 'announcements' && <AdminAnnouncements />}
 
       {activeTab === 'reports' && <AdminStudyReports />}
+
+      {activeTab === 'flashcards-v2' && canManageOsce && <AdminFlashcardsV2 />}
 
       {activeTab === 'mock-papers' && subTab === 'main' && (
         <section className="admin-card">
