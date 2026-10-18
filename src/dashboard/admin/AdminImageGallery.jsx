@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { authenticatedFetch } from '../../auth/token'
 import './AdminImageGallery.css'
 
+// Matches the backend limit for admin image uploads (IMAGE_UPLOAD_MAX_FILE_MB).
+const MAX_UPLOAD_MB = 10
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -67,6 +70,9 @@ export default function AdminImageGallery({
   }
 
   const uploadOne = async (file) => {
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
+      throw new Error(`${file.name} is larger than ${MAX_UPLOAD_MB} MB. Resize or compress it and try again.`)
+    }
     const dataBase64 = await fileToBase64(file)
     const res = await authenticatedFetch(`${API_BASE}/admin/textbook/images/upload`, {
       method: 'POST',
