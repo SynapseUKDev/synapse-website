@@ -7,6 +7,7 @@ import OsceAdminPanel from '../osce/OsceAdminPanel'
 import AdminReviewComments from './AdminReviewComments'
 import AdminQuestionImport from './questions/AdminQuestionImport'
 import AdminQuestionManager from './questions/AdminQuestionManager'
+import AdminSummaries from './summaries/AdminSummaries'
 import AdminInstitutions from './AdminInstitutions'
 import AdminStudyReports from './AdminStudyReports'
 import AdminAnnouncements from './AdminAnnouncements'
@@ -349,7 +350,7 @@ export default function Admin() {
             {activeTab === 'announcements' && 'Announcements'}
             {activeTab === 'reports' && 'Study reports'}
             {activeTab === 'flashcards-v2' && 'Flashcards V2 review'}
-            {isIssuesTab && (activeTab === 'question-issues' && ['questions', 'import'].includes(subTab) ? 'Question Bank' : 'Admin Issues')}
+            {isIssuesTab && (activeTab === 'question-issues' && ['questions', 'import', 'summaries'].includes(subTab) ? 'Question Bank' : 'Admin Issues')}
           </h1>
           <p className="admin__muted">
             {activeTab === 'mock-papers' && 'Upload the three generator output files (CSV + answer key JSON + manifest JSON) to create a new mock paper and all its questions instantly.'}
@@ -360,6 +361,8 @@ export default function Admin() {
             {activeTab === 'flashcards-v2' && 'Review generated decks, fix cards, retire legacy cards and publish topics. Nothing reaches learners until a topic is published here.'}
             {isIssuesTab && (activeTab === 'question-issues' && subTab === 'import'
               ? 'Validate generated question files, review every record, then import the ones you choose as inactive drafts.'
+              : activeTab === 'question-issues' && subTab === 'summaries'
+              ? 'Review generated topic and drug summaries next to their linked questions, then publish, edit, roll back or withdraw them.'
               : activeTab === 'question-issues' && subTab === 'questions'
               ? 'Create, find and edit question-bank questions. New questions stay inactive until reviewed and activated.'
               : 'Review user-reported issues, then edit the related question or textbook page.')}
@@ -480,6 +483,15 @@ export default function Admin() {
               Bulk import
             </button>
           )}
+          {activeTab === 'question-issues' && canManageQbank && (
+            <button
+              type="button"
+              className={`admin-subtab-btn ${subTab === 'summaries' ? 'is-active' : ''}`}
+              onClick={() => setSubTab('summaries')}
+            >
+              Summaries
+            </button>
+          )}
           <button
             type="button"
             className={`admin-subtab-btn ${subTab === 'main' ? 'is-active' : ''}`}
@@ -503,6 +515,8 @@ export default function Admin() {
       {activeTab === 'question-issues' && subTab === 'questions' && canManageQbank && <AdminQuestionManager />}
 
       {activeTab === 'question-issues' && subTab === 'import' && canManageQbank && <AdminQuestionImport />}
+
+      {activeTab === 'question-issues' && subTab === 'summaries' && canManageQbank && <AdminSummaries />}
 
       {activeTab === 'institutions' && <AdminInstitutions />}
 

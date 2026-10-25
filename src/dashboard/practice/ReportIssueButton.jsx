@@ -11,7 +11,9 @@ const CATEGORY_OPTIONS = [
   { value: 'other', label: 'Other' },
 ]
 
-export default function ReportIssueButton({ questionId, API_BASE }) {
+// With `summary` (a learner topic summary), the report is about that summary version.
+export default function ReportIssueButton({ questionId, API_BASE, summary = null }) {
+  const isSummaryReport = Boolean(summary?.summary_id && summary?.version_id)
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
@@ -63,10 +65,19 @@ export default function ReportIssueButton({ questionId, API_BASE }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         credentials: 'include',
-        body: JSON.stringify({
-          description: description.trim(),
-          category: category || undefined,
-        }),
+        body: JSON.stringify(
+          isSummaryReport
+            ? {
+                description: description.trim(),
+                category: 'summary',
+                learning_summary_id: summary.summary_id,
+                learning_summary_version_id: summary.version_id,
+              }
+            : {
+                description: description.trim(),
+                category: category || undefined,
+              }
+        ),
       })
 
       const data = await res.json().catch(() => ({}))
@@ -96,11 +107,11 @@ export default function ReportIssueButton({ questionId, API_BASE }) {
         type="button"
         className={`btn btn--ghost btn--icon report-trigger-btn ${successMessage ? 'has-success' : ''}`}
         onClick={() => setOpen(true)}
-        title="Report an issue with this question"
-        aria-label="Report an issue"
+        title={isSummaryReport ? 'Report an issue with this topic summary' : 'Report an issue with this question'}
+        aria-label={isSummaryReport ? 'Report summary' : 'Report an issue'}
       >
         <LuMessageSquareWarning />
-        <span className="report-trigger-text">Report</span>
+        <span className="report-trigger-text">{isSummaryReport ? 'Report summary' : 'Report'}</span>
       </button>
 
       {/* Success toast notification */}
@@ -115,7 +126,7 @@ export default function ReportIssueButton({ questionId, API_BASE }) {
         <div className="report-modal-overlay" onClick={handleCancel}>
           <div className="report-modal ph-no-capture" onClick={(e) => e.stopPropagation()}>
             <div className="report-modal__header">
-              <h3 className="report-modal__title">Report an Issue</h3>
+              <h3 className="report-modal__title">{isSummaryReport ? 'Report a Summary Issue' : 'Report an Issue'}</h3>
               <button
                 type="button"
                 className="report-modal__close"
@@ -135,30 +146,32 @@ export default function ReportIssueButton({ questionId, API_BASE }) {
                   className="report-modal__textarea"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What's wrong with this question?"
+                  placeholder={isSummaryReport ? "What's wrong with this summary?" : "What's wrong with this question?"}
                   rows={4}
                   maxLength={2000}
                   required
                   autoFocus
                 />
               </div>
-              <div className="report-modal__field">
-                <label htmlFor="report-issue-category" className="report-modal__label">
-                  Category <span className="optional">(optional)</span>
-                </label>
-                <select
-                  id="report-issue-category"
-                  className="report-modal__select"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <option key={opt.value || 'none'} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!isSummaryReport && (
+                <div className="report-modal__field">
+                  <label htmlFor="report-issue-category" className="report-modal__label">
+                    Category <span className="optional">(optional)</span>
+                  </label>
+                  <select
+                    id="report-issue-category"
+                    className="report-modal__select"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    {CATEGORY_OPTIONS.map((opt) => (
+                      <option key={opt.value || 'none'} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {errorMessage && (
                 <p className="report-modal__error" role="alert">
                   {errorMessage}

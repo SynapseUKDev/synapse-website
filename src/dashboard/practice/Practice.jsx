@@ -6,6 +6,7 @@ import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuPause, LuPlay, LuBookOpe
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
+import TopicSummary from './TopicSummary'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
@@ -1860,6 +1861,15 @@ export default function Practice() {
                       </ReviewableContent>
                     </div>
                   </div>
+                )}
+
+                {showExplanation && currentQuestion?.learning_summary && (
+                  <TopicSummary
+                    key={currentQuestion.learning_summary.version_id}
+                    summary={currentQuestion.learning_summary}
+                    questionId={currentQuestion.id}
+                    API_BASE={API_BASE}
+                  />
                 )}
 
                 {/* Textbook Link */}

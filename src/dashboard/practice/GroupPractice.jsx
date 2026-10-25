@@ -6,6 +6,7 @@ import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuArrowLeft, LuPause, LuPl
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
+import TopicSummary from './TopicSummary'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import {
@@ -1660,6 +1661,15 @@ export default function GroupPractice() {
                       <div className="eli5-content">{result?.explanations?.eli5 || 'No ELI5 explanation available'}</div>
                     </div>
                   </div>
+                )}
+
+                {result && currentQuestion?.learning_summary && (
+                  <TopicSummary
+                    key={currentQuestion.learning_summary.version_id}
+                    summary={currentQuestion.learning_summary}
+                    questionId={currentQuestion.id}
+                    API_BASE={API_BASE}
+                  />
                 )}
 
                 {/* Textbook Link */}

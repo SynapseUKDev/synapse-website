@@ -10,6 +10,7 @@ export default defineConfig({
       'tests/admin-questions/**/*.{test,spec}.{js,jsx}',
       'tests/usage-analytics/**/*.{test,spec}.{js,jsx}',
       'tests/flashcards-v2/**/*.{test,spec}.{js,jsx}',
+      'tests/topic-summaries/**/*.{test,spec}.{js,jsx}',
     ],
   },
 })

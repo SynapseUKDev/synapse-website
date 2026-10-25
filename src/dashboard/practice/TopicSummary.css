@@ -1,0 +1,210 @@
+/* Topic summary panel (spec 003). Light defaults follow Practice.css; dark overrides use the
+   --dm-* tokens under html[data-theme='dark'] like the rest of the practice views. */
+
+.topic-summary {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: var(--syn-ink, #0f172a);
+}
+
+.topic-summary__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topic-summary__eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0369a1;
+}
+
+.topic-summary__title {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.topic-summary__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0369a1;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.topic-summary__toggle:focus-visible,
+.topic-summary__textbook:focus-visible,
+.topic-summary__table-wrap:focus-visible,
+.topic-summary a:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+.topic-summary__chevron {
+  transition: transform 0.15s ease;
+}
+
+.topic-summary__toggle[aria-expanded='false'] .topic-summary__chevron {
+  transform: rotate(-90deg);
+}
+
+.topic-summary__body {
+  margin-top: 12px;
+}
+
+.topic-summary__markdown {
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.topic-summary__markdown p {
+  margin: 0 0 10px;
+}
+
+.topic-summary__markdown ul,
+.topic-summary__markdown ol {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+
+.topic-summary__table-wrap {
+  max-width: 100%;
+  margin: 0 0 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.topic-summary__table-wrap table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.topic-summary__table-wrap th,
+.topic-summary__table-wrap td {
+  padding: 6px 8px;
+  border: 1px solid #dbe4f0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.topic-summary__table-wrap th {
+  background: #eef6ff;
+}
+
+.topic-summary__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.topic-summary__textbook {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  background: #f0f9ff;
+  color: #0369a1;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.topic-summary__external {
+  opacity: 0.7;
+}
+
+.topic-summary__sources-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.topic-summary__sources ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.topic-summary__sources a {
+  color: #0369a1;
+}
+
+.topic-summary__meta,
+.topic-summary__reviewed {
+  color: var(--syn-muted, #64748b);
+  font-size: 13px;
+}
+
+.topic-summary__footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+html[data-theme='dark'] .topic-summary {
+  border-color: var(--dm-outline-variant, #334155);
+  background: var(--dm-surface-container, #1e293b);
+  color: var(--dm-on-surface, #e2e8f0);
+}
+
+html[data-theme='dark'] .topic-summary__eyebrow,
+html[data-theme='dark'] .topic-summary__toggle,
+html[data-theme='dark'] .topic-summary__textbook,
+html[data-theme='dark'] .topic-summary__sources a {
+  color: #7dd3fc;
+}
+
+html[data-theme='dark'] .topic-summary__toggle,
+html[data-theme='dark'] .topic-summary__textbook {
+  border-color: var(--dm-outline, #475569);
+  background: var(--dm-surface-container-high, #273449);
+}
+
+html[data-theme='dark'] .topic-summary__table-wrap th,
+html[data-theme='dark'] .topic-summary__table-wrap td {
+  border-color: var(--dm-outline-variant, #334155);
+}
+
+html[data-theme='dark'] .topic-summary__table-wrap th {
+  background: var(--dm-surface-container-high, #273449);
+}
+
+html[data-theme='dark'] .topic-summary__footer {
+  border-top-color: var(--dm-outline-variant, #334155);
+}
+
+@media (max-width: 600px) {
+  .topic-summary {
+    padding: 12px;
+  }
+
+  .topic-summary__textbook {
+    align-self: stretch;
+    justify-content: center;
+  }
+}

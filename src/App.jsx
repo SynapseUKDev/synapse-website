@@ -32,6 +32,8 @@ import ContactSupportPage from './dashboard/ContactSupportPage.jsx'
 import Admin from './dashboard/admin/Admin.jsx'
 import AdminQuestionEditorPage from './dashboard/admin/questions/AdminQuestionEditorPage.jsx'
 import AdminQuestionImportReviewPage from './dashboard/admin/questions/AdminQuestionImportReview.jsx'
+import AdminSummaryDetail from './dashboard/admin/summaries/AdminSummaryDetail.jsx'
+import AdminSummaryQueue from './dashboard/admin/summaries/AdminSummaryQueue.jsx'
 import InstitutionDashboard from './dashboard/institution/InstitutionDashboard.jsx'
 import OsceStations from './dashboard/osce/OsceStations.jsx'
 import OsceStationLanding from './dashboard/osce/OsceStationLanding.jsx'
@@ -160,6 +162,8 @@ function App() {
           <Route path="admin/questions/new" element={<AdminQuestionEditorPage />} />
           <Route path="admin/questions/:questionId" element={<AdminQuestionEditorPage />} />
           <Route path="admin/question-imports/:batchId" element={<AdminQuestionImportReviewPage />} />
+          <Route path="admin/summaries/queue" element={<AdminSummaryQueue />} />
+          <Route path="admin/summaries/:summaryId" element={<AdminSummaryDetail />} />
           <Route path="institution" element={<InstitutionDashboard />} />
           <Route path="osce" element={<OsceStations />} />
           {flashcardsRoutes()}
