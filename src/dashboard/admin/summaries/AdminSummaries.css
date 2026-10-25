@@ -1,0 +1,458 @@
+/* Admin summaries (spec 003). Built on the app's theme tokens (--surface-card, --syn-border,
+   --syn-navy-700, --surface-tint-blue, --syn-muted) so light and dark mode follow the site theme,
+   and laid out like the Question Manager (solid cards, tinted table header, zebra rows). */
+
+.asum,
+.asum-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.asum-card,
+.asum-panel {
+  background: var(--surface-card);
+  border: 1px solid var(--syn-border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  color: var(--syn-navy-700);
+}
+
+.asum-card {
+  padding: 16px;
+}
+
+.asum-panel {
+  padding: 16px;
+}
+
+.asum-panel__title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* ---- Coverage strip ---- */
+
+.asum-coverage {
+  display: grid;
+  gap: 10px;
+}
+
+.asum-coverage dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.asum-coverage__item {
+  padding: 12px 14px;
+  background: var(--surface-card);
+  border: 1px solid var(--syn-border);
+  border-radius: 12px;
+}
+
+.asum-coverage__item dt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--syn-muted);
+}
+
+.asum-coverage__item dd {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--syn-navy-700);
+}
+
+.asum-coverage__item--attention dd {
+  color: #b45309;
+}
+
+.asum-coverage__note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--syn-muted);
+}
+
+/* ---- Filters ---- */
+
+.asum-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.asum-field {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--syn-navy-700);
+}
+
+.asum-field select,
+.asum-field input,
+.asum-withdraw textarea,
+.asum-editor input,
+.asum-editor textarea {
+  width: 100%;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  font: inherit;
+  font-weight: 500;
+  padding: 9px 12px;
+  box-sizing: border-box;
+}
+
+.asum-search {
+  display: flex;
+  gap: 8px;
+}
+
+.asum-search input {
+  flex: 1;
+  min-width: 0;
+}
+
+.asum-segmented {
+  display: inline-flex;
+  width: 100%;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.asum-segmented button {
+  flex: 1;
+  padding: 9px 10px;
+  border: 0;
+  border-right: 1px solid var(--syn-border);
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.asum-segmented button:last-child {
+  border-right: 0;
+}
+
+.asum-segmented button[aria-pressed='true'] {
+  background: var(--surface-tint-blue);
+  font-weight: 800;
+  box-shadow: inset 0 -3px 0 #0369a1;
+}
+
+.asum-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.asum-button:hover:not(:disabled) {
+  border-color: var(--syn-navy-700);
+}
+
+.asum-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.asum-button--primary {
+  background: #0369a1;
+  border-color: #0369a1;
+  color: #ffffff;
+}
+
+.asum-button--primary:hover:not(:disabled) {
+  background: #075985;
+  border-color: #075985;
+}
+
+.asum-button--danger {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #ffffff;
+}
+
+.asum-button--danger:hover:not(:disabled) {
+  background: #991b1b;
+  border-color: #991b1b;
+}
+
+/* ---- Tables ---- */
+
+.asum-results {
+  margin: 0;
+  font-size: 14px;
+  color: var(--syn-muted);
+}
+
+.asum-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--surface-card);
+  border: 1px solid var(--syn-border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.asum-panel .asum-table-wrap {
+  box-shadow: none;
+}
+
+.asum-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: var(--syn-navy-700);
+}
+
+.asum-table thead th {
+  position: sticky;
+  top: 0;
+  padding: 12px 14px;
+  background: var(--surface-tint-blue);
+  border-bottom: 1px solid var(--syn-border);
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.asum-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--syn-border);
+  vertical-align: middle;
+  text-align: left;
+}
+
+.asum-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.asum-table tbody tr:nth-child(even) td {
+  background: rgba(15, 23, 42, 0.035);
+}
+
+.asum-table tbody tr:hover td {
+  background: var(--surface-tint-blue);
+}
+
+.asum-table .asum-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.asum-table__subject {
+  font-weight: 700;
+  color: var(--syn-navy-700);
+}
+
+.asum-table__subject:hover {
+  color: #0369a1;
+}
+
+.asum-table__empty {
+  padding: 24px 14px;
+  text-align: center;
+  color: var(--syn-muted);
+}
+
+.asum-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  font-size: 14px;
+}
+
+/* ---- Badges ---- */
+
+.asum-status,
+.asum-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.asum-status--published,
+.asum-badge--passed { background: #dcfce7; color: #166534; }
+.asum-status--draft,
+.asum-badge--needs_review { background: #fef3c7; color: #92400e; }
+.asum-status--archived { background: #e2e8f0; color: #334155; }
+.asum-badge--failed { background: #fee2e2; color: #991b1b; }
+.asum-badge--neutral { background: var(--surface-tint-blue); color: var(--syn-navy-700); }
+
+/* ---- Messages ---- */
+
+.asum-error,
+.asum-success {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.asum-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.asum-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.asum-error p,
+.asum-success p { margin: 0; }
+
+/* ---- Detail page ---- */
+
+.asum-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--syn-navy-700);
+}
+
+.asum-detail__grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.asum-versions {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.asum-version {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.asum-version:hover {
+  background: var(--surface-tint-blue);
+}
+
+.asum-version.is-selected {
+  border-color: #0369a1;
+  box-shadow: inset 3px 0 0 #0369a1;
+  background: var(--surface-tint-blue);
+}
+
+.asum-version__name {
+  font-weight: 800;
+}
+
+.asum-version__meta {
+  font-size: 12px;
+  color: var(--syn-muted);
+}
+
+.asum-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.asum-editor,
+.asum-withdraw {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.asum-editor textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.asum-report p {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+/* ---- Focus ---- */
+
+.asum-field select:focus-visible,
+.asum-field input:focus-visible,
+.asum-segmented button:focus-visible,
+.asum-button:focus-visible,
+.asum-version:focus-visible,
+.asum-table a:focus-visible,
+.asum-editor input:focus-visible,
+.asum-editor textarea:focus-visible,
+.asum-withdraw textarea:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+/* ---- Dark mode (tokens switch automatically; only the fixed colours need overrides) ---- */
+
+html[data-theme='dark'] .asum-card,
+html[data-theme='dark'] .asum-panel,
+html[data-theme='dark'] .asum-table-wrap {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme='dark'] .asum-table tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+html[data-theme='dark'] .asum-table tbody tr:hover td {
+  background: var(--surface-tint-blue);
+}
+
+html[data-theme='dark'] .asum-coverage__item--attention dd { color: #fbbf24; }
+html[data-theme='dark'] .asum-table__subject:hover { color: #7dd3fc; }
+html[data-theme='dark'] .asum-segmented button[aria-pressed='true'] { box-shadow: inset 0 -3px 0 #38bdf8; }
+html[data-theme='dark'] .asum-version.is-selected { box-shadow: inset 3px 0 0 #38bdf8; border-color: #38bdf8; }
+html[data-theme='dark'] .asum-status--published,
+html[data-theme='dark'] .asum-badge--passed { background: #14532d; color: #bbf7d0; }
+html[data-theme='dark'] .asum-status--draft,
+html[data-theme='dark'] .asum-badge--needs_review { background: #78350f; color: #fde68a; }
+html[data-theme='dark'] .asum-status--archived { background: #334155; color: #e2e8f0; }
+html[data-theme='dark'] .asum-badge--failed { background: #7f1d1d; color: #fecaca; }
+html[data-theme='dark'] .asum-error { background: #450a0a; color: #fecaca; border-color: #7f1d1d; }
+html[data-theme='dark'] .asum-success { background: #052e16; color: #bbf7d0; border-color: #14532d; }
+
+@media (max-width: 800px) {
+  .asum-detail__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asum-pager {
+    justify-content: space-between;
+  }
+}

@@ -127,6 +127,26 @@ describe('TopicSummary', () => {
     })
   })
 
+  test('a drug overview shows its seven sections, NHS sources and no textbook link', () => {
+    const headings = ['Class and mechanism', 'Main uses', 'Important adverse effects', 'Contraindications and cautions',
+      'Important interactions', 'Monitoring', 'Prescribing and counselling']
+    renderSummary(makeSummary({
+      question_category: 'drugs',
+      title: 'Bendroflumethiazide',
+      subject_label: 'Bendroflumethiazide',
+      body_markdown: headings.map((h) => `**${h}:** Overview text.`).join('\n\n'),
+      textbook_href: null,
+      sources: [{ kind: 'reference', label: 'Bendroflumethiazide - NHS', url: 'https://www.nhs.uk/medicines/bendroflumethiazide/', version: null, accessed_on: '2026-10-25' }],
+    }))
+    for (const heading of headings) {
+      expect(screen.getByText(`${heading}:`).tagName).toBe('STRONG')
+    }
+    expect(screen.queryByRole('link', { name: /read textbook/i })).toBeNull()
+    const source = screen.getByRole('link', { name: 'Bendroflumethiazide - NHS' })
+    expect(source).toHaveAttribute('href', 'https://www.nhs.uk/medicines/bendroflumethiazide/')
+    expect(source).toHaveAttribute('target', '_blank')
+  })
+
   test('a new version_id key replaces the content', () => {
     const { rerender } = render(
       <TopicSummary key="v-1" summary={makeSummary()} questionId="q-1" API_BASE="" />
