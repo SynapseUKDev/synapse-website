@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import TopicSummary from './TopicSummary'
 import { LuChevronLeft, LuTrophy, LuMedal, LuAward, LuUsers, LuArrowLeft, LuArrowRight, LuBookOpen, LuCircleCheck, LuCircleAlert } from 'react-icons/lu'
 import './PracticeResults.css'
 import './GroupLeaderboard.css'
@@ -255,6 +256,15 @@ export default function GroupLeaderboard() {
                     )}
                   </div>
                 </div>
+              )}
+
+              {currentQuestion.learning_summary && (
+                <TopicSummary
+                  key={currentQuestion.learning_summary.version_id}
+                  summary={currentQuestion.learning_summary}
+                  questionId={currentQuestion.id}
+                  API_BASE={API_BASE}
+                />
               )}
             </div>
           </div>
