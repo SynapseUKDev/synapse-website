@@ -7,7 +7,6 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
 import TopicSummary from './TopicSummary'
-import QuestionSummaryControl from '../admin/summaries/QuestionSummaryControl'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
@@ -229,13 +228,6 @@ export default function Practice() {
   const { display, running, toggle } = useCountdown(timerMinutes * 60)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-
-  // Editors' per-question summary choice: show the newly chosen summary straight away.
-  const setQuestionSummary = useCallback((questionId, learningSummary) => {
-    setQuestions((prev) => prev.map((question) => (
-      String(question.id) === String(questionId) ? { ...question, learning_summary: learningSummary } : question
-    )))
-  }, [])
 
   const mergeAdminQuestion = useCallback((updatedQuestion) => {
     if (!updatedQuestion?.id) return
@@ -1675,6 +1667,18 @@ export default function Practice() {
                           <span className="practice-action-label">{adminEditorOpen ? 'Close editor' : 'Edit'}</span>
                         </button>
                       )}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--icon admin-edit-trigger"
+                          onClick={() => navigate(`/dashboard/admin/questions/${currentQuestion.id}#summary`)}
+                          title="Edit this question's topic summary in the admin panel"
+                          aria-label="Edit summary"
+                        >
+                          <LuBookOpen aria-hidden />
+                          <span className="practice-action-label">Edit summary</span>
+                        </button>
+                      )}
                       <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
                       {(highlights[currentQuestion.id]?.length > 0) && (
                         <button
@@ -1759,8 +1763,7 @@ export default function Practice() {
                 <div className="admin-card admin-inline-panel admin-inline-panel--question">
                   <div className="admin-inline-panel__header">
                     <div>
-                      <h2>Admin Edit</h2>
-                      <p className="admin__muted">Edit this question inline. Server admin permissions are rechecked on save.</p>
+                      <h2>Edit Question</h2>
                     </div>
                   </div>
                   <AdminQuestionInlineEditor
@@ -1877,13 +1880,6 @@ export default function Practice() {
                     summary={currentQuestion.learning_summary}
                     questionId={currentQuestion.id}
                     API_BASE={API_BASE}
-                  />
-                )}
-
-                {showExplanation && isAdmin && currentQuestion?.id && (
-                  <QuestionSummaryControl
-                    questionId={currentQuestion.id}
-                    onChange={(summary) => setQuestionSummary(currentQuestion.id, summary)}
                   />
                 )}
 

@@ -8,6 +8,7 @@ import QuestionActivationPanel from './QuestionActivationPanel'
 import QuestionImageGallery from './QuestionImageGallery'
 import QuestionPreview from './QuestionPreview'
 import QuestionStatusBadge from './QuestionStatusBadge'
+import QuestionSummaryControl from '../summaries/QuestionSummaryControl'
 import { ADMIN_QUESTIONS_PATH, canManageQbank } from './questionAdminAccess'
 import { createQuestion, fetchQuestion, fetchTaxonomy, updateQuestion, uploadQuestionImage } from './questionAdminApi'
 import { toPreviewAssets } from './questionImageModel'
@@ -250,6 +251,11 @@ function QuestionEditor({ questionId }) {
               isActive={isActive}
             />
           </div>
+          {!isNew && (
+            <div className="admin-card">
+              <QuestionSummaryControl questionId={questionId} />
+            </div>
+          )}
         </div>
         <div className="aqe__preview">
           <h2 className="aqe__heading">Learner preview</h2>

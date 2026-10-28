@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import TopicSummary from '../../practice/TopicSummary'
 import {
+  SUMMARIES_PAGE_PATH,
   clearQuestionLink,
   fetchQuestionLink,
   fetchSummary,
@@ -20,12 +22,14 @@ function formatDate(value) {
 }
 
 /**
- * Editors only (qbank permission): shows which summary this question displays and lets the editor
- * choose any published summary, from any topic, for this one question — or go back to automatic
- * matching. The question's wording, answer, explanations and topic are never changed here.
+ * Admin question editor (qbank permission): shows which summary this question displays and lets the
+ * editor choose any published summary, from any topic, for this one question — or go back to
+ * automatic matching. The question's wording, answer, explanations and topic are never changed here.
  * onChange(learningSummary) receives the learner summary the question now shows (or null).
+ * Practice's admin-only "Edit summary" button links here with #summary, which scrolls to it.
  */
 export default function QuestionSummaryControl({ questionId, onChange }) {
+  const sectionRef = useRef(null)
   const [link, setLink] = useState(null)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -107,14 +111,19 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
           : 'Back to automatic matching. No summary matches this question automatically.',
     )
 
+  const loaded = !!link
+  useEffect(() => {
+    if (loaded && window.location.hash === '#summary') sectionRef.current?.scrollIntoView({ block: 'start' })
+  }, [loaded])
+
   if (!link) {
     return error ? <p className="asum-error qsum" role="alert">{error}</p> : null
   }
 
   const shown = link.mode === 'manual' ? link.manual_summary : link.automatic_summary
   return (
-    <section className="qsum" aria-labelledby={`qsum-heading-${questionId}`}>
-      <h3 id={`qsum-heading-${questionId}`} className="qsum__heading">Summary for this question (editors only)</h3>
+    <section id="summary" ref={sectionRef} className="qsum" aria-labelledby={`qsum-heading-${questionId}`}>
+      <h2 id={`qsum-heading-${questionId}`} className="qsum__heading">Topic summary</h2>
       <p className="qsum__status">
         {shown ? summaryLabel(shown) : 'No summary'}
         <span className="qsum__mode">
@@ -134,6 +143,11 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
 
       {!picking && (
         <div className="asum-actions">
+          {shown && (
+            <Link className="asum-button" to={`${SUMMARIES_PAGE_PATH}/${shown.id}`}>
+              Open summary page
+            </Link>
+          )}
           <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(true); setNotice(null) }}>
             Change summary
           </button>

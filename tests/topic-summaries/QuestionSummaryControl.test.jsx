@@ -1,5 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import QuestionSummaryControl from '../../src/dashboard/admin/summaries/QuestionSummaryControl'
 import {
@@ -65,9 +66,10 @@ afterEach(() => vi.clearAllMocks())
 describe('QuestionSummaryControl', () => {
   test('a misfiled question can be given Croup → Management after a preview, then reset to automatic', async () => {
     const onChange = vi.fn()
-    render(<QuestionSummaryControl questionId={Q} onChange={onChange} />)
+    render(<MemoryRouter><QuestionSummaryControl questionId={Q} onChange={onChange} /></MemoryRouter>)
     expect(await screen.findByText('Epiglottitis → Management')).toBeInTheDocument()
     expect(screen.getByText('Automatic')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open summary page' })).toHaveAttribute('href', '/dashboard/admin/summaries/s-epi')
     expect(screen.queryByRole('button', { name: 'Use automatic selection' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Change summary' }))
@@ -99,7 +101,7 @@ describe('QuestionSummaryControl', () => {
   })
 
   test('shows the server error and keeps the picker open when saving fails', async () => {
-    render(<QuestionSummaryControl questionId={Q} onChange={vi.fn()} />)
+    render(<MemoryRouter><QuestionSummaryControl questionId={Q} onChange={vi.fn()} /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Change summary' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Croup → Management' }))
     await screen.findByText('Dexamethasone first.')

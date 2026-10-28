@@ -1,4 +1,4 @@
-/* Editors' per-question summary choice, shown under the explanation in practice. Uses the
+/* Per-question summary choice on the admin question editor page. Uses the
    theme tokens from index.css, so it follows light and dark mode. */
 
 .qsum {
@@ -110,4 +110,12 @@
 html[data-theme='dark'] .qsum__result.is-selected {
   border-color: #38bdf8;
   box-shadow: inset 3px 0 0 #38bdf8;
+}
+
+/* Inside an admin card the card already draws the frame. */
+.admin-card > .qsum {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
 }

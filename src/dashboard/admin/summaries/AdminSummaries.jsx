@@ -2,10 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_LABELS, SUMMARIES_PAGE_PATH, deleteSummary, fetchCoverage, listSummaries } from './summaryAdminApi'
 import SummaryStatusBadge, { ValidationBadge } from './SummaryStatusBadge'
+import { cache, dropFromSummariesCache, listKey } from './summariesListCache'
 import './AdminSummaries.css'
 
 const PAGE_SIZE = 25
 const KINDS = [['', 'All'], ['condition', 'Condition'], ['drug', 'Drug']]
+const DEFAULT_FILTERS = { kind: '', status: '', category: '', validation: '', q: '' }
 
 function CoverageStrip({ coverage, error }) {
   if (error) return <p className="asum-error" role="alert">{error}</p>
@@ -41,32 +43,46 @@ function CoverageStrip({ coverage, error }) {
 
 /** QBank → Summaries: coverage strip plus a filterable, paginated list of summaries. */
 export default function AdminSummaries() {
-  const [filters, setFilters] = useState({ kind: '', status: '', category: '', validation: '', q: '' })
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const [result, setResult] = useState(null)
+  const [filters, setFilters] = useState(() => cache.view?.filters || DEFAULT_FILTERS)
+  const [search, setSearch] = useState(() => cache.view?.search || '')
+  const [page, setPage] = useState(() => cache.view?.page || 1)
+  const [result, setResult] = useState(() => cache.lists.get(listKey(filters, page)) || null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [coverage, setCoverage] = useState(null)
+  const [coverage, setCoverage] = useState(cache.coverage)
   const [coverageError, setCoverageError] = useState(null)
   const [deleting, setDeleting] = useState(null)
 
   useEffect(() => {
+    cache.view = { filters, search, page }
+  }, [filters, search, page])
+
+  useEffect(() => {
     const controller = new AbortController()
     fetchCoverage({ signal: controller.signal })
-      .then(setCoverage)
-      .catch((e) => e?.name !== 'AbortError' && setCoverageError(e.message))
+      .then((data) => {
+        cache.coverage = data
+        setCoverage(data)
+        setCoverageError(null)
+      })
+      .catch((e) => e?.name !== 'AbortError' && !cache.coverage && setCoverageError(e.message))
     return () => controller.abort()
   }, [])
 
   const load = useCallback(
     (signal) => {
+      const key = listKey(filters, page)
+      const cached = cache.lists.get(key)
+      if (cached) setResult(cached) // shown at once; refreshed below
       setLoading(true)
       setError(null)
       listSummaries({ ...filters, page, page_size: PAGE_SIZE }, { signal })
-        .then((data) => setResult(data))
+        .then((data) => {
+          cache.lists.set(key, data)
+          setResult(data)
+        })
         .catch((e) => e?.name !== 'AbortError' && setError(e.message))
-        .finally(() => setLoading(false))
+        .finally(() => !signal?.aborted && setLoading(false))
     },
     [filters, page],
   )
@@ -90,6 +106,7 @@ export default function AdminSummaries() {
     setError(null)
     try {
       await deleteSummary(summary.id, summary.row_version)
+      dropFromSummariesCache(summary.id)
       load()
     } catch (e) {
       setError(e.message)
@@ -168,6 +185,7 @@ export default function AdminSummaries() {
         <>
           <p className="asum-results" aria-live="polite">
             {result.total.toLocaleString('en-GB')} summar{result.total === 1 ? 'y' : 'ies'}
+            {loading && <span className="asum-muted"> · Updating…</span>}
           </p>
           <div className="asum-table-wrap">
             <table className="asum-table">

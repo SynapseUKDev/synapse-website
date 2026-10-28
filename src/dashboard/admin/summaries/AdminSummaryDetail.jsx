@@ -17,6 +17,7 @@ import {
   withdrawSummary,
 } from './summaryAdminApi'
 import SummaryStatusBadge, { ValidationBadge } from './SummaryStatusBadge'
+import { dropFromSummariesCache } from './summariesListCache'
 import './AdminSummaries.css'
 
 const VALIDATION_LABELS = { passed: 'Passed validation', needs_review: 'Needs review', failed: 'Failed validation' }
@@ -163,6 +164,7 @@ function SummaryDetail({ summaryId }) {
       '. This cannot be undone; generating it again creates a new draft.'
     if (!window.confirm(message)) return
     if (await run(() => deleteSummary(summary.id, summary.row_version), 'Deleted.')) {
+      dropFromSummariesCache(summary.id)
       navigate('/dashboard/admin', { replace: true })
     }
   }
