@@ -94,7 +94,6 @@
 
 .asum-field select,
 .asum-field input,
-.asum-withdraw textarea,
 .asum-editor input,
 .asum-editor textarea {
   width: 100%;
@@ -193,6 +192,25 @@
 .asum-button--danger:hover:not(:disabled) {
   background: #991b1b;
   border-color: #991b1b;
+}
+
+.asum-button--small {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.asum-muted {
+  color: var(--syn-muted);
+  font-weight: 400;
+}
+
+.asum-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 /* ---- Tables ---- */
@@ -384,13 +402,6 @@
 }
 
 .asum-editor,
-.asum-withdraw {
-  display: grid;
-  gap: 6px;
-  margin-bottom: 12px;
-  font-size: 13px;
-  font-weight: 700;
-}
 
 .asum-editor textarea {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -412,8 +423,7 @@
 .asum-version:focus-visible,
 .asum-table a:focus-visible,
 .asum-editor input:focus-visible,
-.asum-editor textarea:focus-visible,
-.asum-withdraw textarea:focus-visible {
+.asum-editor textarea:focus-visible {
   outline: 3px solid #0ea5e9;
   outline-offset: 2px;
 }

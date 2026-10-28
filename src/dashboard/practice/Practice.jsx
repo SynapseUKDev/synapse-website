@@ -7,6 +7,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
 import TopicSummary from './TopicSummary'
+import QuestionSummaryControl from '../admin/summaries/QuestionSummaryControl'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
@@ -228,6 +229,13 @@ export default function Practice() {
   const { display, running, toggle } = useCountdown(timerMinutes * 60)
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+  // Editors' per-question summary choice: show the newly chosen summary straight away.
+  const setQuestionSummary = useCallback((questionId, learningSummary) => {
+    setQuestions((prev) => prev.map((question) => (
+      String(question.id) === String(questionId) ? { ...question, learning_summary: learningSummary } : question
+    )))
+  }, [])
 
   const mergeAdminQuestion = useCallback((updatedQuestion) => {
     if (!updatedQuestion?.id) return
@@ -1869,6 +1877,13 @@ export default function Practice() {
                     summary={currentQuestion.learning_summary}
                     questionId={currentQuestion.id}
                     API_BASE={API_BASE}
+                  />
+                )}
+
+                {showExplanation && isAdmin && currentQuestion?.id && (
+                  <QuestionSummaryControl
+                    questionId={currentQuestion.id}
+                    onChange={(summary) => setQuestionSummary(currentQuestion.id, summary)}
                   />
                 )}
 

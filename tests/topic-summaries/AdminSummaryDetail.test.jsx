@@ -7,6 +7,7 @@ import { confirmNavigation } from '../../src/dashboard/navigationGuard'
 import {
   SummaryAdminApiError,
   createVersion,
+  deleteSummary,
   fetchPracticePreview,
   fetchSummary,
   publishVersion,
@@ -23,6 +24,7 @@ vi.mock('../../src/dashboard/admin/summaries/summaryAdminApi', async (importOrig
     publishVersion: vi.fn(),
     withdrawSummary: vi.fn(),
     redraftSummary: vi.fn(),
+    deleteSummary: vi.fn(),
   }
 })
 
@@ -178,18 +180,29 @@ describe('AdminSummaryDetail', () => {
     await waitFor(() => expect(publishVersion).toHaveBeenCalledWith(S, 'v-1', 4))
   })
 
-  test('withdraw requires a reason and confirmation', async () => {
+  test('withdraw needs only a confirmation, no reason', async () => {
     vi.mocked(withdrawSummary).mockResolvedValue({ summary: {} })
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
     renderPage()
-    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw' }))
-    const submit = screen.getByRole('button', { name: 'Withdraw summary' })
-    expect(submit).toBeDisabled()
-    fireEvent.change(screen.getByLabelText(/Reason for withdrawing/), { target: { value: 'Unsafe dose' } })
-    expect(submit).toBeEnabled()
-    fireEvent.click(submit)
-    await waitFor(() => expect(withdrawSummary).toHaveBeenCalledWith(S, 'Unsafe dose', 4))
-    expect(window.confirm).toHaveBeenCalled()
+    const withdraw = await screen.findByRole('button', { name: 'Withdraw' })
+    fireEvent.click(withdraw)
+    expect(withdrawSummary).not.toHaveBeenCalled()
+    fireEvent.click(withdraw)
+    await waitFor(() => expect(withdrawSummary).toHaveBeenCalledWith(S, 4))
+    expect(screen.queryByLabelText(/Reason/)).toBeNull()
+  })
+
+  test('delete asks once, deletes with the row version and returns to the admin page', async () => {
+    vi.mocked(deleteSummary).mockResolvedValue({ deleted: {} })
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+    renderPage()
+    const remove = await screen.findByRole('button', { name: 'Delete summary' })
+    fireEvent.click(remove)
+    expect(deleteSummary).not.toHaveBeenCalled()
+    expect(window.confirm.mock.calls[0][0]).toMatch(/permanently.*2 version\(s\)/)
+    fireEvent.click(remove)
+    await waitFor(() => expect(deleteSummary).toHaveBeenCalledWith(S, 4))
+    expect(await screen.findByText('Admin home')).toBeInTheDocument()
   })
 
   test('a 409 keeps the edited text and tells the admin to reload', async () => {

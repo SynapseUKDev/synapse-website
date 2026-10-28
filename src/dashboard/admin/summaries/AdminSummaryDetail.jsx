@@ -8,6 +8,7 @@ import {
   CATEGORY_LABELS,
   SUMMARIES_PAGE_PATH,
   createVersion,
+  deleteSummary,
   fetchPracticePreview,
   fetchSummary,
   publishVersion,
@@ -20,6 +21,7 @@ import './AdminSummaries.css'
 
 const VALIDATION_LABELS = { passed: 'Passed validation', needs_review: 'Needs review', failed: 'Failed validation' }
 const ORIGIN_LABELS = { generated: 'Generated', admin_edit: 'Admin edit' }
+const SELECTION_LABELS = { manual: 'Manual choice', overridden: 'Manually moved to another summary', automatic: 'Automatic' }
 
 function formatDate(value) {
   if (!value) return ''
@@ -67,8 +69,6 @@ function SummaryDetail({ summaryId }) {
   const [loadError, setLoadError] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [editing, setEditing] = useState(null) // { title, body, baseVersionId }
-  const [withdrawing, setWithdrawing] = useState(false)
-  const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null) // { kind: 'error' | 'success', text, fields? }
 
@@ -101,7 +101,7 @@ function SummaryDetail({ summaryId }) {
     [editing, data, selected],
   )
   const dirty = !!editing && !!selected && (editing.title !== selected.title || editing.body !== selected.body_markdown)
-  useUnsavedChangesGuard(dirty || (withdrawing && reason.trim().length > 0))
+  useUnsavedChangesGuard(dirty)
 
   if (loadError) return <p className="asum-error" role="alert">{loadError}</p>
   if (!data) return <p className="admin__muted">Loading summary…</p>
@@ -151,11 +151,19 @@ function SummaryDetail({ summaryId }) {
   }
 
   async function withdraw() {
-    if (!window.confirm('Withdraw this summary? Learners stop seeing it immediately.')) return
-    if (await run(() => withdrawSummary(summary.id, reason.trim(), summary.row_version), 'Withdrawn.')) {
-      setWithdrawing(false)
-      setReason('')
-      await load(selectedId)
+    if (!window.confirm('Withdraw this summary? Learners stop seeing it immediately. You can re-draft and publish it again later.')) return
+    if (await run(() => withdrawSummary(summary.id, summary.row_version), 'Withdrawn.')) await load(selectedId)
+  }
+
+  async function remove() {
+    const linked = data.linked_questions.length
+    const message =
+      `Delete this summary permanently? All ${data.versions.length} version(s) are removed` +
+      (linked ? ` and ${linked} question(s) stop showing it` : '') +
+      '. This cannot be undone; generating it again creates a new draft.'
+    if (!window.confirm(message)) return
+    if (await run(() => deleteSummary(summary.id, summary.row_version), 'Deleted.')) {
+      navigate('/dashboard/admin', { replace: true })
     }
   }
 
@@ -259,8 +267,8 @@ function SummaryDetail({ summaryId }) {
                 {publishLabel}
               </button>
             )}
-            {summary.status === 'published' && !withdrawing && (
-              <button type="button" className="asum-button" disabled={busy} onClick={() => setWithdrawing(true)}>
+            {summary.status === 'published' && (
+              <button type="button" className="asum-button" disabled={busy} onClick={withdraw}>
                 Withdraw
               </button>
             )}
@@ -269,31 +277,16 @@ function SummaryDetail({ summaryId }) {
                 Re-draft
               </button>
             )}
+            {!editing && (
+              <button type="button" className="asum-button asum-button--danger" disabled={busy} onClick={remove}>
+                Delete summary
+              </button>
+            )}
           </div>
           {selected && selected.validation_status !== 'passed' && !editing && (
             <p className="admin__muted">Only a version that passed validation can be published. Edit it to create a new version.</p>
           )}
 
-          {withdrawing && (
-            <div className="asum-withdraw">
-              <label htmlFor="asum-withdraw-reason">Reason for withdrawing (3–500 characters)</label>
-              <textarea
-                id="asum-withdraw-reason"
-                value={reason}
-                maxLength={500}
-                rows={3}
-                onChange={(e) => setReason(e.target.value)}
-              />
-              <div className="asum-actions">
-                <button type="button" className="asum-button asum-button--danger" disabled={busy || reason.trim().length < 3} onClick={withdraw}>
-                  Withdraw summary
-                </button>
-                <button type="button" className="asum-button" onClick={() => { setWithdrawing(false); setReason('') }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
         </section>
 
         <section className="asum-panel" aria-labelledby="asum-preview-heading">
@@ -354,6 +347,7 @@ function SummaryDetail({ summaryId }) {
                 <th scope="col">Question</th>
                 <th scope="col">Topic</th>
                 <th scope="col">Keyed answer</th>
+                <th scope="col">Link</th>
                 <th scope="col">Active</th>
               </tr>
             </thead>
@@ -363,11 +357,12 @@ function SummaryDetail({ summaryId }) {
                   <td><Link to={`/dashboard/admin/questions/${q.id}`}>{q.stem_excerpt}</Link></td>
                   <td>{q.topic_name}{q.drug_focus ? ` · ${q.drug_focus.replace(/_/g, ' ')}` : ''}</td>
                   <td>{q.keyed_answer || 'Unknown'}</td>
+                  <td>{SELECTION_LABELS[q.selection] || SELECTION_LABELS.automatic}</td>
                   <td>{q.is_active ? 'Yes' : 'No'}</td>
                 </tr>
               ))}
               {data.linked_questions.length === 0 && (
-                <tr><td colSpan={4} className="asum-table__empty">No questions are linked yet. Links are applied with the generated link SQL.</td></tr>
+                <tr><td colSpan={5} className="asum-table__empty">No questions are linked yet. Links are applied with the generated link SQL, or chosen per question in practice.</td></tr>
               )}
             </tbody>
           </table>

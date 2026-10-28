@@ -1,0 +1,113 @@
+/* Editors' per-question summary choice, shown under the explanation in practice. Uses the
+   theme tokens from index.css, so it follows light and dark mode. */
+
+.qsum {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px dashed var(--syn-border);
+  border-radius: 12px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+}
+
+.qsum__heading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--syn-muted);
+}
+
+.qsum__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.qsum__mode {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-tint-blue);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.qsum__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--syn-muted);
+}
+
+.qsum__picker {
+  display: grid;
+  gap: 8px;
+}
+
+.qsum__picker label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.qsum__picker input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: inherit;
+  font: inherit;
+}
+
+.qsum__results {
+  display: grid;
+  gap: 4px;
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.qsum__result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qsum__result:hover {
+  border-color: var(--syn-navy-700);
+}
+
+.qsum__result.is-selected {
+  border-color: #0369a1;
+  box-shadow: inset 3px 0 0 #0369a1;
+  background: var(--surface-tint-blue);
+}
+
+.qsum__picker input:focus-visible,
+.qsum__result:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+html[data-theme='dark'] .qsum__result.is-selected {
+  border-color: #38bdf8;
+  box-shadow: inset 3px 0 0 #38bdf8;
+}

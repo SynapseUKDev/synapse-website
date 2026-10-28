@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CATEGORY_LABELS, SUMMARIES_PAGE_PATH, fetchCoverage, listSummaries } from './summaryAdminApi'
+import { CATEGORY_LABELS, SUMMARIES_PAGE_PATH, deleteSummary, fetchCoverage, listSummaries } from './summaryAdminApi'
 import SummaryStatusBadge, { ValidationBadge } from './SummaryStatusBadge'
 import './AdminSummaries.css'
 
@@ -49,6 +49,7 @@ export default function AdminSummaries() {
   const [loading, setLoading] = useState(true)
   const [coverage, setCoverage] = useState(null)
   const [coverageError, setCoverageError] = useState(null)
+  const [deleting, setDeleting] = useState(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -81,6 +82,21 @@ export default function AdminSummaries() {
     setPage(1)
   }
   const totalPages = result ? Math.max(1, Math.ceil(result.total / PAGE_SIZE)) : 1
+
+  async function remove(summary) {
+    const label = `${summary.subject_label} — ${CATEGORY_LABELS[summary.question_category] || summary.question_category}`
+    if (!window.confirm(`Delete "${label}" permanently, with all its versions? This cannot be undone.`)) return
+    setDeleting(summary.id)
+    setError(null)
+    try {
+      await deleteSummary(summary.id, summary.row_version)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   return (
     <div className="asum">
@@ -165,6 +181,7 @@ export default function AdminSummaries() {
                   <th scope="col">Latest version</th>
                   <th scope="col" className="asum-num">Linked</th>
                   <th scope="col" className="asum-num">Open reports</th>
+                  <th scope="col"><span className="asum-sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -182,13 +199,27 @@ export default function AdminSummaries() {
                         ? <ValidationBadge status={s.latest_version.validation_status} prefix={`v${s.latest_version.version} · `} />
                         : 'None'}
                     </td>
-                    <td className="asum-num">{s.linked_questions}</td>
+                    <td className="asum-num">
+                      {s.linked_questions}
+                      {s.manual_questions > 0 && <span className="asum-muted"> +{s.manual_questions} manual</span>}
+                    </td>
                     <td className="asum-num">{s.open_reports}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="asum-button asum-button--small"
+                        disabled={deleting === s.id}
+                        aria-label={`Delete ${s.subject_label} ${CATEGORY_LABELS[s.question_category] || s.question_category}`}
+                        onClick={() => remove(s)}
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {result.summaries.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="asum-table__empty">No summaries match these filters.</td>
+                    <td colSpan={9} className="asum-table__empty">No summaries match these filters.</td>
                   </tr>
                 )}
               </tbody>

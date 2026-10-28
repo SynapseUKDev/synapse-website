@@ -138,11 +138,30 @@ export function publishVersion(summaryId, versionId, expectedRowVersion) {
   })
 }
 
-export function withdrawSummary(summaryId, reason, expectedRowVersion) {
+export function withdrawSummary(summaryId, expectedRowVersion) {
   return requestSummaries(`${id(summaryId)}/withdraw`, {
     method: 'POST',
-    body: { reason, expected_row_version: expectedRowVersion },
+    body: { expected_row_version: expectedRowVersion },
   })
+}
+
+/** Permanent: the summary, its versions, manual selections of it and learner reports about it. */
+export function deleteSummary(summaryId, expectedRowVersion) {
+  return requestSummaries(id(summaryId), { method: 'DELETE', query: { expected_row_version: expectedRowVersion } })
+}
+
+/** A question's summary: { mode: 'automatic' | 'manual', manual_summary, automatic_summary, learning_summary, … }. */
+export const fetchQuestionLink = (questionId, options) => requestSummaries(`/questions${id(questionId)}/link`, options)
+export const setQuestionLink = (questionId, summaryId) =>
+  requestSummaries(`/questions${id(questionId)}/link`, { method: 'PUT', body: { summary_id: summaryId } })
+export const clearQuestionLink = (questionId) => requestSummaries(`/questions${id(questionId)}/link`, { method: 'DELETE' })
+
+/** "Croup → Management", or "Croup → Management (Pregnancy)" for a narrower scope. */
+export function summaryLabel(summary) {
+  if (!summary) return ''
+  const subject = summary.kind === 'drug' ? summary.subject_label : summary.topic?.name || summary.subject_label
+  const scope = summary.scope_label && summary.scope_label !== 'General' ? ` (${summary.scope_label})` : ''
+  return `${subject} → ${CATEGORY_LABELS[summary.question_category] || summary.question_category}${scope}`
 }
 
 export function redraftSummary(summaryId, expectedRowVersion) {
