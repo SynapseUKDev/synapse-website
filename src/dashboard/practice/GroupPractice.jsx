@@ -1706,8 +1706,7 @@ export default function GroupPractice() {
               <div className="admin-card admin-inline-panel admin-inline-panel--question">
                 <div className="admin-inline-panel__header">
                   <div>
-                    <h2>Admin Edit</h2>
-                    <p className="admin__muted">Edit this question inline. Server admin permissions are rechecked on save.</p>
+                    <h2>Edit Question</h2>
                   </div>
                 </div>
                 <AdminQuestionInlineEditor
