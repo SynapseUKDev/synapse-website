@@ -35,7 +35,7 @@ describe('Report a problem (learner)', () => {
 
   test('not offered on an unpublished draft in admin preview', async () => {
     mockFetch(() => [201, { reportId: 'r1', status: 'open' }])
-    renderSession([card('a', { isPublished: false, qaStatus: 'draft' })], { preview: true, showAdminBadge: true })
+    renderSession([card('a', { isLive: false, qaStatus: 'draft' })], { preview: true, showAdminBadge: true })
     fireEvent.click(screen.getByRole('button', { name: /Show answer/ }))
     await screen.findByText('answer a')
     expect(screen.queryByRole('button', { name: 'Report a problem' })).toBeNull()

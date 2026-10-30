@@ -3,6 +3,8 @@ import { useNavigate, useOutletContext } from 'react-router-dom'
 import { LuArrowLeft } from 'react-icons/lu'
 import TopicPicker from '../flashcards-v2/TopicPicker'
 import StudySession from '../flashcards-v2/StudySession'
+import ManageTopic from '../flashcards-v2/ManageTopic'
+import PushAllDialog from '../flashcards-v2/PushAllDialog'
 import { buildDeck } from '../flashcards-v2/buildDeck'
 import { getStats, getTopics } from '../flashcards-v2/flashcardsV2Api'
 import { isFlashcardsAdmin } from '../flashcards-v2/access'
@@ -11,9 +13,10 @@ import { EVENTS } from '../../usage/catalog.js'
 import './Flashcards.css'
 
 // Flashcards V2 — thin container: loads /topics, turns a picker choice into a deck, runs a
-// session. This is the normal Flashcards entry; the server decides who may study (backend
-// FLASHCARDS_V2_RELEASED — a 403 shows the coming-soon notice). Admins always ask for ?preview=1 so they
-// also see drafts, and only they get QA badges.
+// session. This is the normal Flashcards entry. Learners get only cards an admin has pushed live; with
+// none live the topics answer is empty (or, as a fallback, a 403) and the coming-soon notice shows.
+// Admins always ask for ?preview=1 so they also see approved cards that are not live yet, get QA badges,
+// and can open Manage mode for a topic (edit, images, push live) or push everything approved live.
 
 function useTopics(preview, enabled) {
   const [state, setState] = useState({ status: 'loading', specialties: [], error: null })
@@ -49,6 +52,8 @@ export default function FlashcardsV2() {
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState(null)
   const [notice, setNotice] = useState(null)
+  const [managing, setManaging] = useState(null) // {id, name} of the topic in Manage mode (admin)
+  const [pushingAll, setPushingAll] = useState(false)
   const exitGuardRef = useRef(null) // set by StudySession: true = it kept the learner on the unsaved-ratings summary
 
   const ready = topics.status === 'ready'
@@ -92,9 +97,12 @@ export default function FlashcardsV2() {
     </button>
   )
 
-  // The server decides who may study (backend FLASHCARDS_V2_RELEASED). A 403 means V2 is still admin-only,
-  // so learners get a friendly notice rather than an error.
-  if (topics.status === 'error' && topics.error?.kind === 'forbidden') {
+  // No live card yet: an empty topics list (200) for a learner, or a 403 from an older server, both mean
+  // "not released", so learners get a friendly notice rather than an error or an empty picker.
+  const comingSoon =
+    (topics.status === 'error' && topics.error?.kind === 'forbidden') ||
+    (!admin && topics.status === 'ready' && !topics.specialties.some((sp) => sp.topics?.length))
+  if (comingSoon) {
     return (
       <div className="fc-page fc2-page">
         {back}
@@ -114,7 +122,16 @@ export default function FlashcardsV2() {
     <div className="fc-page fc2-page">
       {back}
       <div className="fc-page__card fc2-page-card">
-        {session ? (
+        {managing && admin && !session ? (
+          <ManageTopic
+            key={managing.id}
+            topic={managing}
+            onBack={() => {
+              setManaging(null)
+              retryTopics() // live / approved counts changed while managing
+            }}
+          />
+        ) : session ? (
           <StudySession
             key={session.id}
             cards={session.cards}
@@ -128,18 +145,25 @@ export default function FlashcardsV2() {
           <>
             <header className="fc2-header">
               <h1 className="fc2-header__title">Flashcards</h1>
-              {admin && <p className="fc2-header__beta">Admin preview (drafts included)</p>}
+              {admin && <p className="fc2-header__beta">Admin view — includes approved cards that are not live yet</p>}
+              {admin && (
+                <button type="button" className="admin-btn-issue fc2-push-all" onClick={() => setPushingAll(true)}>
+                  Push all approved live
+                </button>
+              )}
             </header>
             <TopicPicker
               topics={topics}
               onRetry={retryTopics}
-              showDrafts={admin}
+              admin={admin}
+              onManage={setManaging}
               dueCount={dueCount}
               onStart={start}
               starting={starting}
               startError={startError}
               notice={notice}
             />
+            {pushingAll && <PushAllDialog onClose={() => setPushingAll(false)} onDone={retryTopics} />}
           </>
         )}
       </div>

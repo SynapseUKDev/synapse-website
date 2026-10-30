@@ -1,65 +1,56 @@
-// Fixtures for the Flashcards V2 admin review tests (shapes from the Task 14b routes).
+// Fixtures for the Flashcards V2 admin tests (shapes from flashcardsV2AdminCardRoutes.ts / flashcardsV2Dto.ts).
 
 export const TOPIC = '11111111-2222-4333-8444-555555555555'
 export const RUN = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+export const SPECIALTY = '22222222-3333-4444-8555-666666666666'
 export const ADMIN = '/flashcards/v2/admin'
-export const REVIEW_PATH = `${ADMIN}/topics/${TOPIC}/review`
+export const CARDS_PATH = `${ADMIN}/cards`
+export const COUNTS_PATH = `${ADMIN}/cards/counts`
+export const TOPICS_PATH = `${ADMIN}/topics`
 
+/** AdminCardDto as GET /cards returns it (with topicName / specialtyName). */
 export const adminCard = (id, semanticKey, extra = {}) => ({
   id,
   topicId: TOPIC,
-  specialtyId: 's1',
+  specialtyId: SPECIALTY,
   question: `Question ${semanticKey}?`,
   answerMarkdown: `- answer ${semanticKey}`,
   cardType: 'recall',
   contentVersion: 1,
   media: null,
   semanticKey,
-  qaStatus: 'validated',
+  qaStatus: 'needs_attention',
   isPublished: false,
+  isLive: false,
+  approvedAt: null,
   guidelineSensitive: false,
   mediaRequirement: null,
   isMediaRequired: false,
   findings: [],
   latestRunId: RUN,
-  legacy: false,
+  hiddenReason: null,
+  hiddenAt: null,
+  topicName: 'Gout',
+  specialtyName: 'Rheumatology',
   ...extra,
 })
 
-export const verdict = (semanticKey, extra = {}) => ({
-  semanticKey,
-  verdict: 'PASS',
-  reason: `Fine: ${semanticKey}`,
-  correctedQuestion: null,
-  correctedAnswerMarkdown: null,
+export const image = (extra = {}) => ({
+  id: 'm1',
+  url: 'https://cdn.example/flashcards/c1/a.png',
+  alt: 'AP radiograph of the right foot',
+  attribution: null,
+  license: null,
+  sourceUrl: null,
   ...extra,
 })
 
-export function reviewPayload({ cards, verdicts = [], blockers = [], textbookIssues = [], retiredCandidates = [], review = {}, run = {} } = {}) {
-  return {
-    review: { status: 'pending_review', currentRunId: RUN, approvedRunId: null, approvedAt: null, ...review },
-    run: {
-      id: RUN,
-      textDeckStatus: 'ready_for_admin',
-      model: 'gpt-5.2',
-      promptVersion: 'v2.2-ts-review',
-      importedAt: '2026-10-01T10:00:00Z',
-      errors: [],
-      warnings: [],
-      reviews: [{ index: 0, cardVerdicts: verdicts, missingCards: [], lowYield: [], needsHumanVerification: [] }],
-      textbookIssues,
-      ...run,
-    },
-    cards: cards ?? [adminCard('c1', 'gout:a'), adminCard('c2', 'gout:b')],
-    blockers,
-    diff: { retiredCandidates },
-  }
-}
+export const COUNTS = { needsAction: 3, flagged: 2, needsImage: 1, approved: 10, live: 4 }
 
 export const topicRow = (topicId, topicName, extra = {}) => ({
   topicId,
   topicName,
-  specialtyId: 's1',
+  specialtyId: SPECIALTY,
   specialtyName: 'Rheumatology',
   reviewStatus: 'pending_review',
   currentRunId: RUN,

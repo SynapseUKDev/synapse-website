@@ -105,7 +105,7 @@ function ReportRow({ report, onOpenCard, onChanged }) {
     }
   }
 
-  const unhiddenText = (r) => (r.unhidden ? '; the card is no longer hidden — publish the topic again from its review to show it to learners' : '')
+  const unhiddenText = (r) => (r.unhidden ? '; the card is no longer hidden but not live — use Push live (Open card, or Flashcards page → Manage) to show it to learners again' : '')
   const resolveOne = (status) =>
     act(
       () => resolveReport(report.reportId, { status, note, unhide: canUnhide && unhide }),
@@ -149,11 +149,13 @@ function ReportRow({ report, onOpenCard, onChanged }) {
 
       <Reassessment report={report} />
 
-      <div className="fcv2a-row">
-        <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={() => onOpenCard?.({ topicId: report.topicId, topicName: report.topicName, cardId: report.cardId })}>
-          Open card in review
-        </button>
-      </div>
+      {onOpenCard && (
+        <div className="fcv2a-row">
+          <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={() => onOpenCard({ topicId: report.topicId, topicName: report.topicName, cardId: report.cardId })}>
+            Open card
+          </button>
+        </div>
+      )}
 
       {undecided ? (
         <div className="fcv2a-report__actions">
@@ -164,7 +166,7 @@ function ReportRow({ report, onOpenCard, onChanged }) {
           {canUnhide && (
             <label className="fcv2a-check">
               <input type="checkbox" checked={unhide} onChange={(e) => setUnhide(e.target.checked)} />
-              Unhide the card (it still has to be published again)
+              Unhide the card (it then needs Push live to reach learners again)
             </label>
           )}
           <div className="fcv2a-row">

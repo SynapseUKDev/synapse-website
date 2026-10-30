@@ -1,11 +1,12 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import ImageCredit from './ImageCredit'
 import { plainQuestion } from './plainQuestion'
 
 // One card. The FRONT is the plain-text question and nothing else: no specialty, topic or category
 // header, because a diagnosis question with its topic printed above it has already given the answer
 // away. The BACK is safe GFM: raw HTML is skipped (never interpreted), links render as their text and
-// images come only from the card's own `media`, never from the Markdown.
+// images come only from the card's own `media` ({front, back}, each side {url, alt, attribution, license, sourceUrl} or null), never from the Markdown.
 
 const QA_LABEL = {
   validated: 'Validated',
@@ -48,30 +49,43 @@ export function CardAnswer({ markdown }) {
   )
 }
 
-/** Admin-only QA/draft marker. Learner DTOs carry none of these fields, and learners never get the prop. */
+/** Admin-only QA / not-live marker. Learner DTOs carry none of these fields, and learners never get the prop. */
 function AdminBadge({ card }) {
-  const draft = card.isPublished === false
+  const notLive = card.isLive === false
   const qa = card.qaStatus && card.qaStatus !== 'validated' ? card.qaStatus : null
-  if (!draft && !qa) return null
+  if (!notLive && !qa) return null
   return (
     <div className="fc2-admin-badge" aria-label="Admin preview status">
-      {draft && <span className="fc2-qa">Draft</span>}
+      {notLive && <span className="fc2-qa">Not live</span>}
       {qa && <span className={`fc2-qa fc2-qa--${qa}`}>{QA_LABEL[qa] ?? qa}</span>}
     </div>
   )
 }
 
+/** One card image with its credit line; null when that side has no image. */
+function CardImage({ image, side }) {
+  if (!image?.url) return null
+  return (
+    <figure className={`fc2-card__figure fc2-card__figure--${side}`}>
+      <img className="fc2-card__media" src={image.url} alt={image.alt || ''} loading="lazy" />
+      <figcaption className="fc2-card__credit">
+        <ImageCredit image={image} className="fc2-card__credit-line" />
+      </figcaption>
+    </figure>
+  )
+}
+
 export default function StudyCard({ card, revealed, showAdminBadge = false, answerRef }) {
-  const media = card.media?.url ? card.media : null
   return (
     <article className="fc2-card ph-no-capture" aria-label="Flashcard">
       <div className="fc2-card__front">
         {showAdminBadge && <AdminBadge card={card} />}
-        {media && <img className="fc2-card__media" src={media.url} alt={media.alt || ''} loading="lazy" />}
+        <CardImage image={card.media?.front} side="front" />
         <p className="fc2-question">{plainQuestion(card.question)}</p>
       </div>
       {revealed && (
         <div className="fc2-card__answer" role="region" aria-label="Answer" tabIndex={-1} ref={answerRef}>
+          <CardImage image={card.media?.back} side="back" />
           <CardAnswer markdown={card.answerMarkdown} />
         </div>
       )}

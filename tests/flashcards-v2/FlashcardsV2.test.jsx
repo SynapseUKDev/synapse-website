@@ -18,8 +18,22 @@ const TOPICS = {
       id: 's1',
       name: 'Rheumatology',
       topics: [
-        { id: 't1', name: 'Gout', cardCount: 3, draftCount: 2 },
-        { id: 't2', name: 'Lupus', cardCount: 1, draftCount: 0 },
+        { id: 't1', name: 'Gout', liveCount: 3, approvedCount: 2 },
+        { id: 't2', name: 'Lupus', liveCount: 1, approvedCount: 0 },
+      ],
+    },
+  ],
+}
+
+/** What a learner gets: only live cards, as cardCount. */
+const LEARNER_TOPICS = {
+  specialties: [
+    {
+      id: 's1',
+      name: 'Rheumatology',
+      topics: [
+        { id: 't1', name: 'Gout', cardCount: 3 },
+        { id: 't2', name: 'Lupus', cardCount: 1 },
       ],
     },
   ],
@@ -43,7 +57,7 @@ function api(overrides = {}) {
   return mockFetch((url, init, call) => {
     const h = overrides[url.pathname]
     if (h) return h(url, call)
-    if (url.pathname === '/flashcards/v2/topics') return [200, TOPICS]
+    if (url.pathname === '/flashcards/v2/topics') return [200, url.searchParams.has('preview') ? TOPICS : LEARNER_TOPICS]
     if (url.pathname === '/flashcards/v2/srs/stats') return [200, { due_count: 1, seen_count: 1, next_due_at: null }]
     return [404, { error: 'unmocked', code: 'NOT_FOUND' }]
   })
@@ -67,11 +81,11 @@ describe('access', () => {
     expect(m.callsTo('/flashcards/v2/topics')[0].url.searchParams.has('preview')).toBe(false)
   })
 
-  test('admins call with preview=1 and see draft counts; learners do not', async () => {
+  test('admins call with preview=1 and see Live / Approved counts; learners see card counts', async () => {
     const m = api()
     const { unmount } = renderPage(ADMIN)
     fireEvent.click(await screen.findByRole('button', { name: /Rheumatology/ }))
-    expect(screen.getByText(/2 drafts/)).toBeInTheDocument()
+    expect(screen.getByText('Live 3 / Approved 5')).toBeInTheDocument()
     expect(m.callsTo('/flashcards/v2/topics')[0].url.searchParams.get('preview')).toBe('1')
     unmount()
 
@@ -81,7 +95,8 @@ describe('access', () => {
     renderPage(LEARNER)
     fireEvent.click(await screen.findByRole('button', { name: /Rheumatology/ }))
     expect(screen.getByRole('checkbox', { name: /Gout/ })).toBeInTheDocument()
-    expect(screen.queryByText(/draft/i)).toBeNull()
+    expect(screen.getByText('3 cards')).toBeInTheDocument()
+    expect(screen.queryByText(/Live \d|Approved|Manage/)).toBeNull()
     expect(m2.callsTo('/flashcards/v2/topics')[0].url.searchParams.has('preview')).toBe(false)
   })
 })
@@ -89,23 +104,31 @@ describe('access', () => {
 describe('picker states', () => {
   test('shows a loading state while topics load', async () => {
     let release
-    api({ '/flashcards/v2/topics': () => new Promise((r) => (release = () => r([200, TOPICS]))) })
+    api({ '/flashcards/v2/topics': () => new Promise((r) => (release = () => r([200, LEARNER_TOPICS]))) })
     renderPage(LEARNER)
     expect(await screen.findByText(/Loading topics/)).toBeInTheDocument()
     await act(async () => release())
     expect(await screen.findByRole('button', { name: /Rheumatology/ })).toBeInTheDocument()
   })
 
-  test('shows an empty state when no topics have cards', async () => {
+  test('a learner with no live cards (200, empty topics) sees the coming-soon block, not an error', async () => {
     api({ '/flashcards/v2/topics': () => [200, { specialties: [] }] })
     renderPage(LEARNER)
+    expect(await screen.findByText(/new flashcards are coming soon/i)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Start/ })).toBeNull()
+  })
+
+  test('an admin with nothing approved yet sees the empty state, not coming soon', async () => {
+    api({ '/flashcards/v2/topics': () => [200, { specialties: [] }] })
+    renderPage(ADMIN)
     expect(await screen.findByText(/No flashcards are available yet/)).toBeInTheDocument()
   })
 
   test('shows an error with retry, and retry reloads the topics', async () => {
     let fail = true
     const m = api({
-      '/flashcards/v2/topics': () => (fail ? [500, { error: 'Internal error', code: 'INTERNAL' }] : [200, TOPICS]),
+      '/flashcards/v2/topics': () => (fail ? [500, { error: 'Internal error', code: 'INTERNAL' }] : [200, LEARNER_TOPICS]),
     })
     renderPage(LEARNER)
     const alert = await screen.findByRole('alert')
@@ -214,13 +237,13 @@ describe('access (the server decides who may study)', () => {
     expect(m.callsTo('/flashcards/v2/topics')[0].url.searchParams.has('preview')).toBe(false)
   })
 
-  test('admins get preview and draft counts with the admin preview label (no beta wording)', async () => {
+  test('admins get preview and Live / Approved counts with the admin label (no beta wording)', async () => {
     const m = api()
     renderPage(ADMIN)
     fireEvent.click(await screen.findByRole('button', { name: /Rheumatology/ }))
-    expect(screen.getByText(/2 drafts/)).toBeInTheDocument()
+    expect(screen.getByText('Live 1 / Approved 1')).toBeInTheDocument()
     expect(m.callsTo('/flashcards/v2/topics')[0].url.searchParams.get('preview')).toBe('1')
-    expect(screen.getByText(/admin preview \(drafts included\)/i)).toBeInTheDocument()
+    expect(screen.getByText('Admin view — includes approved cards that are not live yet')).toBeInTheDocument()
     expect(screen.queryByText(/beta/i)).toBeNull()
   })
 })

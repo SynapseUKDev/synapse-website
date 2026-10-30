@@ -1,15 +1,24 @@
 import { authenticatedFetch } from '../../../auth/token'
 
-// Client for the Flashcards V2 admin review API (/flashcards/v2/admin/*, backend
-// flashcardsV2AdminReviewRoutes.ts + flashcardsV2AdminRoutes.ts). Every error body is
+// Client for the Flashcards V2 admin API (/flashcards/v2/admin/*, backend flashcardsV2AdminCardRoutes.ts,
+// flashcardsV2AdminReviewRoutes.ts, flashcardsV2AdminRoutes.ts, flashcardsV2MediaRoutes.ts and
+// flashcardsV2ReportRoutes.ts). Every error body is
 // {error, code, details?}; it becomes a FlashcardsAdminApiError that keeps status, code and details
 // verbatim and adds a `kind` so screens branch without re-reading status codes.
 
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/$/, '')
 const ADMIN_PATH = '/flashcards/v2/admin'
 
-const PUBLISH_BLOCKER_CODES = new Set(['PUBLISH_RUN_NOT_READY', 'PUBLISH_UNRESOLVED_CARDS', 'PUBLISH_BLOCKED'])
-const STALE_CODES = new Set(['STALE_VERSION', 'STALE_RUN', 'PUBLISH_STALE_RUN', 'PUBLISH_STALE_VERSION', 'RETIRE_STALE_RUN', 'IMPORT_STALE_RUN'])
+const STALE_CODES = new Set(['STALE_VERSION', 'STALE_RUN', 'RETIRE_STALE_RUN', 'IMPORT_STALE_RUN'])
+
+// The card workflow RPC codes come back with the code itself as `error`; these say it in words.
+const CODE_MESSAGES = {
+  APPROVE_NEEDS_FRONT_IMAGE: 'Add a front image first.',
+  APPROVE_HIDDEN: 'This card is hidden after learner reports. Resolve its reports first.',
+  APPROVE_ALREADY_APPROVED: 'This card is already approved.',
+  APPROVE_CARD_NOT_FOUND: 'This card no longer exists or was discarded.',
+  DISCARD_CARD_NOT_FOUND: 'This card no longer exists or was discarded.',
+}
 
 export class FlashcardsAdminApiError extends Error {
   constructor({ status, kind, message, code = null, details = null, cause }) {
@@ -31,7 +40,6 @@ function errorKind(status, code) {
   if (status === 503) return 'unavailable'
   if (status === 409) {
     if (code === 'JOB_ALREADY_ACTIVE') return 'job_active'
-    if (PUBLISH_BLOCKER_CODES.has(code)) return 'blocked'
     if (STALE_CODES.has(code)) return 'stale'
     return 'conflict'
   }
@@ -47,7 +55,6 @@ const DEFAULT_MESSAGES = {
   rate_limited: 'Too many requests; try again in a minute.',
   unavailable: 'The service is unavailable.',
   job_active: 'A job for this topic is already running.',
-  blocked: 'Publishing is blocked.',
   stale: 'This changed since it was loaded; reload.',
   conflict: 'The server rejected this request as a conflict.',
   validation: 'The server rejected the request as invalid.',
@@ -97,7 +104,7 @@ async function request(path, { method = 'GET', body, signal } = {}) {
       kind,
       code,
       details: json?.details ?? null,
-      message: typeof json?.error === 'string' && json.error ? json.error : DEFAULT_MESSAGES[kind],
+      message: CODE_MESSAGES[code] ?? (typeof json?.error === 'string' && json.error ? json.error : DEFAULT_MESSAGES[kind]),
     })
   }
   return readJson(response)
@@ -110,53 +117,12 @@ export function listTopics({ signal } = {}) {
   return request('/topics', { signal })
 }
 
-/** GET /topics/:id/review → {review, run, cards, blockers, diff}. 404 when the topic has no review. */
-export function getTopicReview(topicId, { signal } = {}) {
-  return request(`/topics/${seg(topicId)}/review`, { signal })
-}
-
-/** PATCH /cards/:id → refreshed AdminCardDTO. 409 STALE_VERSION {currentVersion}. */
+/** PATCH /cards/:id → refreshed AdminCardDTO (no topicName). 409 STALE_VERSION details {currentVersion}. */
 export function editCard(cardId, { expectedVersion, question, answerMarkdown }) {
   const body = { expectedVersion }
   if (question !== undefined) body.question = question
   if (answerMarkdown !== undefined) body.answerMarkdown = answerMarkdown
   return request(`/cards/${seg(cardId)}`, { method: 'PATCH', body })
-}
-
-/** POST /topics/:id/revalidate → 202 {jobId}; 409 JOB_ALREADY_ACTIVE {jobId}; 503 LLM_NOT_CONFIGURED. */
-export function revalidateTopic(topicId, runId) {
-  return request(`/topics/${seg(topicId)}/revalidate`, { method: 'POST', body: { runId } })
-}
-
-/** GET /jobs/:id → {id, kind, status, attempts, result?, error?, createdAt, finishedAt}. */
-export function getJob(jobId, { signal } = {}) {
-  return request(`/jobs/${seg(jobId)}`, { signal })
-}
-
-/** Card ids lowercased: the RPC compares text keys, so upper case would read as a stale version. */
-function lowercaseKeys(versions) {
-  return Object.fromEntries(Object.entries(versions || {}).map(([k, v]) => [String(k).toLowerCase(), v]))
-}
-
-/**
- * expectedVersions for publish: exactly the current run's active cards (legacy cards are not part of
- * the run; the RPC requires the set to match), id lowercase → contentVersion.
- */
-export function expectedVersionsFor(cards) {
-  return lowercaseKeys(Object.fromEntries((cards || []).filter((c) => !c.legacy).map((c) => [c.id, c.contentVersion])))
-}
-
-/** POST /topics/:id/publish → {publishedIds, alreadyPublishedIds, mediaPendingIds, ...}. */
-export function publishTopic(topicId, { runId, expectedVersions }) {
-  return request(`/topics/${seg(topicId)}/publish`, {
-    method: 'POST',
-    body: { runId, expectedVersions: lowercaseKeys(expectedVersions) },
-  })
-}
-
-/** POST /topics/:id/unpublish {reason} → {topicId, unpublishedIds}. */
-export function unpublishTopic(topicId, reason) {
-  return request(`/topics/${seg(topicId)}/unpublish`, { method: 'POST', body: { reason } })
 }
 
 /** POST /topics/:id/retire {runId, semanticKeys} → {topicId, runId, retired}. */
@@ -169,30 +135,83 @@ export function importTopicRun(artifact) {
   return request('/import', { method: 'POST', body: artifact })
 }
 
-/** PATCH /runs/:runId/textbook-issues/:reviewIndex/:issueIndex {status, note}. Never edits the textbook. */
-export function setTextbookIssue(runId, reviewIndex, issueIndex, { status, note }) {
-  return request(`/runs/${seg(runId)}/textbook-issues/${seg(reviewIndex)}/${seg(issueIndex)}`, {
-    method: 'PATCH',
-    body: { status, note },
-  })
+// ---- Per-card workflow (backend flashcardsV2AdminCardRoutes.ts, sql/105) ----
+
+/**
+ * GET /cards?state&kind&topicId&specialtyId&q&cursor&limit → {cards: AdminCardDto[] (+ topicName,
+ * specialtyName, hiddenReason), nextCursor}. state: needs_action (server default) | approved | live |
+ * all; kind: flagged | needs_image (omitted = both). `q` matches the question or the topic name.
+ */
+export function listAdminCards({ state, kind, topicId, specialtyId, q, cursor, limit, signal } = {}) {
+  const params = new URLSearchParams()
+  if (state) params.set('state', state)
+  if (kind) params.set('kind', kind)
+  if (topicId) params.set('topicId', topicId)
+  if (specialtyId) params.set('specialtyId', specialtyId)
+  const search = typeof q === 'string' ? q.trim() : ''
+  if (search) params.set('q', search)
+  if (cursor) params.set('cursor', cursor)
+  if (limit) params.set('limit', String(limit))
+  const qs = params.toString()
+  return request(`/cards${qs ? `?${qs}` : ''}`, { signal })
+}
+
+/** GET /cards/counts → {needsAction, flagged, needsImage, approved, live}. */
+export function getAdminCardCounts({ signal } = {}) {
+  return request('/cards/counts', { signal })
 }
 
 /**
- * POST /cards/:id/media (multipart: file, alt, expectedVersion) → 201 {cardId, asset: {id, url, alt,
- * width, height}, contentVersion, qaStatus}. Attaching replaces any current image. 409 STALE_VERSION
- * {currentVersion}; 413 IMAGE_TOO_LARGE; 400 with an IMAGE_* code when the file is refused.
+ * POST /cards/:id/approve {expectedVersion} → the approved AdminCardDto. 409 STALE_VERSION,
+ * APPROVE_NEEDS_FRONT_IMAGE, APPROVE_HIDDEN, APPROVE_ALREADY_APPROVED; 404 APPROVE_CARD_NOT_FOUND.
  */
-export function uploadCardMedia(cardId, { file, alt, expectedVersion }) {
+export function approveCard(cardId, { expectedVersion }) {
+  return request(`/cards/${seg(cardId)}/approve`, { method: 'POST', body: { expectedVersion } })
+}
+
+/** POST /cards/:id/discard {expectedVersion} → {retired: 1}. The card is retired (deactivated). */
+export function discardCard(cardId, { expectedVersion }) {
+  return request(`/cards/${seg(cardId)}/discard`, { method: 'POST', body: { expectedVersion } })
+}
+
+/** POST /cards/live {cardIds, live} → {changed, skipped: [{id, reason}]}. Ineligible cards are skipped. */
+export function setCardsLive(cardIds, live) {
+  return request('/cards/live', { method: 'POST', body: { cardIds, live: !!live } })
+}
+
+/** POST /topics/:id/live {live} → {changed, skipped: [{id, reason}]}. */
+export function setTopicLive(topicId, live) {
+  return request(`/topics/${seg(topicId)}/live`, { method: 'POST', body: { live: !!live } })
+}
+
+/** POST /live-all {confirm: 'PUSH ALL'} → {changed, skipped, skippedCount}: every approved card goes live. */
+export function pushAllLive() {
+  return request('/live-all', { method: 'POST', body: { confirm: 'PUSH ALL' } })
+}
+
+/**
+ * POST /cards/:id/media (multipart: file, expectedVersion, alt, side, attribution?, license?,
+ * sourceUrl?) → 201 {cardId, side, asset: {id, url, alt, width, height, attribution, license,
+ * sourceUrl}, contentVersion, qaStatus}. Attaching replaces that side's image. 409 STALE_VERSION;
+ * 413 IMAGE_TOO_LARGE; 400 with an IMAGE_* / MEDIA_ARGS_INVALID code when refused. Blank optional
+ * fields are left out (the server stores them as null).
+ */
+export function uploadCardMedia(cardId, { file, alt, side = 'front', attribution, license, sourceUrl, expectedVersion }) {
   const form = new FormData()
   form.append('expectedVersion', String(expectedVersion))
+  form.append('side', side)
   form.append('alt', alt)
+  const optional = { attribution, license, sourceUrl }
+  for (const [key, value] of Object.entries(optional)) {
+    if (typeof value === 'string' && value.trim()) form.append(key, value.trim())
+  }
   form.append('file', file)
   return request(`/cards/${seg(cardId)}/media`, { method: 'POST', body: form })
 }
 
-/** DELETE /cards/:id/media {expectedVersion} → {cardId, contentVersion, qaStatus}. */
-export function removeCardMedia(cardId, expectedVersion) {
-  return request(`/cards/${seg(cardId)}/media`, { method: 'DELETE', body: { expectedVersion } })
+/** DELETE /cards/:id/media?side=front|back {expectedVersion} → {cardId, contentVersion, qaStatus}. */
+export function removeCardMedia(cardId, { side = 'front', expectedVersion }) {
+  return request(`/cards/${seg(cardId)}/media?side=${seg(side)}`, { method: 'DELETE', body: { expectedVersion } })
 }
 
 // ---- Learner reports (backend flashcardsV2ReportRoutes.ts) ----

@@ -50,22 +50,62 @@ describe('StudyCard front', () => {
     expect(screen.queryByText('secret answer')).toBeNull()
   })
 
-  test('renders an image only when media is present, with media.alt', () => {
+  test('renders no image when media is absent or has no sides', () => {
     const { container, rerender } = render(<StudyCard card={card('a')} revealed={false} />)
     expect(container.querySelector('img')).toBeNull()
-    rerender(
-      <StudyCard card={card('a', { media: { id: 'm1', url: 'https://cdn.example/m1.png', alt: 'Chest radiograph' } })} revealed={false} />,
-    )
+    rerender(<StudyCard card={card('a', { media: { front: null, back: null } })} revealed />)
+    expect(container.querySelector('img')).toBeNull()
+  })
+
+  test('shows the front image above the question with attribution, licence and a safe Source link', () => {
+    const front = {
+      id: 'm1',
+      url: 'https://cdn.example/m1.png',
+      alt: 'Chest radiograph',
+      attribution: 'Dr Smith',
+      license: 'CC BY 4.0',
+      sourceUrl: 'https://example.org/xray',
+    }
+    const { container } = render(<StudyCard card={card('a', { media: { front, back: null } })} revealed={false} />)
     const img = screen.getByRole('img', { name: 'Chest radiograph' })
     expect(img).toHaveAttribute('src', 'https://cdn.example/m1.png')
+    const figure = img.closest('figure')
+    expect(figure.querySelector('figcaption')).toHaveTextContent('Dr Smith · CC BY 4.0 · Source')
+    const link = screen.getByRole('link', { name: 'Source' })
+    expect(link).toHaveAttribute('href', 'https://example.org/xray')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    const question = screen.getByText('Question a?')
+    expect(figure.compareDocumentPosition(question) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.querySelectorAll('img')).toHaveLength(1)
+  })
+
+  test('the back image appears only once the answer is revealed, at the top of the answer', () => {
+    const back = { id: 'm2', url: 'https://cdn.example/m2.png', alt: 'ECG trace', attribution: 'Hospital', license: null, sourceUrl: null }
+    const c = card('a', { media: { front: null, back } })
+    const { rerender } = render(<StudyCard card={c} revealed={false} />)
+    expect(screen.queryByRole('img', { name: 'ECG trace' })).toBeNull()
+    rerender(<StudyCard card={c} revealed />)
+    const img = screen.getByRole('img', { name: 'ECG trace' })
+    const answer = screen.getByRole('region', { name: 'Answer' })
+    expect(answer.firstElementChild).toBe(img.closest('figure'))
+    expect(screen.getByText('Hospital')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Source' })).toBeNull()
+  })
+
+  test('a non-http source URL is never rendered as a link', () => {
+    const front = { id: 'm1', url: 'https://cdn.example/m1.png', alt: 'x', attribution: 'A', license: null, sourceUrl: 'javascript:alert(1)' }
+    const { container } = render(<StudyCard card={card('a', { media: { front, back: null } })} revealed={false} />)
+    expect(container.querySelector('a')).toBeNull()
+    expect(container.textContent).not.toMatch(/javascript/)
   })
 
   test('learners never see internal QA fields; admins get a small badge', () => {
-    const adminCard = card('a', { qaStatus: 'needs_attention', isPublished: false, semanticKey: 'k1' })
+    const adminCard = card('a', { qaStatus: 'needs_attention', isLive: false, semanticKey: 'k1' })
     const { container, rerender } = render(<StudyCard card={adminCard} revealed={false} />)
-    expect(container.textContent).not.toMatch(/draft|attention|k1/i)
+    expect(container.textContent).not.toMatch(/not live|attention|k1/i)
     rerender(<StudyCard card={adminCard} revealed={false} showAdminBadge />)
-    expect(screen.getByText(/Draft/)).toBeInTheDocument()
+    expect(screen.getByText('Not live')).toBeInTheDocument()
     expect(screen.getByText(/Needs attention/)).toBeInTheDocument()
     expect(container.textContent).not.toMatch(/k1/)
   })

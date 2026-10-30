@@ -3,6 +3,8 @@ import { LuChevronDown, LuChevronRight, LuPlay } from 'react-icons/lu'
 import { MAX_NEW_CARDS, MODES } from './buildDeck'
 
 // Specialty → topic tree from GET /flashcards/v2/topics, multi-select, Due / New / Free modes.
+// Learner topics carry cardCount (live cards); admin preview topics carry liveCount and approvedCount
+// (approved = validated and not live yet), so an admin studies live + approved cards.
 // Presentational: the container owns loading the topics and building the deck.
 
 const MODE_TABS = [
@@ -12,6 +14,9 @@ const MODE_TABS = [
 ]
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+const live = (t) => t.liveCount ?? t.cardCount ?? 0
+const approved = (t) => live(t) + (t.approvedCount ?? 0) // approvedCount is the not-live part
+const studyCards = (t) => (t.cardCount ?? approved(t))
 
 function startLabel(mode, cardCount) {
   if (mode === MODES.DUE) return 'Start due review'
@@ -22,7 +27,8 @@ function startLabel(mode, cardCount) {
 export default function TopicPicker({
   topics,
   onRetry,
-  showDrafts = false,
+  admin = false,
+  onManage = null,
   dueCount = null,
   onStart,
   starting = false,
@@ -36,7 +42,7 @@ export default function TopicPicker({
   const specialties = useMemo(() => topics.specialties ?? [], [topics.specialties])
   const selectedCards = useMemo(() => {
     let n = 0
-    for (const sp of specialties) for (const t of sp.topics) if (selected.has(t.id)) n += t.cardCount
+    for (const sp of specialties) for (const t of sp.topics) if (selected.has(t.id)) n += studyCards(t)
     return n
   }, [specialties, selected])
 
@@ -147,15 +153,24 @@ export default function TopicPicker({
                 {open && (
                   <ul className="fc2-tree__topics">
                     {sp.topics.map((t) => (
-                      <li key={t.id}>
+                      <li key={t.id} className="fc2-tree__topicitem">
                         <label className="fc2-tree__row fc2-tree__row--topic">
                           <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(setSelected, t.id)} />
                           <span className="fc2-tree__topic">{t.name}</span>
-                          <span className="fc2-tree__count">{plural(t.cardCount, 'card')}</span>
-                          {showDrafts && t.draftCount > 0 && (
-                            <span className="fc2-qa">{plural(t.draftCount, 'draft')}</span>
-                          )}
+                          <span className="fc2-tree__count">
+                            {admin ? `Live ${live(t)} / Approved ${approved(t)}` : plural(t.cardCount ?? 0, 'card')}
+                          </span>
                         </label>
+                        {admin && onManage && (
+                          <button
+                            type="button"
+                            className="fc2-btn fc2-manage-btn"
+                            aria-label={`Manage ${t.name}`}
+                            onClick={() => onManage({ id: t.id, name: t.name })}
+                          >
+                            Manage
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>

@@ -7,8 +7,8 @@ const ENTRY = '/dashboard/question-bank/flashcards'
 
 /**
  * The Flashcards routes under /dashboard. V2 is the normal Flashcards entry; who may study is decided by
- * the server (FLASHCARDS_V2_RELEASED — until it is set, only admins load cards and everyone else sees a
- * coming-soon notice). V1 stays reachable at .../flashcards-v1 as a rollback route (no nav link); the old
+ * the server (learners see only cards an admin has pushed live; with none live they see a coming-soon
+ * notice). V1 stays reachable at .../flashcards-v1 as a rollback route (no nav link); the old
  * beta URL and the legacy osce/flashcards path redirect to the entry. Called as a function (not rendered
  * as a component) so <Routes> sees the <Route> elements directly.
  */

@@ -19,8 +19,8 @@ export default function CardDiagnostics({ card, verdict, onApplySuggestion }) {
         <dd>
           <code>{card.qaStatus}</code>
         </dd>
-        <dt>Published</dt>
-        <dd>{card.isPublished ? 'Yes' : 'No'}</dd>
+        <dt>Live</dt>
+        <dd>{(card.isLive ?? card.isPublished) ? 'Yes' : 'No'}</dd>
         <dt>Version</dt>
         <dd>v{card.contentVersion}</dd>
         {card.guidelineSensitive && (
@@ -30,8 +30,6 @@ export default function CardDiagnostics({ card, verdict, onApplySuggestion }) {
           </>
         )}
       </dl>
-
-      {card.legacy && <p className="fcv2a-text-warn">Not part of the current run; retire it before publishing.</p>}
 
       <p className="fcv2a-label">Findings ({findings.length})</p>
       {findings.length === 0 ? (

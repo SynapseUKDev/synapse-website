@@ -1,62 +1,50 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ImportRunControl from './ImportRunControl'
+import NeedsAttentionQueue from './NeedsAttentionQueue'
+import ReportedCardDialog from './ReportedCardDialog'
 import ReportsQueue from './ReportsQueue'
-import ReviewPanel from './ReviewPanel'
-import TopicList from './TopicList'
-import { listTopics } from './flashcardsV2AdminApi'
+import { getAdminCardCounts } from './flashcardsV2AdminApi'
 import '../../osce/Flashcards.css'
 import './AdminFlashcardsV2.css'
 
 /**
- * Flashcards V2 admin review hub: topic list on the left, the selected topic's review on the right.
- * Generated decks arrive unpublished; nothing reaches learners until an admin publishes a topic here.
- * The "Reports" sub-tab is the learner report queue; "Open card in review" switches back to Review
- * with that card's topic selected.
+ * Flashcards V2 admin tab. "Needs attention" is the cross-topic queue of cards an admin has to act
+ * on (flagged by the generator, or waiting for an image): fix, add images, approve or discard, one
+ * card at a time. Approved cards are managed (and pushed live) on the Flashcards page. "Learner
+ * reports" is the learner report queue; "Open card" there shows that card (edit, images, live).
  */
 export default function AdminFlashcardsV2() {
-  const [topics, setTopics] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('')
-  const [selected, setSelected] = useState(null) // {topicId, topicName}
-  const [reviewNonce, setReviewNonce] = useState(0)
-  const [tab, setTab] = useState('review') // 'review' | 'reports'
-  const requestRef = useRef(0)
+  const [tab, setTab] = useState('queue') // 'queue' | 'reports'
+  const [counts, setCounts] = useState(null)
+  const [countsError, setCountsError] = useState(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [openCard, setOpenCard] = useState(null) // {topicId, topicName, cardId} from a learner report
+  const countsRef = useRef(0)
 
-  const load = useCallback(async () => {
-    const n = ++requestRef.current
-    setLoading(true)
+  const loadCounts = useCallback(async () => {
+    const n = ++countsRef.current
     try {
-      const res = await listTopics()
-      if (n !== requestRef.current) return
-      setTopics(Array.isArray(res?.topics) ? res.topics : [])
-      setError(null)
+      const res = await getAdminCardCounts()
+      if (n !== countsRef.current) return
+      setCounts(res ?? null)
+      setCountsError(null)
     } catch (e) {
-      if (n !== requestRef.current) return
-      setError(e)
-    } finally {
-      if (n === requestRef.current) setLoading(false)
+      if (n === countsRef.current) setCountsError(e)
     }
   }, [])
 
   useEffect(() => {
-    load()
-  }, [load])
+    loadCounts()
+  }, [loadCounts])
 
-  const openCardInReview = ({ topicId, topicName }) => {
-    setSelected({ topicId, topicName })
-    setReviewNonce((n) => n + 1)
-    setTab('review')
-  }
-
+  const needsAction = typeof counts?.needsAction === 'number' ? counts.needsAction : null
   const tabs = [
-    { id: 'review', label: 'Review' },
-    { id: 'reports', label: 'Reports' },
+    { id: 'queue', label: needsAction === null ? 'Needs attention' : `Needs attention (${needsAction})` },
+    { id: 'reports', label: 'Learner reports' },
   ]
 
   return (
-    <section className="admin-card fcv2a" aria-label="Flashcards V2 review">
+    <section className="admin-card fcv2a" aria-label="Flashcards V2 admin">
       <div role="tablist" aria-label="Flashcards V2 admin" className="fcv2a-tabs">
         {tabs.map((t) => (
           <button
@@ -83,46 +71,28 @@ export default function AdminFlashcardsV2() {
       </div>
       {tab === 'reports' ? (
         <div role="tabpanel" id="fcv2a-tabpanel-reports" aria-labelledby="fcv2a-tab-reports">
-          <ReportsQueue onOpenCard={openCardInReview} />
+          <ReportsQueue onOpenCard={setOpenCard} />
+          {openCard && <ReportedCardDialog key={openCard.cardId} target={openCard} onClose={() => setOpenCard(null)} />}
         </div>
       ) : (
-        <div role="tabpanel" id="fcv2a-tabpanel-review" aria-labelledby="fcv2a-tab-review" className="fcv2a-layout">
-          <aside className="fcv2a-layout__side">
-            <div className="fcv2a-row fcv2a-row--between">
-              <h2 className="fcv2a-review__title">Topics</h2>
-              <button type="button" className="admin-btn-issue admin-btn-issue--ghost" onClick={load} disabled={loading}>
-                {loading ? 'Loading…' : 'Refresh'}
-              </button>
+        <div role="tabpanel" id="fcv2a-tabpanel-queue" aria-labelledby="fcv2a-tab-queue" className="fcv2a-review">
+          <ImportRunControl
+            onImported={() => {
+              setReloadKey((k) => k + 1)
+              loadCounts()
+            }}
+          />
+          {countsError && (
+            <div role="alert" className="admin-alert">
+              {`Counts unavailable: ${countsError.message}${countsError.code ? ` (${countsError.code})` : ''}`}
             </div>
-            <ImportRunControl
-              onImported={() => {
-                load()
-                setReviewNonce((n) => n + 1)
-              }}
-            />
-            {error && (
-              <div role="alert" className="admin-alert">
-                {`${error.message}${error.code ? ` (${error.code})` : ''}`}
-              </div>
-            )}
-            {!error && !loading && topics.length === 0 && <p className="fcv2a-muted">No topics have V2 flashcards yet. Import a TopicRun to start.</p>}
-            <TopicList
-              topics={topics}
-              query={query}
-              status={status}
-              onQuery={setQuery}
-              onStatus={setStatus}
-              selectedId={selected?.topicId}
-              onSelect={(t) => setSelected({ topicId: t.topicId, topicName: t.topicName })}
-            />
-          </aside>
-          <div className="fcv2a-layout__main">
-            {selected ? (
-              <ReviewPanel key={`${selected.topicId}:${reviewNonce}`} topicId={selected.topicId} topicName={selected.topicName} onChanged={load} />
-            ) : (
-              <p className="fcv2a-muted">Select a topic to review its deck.</p>
-            )}
-          </div>
+          )}
+          {counts && (
+            <p className="fcv2a-muted">
+              {`${counts.flagged ?? 0} flagged · ${counts.needsImage ?? 0} need an image · ${counts.approved ?? 0} approved, not live · ${counts.live ?? 0} live`}
+            </p>
+          )}
+          <NeedsAttentionQueue reloadKey={reloadKey} onCountsChanged={loadCounts} />
         </div>
       )}
     </section>

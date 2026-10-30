@@ -3,9 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import AdminFlashcardsV2 from '../../src/dashboard/admin/flashcards-v2/AdminFlashcardsV2'
 import ReportsQueue from '../../src/dashboard/admin/flashcards-v2/ReportsQueue'
-import ReviewPanel from '../../src/dashboard/admin/flashcards-v2/ReviewPanel'
 import { mockFetch } from './fetchMock'
-import { ADMIN, REVIEW_PATH, TOPIC, adminCard, reviewPayload, topicRow } from './adminFixtures'
+import { ADMIN, CARDS_PATH, COUNTS, COUNTS_PATH, TOPIC, adminCard, topicRow } from './adminFixtures'
 
 const REPORTS = `${ADMIN}/reports`
 const CARD = 'c1'
@@ -43,7 +42,8 @@ function api(reports, routes = {}) {
     if (routes[key]) return routes[key](url, call)
     if (key === `GET ${REPORTS}`) return [200, { reports, nextCursor: null }]
     if (url.pathname === `${ADMIN}/topics`) return [200, { topics: [topicRow(TOPIC, 'Gout')] }]
-    if (url.pathname === REVIEW_PATH) return [200, reviewPayload()]
+    if (url.pathname === COUNTS_PATH) return [200, COUNTS]
+    if (url.pathname === CARDS_PATH) return [200, { cards: [], nextCursor: null }]
     return [404, { error: 'unmocked', code: 'NOT_FOUND' }]
   })
 }
@@ -152,7 +152,7 @@ describe('admin reports queue', () => {
     expect(sent.method).toBe('PATCH')
     expect(sent.body).toEqual({ status: 'resolved', note: 'Card corrected', unhide: true })
     await waitFor(() => expect(m.callsTo(REPORTS).length).toBe(2))
-    expect(await screen.findByText(/Report resolved; the card is no longer hidden/)).toBeInTheDocument()
+    expect(await screen.findByText(/Report resolved; the card is no longer hidden but not live — use Push live/)).toBeInTheDocument()
   })
 
   test('fix 1: no unhide checkbox on a stale-version report of a hidden card; resolve sends unhide false', async () => {
@@ -218,32 +218,59 @@ describe('admin reports queue', () => {
 })
 
 describe('admin screen integration', () => {
-  test('a Reports sub-tab shows the queue; "Open card in review" opens the topic review', async () => {
-    const m = api([reportRow('r1')])
+  const liveCard = adminCard(CARD, 'management:gout', { qaStatus: 'validated', isLive: true, isPublished: true, contentVersion: 4, topicName: 'Gout' })
+
+  test('"Open card" on a report loads that card (state=all in its topic) with Live state, editor and images', async () => {
+    const m = api([reportRow('r1')], {
+      [`GET ${CARDS_PATH}`]: (url) =>
+        url.searchParams.get('state') === 'all'
+          ? url.searchParams.get('cursor') === 'P2'
+            ? [200, { cards: [liveCard], nextCursor: null }]
+            : [200, { cards: [adminCard('other', 'gout:other')], nextCursor: 'P2' }]
+          : [200, { cards: [], nextCursor: null }],
+      [`PATCH ${CARDS_PATH}/${CARD}`]: (url, call) => {
+        const { topicName: _t, specialtyName: _s, ...dto } = liveCard
+        return [200, { ...dto, answerMarkdown: call.body.answerMarkdown, contentVersion: 5 }]
+      },
+    })
     render(<AdminFlashcardsV2 />)
-    fireEvent.click(await screen.findByRole('tab', { name: 'Reports' }))
-    expect(screen.getByRole('tab', { name: 'Reports' })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(await screen.findByRole('tab', { name: 'Learner reports' }))
     await screen.findByRole('article', { name: 'Report r1' })
-    fireEvent.click(within(rowOf('r1')).getByRole('button', { name: 'Open card in review' }))
-    expect(screen.getByRole('tab', { name: 'Review' })).toHaveAttribute('aria-selected', 'true')
-    expect(await screen.findByRole('region', { name: 'Run summary' })).toBeInTheDocument()
-    expect(m.callsTo(REVIEW_PATH)).toHaveLength(1)
+    fireEvent.click(within(rowOf('r1')).getByRole('button', { name: 'Open card' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Reported card — Gout' })
+    const section = await within(dialog).findByRole('region', { name: 'Card management:gout' })
+    const lookups = m.callsTo(CARDS_PATH).filter((c) => c.url.searchParams.get('state') === 'all')
+    expect(lookups.map((c) => c.url.searchParams.get('topicId'))).toEqual([TOPIC, TOPIC])
+    expect(within(section).getByText('Live')).toBeInTheDocument()
+    expect(within(section).getByRole('region', { name: 'Front image management:gout' })).toBeInTheDocument()
+    expect(within(section).getByRole('button', { name: 'Take off live' })).toBeInTheDocument()
+
+    fireEvent.click(within(section).getByRole('button', { name: 'Edit' }))
+    fireEvent.change(within(section).getByLabelText('Answer (Markdown)'), { target: { value: '- **NSAID or colchicine**' } })
+    fireEvent.click(within(section).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(within(section).getByRole('region', { name: 'Back' })).toHaveTextContent('NSAID or colchicine'))
+    expect(m.callsTo(`${CARDS_PATH}/${CARD}`)[0].body).toEqual({ expectedVersion: 4, answerMarkdown: '- **NSAID or colchicine**' })
+    expect(within(section).getByText('Live')).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  test('the review panel shows a banner on a hidden card', async () => {
-    api([], {
-      [`GET ${REVIEW_PATH}`]: () => [
-        200,
-        reviewPayload({
-          cards: [adminCard('c1', 'gout:a', { hiddenReason: 'reports_threshold', hiddenAt: TS }), adminCard('c2', 'gout:b')],
-          blockers: [{ code: 'PUBLISH_BLOCKED', message: 'gout:a is hidden: two learners reported a serious problem.', semanticKey: 'gout:a' }],
-        }),
-      ],
+  test('Push live on an opened hidden card reports why it was skipped', async () => {
+    const hidden = { ...liveCard, isLive: false, isPublished: false, hiddenReason: 'reports_threshold' }
+    const m = api([reportRow('r1')], {
+      [`GET ${CARDS_PATH}`]: () => [200, { cards: [hidden], nextCursor: null }],
+      [`POST ${CARDS_PATH}/live`]: () => [200, { changed: 0, skipped: [{ id: CARD, reason: 'hidden' }] }],
     })
-    render(<ReviewPanel topicId={TOPIC} topicName="Gout" />)
-    const section = await screen.findByRole('region', { name: 'Card gout:a' })
-    expect(within(section).getByRole('note')).toHaveTextContent(/Hidden from learners: two learners reported a serious problem/)
-    expect(within(screen.getByRole('region', { name: 'Card gout:b' })).queryByRole('note')).toBeNull()
-    expect(screen.getByRole('region', { name: 'Publish blockers' })).toHaveTextContent('gout:a is hidden')
+    render(<AdminFlashcardsV2 />)
+    fireEvent.click(await screen.findByRole('tab', { name: 'Learner reports' }))
+    await screen.findByRole('article', { name: 'Report r1' })
+    fireEvent.click(within(rowOf('r1')).getByRole('button', { name: 'Open card' }))
+    const section = await screen.findByRole('region', { name: 'Card management:gout' })
+    expect(within(section).getByText('Not live')).toBeInTheDocument()
+    fireEvent.click(within(section).getByRole('button', { name: 'Push live' }))
+    expect(await within(section).findByText(/Not pushed live: it is hidden after learner reports/)).toBeInTheDocument()
+    expect(m.callsTo(`${CARDS_PATH}/live`)[0].body).toEqual({ cardIds: [CARD], live: true })
   })
 })

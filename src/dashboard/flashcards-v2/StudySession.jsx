@@ -210,8 +210,8 @@ export default function StudySession({ cards, preview = false, showAdminBadge = 
               </button>
             ))}
           </div>
-          {/* Admin preview drafts (isPublished false) cannot be reported: only live cards take reports. */}
-          {card.isPublished !== false && (
+          {/* Admin preview cards that are not live (isLive false) cannot be reported: only live cards take reports. */}
+          {card.isLive !== false && (
             <div className="fc2-report-trigger">
               <button type="button" ref={reportRef} onClick={() => setReporting(card)}>
                 Report a problem
