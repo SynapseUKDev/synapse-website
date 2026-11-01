@@ -37,6 +37,10 @@ function CoverageStrip({ coverage, error }) {
         Unresolved queue (latest run per reason): {unresolved.toLocaleString('en-GB')} item(s).{' '}
         <Link to={`${SUMMARIES_PAGE_PATH}/queue`}>Open the unresolved queue</Link>
       </p>
+      <p className="asum-coverage__note">
+        Drafts from condition CSV uploads wait for staff review, hidden from students.{' '}
+        <Link to={`${SUMMARIES_PAGE_PATH}/attention`}>Summary review → Needs attention</Link>
+      </p>
     </section>
   )
 }

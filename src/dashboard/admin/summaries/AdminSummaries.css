@@ -466,3 +466,17 @@ html[data-theme='dark'] .asum-success { background: #052e16; color: #bbf7d0; bor
     justify-content: space-between;
   }
 }
+
+/* ---- Summary review (needs attention) ---- */
+
+.asum-question-stem {
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.asum-original {
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
