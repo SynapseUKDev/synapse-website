@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CATEGORY_LABELS, SUMMARIES_PAGE_PATH, deleteSummary, fetchCoverage, listSummaries } from './summaryAdminApi'
+import { LuChevronRight, LuClipboardCheck, LuListTodo } from 'react-icons/lu'
+import { CATEGORY_LABELS, SUMMARIES_PAGE_PATH, deleteSummary, fetchCoverage, listAttention, listSummaries } from './summaryAdminApi'
 import SummaryStatusBadge, { ValidationBadge } from './SummaryStatusBadge'
 import { cache, dropFromSummariesCache, listKey } from './summariesListCache'
 import './AdminSummaries.css'
@@ -8,6 +9,44 @@ import './AdminSummaries.css'
 const PAGE_SIZE = 25
 const KINDS = [['', 'All'], ['condition', 'Condition'], ['drug', 'Drug']]
 const DEFAULT_FILTERS = { kind: '', status: '', category: '', validation: '', q: '' }
+
+function Shortcut({ to, icon, title, detail, count, highlight }) {
+  return (
+    <Link className={`asum-shortcut ${highlight && count > 0 ? 'asum-shortcut--attention' : ''}`} to={to}>
+      <span className="asum-shortcut__icon" aria-hidden>{icon}</span>
+      <span className="asum-shortcut__text">
+        <span className="asum-shortcut__title">{title}</span>
+        <span className="asum-shortcut__detail">{detail}</span>
+      </span>
+      {count !== null && count !== undefined && <span className="asum-shortcut__count">{count.toLocaleString('en-GB')}</span>}
+      <LuChevronRight className="asum-shortcut__chevron" aria-hidden />
+    </Link>
+  )
+}
+
+/** Big, obvious entry points to the two review lists, with their counts. */
+function ReviewShortcuts({ attentionOpen, coverage }) {
+  const unresolved = coverage ? Object.values(coverage.unresolved_by_reason || {}).reduce((a, b) => a + b, 0) : null
+  return (
+    <nav className="asum-shortcuts" aria-label="Summary review">
+      <Shortcut
+        to={`${SUMMARIES_PAGE_PATH}/attention`}
+        icon={<LuClipboardCheck />}
+        title="Needs attention"
+        detail="Drafts from CSV uploads to review, edit and approve (hidden from students)"
+        count={attentionOpen}
+        highlight
+      />
+      <Shortcut
+        to={`${SUMMARIES_PAGE_PATH}/queue`}
+        icon={<LuListTodo />}
+        title="Unresolved queue"
+        detail="Questions the scripts could not classify, source or validate"
+        count={unresolved}
+      />
+    </nav>
+  )
+}
 
 function CoverageStrip({ coverage, error }) {
   if (error) return <p className="asum-error" role="alert">{error}</p>
@@ -22,7 +61,6 @@ function CoverageStrip({ coverage, error }) {
     ['Linked, unpublished', coverage.linked_unpublished, true],
     ['Source blocked', coverage.source_blocked, true],
   ]
-  const unresolved = Object.values(coverage.unresolved_by_reason || {}).reduce((a, b) => a + b, 0)
   return (
     <section className="asum-coverage" aria-label="Summary coverage">
       <dl>
@@ -33,14 +71,6 @@ function CoverageStrip({ coverage, error }) {
           </div>
         ))}
       </dl>
-      <p className="asum-coverage__note">
-        Unresolved queue (latest run per reason): {unresolved.toLocaleString('en-GB')} item(s).{' '}
-        <Link to={`${SUMMARIES_PAGE_PATH}/queue`}>Open the unresolved queue</Link>
-      </p>
-      <p className="asum-coverage__note">
-        Drafts from condition CSV uploads wait for staff review, hidden from students.{' '}
-        <Link to={`${SUMMARIES_PAGE_PATH}/attention`}>Summary review → Needs attention</Link>
-      </p>
     </section>
   )
 }
@@ -56,6 +86,7 @@ export default function AdminSummaries() {
   const [coverage, setCoverage] = useState(cache.coverage)
   const [coverageError, setCoverageError] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [attentionOpen, setAttentionOpen] = useState(cache.attentionOpen)
 
   useEffect(() => {
     cache.view = { filters, search, page }
@@ -70,6 +101,13 @@ export default function AdminSummaries() {
         setCoverageError(null)
       })
       .catch((e) => e?.name !== 'AbortError' && !cache.coverage && setCoverageError(e.message))
+    // Count only; a failure just hides the number.
+    listAttention({ state: 'open', page_size: 1 }, { signal: controller.signal })
+      .then((data) => {
+        cache.attentionOpen = data.total
+        setAttentionOpen(data.total)
+      })
+      .catch(() => {})
     return () => controller.abort()
   }, [])
 
@@ -121,6 +159,7 @@ export default function AdminSummaries() {
 
   return (
     <div className="asum">
+      <ReviewShortcuts attentionOpen={attentionOpen} coverage={coverage} />
       <CoverageStrip coverage={coverage} error={coverageError} />
 
       <form

@@ -480,3 +480,103 @@ html[data-theme='dark'] .asum-success { background: #052e16; color: #bbf7d0; bor
   font-size: 13px;
   line-height: 1.5;
 }
+
+/* ---- Review shortcuts (Needs attention, Unresolved queue) ---- */
+
+.asum-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.asum-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--syn-border);
+  border-radius: 14px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.asum-shortcut:hover {
+  border-color: #0369a1;
+  background: var(--surface-tint-blue);
+}
+
+.asum-shortcut:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+.asum-shortcut__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--surface-tint-blue);
+  color: #0369a1;
+  font-size: 20px;
+}
+
+.asum-shortcut__text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.asum-shortcut__title {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.asum-shortcut__detail {
+  font-size: 13px;
+  color: var(--syn-muted);
+}
+
+.asum-shortcut__count {
+  flex: none;
+  min-width: 32px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-tint-blue);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.asum-shortcut__chevron {
+  flex: none;
+  font-size: 18px;
+  color: var(--syn-muted);
+}
+
+.asum-shortcut--attention {
+  border-color: #d97706;
+}
+
+.asum-shortcut--attention .asum-shortcut__icon,
+.asum-shortcut--attention .asum-shortcut__count {
+  background: #d97706;
+  color: #ffffff;
+}
+
+html[data-theme='dark'] .asum-shortcut:hover {
+  border-color: #38bdf8;
+}
+
+html[data-theme='dark'] .asum-shortcut__icon {
+  color: #38bdf8;
+}
+
+html[data-theme='dark'] .asum-shortcut--attention .asum-shortcut__icon {
+  color: #ffffff;
+}
