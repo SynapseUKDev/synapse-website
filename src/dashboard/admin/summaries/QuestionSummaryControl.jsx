@@ -57,9 +57,11 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
   // Nothing linked yet: the search opens straight away. A deliberate "Removed" waits for a click.
   const autoPick = link?.mode === 'automatic' && !link.automatic_summary
   const showPicker = picking || autoPick
+  // In that open-by-default case the list waits for a search term, so the editor stays compact.
+  const waitForQuery = autoPick && !picking && !query.trim()
 
   useEffect(() => {
-    if (!showPicker) return undefined
+    if (!showPicker || waitForQuery) return undefined
     const controller = new AbortController()
     const timer = setTimeout(() => {
       listSummaries({ status: 'published', q: query.trim(), page_size: 20 }, { signal: controller.signal })
@@ -70,7 +72,7 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
       clearTimeout(timer)
       controller.abort()
     }
-  }, [showPicker, query])
+  }, [showPicker, waitForQuery, query])
 
   async function choose(summary) {
     setChosen({ id: summary.id, label: summaryLabel(summary), preview: null })
@@ -192,7 +194,9 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
             // Inside the question editor's form: Enter must not submit the question.
             onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           />
-          {results === null ? (
+          {waitForQuery ? (
+            <p className="qsum__note">Type a topic or drug name to see matching summaries.</p>
+          ) : results === null ? (
             <p className="qsum__note">Loading…</p>
           ) : results.length === 0 ? (
             <p className="qsum__note">No published summaries match.</p>

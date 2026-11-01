@@ -154,6 +154,10 @@ describe('QuestionSummaryControl', () => {
     expect(screen.queryByRole('heading', { name: 'Topic summary' })).toBeNull()
     const search = screen.getByLabelText(/Search published summaries in any topic/)
     expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
+    // Compact until a search term is typed: no list, no request.
+    expect(screen.getByText(/Type a topic or drug name/)).toBeInTheDocument()
+    expect(listSummaries).not.toHaveBeenCalled()
+    fireEvent.change(search, { target: { value: 'croup' } })
     expect(await screen.findByRole('button', { name: 'Croup → Management' })).toBeInTheDocument()
     // Enter in the search must not submit the surrounding question form (fireEvent returns false when prevented).
     expect(fireEvent.keyDown(search, { key: 'Enter' })).toBe(false)
