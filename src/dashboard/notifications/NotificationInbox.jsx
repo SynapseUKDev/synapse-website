@@ -10,7 +10,7 @@ import {
   LuX,
 } from 'react-icons/lu'
 import './NotificationInbox.css'
-import { announcementPlainPreview } from './AnnouncementMarkdown'
+import { announcementPlainPreview } from './announcementPreview'
 
 const TYPE_META = {
   announcement: { label: 'Announcement', Icon: LuMegaphone },

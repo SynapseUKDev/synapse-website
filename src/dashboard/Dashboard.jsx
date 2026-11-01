@@ -229,11 +229,15 @@ export default function Dashboard() {
     }
   }, [leaderboardScope, universityEligible, institutionEligible, institution?.cohort_id])
 
+  // Bumped by loadLeaderboard() (e.g. after accepting a friend) to refetch past the cache.
+  const [leaderboardReload, setLeaderboardReload] = useState(0)
+  const loadLeaderboard = () => setLeaderboardReload((n) => n + 1)
+
   useEffect(() => {
     let cancelled = false
     const cacheKey = `dashboard:leaderboard:${leaderboardScope}:${selectedSpecialty}`
     const cached = getStaleJsonEntry(cacheKey)
-    const fresh = cached && Date.now() - cached.ts < LEADERBOARD_STALE_MS
+    const fresh = cached && leaderboardReload === 0 && Date.now() - cached.ts < LEADERBOARD_STALE_MS
 
     if (cached) {
       setLeaderboard(cached.value)
@@ -276,7 +280,7 @@ export default function Dashboard() {
       })
 
     return () => { cancelled = true }
-  }, [selectedSpecialty, leaderboardScope, API_BASE])
+  }, [selectedSpecialty, leaderboardScope, API_BASE, leaderboardReload])
 
   const loadFriends = async () => {
     try {
