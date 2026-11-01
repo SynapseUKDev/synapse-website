@@ -30,7 +30,7 @@ function formatDate(value) {
  * onChange(learningSummary) receives the learner summary the question now shows (or null).
  * Also shown, collapsed, under Practice's admin inline editor. A #summary URL hash scrolls to it.
  */
-export default function QuestionSummaryControl({ questionId, onChange }) {
+export default function QuestionSummaryControl({ questionId, onChange, labelledBy }) {
   const sectionRef = useRef(null)
   const [link, setLink] = useState(null)
   const [error, setError] = useState(null)
@@ -54,8 +54,12 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
     return () => controller.abort()
   }, [questionId])
 
+  // Nothing linked yet: the search opens straight away. A deliberate "Removed" waits for a click.
+  const autoPick = link?.mode === 'automatic' && !link.automatic_summary
+  const showPicker = picking || autoPick
+
   useEffect(() => {
-    if (!picking) return undefined
+    if (!showPicker) return undefined
     const controller = new AbortController()
     const timer = setTimeout(() => {
       listSummaries({ status: 'published', q: query.trim(), page_size: 20 }, { signal: controller.signal })
@@ -66,7 +70,7 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [picking, query])
+  }, [showPicker, query])
 
   async function choose(summary) {
     setChosen({ id: summary.id, label: summaryLabel(summary), preview: null })
@@ -133,10 +137,10 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
   const manualMode = link.mode === 'manual' || link.mode === 'none'
   const modeLabel = link.mode === 'none' ? 'Removed' : link.mode === 'manual' ? 'Manual choice' : 'Automatic'
   return (
-    <section id="summary" ref={sectionRef} className="qsum" aria-labelledby={`qsum-heading-${questionId}`}>
-      <h2 id={`qsum-heading-${questionId}`} className="qsum__heading">Topic summary</h2>
+    <section id="summary" ref={sectionRef} className="qsum" aria-labelledby={labelledBy || `qsum-heading-${questionId}`}>
+      {!labelledBy && <h2 id={`qsum-heading-${questionId}`} className="qsum__heading">Topic summary</h2>}
       <p className="qsum__status">
-        {shown ? summaryLabel(shown) : 'No summary'}
+        {shown ? summaryLabel(shown) : link.mode === 'none' ? 'No summary' : 'No summary yet'}
         <span className="qsum__mode">
           {manualMode && link.set_at ? `${modeLabel} · ${formatDate(link.set_at)}` : modeLabel}
         </span>
@@ -152,7 +156,7 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
       {notice && <p className="asum-success" role="status">{notice}</p>}
       {error && <p className="asum-error" role="alert">{error}</p>}
 
-      {!picking && (
+      {!showPicker && (
         <div className="asum-actions">
           {shown && (
             <Link className="asum-button" to={`${SUMMARIES_PAGE_PATH}/${shown.id}`}>
@@ -160,7 +164,7 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
             </Link>
           )}
           <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(true); setNotice(null) }}>
-            Change summary
+            {shown ? 'Change summary' : 'Choose summary'}
           </button>
           {shown && (
             <button type="button" className="asum-button" disabled={busy} onClick={removeSummary}>
@@ -175,7 +179,7 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
         </div>
       )}
 
-      {picking && (
+      {showPicker && (
         <div className="qsum__picker">
           <label htmlFor={`qsum-search-${questionId}`}>Search published summaries in any topic</label>
           <input
@@ -185,6 +189,8 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
             placeholder="Topic or drug name, e.g. Croup"
             autoComplete="off"
             onChange={(e) => setQuery(e.target.value)}
+            // Inside the question editor's form: Enter must not submit the question.
+            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           />
           {results === null ? (
             <p className="qsum__note">Loading…</p>
@@ -223,9 +229,11 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
             >
               Save for this question
             </button>
-            <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(false); setChosen(null) }}>
-              Cancel
-            </button>
+            {!autoPick && (
+              <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(false); setChosen(null) }}>
+                Cancel
+              </button>
+            )}
           </div>
         </div>
       )}

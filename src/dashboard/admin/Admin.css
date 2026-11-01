@@ -620,26 +620,10 @@ html[data-theme="dark"] .admin-announcement-editor .w-md-editor-toolbar {
 .admin-table th, .admin-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--syn-border); white-space: nowrap; }
 .admin-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--syn-muted); }
 
-/* Practice inline editor: the question's topic summary, collapsed by default. */
-.admin-inline-summary {
-  margin-top: 18px;
-  border: 1px solid var(--syn-border);
-  border-radius: 12px;
-  background: var(--surface-card);
-}
-
-.admin-inline-summary > summary {
-  padding: 12px 16px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.admin-inline-summary[open] > summary {
-  border-bottom: 1px solid var(--syn-border);
-}
-
-.admin-inline-summary > .qsum {
+/* Question editor: the Topic summary section (QuestionSummaryControl draws no frame of its own here). */
+.admin-form__section--summary > .qsum {
   margin: 0;
+  padding: 0;
   border: 0;
   background: none;
 }

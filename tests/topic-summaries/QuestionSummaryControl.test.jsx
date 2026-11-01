@@ -140,4 +140,22 @@ describe('QuestionSummaryControl', () => {
     expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary)
     vi.restoreAllMocks()
   })
+
+  test('with no summary yet it says so and the search is open straight away', async () => {
+    vi.mocked(fetchQuestionLink).mockResolvedValue({ ...automatic, automatic_summary: null, learning_summary: null })
+    render(
+      <MemoryRouter>
+        <form>
+          <QuestionSummaryControl questionId={Q} onChange={vi.fn()} labelledBy="outer-title" />
+        </form>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText('No summary yet')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Topic summary' })).toBeNull()
+    const search = screen.getByLabelText(/Search published summaries in any topic/)
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Croup → Management' })).toBeInTheDocument()
+    // Enter in the search must not submit the surrounding question form (fireEvent returns false when prevented).
+    expect(fireEvent.keyDown(search, { key: 'Enter' })).toBe(false)
+  })
 })

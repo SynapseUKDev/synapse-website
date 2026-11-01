@@ -27,7 +27,6 @@ import remarkGfm from 'remark-gfm'
 import QuestionAssetCarousel from './QuestionAssetCarousel'
 import { buildQuickPoints, hasMarkdown, mergeAdminQuestionUpdate, stemMarkdownComponents } from './questionPresentationUtils'
 import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
-import QuestionSummaryControl from '../admin/summaries/QuestionSummaryControl'
 import { track } from '../../usage/client.js'
 import { EVENTS } from '../../usage/catalog.js'
 
@@ -1764,11 +1763,8 @@ export default function Practice() {
                   <AdminQuestionInlineEditor
                     questionId={currentQuestionId}
                     onSaved={mergeAdminQuestion}
+                    onSummaryChange={(summary) => setQuestionSummary(currentQuestionId, summary)}
                   />
-                  <details className="admin-inline-summary">
-                    <summary>Topic summary</summary>
-                    <QuestionSummaryControl questionId={currentQuestionId} onChange={(summary) => setQuestionSummary(currentQuestionId, summary)} />
-                  </details>
                 </div>
               )}
             </div>
