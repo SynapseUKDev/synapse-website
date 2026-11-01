@@ -8,6 +8,7 @@ import {
   fetchQuestionLink,
   fetchSummary,
   listSummaries,
+  removeQuestionSummary,
   setQuestionLink,
 } from '../../src/dashboard/admin/summaries/summaryAdminApi'
 
@@ -18,6 +19,7 @@ vi.mock('../../src/dashboard/admin/summaries/summaryAdminApi', async (importOrig
     fetchQuestionLink: vi.fn(),
     setQuestionLink: vi.fn(),
     clearQuestionLink: vi.fn(),
+    removeQuestionSummary: vi.fn(),
     listSummaries: vi.fn(),
     fetchSummary: vi.fn(),
   }
@@ -109,5 +111,33 @@ describe('QuestionSummaryControl', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save for this question' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Only a published summary can be chosen.')
     expect(screen.getByRole('button', { name: 'Save for this question' })).toBeInTheDocument()
+  })
+
+  test('Remove summary shows no summary on the question until automatic selection is chosen again', async () => {
+    const onChange = vi.fn()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<MemoryRouter><QuestionSummaryControl questionId={Q} onChange={onChange} /></MemoryRouter>)
+    await screen.findByText('Epiglottitis → Management')
+    vi.mocked(removeQuestionSummary).mockResolvedValue({
+      ...automatic,
+      mode: 'none',
+      set_at: '2026-11-01T10:00:00Z',
+      learning_summary: null,
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Remove summary' }))
+    await waitFor(() => expect(removeQuestionSummary).toHaveBeenCalledWith(Q))
+    expect(onChange).toHaveBeenLastCalledWith(null)
+    expect(await screen.findByText(/This question now shows no summary/)).toBeInTheDocument()
+    expect(screen.getByText('No summary')).toBeInTheDocument()
+    expect(screen.getByText(/^Removed · /)).toBeInTheDocument()
+    expect(screen.getByText('Automatic match: Epiglottitis → Management')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove summary' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Open summary page' })).toBeNull()
+
+    vi.mocked(clearQuestionLink).mockResolvedValue(automatic)
+    fireEvent.click(screen.getByRole('button', { name: 'Use automatic selection' }))
+    await waitFor(() => expect(clearQuestionLink).toHaveBeenCalledWith(Q))
+    expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary)
+    vi.restoreAllMocks()
   })
 })

@@ -7,6 +7,7 @@ import {
   fetchQuestionLink,
   fetchSummary,
   listSummaries,
+  removeQuestionSummary,
   setQuestionLink,
   summaryLabel,
   toPreviewSummary,
@@ -24,9 +25,10 @@ function formatDate(value) {
 /**
  * Admin question editor (qbank permission): shows which summary this question displays and lets the
  * editor choose any published summary, from any topic, for this one question — or go back to
- * automatic matching. The question's wording, answer, explanations and topic are never changed here.
+ * automatic matching, or remove the summary from this question (kept through uploads). The question's
+ * wording, answer, explanations and topic are never changed here.
  * onChange(learningSummary) receives the learner summary the question now shows (or null).
- * Practice's admin-only "Edit summary" button links here with #summary, which scrolls to it.
+ * Also shown, collapsed, under Practice's admin inline editor. A #summary URL hash scrolls to it.
  */
 export default function QuestionSummaryControl({ questionId, onChange }) {
   const sectionRef = useRef(null)
@@ -102,6 +104,13 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
       () => setQuestionLink(questionId, chosen.id),
       () => `Saved. Everyone viewing this question now sees ${chosen.label}.`,
     )
+  const removeSummary = () => {
+    if (!window.confirm('Show no summary on this question? It stays removed through future uploads until you choose a summary or automatic selection.')) return
+    apply(
+      () => removeQuestionSummary(questionId),
+      () => 'Removed. This question now shows no summary.',
+    )
+  }
   const useAutomatic = () =>
     apply(
       () => clearQuestionLink(questionId),
@@ -120,20 +129,22 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
     return error ? <p className="asum-error qsum" role="alert">{error}</p> : null
   }
 
-  const shown = link.mode === 'manual' ? link.manual_summary : link.automatic_summary
+  const shown = link.mode === 'manual' ? link.manual_summary : link.mode === 'none' ? null : link.automatic_summary
+  const manualMode = link.mode === 'manual' || link.mode === 'none'
+  const modeLabel = link.mode === 'none' ? 'Removed' : link.mode === 'manual' ? 'Manual choice' : 'Automatic'
   return (
     <section id="summary" ref={sectionRef} className="qsum" aria-labelledby={`qsum-heading-${questionId}`}>
       <h2 id={`qsum-heading-${questionId}`} className="qsum__heading">Topic summary</h2>
       <p className="qsum__status">
         {shown ? summaryLabel(shown) : 'No summary'}
         <span className="qsum__mode">
-          {link.mode === 'manual' ? `Manual choice${link.set_at ? ` · ${formatDate(link.set_at)}` : ''}` : 'Automatic'}
+          {manualMode && link.set_at ? `${modeLabel} · ${formatDate(link.set_at)}` : modeLabel}
         </span>
       </p>
       {shown && shown.status !== 'published' && (
         <p className="qsum__note">This summary is {shown.status === 'archived' ? 'withdrawn' : 'a draft'}, so learners see no summary here.</p>
       )}
-      {link.mode === 'manual' && (
+      {manualMode && (
         <p className="qsum__note">
           Automatic match: {link.automatic_summary ? summaryLabel(link.automatic_summary) : 'none'}
         </p>
@@ -151,7 +162,12 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
           <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(true); setNotice(null) }}>
             Change summary
           </button>
-          {link.mode === 'manual' && (
+          {shown && (
+            <button type="button" className="asum-button" disabled={busy} onClick={removeSummary}>
+              Remove summary
+            </button>
+          )}
+          {manualMode && (
             <button type="button" className="asum-button" disabled={busy} onClick={useAutomatic}>
               Use automatic selection
             </button>

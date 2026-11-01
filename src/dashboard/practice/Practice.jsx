@@ -27,6 +27,7 @@ import remarkGfm from 'remark-gfm'
 import QuestionAssetCarousel from './QuestionAssetCarousel'
 import { buildQuickPoints, hasMarkdown, mergeAdminQuestionUpdate, stemMarkdownComponents } from './questionPresentationUtils'
 import { AdminQuestionInlineEditor } from '../admin/AdminEditors'
+import QuestionSummaryControl from '../admin/summaries/QuestionSummaryControl'
 import { track } from '../../usage/client.js'
 import { EVENTS } from '../../usage/catalog.js'
 
@@ -235,6 +236,12 @@ export default function Practice() {
       if (String(question.id) !== String(updatedQuestion.id)) return question
       return mergeAdminQuestionUpdate(question, updatedQuestion)
     }))
+  }, [])
+
+  // Admin summary changes from the inline editor show at once under the explanation.
+  const setQuestionSummary = useCallback((questionId, learningSummary) => {
+    setQuestions((prev) => prev.map((question) =>
+      String(question.id) === String(questionId) ? { ...question, learning_summary: learningSummary } : question))
   }, [])
 
   // Scroll to top on component mount
@@ -1667,18 +1674,6 @@ export default function Practice() {
                           <span className="practice-action-label">{adminEditorOpen ? 'Close editor' : 'Edit'}</span>
                         </button>
                       )}
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          className="btn btn--ghost btn--icon admin-edit-trigger"
-                          onClick={() => navigate(`/dashboard/admin/questions/${currentQuestion.id}#summary`)}
-                          title="Edit this question's topic summary in the admin panel"
-                          aria-label="Edit summary"
-                        >
-                          <LuBookOpen aria-hidden />
-                          <span className="practice-action-label">Edit summary</span>
-                        </button>
-                      )}
                       <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
                       {(highlights[currentQuestion.id]?.length > 0) && (
                         <button
@@ -1770,6 +1765,10 @@ export default function Practice() {
                     questionId={currentQuestionId}
                     onSaved={mergeAdminQuestion}
                   />
+                  <details className="admin-inline-summary">
+                    <summary>Topic summary</summary>
+                    <QuestionSummaryControl questionId={currentQuestionId} onChange={(summary) => setQuestionSummary(currentQuestionId, summary)} />
+                  </details>
                 </div>
               )}
             </div>
