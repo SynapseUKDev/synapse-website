@@ -2,11 +2,14 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import TopicSummary from '../../practice/TopicSummary'
 import {
+  MAX_EXTRA_SUMMARIES,
   SUMMARIES_PAGE_PATH,
+  addExtraSummary,
   clearQuestionLink,
   fetchQuestionLink,
   fetchSummary,
   listSummaries,
+  removeExtraSummary,
   removeQuestionSummary,
   setQuestionLink,
   summaryLabel,
@@ -25,9 +28,10 @@ function formatDate(value) {
 /**
  * Admin question editor (qbank permission): shows which summary this question displays and lets the
  * editor choose any published summary, from any topic, for this one question — or go back to
- * automatic matching, or remove the summary from this question (kept through uploads). The question's
+ * automatic matching, or remove the summary from this question (kept through uploads). Editors can
+ * also add extra summaries, shown after the main one as separate sections. The question's
  * wording, answer, explanations and topic are never changed here.
- * onChange(learningSummary) receives the learner summary the question now shows (or null).
+ * onChange(learningSummary, extraLearningSummaries) receives what the question now shows.
  * Also shown, collapsed, under Practice's admin inline editor. A #summary URL hash scrolls to it.
  */
 export default function QuestionSummaryControl({ questionId, onChange, labelledBy }) {
@@ -35,7 +39,7 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
   const [link, setLink] = useState(null)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
-  const [picking, setPicking] = useState(false)
+  const [picking, setPicking] = useState(false) // false | 'main' | 'extra'
   const [query, setQuery] = useState('')
   const [results, setResults] = useState(null)
   const [chosen, setChosen] = useState(null) // { id, label, preview }
@@ -94,7 +98,7 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
     try {
       const next = await action()
       setLink(next)
-      onChange?.(next.learning_summary || null)
+      onChange?.(next.learning_summary || null, next.extra_learning_summaries || [])
       setPicking(false)
       setChosen(null)
       setNotice(success(next))
@@ -106,9 +110,19 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
   }
 
   const save = () =>
+    picking === 'extra'
+      ? apply(
+          () => addExtraSummary(questionId, chosen.id),
+          () => `Added. This question now also shows ${chosen.label}.`,
+        )
+      : apply(
+          () => setQuestionLink(questionId, chosen.id),
+          () => `Saved. Everyone viewing this question now sees ${chosen.label}.`,
+        )
+  const removeExtra = (extra) =>
     apply(
-      () => setQuestionLink(questionId, chosen.id),
-      () => `Saved. Everyone viewing this question now sees ${chosen.label}.`,
+      () => removeExtraSummary(questionId, extra.id),
+      () => `Removed ${summaryLabel(extra)} from this question.`,
     )
   const removeSummary = () => {
     if (!window.confirm('Show no summary on this question? It stays removed through future uploads until you choose a summary or automatic selection.')) return
@@ -138,6 +152,10 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
   const shown = link.mode === 'manual' ? link.manual_summary : link.mode === 'none' ? null : link.automatic_summary
   const manualMode = link.mode === 'manual' || link.mode === 'none'
   const modeLabel = link.mode === 'none' ? 'Removed' : link.mode === 'manual' ? 'Manual choice' : 'Automatic'
+  const extras = Array.isArray(link.extras) ? link.extras : []
+  const addingExtra = picking === 'extra'
+  const alreadyShown = (summaryId) =>
+    addingExtra ? summaryId === shown?.id || extras.some((e) => e.id === summaryId) : link.mode === 'manual' && link.manual_summary?.id === summaryId
   return (
     <section id="summary" ref={sectionRef} className="qsum" aria-labelledby={labelledBy || `qsum-heading-${questionId}`}>
       {!labelledBy && <h2 id={`qsum-heading-${questionId}`} className="qsum__heading">Topic summary</h2>}
@@ -165,7 +183,7 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
               Open summary page
             </Link>
           )}
-          <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(true); setNotice(null) }}>
+          <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking('main'); setNotice(null) }}>
             {shown ? 'Change summary' : 'Choose summary'}
           </button>
           {shown && (
@@ -181,9 +199,41 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
         </div>
       )}
 
+      {(extras.length > 0 || (!showPicker && (shown || link.mode === 'none'))) && (
+        <div className="qsum__extras">
+          <h3 className="qsum__subheading">Also shown</h3>
+          {extras.length === 0 ? (
+            <p className="qsum__note">No extra summaries. Add one to show it as a separate section after the main summary.</p>
+          ) : (
+            <ul className="qsum__extra-list" aria-label="Extra summaries">
+              {extras.map((extra) => (
+                <li key={extra.id}>
+                  <span>
+                    {summaryLabel(extra)}
+                    {extra.status !== 'published' && <span className="qsum__mode">Not shown: {extra.status === 'archived' ? 'withdrawn' : 'draft'}</span>}
+                  </span>
+                  <button type="button" className="asum-button" disabled={busy} onClick={() => removeExtra(extra)}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!showPicker && extras.length < MAX_EXTRA_SUMMARIES && (
+            <div className="asum-actions">
+              <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking('extra'); setNotice(null) }}>
+                Add another summary
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {showPicker && (
         <div className="qsum__picker">
-          <label htmlFor={`qsum-search-${questionId}`}>Search published summaries in any topic</label>
+          <label htmlFor={`qsum-search-${questionId}`}>
+            {addingExtra ? 'Search for a summary to add' : 'Search published summaries in any topic'}
+          </label>
           <input
             id={`qsum-search-${questionId}`}
             type="search"
@@ -228,10 +278,10 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
             <button
               type="button"
               className="asum-button asum-button--primary"
-              disabled={busy || !chosen?.preview || (link.mode === 'manual' && link.manual_summary?.id === chosen.id)}
+              disabled={busy || !chosen?.preview || alreadyShown(chosen.id)}
               onClick={save}
             >
-              Save for this question
+              {addingExtra ? 'Add to this question' : 'Save for this question'}
             </button>
             {!autoPick && (
               <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(false); setChosen(null) }}>

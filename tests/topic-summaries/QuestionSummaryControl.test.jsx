@@ -4,10 +4,12 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import QuestionSummaryControl from '../../src/dashboard/admin/summaries/QuestionSummaryControl'
 import {
+  addExtraSummary,
   clearQuestionLink,
   fetchQuestionLink,
   fetchSummary,
   listSummaries,
+  removeExtraSummary,
   removeQuestionSummary,
   setQuestionLink,
 } from '../../src/dashboard/admin/summaries/summaryAdminApi'
@@ -20,6 +22,8 @@ vi.mock('../../src/dashboard/admin/summaries/summaryAdminApi', async (importOrig
     setQuestionLink: vi.fn(),
     clearQuestionLink: vi.fn(),
     removeQuestionSummary: vi.fn(),
+    addExtraSummary: vi.fn(),
+    removeExtraSummary: vi.fn(),
     listSummaries: vi.fn(),
     fetchSummary: vi.fn(),
   }
@@ -90,7 +94,7 @@ describe('QuestionSummaryControl', () => {
     vi.mocked(setQuestionLink).mockResolvedValue(manual)
     fireEvent.click(save)
     await waitFor(() => expect(setQuestionLink).toHaveBeenCalledWith(Q, 's-croup'))
-    expect(onChange).toHaveBeenLastCalledWith(manual.learning_summary)
+    expect(onChange).toHaveBeenLastCalledWith(manual.learning_summary, [])
     expect(await screen.findByText(/Everyone viewing this question now sees Croup → Management/)).toBeInTheDocument()
     expect(screen.getByText(/Manual choice/)).toBeInTheDocument()
     expect(screen.getByText('Automatic match: Epiglottitis → Management')).toBeInTheDocument()
@@ -98,7 +102,7 @@ describe('QuestionSummaryControl', () => {
     vi.mocked(clearQuestionLink).mockResolvedValue(automatic)
     fireEvent.click(screen.getByRole('button', { name: 'Use automatic selection' }))
     await waitFor(() => expect(clearQuestionLink).toHaveBeenCalledWith(Q))
-    expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary)
+    expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary, [])
     expect(await screen.findByText(/Back to automatic matching: Epiglottitis → Management/)).toBeInTheDocument()
   })
 
@@ -126,7 +130,7 @@ describe('QuestionSummaryControl', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Remove summary' }))
     await waitFor(() => expect(removeQuestionSummary).toHaveBeenCalledWith(Q))
-    expect(onChange).toHaveBeenLastCalledWith(null)
+    expect(onChange).toHaveBeenLastCalledWith(null, [])
     expect(await screen.findByText(/This question now shows no summary/)).toBeInTheDocument()
     expect(screen.getByText('No summary')).toBeInTheDocument()
     expect(screen.getByText(/^Removed · /)).toBeInTheDocument()
@@ -137,7 +141,7 @@ describe('QuestionSummaryControl', () => {
     vi.mocked(clearQuestionLink).mockResolvedValue(automatic)
     fireEvent.click(screen.getByRole('button', { name: 'Use automatic selection' }))
     await waitFor(() => expect(clearQuestionLink).toHaveBeenCalledWith(Q))
-    expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary)
+    expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary, [])
     vi.restoreAllMocks()
   })
 
@@ -161,5 +165,36 @@ describe('QuestionSummaryControl', () => {
     expect(await screen.findByRole('button', { name: 'Croup → Management' })).toBeInTheDocument()
     // Enter in the search must not submit the surrounding question form (fireEvent returns false when prevented).
     expect(fireEvent.keyDown(search, { key: 'Enter' })).toBe(false)
+  })
+
+  test('Add another summary shows it as an extra section; Remove takes it off again', async () => {
+    const onChange = vi.fn()
+    render(<MemoryRouter><QuestionSummaryControl questionId={Q} onChange={onChange} /></MemoryRouter>)
+    await screen.findByText('Epiglottitis → Management')
+    expect(screen.getByText(/No extra summaries/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add another summary' }))
+    expect(screen.getByLabelText('Search for a summary to add')).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Epiglottitis → Management' }))
+    const add = screen.getByRole('button', { name: 'Add to this question' })
+    // The main summary can't be added again.
+    await waitFor(() => expect(fetchSummary).toHaveBeenCalled())
+    expect(add).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Croup → Management' }))
+    await screen.findByText('Dexamethasone first.')
+    const withExtra = { ...automatic, extras: [croup], extra_learning_summaries: [learner('s-croup', 'Croup management')] }
+    vi.mocked(addExtraSummary).mockResolvedValue(withExtra)
+    fireEvent.click(add)
+    await waitFor(() => expect(addExtraSummary).toHaveBeenCalledWith(Q, 's-croup'))
+    expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary, withExtra.extra_learning_summaries)
+    expect(await screen.findByText(/This question now also shows Croup → Management/)).toBeInTheDocument()
+    const list = screen.getByRole('list', { name: 'Extra summaries' })
+    expect(list).toHaveTextContent('Croup → Management')
+
+    vi.mocked(removeExtraSummary).mockResolvedValue({ ...automatic, extras: [], extra_learning_summaries: [] })
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    await waitFor(() => expect(removeExtraSummary).toHaveBeenCalledWith(Q, 's-croup'))
+    expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary, [])
+    expect(await screen.findByText(/No extra summaries/)).toBeInTheDocument()
   })
 })

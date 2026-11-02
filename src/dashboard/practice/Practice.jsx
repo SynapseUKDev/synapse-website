@@ -7,6 +7,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
 import TopicSummary from './TopicSummary'
+import { topicSummaryKey } from './topicSummaryKey'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
@@ -238,9 +239,11 @@ export default function Practice() {
   }, [])
 
   // Admin summary changes from the inline editor show at once under the explanation.
-  const setQuestionSummary = useCallback((questionId, learningSummary) => {
+  const setQuestionSummary = useCallback((questionId, learningSummary, extraLearningSummaries = []) => {
     setQuestions((prev) => prev.map((question) =>
-      String(question.id) === String(questionId) ? { ...question, learning_summary: learningSummary } : question))
+      String(question.id) === String(questionId)
+        ? { ...question, learning_summary: learningSummary, extra_learning_summaries: extraLearningSummaries }
+        : question))
   }, [])
 
   // Scroll to top on component mount
@@ -1763,7 +1766,7 @@ export default function Practice() {
                   <AdminQuestionInlineEditor
                     questionId={currentQuestionId}
                     onSaved={mergeAdminQuestion}
-                    onSummaryChange={(summary) => setQuestionSummary(currentQuestionId, summary)}
+                    onSummaryChange={(summary, extras) => setQuestionSummary(currentQuestionId, summary, extras)}
                   />
                 </div>
               )}
@@ -1869,10 +1872,11 @@ export default function Practice() {
                   </div>
                 )}
 
-                {showExplanation && currentQuestion?.learning_summary && (
+                {showExplanation && (currentQuestion?.learning_summary || currentQuestion?.extra_learning_summaries?.length > 0) && (
                   <TopicSummary
-                    key={currentQuestion.learning_summary.version_id}
+                    key={topicSummaryKey(currentQuestion.learning_summary, currentQuestion.extra_learning_summaries)}
                     summary={currentQuestion.learning_summary}
+                    extras={currentQuestion.extra_learning_summaries}
                     questionId={currentQuestion.id}
                     API_BASE={API_BASE}
                   />

@@ -158,6 +158,12 @@ export const clearQuestionLink = (questionId) => requestSummaries(`/questions${i
 /** The question shows no summary (kept through uploads) until a summary or automatic selection is chosen. */
 export const removeQuestionSummary = (questionId) =>
   requestSummaries(`/questions${id(questionId)}/link`, { method: 'PUT', body: { summary_id: null } })
+/** Extra summaries shown after the question's main one (migration 108, at most 4). */
+export const MAX_EXTRA_SUMMARIES = 4
+export const addExtraSummary = (questionId, summaryId) =>
+  requestSummaries(`/questions${id(questionId)}/extras`, { method: 'POST', body: { summary_id: summaryId } })
+export const removeExtraSummary = (questionId, summaryId) =>
+  requestSummaries(`/questions${id(questionId)}/extras${id(summaryId)}`, { method: 'DELETE' })
 
 /* Summary review → Needs attention: drafts and empty items from condition CSV uploads (migration 106). */
 export const ATTENTION_STATE_LABELS = {

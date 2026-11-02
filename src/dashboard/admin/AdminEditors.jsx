@@ -32,7 +32,7 @@ async function readJsonError(res) {
  * review comments. It shares the full editor's form, validation, versioned
  * saves and conflict handling; active questions are read-only until deactivated.
  */
-/** onSummaryChange(learningSummary): the question's topic summary changed (saved at once, separately). */
+/** onSummaryChange(learningSummary, extraLearningSummaries): the question's topic summaries changed (saved at once, separately). */
 export function AdminQuestionInlineEditor({ questionId, onSaved, onSummaryChange }) {
   const [form, dispatch] = useReducer(questionFormReducer, undefined, createEmptyForm)
   const [baseline, setBaseline] = useState(null)

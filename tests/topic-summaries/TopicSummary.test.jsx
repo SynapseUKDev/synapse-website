@@ -2,6 +2,7 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import TopicSummary from '../../src/dashboard/practice/TopicSummary'
+import { topicSummaryKey } from '../../src/dashboard/practice/topicSummaryKey'
 
 const BODY = [
   'Shockable cardiac arrest is managed with early defibrillation and timed drugs.',
@@ -145,6 +146,39 @@ describe('TopicSummary', () => {
     const source = screen.getByRole('link', { name: 'Bendroflumethiazide - NHS' })
     expect(source).toHaveAttribute('href', 'https://www.nhs.uk/medicines/bendroflumethiazide/')
     expect(source).toHaveAttribute('target', '_blank')
+  })
+
+  test('extra summaries are separate headed sections in the same block, each with its own sources', () => {
+    const extra = makeSummary({
+      summary_id: 's-2',
+      version_id: 'v-2',
+      title: 'Adrenaline in cardiac arrest',
+      body_markdown: 'Give 1 mg every 3–5 minutes.',
+      textbook_href: null,
+      sources: [{ kind: 'reference', label: 'BNF adrenaline', url: 'https://bnf.nice.org.uk/x', version: null }],
+    })
+    const { container } = render(
+      <TopicSummary summary={makeSummary()} extras={[extra]} questionId="q-1" API_BASE="" />,
+    )
+    expect(container.querySelectorAll('section.topic-summary')).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 3, name: 'Topic summaries' })).toBeInTheDocument()
+    const sections = container.querySelectorAll('.topic-summary__section')
+    expect(sections).toHaveLength(2)
+    expect(within(sections[0]).getByRole('heading', { level: 4, name: 'Ventricular fibrillation management' })).toBeInTheDocument()
+    expect(within(sections[1]).getByRole('heading', { level: 4, name: 'Adrenaline in cardiac arrest' })).toBeInTheDocument()
+    expect(within(sections[1]).getByText('Give 1 mg every 3–5 minutes.')).toBeInTheDocument()
+    expect(within(sections[1]).getByRole('link', { name: 'BNF adrenaline' })).toBeInTheDocument()
+    expect(within(sections[1]).queryByText('RCUK Adult ALS 2025')).toBeNull()
+    expect(topicSummaryKey(makeSummary(), [extra])).toBe('v-1|v-2')
+  })
+
+  test('extras alone still render; one summary keeps the single-summary layout', () => {
+    const { container, unmount } = render(
+      <TopicSummary summary={null} extras={[makeSummary()]} questionId="q-1" API_BASE="" />,
+    )
+    expect(screen.getByRole('heading', { level: 3, name: 'Topic summary' })).toBeInTheDocument()
+    expect(container.querySelector('.topic-summary__section-title')).toBeNull()
+    unmount()
   })
 
   test('a new version_id key replaces the content', () => {

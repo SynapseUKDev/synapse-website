@@ -208,3 +208,25 @@ html[data-theme='dark'] .topic-summary__footer {
     justify-content: center;
   }
 }
+
+/* Several summaries in one block (migration 108): each its own headed section. */
+.topic-summary__section + .topic-summary__section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #dbe4f0;
+}
+
+.topic-summary__section-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+html[data-theme='dark'] .topic-summary__section + .topic-summary__section {
+  border-top-color: var(--dm-outline-variant, #334155);
+}
+
+html[data-theme='dark'] .topic-summary__section-title {
+  color: var(--dm-on-surface, #e2e8f0);
+}
