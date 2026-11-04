@@ -119,6 +119,12 @@ export function getSeenPage({ topicId, cursor, limit = PAGE_LIMIT, preview, sign
   return request('/srs/seen', { query: { topic_id: topicId, cursor, limit, ...previewQuery(preview) }, signal })
 }
 
+/** Due cards per topic for the picker's Due mode: Map(topicId → dueCount). */
+export async function getDueTopics({ preview, signal } = {}) {
+  const body = await request('/srs/due-topics', { query: { ...previewQuery(preview) }, signal })
+  return new Map((body?.topics ?? []).map((t) => [t.topicId, t.dueCount]))
+}
+
 export function getStats({ topicId, preview, signal } = {}) {
   return request('/srs/stats', { query: { topic_id: topicId, ...previewQuery(preview) }, signal })
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { LuX } from 'react-icons/lu'
+import { LuMessageSquareWarning, LuX } from 'react-icons/lu'
 import StudyCard from './StudyCard'
 import SaveStatus from './SaveStatus'
 import SessionSummary from './SessionSummary'
@@ -213,7 +213,8 @@ export default function StudySession({ cards, preview = false, showAdminBadge = 
           {/* Admin preview cards that are not live (isLive false) cannot be reported: only live cards take reports. */}
           {card.isLive !== false && (
             <div className="fc2-report-trigger">
-              <button type="button" ref={reportRef} onClick={() => setReporting(card)}>
+              <button type="button" className="fc2-report-btn" ref={reportRef} onClick={() => setReporting(card)}>
+                <LuMessageSquareWarning size={16} aria-hidden="true" />
                 Report a problem
               </button>
             </div>

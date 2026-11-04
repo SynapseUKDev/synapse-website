@@ -197,6 +197,38 @@ describe('modes', () => {
     expect(m.callsTo('/flashcards/v2/srs/due')[0].url.searchParams.get('topic_id')).toBe('t1')
   })
 
+  test('Due lists only topics with due cards, with their due counts', async () => {
+    const m = api({
+      '/flashcards/v2/cards': cardsHandler,
+      '/flashcards/v2/srs/due-topics': () => [200, { topics: [{ topicId: 't2', dueCount: 4 }], truncated: false }],
+      '/flashcards/v2/srs/due': () => [200, { due: [], nextCursor: null }],
+    })
+    renderPage(LEARNER)
+    await selectGout() // Gout has nothing due
+    fireEvent.click(screen.getByRole('tab', { name: /Due/ }))
+    expect(screen.queryByRole('checkbox', { name: /Gout/ })).toBeNull()
+    expect(screen.getByText('4 due')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Start/ })).toBeDisabled() // the hidden Gout selection does not count
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Lupus/ }))
+    expect(screen.getByRole('button', { name: /Start · 4 due/ })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: /Start/ }))
+    await waitFor(() => expect(m.callsTo('/flashcards/v2/srs/due')).toHaveLength(1))
+    expect(m.callsTo('/flashcards/v2/srs/due')[0].url.searchParams.get('topic_id')).toBe('t2')
+
+    // Free study still lists every topic.
+    fireEvent.click(screen.getByRole('tab', { name: /Free/ }))
+    expect(screen.getByRole('checkbox', { name: /Gout/ })).toBeChecked()
+  })
+
+  test('Due says nothing is due when no topic has due cards', async () => {
+    api({ '/flashcards/v2/srs/due-topics': () => [200, { topics: [], truncated: false }] })
+    renderPage(LEARNER)
+    fireEvent.click(await screen.findByRole('tab', { name: /Due/ }))
+    expect(await screen.findByText(/Nothing is due right now/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Rheumatology/ })).toBeNull()
+  })
+
   test('an empty deck explains itself instead of starting', async () => {
     api({
       '/flashcards/v2/cards': cardsHandler,

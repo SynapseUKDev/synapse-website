@@ -5,6 +5,8 @@ import { MAX_NEW_CARDS, MODES } from './buildDeck'
 // Specialty → topic tree from GET /flashcards/v2/topics, multi-select, Due / New / Free modes.
 // Learner topics carry cardCount (live cards); admin preview topics carry liveCount and approvedCount
 // (approved = validated and not live yet), so an admin studies live + approved cards.
+// In Due mode, when the container knows the due count per topic (dueByTopic), only topics with due
+// cards are listed, each with its due count.
 // Presentational: the container owns loading the topics and building the deck.
 
 const MODE_TABS = [
@@ -18,8 +20,8 @@ const live = (t) => t.liveCount ?? t.cardCount ?? 0
 const approved = (t) => live(t) + (t.approvedCount ?? 0) // approvedCount is the not-live part
 const studyCards = (t) => (t.cardCount ?? approved(t))
 
-function startLabel(mode, cardCount) {
-  if (mode === MODES.DUE) return 'Start due review'
+function startLabel(mode, cardCount, dueKnown) {
+  if (mode === MODES.DUE) return dueKnown ? `Start · ${cardCount} due` : 'Start due review'
   if (mode === MODES.NEW) return `Start · up to ${Math.min(cardCount, MAX_NEW_CARDS)} new`
   return `Start · ${plural(cardCount, 'card')}`
 }
@@ -30,6 +32,7 @@ export default function TopicPicker({
   admin = false,
   onManage = null,
   dueCount = null,
+  dueByTopic = null,
   onStart,
   starting = false,
   startError = null,
@@ -39,12 +42,27 @@ export default function TopicPicker({
   const [expanded, setExpanded] = useState(() => new Set())
   const [selected, setSelected] = useState(() => new Set())
 
-  const specialties = useMemo(() => topics.specialties ?? [], [topics.specialties])
+  const allSpecialties = useMemo(() => topics.specialties ?? [], [topics.specialties])
+  const dueFiltered = mode === MODES.DUE && dueByTopic instanceof Map
+  const dueOf = (t) => dueByTopic?.get(t.id) ?? 0
+  const specialties = useMemo(() => {
+    if (!dueFiltered) return allSpecialties
+    return allSpecialties
+      .map((sp) => ({ ...sp, topics: sp.topics.filter((t) => (dueByTopic.get(t.id) ?? 0) > 0) }))
+      .filter((sp) => sp.topics.length > 0)
+  }, [allSpecialties, dueFiltered, dueByTopic])
+  // Only topics listed in the current mode count towards the selection and the session.
+  const shownSelected = useMemo(() => {
+    const ids = []
+    for (const sp of specialties) for (const t of sp.topics) if (selected.has(t.id)) ids.push(t.id)
+    return ids
+  }, [specialties, selected])
   const selectedCards = useMemo(() => {
     let n = 0
-    for (const sp of specialties) for (const t of sp.topics) if (selected.has(t.id)) n += studyCards(t)
+    for (const sp of specialties)
+      for (const t of sp.topics) if (selected.has(t.id)) n += dueFiltered ? dueByTopic.get(t.id) ?? 0 : studyCards(t)
     return n
-  }, [specialties, selected])
+  }, [specialties, selected, dueFiltered, dueByTopic])
 
   if (topics.status === 'loading') {
     return (
@@ -66,7 +84,7 @@ export default function TopicPicker({
       </div>
     )
   }
-  if (!specialties.length) {
+  if (!allSpecialties.length) {
     return (
       <div className="fc2-picker__state" role="status">
         <p>No flashcards are available yet.</p>
@@ -95,7 +113,7 @@ export default function TopicPicker({
   }
 
   const activeHint = MODE_TABS.find((t) => t.mode === mode)?.hint
-  const canStart = selected.size > 0 && !starting
+  const canStart = shownSelected.length > 0 && !starting
 
   return (
     <div className="fc2-picker">
@@ -119,6 +137,11 @@ export default function TopicPicker({
       <div id="fc2-picker-panel" role="tabpanel" aria-label="Topics">
         <p className="fc2-picker__hint">{activeHint}</p>
 
+        {dueFiltered && !specialties.length && (
+          <p role="status" className="fc2-notice">
+            Nothing is due right now. Try New or Free study.
+          </p>
+        )}
         <ul className="fc2-tree">
           {specialties.map((sp) => {
             const open = expanded.has(sp.id)
@@ -158,7 +181,11 @@ export default function TopicPicker({
                           <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggle(setSelected, t.id)} />
                           <span className="fc2-tree__topic">{t.name}</span>
                           <span className="fc2-tree__count">
-                            {admin ? `Live ${live(t)} / Approved ${approved(t)}` : plural(t.cardCount ?? 0, 'card')}
+                            {dueFiltered
+                              ? `${dueOf(t)} due`
+                              : admin
+                                ? `Live ${live(t)} / Approved ${approved(t)}`
+                                : plural(t.cardCount ?? 0, 'card')}
                           </span>
                         </label>
                         {admin && onManage && (
@@ -194,16 +221,16 @@ export default function TopicPicker({
 
       <div className="fc2-picker__footer">
         <span className="fc2-picker__selection">
-          {selected.size ? `${plural(selected.size, 'topic')} selected` : 'Select at least one topic'}
+          {shownSelected.length ? `${plural(shownSelected.length, 'topic')} selected` : 'Select at least one topic'}
         </span>
         <button
           type="button"
           className="fc-picker__start fc2-start"
           disabled={!canStart}
-          onClick={() => onStart(mode, [...selected])}
+          onClick={() => onStart(mode, shownSelected)}
         >
           <LuPlay size={18} aria-hidden="true" />
-          {starting ? 'Preparing…' : startLabel(mode, selectedCards)}
+          {starting ? 'Preparing…' : startLabel(mode, selectedCards, dueFiltered)}
         </button>
       </div>
     </div>

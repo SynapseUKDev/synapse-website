@@ -6,7 +6,7 @@ import StudySession from '../flashcards-v2/StudySession'
 import ManageTopic from '../flashcards-v2/ManageTopic'
 import PushAllDialog from '../flashcards-v2/PushAllDialog'
 import { buildDeck } from '../flashcards-v2/buildDeck'
-import { getStats, getTopics } from '../flashcards-v2/flashcardsV2Api'
+import { getDueTopics, getStats, getTopics } from '../flashcards-v2/flashcardsV2Api'
 import { isFlashcardsAdmin } from '../flashcards-v2/access'
 import { track } from '../../usage/client.js'
 import { EVENTS } from '../../usage/catalog.js'
@@ -48,6 +48,7 @@ export default function FlashcardsV2() {
 
   const [topics, retryTopics] = useTopics(preview, !!user?.id)
   const [dueCount, setDueCount] = useState(null)
+  const [dueByTopic, setDueByTopic] = useState(null) // Map(topicId → due count); null = unknown, Due lists every topic
   const [session, setSession] = useState(null) // { id, cards }
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState(null)
@@ -63,6 +64,12 @@ export default function FlashcardsV2() {
     getStats({ preview })
       .then((s) => !cancelled && setDueCount(s?.due_count ?? null))
       .catch(() => !cancelled && setDueCount(null)) // the badge is optional; Due still works without it
+    getDueTopics({ preview })
+      .then((m) => !cancelled && setDueByTopic(m))
+      .catch((error) => {
+        console.warn('Flashcards V2: loading due counts per topic failed', error?.name, error?.kind, error?.message)
+        if (!cancelled) setDueByTopic(null)
+      })
     return () => {
       cancelled = true
     }
@@ -158,6 +165,7 @@ export default function FlashcardsV2() {
               admin={admin}
               onManage={setManaging}
               dueCount={dueCount}
+              dueByTopic={dueByTopic}
               onStart={start}
               starting={starting}
               startError={startError}
