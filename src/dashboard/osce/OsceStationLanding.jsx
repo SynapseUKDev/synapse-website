@@ -3,6 +3,7 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
 import { LuChevronLeft, LuUsers, LuUser, LuClock, LuStethoscope, LuClipboardList, LuEye, LuPencil } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import OsceCompletionToggle from './OsceCompletionToggle'
 import { track } from '../../usage/client.js'
 import { EVENTS } from '../../usage/catalog.js'
 import './Osce.css'
@@ -119,6 +120,9 @@ export default function OsceStationLanding() {
           {station.specialties?.name && (
             <span className="osce__tag osce__tag--specialty">{station.specialties.name}</span>
           )}
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <OsceCompletionToggle stationId={station.id} />
         </div>
         {station.summary && (
           <p style={{ marginTop: 16, color: 'var(--syn-muted)', fontSize: 16, lineHeight: 1.5 }}>

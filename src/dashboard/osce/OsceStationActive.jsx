@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import OsceBlockRenderer from './OsceBlockRenderer'
+import OsceCompletionToggle from './OsceCompletionToggle'
 import './Osce.css'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import { track } from '../../usage/client.js'
@@ -521,6 +522,9 @@ export default function OsceStationActive() {
               )}
             </div>
           </div>
+
+          {/* Solo practice only: group OSCE rooms don't show the learner's completion mark */}
+          {!roomCode && <OsceCompletionToggle stationId={station.id} />}
 
           {(session?.host_user_id === user?.id || effectiveRole === 'examiner') && roomCode && (
             <button 

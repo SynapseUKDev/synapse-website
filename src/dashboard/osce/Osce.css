@@ -115,9 +115,16 @@
 .osce-checklist__checkbox--checked { background: var(--syn-cyan); border-color: var(--syn-cyan); }
 .osce-checklist__required { color: #dc2626; font-size: 12px; margin-left: 4px; }
 
-.osce-block--kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; }
-.osce-kv__key { font-weight: 700; color: var(--syn-navy-700); }
-.osce-kv__value { color: var(--syn-muted); }
+/* Key-value block: one fixed key-column width shared by every .osce-kv table, so
+   consecutive blocks in a section line up. Tokens below are dark-mode aware (index.css). */
+.osce-kv { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 8px 0; font-size: 15px; line-height: 1.6; }
+.osce-kv th, .osce-kv td { padding: 8px 12px; vertical-align: top; text-align: left; overflow-wrap: anywhere; border-bottom: 1px solid var(--syn-border); color: var(--syn-navy-700); }
+.osce-kv th { width: clamp(9rem, 26%, 15rem); font-weight: 700; }
+.osce-kv td { font-weight: 400; }
+@media (max-width: 600px) {
+  .osce-kv th, .osce-kv td { display: block; width: auto; }
+  .osce-kv th { border-bottom: 0; padding-bottom: 0; }
+}
 
 .osce-block--callout { padding: 14px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; margin: 8px 0; border-left: 4px solid; }
 .osce-block--callout[data-variant="info"] { background: var(--surface-tint-cyan); border-color: var(--syn-cyan); color: var(--syn-navy-700); }
@@ -126,10 +133,20 @@
 .osce-block--callout[data-variant="danger"] { background: #fee2e2; border-color: #ef4444; color: var(--syn-navy-700); }
 .osce-callout__title { font-weight: 800; margin-bottom: 4px; }
 
+/* "Mark as complete" switch (OsceCompletionToggle) and the station-list Completed tag */
+.osce-complete { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.osce-complete-toggle { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--syn-border); background: var(--surface-card); color: var(--syn-navy-700); font: 700 14px 'Urbanist',sans-serif; cursor: pointer; transition: all .2s; white-space: nowrap; }
+.osce-complete-toggle:hover:not(:disabled) { border-color: #16a34a; }
+.osce-complete-toggle[aria-checked="true"] { background: #16a34a; border-color: #16a34a; color: #fff; }
+.osce-complete-toggle:focus-visible { outline: 2px solid var(--syn-cyan); outline-offset: 2px; }
+.osce-complete-toggle:disabled { opacity: .6; cursor: default; }
+.osce-complete__error { font-size: 13px; font-weight: 600; color: #dc2626; }
+.osce__tag--completed { background: #16a34a; color: #fff; }
+
 .osce-block--table { width: 100%; overflow-x: auto; margin: 8px 0; }
-.osce-block--table table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.osce-block--table th { text-align: left; padding: 10px 12px; font-weight: 700; color: var(--syn-navy-700); background: #f8fafc; border-bottom: 1px solid var(--syn-border); }
-.osce-block--table td { padding: 10px 12px; color: var(--syn-navy-700); border-bottom: 1px solid var(--syn-border); }
+.osce-block--table table { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
+.osce-block--table th { text-align: left; padding: 8px 12px; vertical-align: top; font-weight: 700; color: var(--syn-navy-700); background: #f8fafc; border-bottom: 1px solid var(--syn-border); }
+.osce-block--table td { padding: 8px 12px; vertical-align: top; color: var(--syn-navy-700); border-bottom: 1px solid var(--syn-border); }
 
 /* ── Timer ────────────────────────────────────────────── */
 .osce-timer { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--surface-card); border: 1px solid var(--syn-border); border-radius: 16px; }
@@ -242,6 +259,8 @@ html[data-theme="dark"] .osce-block--callout[data-variant="tip"] { background: r
 html[data-theme="dark"] .osce-block--callout[data-variant="warning"] { background: rgba(245,158,11,.08); border-color: #f59e0b; }
 html[data-theme="dark"] .osce-block--callout[data-variant="danger"] { background: rgba(239,68,68,.08); border-color: #ef4444; }
 html[data-theme="dark"] .osce-block--table th { background: var(--dm-surface-container-high); }
+html[data-theme="dark"] .osce-complete-toggle { background: var(--dm-surface-container-low); }
+html[data-theme="dark"] .osce-complete-toggle[aria-checked="true"] { background: #16a34a; border-color: #16a34a; color: #fff; }
 html[data-theme="dark"] .osce-group__room-code { background: var(--dm-surface-container-low); border-color: var(--dm-secondary); }
 html[data-theme="dark"] .osce-participant { background: var(--dm-surface-container-low); }
 html[data-theme="dark"] .osce-participant:hover { background: var(--dm-surface-container-high); border-color: var(--dm-outline); }

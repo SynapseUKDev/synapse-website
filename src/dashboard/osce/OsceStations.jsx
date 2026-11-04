@@ -37,6 +37,7 @@ export default function OsceStations() {
   const canManageOsce = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_manage_osce
   const [stations, setStations] = useState([])
   const [progress, setProgress] = useState([])
+  const [completions, setCompletions] = useState([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -60,6 +61,7 @@ export default function OsceStations() {
       if (prRes.ok) {
         const d = await prRes.json()
         setProgress(d.attempts || [])
+        setCompletions(d.completions || [])
       }
     } catch (e) {
       console.error('Failed to load OSCE data:', e)
@@ -70,8 +72,9 @@ export default function OsceStations() {
 
   // Stats
   const totalStations = stations.length
-  const attemptedStationIds = new Set(progress.map(a => a.station_id))
-  const completedCount = attemptedStationIds.size
+  // Learner's own "Mark as complete" flags; marks on stations no longer listed are ignored.
+  const completedStationIds = new Set(completions.map(c => c.station_id))
+  const completedCount = stations.filter(s => completedStationIds.has(s.id)).length
   const avgScore = progress.length > 0
     ? Math.round(progress.filter(a => a.max_marks > 0).reduce((s, a) => s + (a.total_marks / a.max_marks) * 100, 0) / Math.max(1, progress.filter(a => a.max_marks > 0).length))
     : 0
@@ -121,7 +124,7 @@ export default function OsceStations() {
             <div className="osce-stat__icon osce-stat__icon--green"><LuTarget size={20} /></div>
           </div>
           <div className="osce-stat__value">{completedCount}/{totalStations}</div>
-          <div className="osce-stat__sub">Unique stations attempted</div>
+          <div className="osce-stat__sub">Marked complete</div>
         </div>
         <div className="osce-stat">
           <div className="osce-stat__top">
@@ -252,6 +255,7 @@ export default function OsceStations() {
                   {station.difficulty && <span className="osce__tag osce__tag--difficulty" data-diff={station.difficulty}>{station.difficulty}</span>}
                   {station.specialties?.name && <span className="osce__tag osce__tag--specialty">{station.specialties.name}</span>}
                   {lastAttempt && <span className="osce__tag" style={{ background: '#dcfce7', color: '#16a34a' }}>✓ Attempted</span>}
+                  {completedStationIds.has(station.id) && <span className="osce__tag osce__tag--completed">✓ Completed</span>}
                 </div>
               </div>
             )
