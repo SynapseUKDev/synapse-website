@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { LuTimer, LuUsers, LuStethoscope, LuTarget, LuListCheck, LuSearch, LuShuffle, LuBookOpen, LuPencil } from 'react-icons/lu'
+import { LuTimer, LuUsers, LuStethoscope, LuTarget, LuListCheck, LuSearch, LuShuffle, LuBookOpen, LuPencil, LuCircleCheck } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import './Osce.css'
@@ -255,7 +255,7 @@ export default function OsceStations() {
                   {station.difficulty && <span className="osce__tag osce__tag--difficulty" data-diff={station.difficulty}>{station.difficulty}</span>}
                   {station.specialties?.name && <span className="osce__tag osce__tag--specialty">{station.specialties.name}</span>}
                   {lastAttempt && <span className="osce__tag" style={{ background: '#dcfce7', color: '#16a34a' }}>✓ Attempted</span>}
-                  {completedStationIds.has(station.id) && <span className="osce__tag osce__tag--completed">✓ Completed</span>}
+                  {completedStationIds.has(station.id) && <span className="osce__tag osce__tag--completed"><LuCircleCheck size={13} aria-hidden /> Completed</span>}
                 </div>
               </div>
             )
