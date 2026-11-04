@@ -32,11 +32,11 @@
 
 
 .fcv2a-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.fcv2a-card { border: 1px solid var(--syn-border); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.fcv2a-card { border: 1px solid var(--syn-border); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .fcv2a-card__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.fcv2a-card__key { font-weight: 700; }
-.fcv2a-card__cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
-@media (max-width: 760px) { .fcv2a-card__cols { grid-template-columns: 1fr; } }
+.fcv2a-card__key { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+/* Side by side only when each column gets ~260px (tablets with the sidebar open stack them). */
+.fcv2a-card__cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
 
 /* The student preview looks like the learner card; diagnostics are visibly an admin-only panel. */
 .fcv2a-preview { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: var(--surface-card); border: 1px solid var(--syn-border); }
@@ -107,8 +107,7 @@
 .fcv2a-why p { margin: 4px 0; }
 .fcv2a-why__msg { white-space: pre-wrap; overflow-wrap: anywhere; }
 .fcv2a-link { padding: 0; border: none; background: none; color: #4f46e5; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
-.fcv2a-slots { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
-@media (max-width: 760px) { .fcv2a-slots { grid-template-columns: 1fr; } }
+.fcv2a-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
 .fcv2a-slot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .fcv2a-credit { overflow-wrap: anywhere; }
 .fcv2a-details summary { cursor: pointer; font-size: 13px; color: var(--syn-muted); font-weight: 700; }

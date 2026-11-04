@@ -2155,3 +2155,29 @@ html[data-theme="dark"] .fc2-card__answer { background: rgba(32,229,246,.06); bo
 .fc2-push-all { margin-top: 8px; }
 .fc2-manage { display: flex; flex-direction: column; gap: 4px; }
 .fc2-manage-row { margin: 8px 0; }
+
+/* Flashcards V2: phones and tablets */
+.fc2-tree__count { white-space: nowrap; }
+/* Let the topic name keep a readable width; the live/approved count wraps below it instead. */
+.fc2-tree__topic { flex: 1 1 140px; }
+@media (max-width: 600px) {
+  .fc2-tree__row--topic { padding: 6px 4px 6px 8px; gap: 4px 10px; }
+  .fc2-tree__topicitem { gap: 6px; }
+}
+@media (max-width: 600px) {
+  .fc2-page .fc-page__back { margin-bottom: 16px; }
+  .fc2-card__front { min-height: 120px; }
+  .fc2-card__media { max-height: 240px; }
+  /* Keep Hard / Good / Easy on screen while the answer scrolls. */
+  .fc2-rating {
+    position: sticky; bottom: 0; z-index: 2;
+    margin: 0 -16px -16px; padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+    background: var(--surface-card); border-top: 1px solid var(--syn-border);
+    border-radius: 0 0 16px 16px;
+  }
+  .fc2-rating__prompt { margin-bottom: 6px; }
+}
+/* Keyboard shortcut hints mean nothing on touch screens. */
+@media (hover: none) and (pointer: coarse) {
+  .fc2-page kbd { display: none; }
+}

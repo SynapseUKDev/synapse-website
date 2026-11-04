@@ -358,7 +358,7 @@ export default function Admin() {
             {activeTab === 'institutions' && 'Create institution accounts, manage staff admins, and help with student invites when they cannot.'}
             {activeTab === 'announcements' && 'Draft and publish in-app announcements. Users will see unread ones the next time they open the dashboard.'}
             {activeTab === 'reports' && 'Monthly AI study reports: run the batch, watch it finish, and see usage per month.'}
-            {activeTab === 'flashcards-v2' && 'Review generated decks, fix cards, retire legacy cards and publish topics. Nothing reaches learners until a topic is published here.'}
+            {activeTab === 'flashcards-v2' && 'Fix flagged cards, add images and approve them. Approved cards go live from the Flashcards page; learners only see live cards.'}
             {isIssuesTab && (activeTab === 'question-issues' && subTab === 'import'
               ? 'Validate generated question files, review every record, then import the ones you choose as inactive drafts.'
               : activeTab === 'question-issues' && subTab === 'summaries'
