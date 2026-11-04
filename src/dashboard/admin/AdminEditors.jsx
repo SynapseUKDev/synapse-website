@@ -5,6 +5,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import { useUnsavedChangesGuard } from '../navigationGuard'
 import AdminImageGallery from './AdminImageGallery.jsx'
 import AdminQuestionForm from './questions/AdminQuestionForm'
+import QuestionSummaryControl from './summaries/QuestionSummaryControl'
 import QuestionErrorSummary from './questions/QuestionErrorSummary'
 import QuestionStatusBadge from './questions/QuestionStatusBadge'
 import { ADMIN_QUESTIONS_PATH } from './questions/questionAdminAccess'
@@ -31,7 +32,8 @@ async function readJsonError(res) {
  * review comments. It shares the full editor's form, validation, versioned
  * saves and conflict handling; active questions are read-only until deactivated.
  */
-export function AdminQuestionInlineEditor({ questionId, onSaved }) {
+/** onSummaryChange(learningSummary, extraLearningSummaries): the question's topic summaries changed (saved at once, separately). */
+export function AdminQuestionInlineEditor({ questionId, onSaved, onSummaryChange }) {
   const [form, dispatch] = useReducer(questionFormReducer, undefined, createEmptyForm)
   const [baseline, setBaseline] = useState(null)
   const [meta, setMeta] = useState(null)
@@ -177,6 +179,14 @@ export function AdminQuestionInlineEditor({ questionId, onSaved }) {
 
       <form className="admin-form" onSubmit={saveQuestion} noValidate>
         <AdminQuestionForm form={form} dispatch={dispatch} taxonomy={taxonomy} errors={errors} readOnly={saving} />
+
+        <div className="admin-form__section admin-form__section--summary">
+          <div className="admin-form__section-title" id={`aqe-summary-${questionId}`}>Topic summary</div>
+          <p className="admin__muted admin-form__section-hint">
+            Shown to learners under the explanation. Changes here save straight away, separately from Save question.
+          </p>
+          <QuestionSummaryControl questionId={questionId} onChange={onSummaryChange} labelledBy={`aqe-summary-${questionId}`} />
+        </div>
 
         <div className="admin-form__section">
           <div className="admin-form__section-title">Question images</div>

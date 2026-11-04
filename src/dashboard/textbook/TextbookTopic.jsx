@@ -18,6 +18,8 @@ import {
   InlineMarkdownBlock,
   InlineNonMarkdownBlock,
 } from './TextbookInlineAdmin'
+import { CONFIDENCE_LABELS, CONFIDENCE_LEVELS, isGroupingTopicFor } from './textbookProgressLabels.js'
+import { useChapterConfidence } from './useChapterConfidence.js'
 
 const HIGHLIGHT_COLORS = new Set(['yellow', 'green', 'pink', 'blue', 'red', 'orange', 'purple', 'teal'])
 const normalizeHighlightColor = (color) => HIGHLIGHT_COLORS.has(color) ? color : 'yellow'
@@ -506,6 +508,61 @@ function ImageCarousel({ images }) {
   )
 }
 
+export function ChapterActions({ placement, isReviewer, isAdmin, hasPage, editMode, onToggleEdit, highlightsOn, onToggleHighlights, topicSlug, API_BASE }) {
+  return (
+    <div className={`tb-chapter-actions tb-chapter-actions--${placement}`}>
+      {isReviewer ? (
+        <span className="tb-review-mode-badge" style={{ background: '#f59e0b', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>Review Mode</span>
+      ) : (
+        <>
+          {isAdmin && hasPage && (
+            <button
+              type="button"
+              className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
+              onClick={onToggleEdit}
+            >
+              {editMode ? 'Close editor' : 'Edit'}
+            </button>
+          )}
+          <button
+            type="button"
+            className={`tb-highlights-toggle ${highlightsOn ? 'is-on' : ''}`}
+            onClick={onToggleHighlights}
+            title={highlightsOn ? 'Hide highlights' : 'Show highlights'}
+            aria-pressed={highlightsOn}
+          >
+            {highlightsOn ? 'Hide highlights' : 'Show highlights'}
+          </button>
+        </>
+      )}
+      <ReportTopicIssueButton topicSlug={topicSlug} API_BASE={API_BASE} />
+    </div>
+  )
+}
+
+export function ChapterConfidence({ value, error, onChange }) {
+  return (
+    <div className="tb-chapter-status tb-chapter-confidence">
+      <div className="tb-chapter-status__label" aria-hidden="true">Confidence</div>
+      <div className="tb-chapter-status__options" role="group" aria-label="Confidence">
+        {CONFIDENCE_LEVELS.map((level) => (
+          <button
+            key={level}
+            type="button"
+            className={`tb-chapter-status__btn tb-chapter-status__btn--conf-${level} ${value === level ? 'is-active' : ''}`}
+            onClick={() => onChange(level)}
+            aria-pressed={value === level}
+          >
+            {value === level && <span className="tb-chapter-status__dot" aria-hidden />}
+            {CONFIDENCE_LABELS[level]}
+          </button>
+        ))}
+      </div>
+      {error && <p role="status" className="tb-chapter-status__error">{error}</p>}
+    </div>
+  )
+}
+
 function ChapterReadingStatus({ status, saving, onChange }) {
   return (
     <div className="tb-chapter-status" aria-label="Reading progress for this topic">
@@ -771,6 +828,7 @@ export default function TextbookTopic() {
   }, [loadChapter])
 
   const [navItems, setNavItems] = useState([])
+  const [isGroupingTopic, setIsGroupingTopic] = useState(false)
   const [currentIdx, setCurrentIdx] = useState(-1)
   const [topicQ, setTopicQ] = useState('')
 
@@ -820,9 +878,28 @@ export default function TextbookTopic() {
 
   const currentProgressTarget = useMemo(() => {
     if (data?.subtopic?.id) return { type: 'subtopic', id: data.subtopic.id }
+    // A topic that groups subtopics isn't a readable item: no reading status or confidence.
+    if (isGroupingTopic) return null
     if (data?.topic?.id) return { type: 'topic', id: data.topic.id }
     return null
-  }, [data?.subtopic?.id, data?.topic?.id])
+  }, [data?.subtopic?.id, data?.topic?.id, isGroupingTopic])
+
+  const confidence = useChapterConfidence({ API_BASE, target: currentProgressTarget })
+
+  // Rendered twice: in the sticky aside on wide screens and in the header on narrow ones
+  // (CSS shows exactly one), so the actions stay reachable without scrolling back up.
+  const chapterActionsProps = {
+    isReviewer,
+    isAdmin,
+    hasPage: !!data?.page?.id,
+    editMode,
+    onToggleEdit: () => setEditMode((open) => !open),
+    highlightsOn,
+    onToggleHighlights: () => setHighlightsOn((on) => !on),
+    topicSlug,
+    API_BASE,
+  }
+  const setInitialConfidence = confidence.setInitial
 
   useEffect(() => {
     setLastHighlightColor(getStoredHighlightColor(user?.id))
@@ -841,11 +918,14 @@ export default function TextbookTopic() {
             ? json?.subtopic_progress
             : json?.progress
           const current = progressMap?.[currentProgressTarget.id]
-          if (!cancelled) setReadingStatus(current?.reading_status || 'not_read')
+          if (!cancelled) {
+            setReadingStatus(current?.reading_status || 'not_read')
+            setInitialConfidence(current?.confidence)
+          }
         } catch { }
       })()
     return () => { cancelled = true }
-  }, [API_BASE, currentProgressTarget, data?.topic?.specialties?.slug])
+  }, [API_BASE, currentProgressTarget, data?.topic?.specialties?.slug, setInitialConfidence])
 
   useEffect(() => {
     let cancelled = false
@@ -1204,6 +1284,7 @@ export default function TextbookTopic() {
           }
         }
         if (!cancelled) {
+          setIsGroupingTopic(isGroupingTopicFor(topics, data?.topic, !!data?.subtopic))
           setNavItems(items)
           const curr = data?.subtopic?.slug || data?.topic?.slug
           const idx = items.findIndex((it) => it.slug === curr)
@@ -1294,31 +1375,7 @@ export default function TextbookTopic() {
           />
         </form>
         <div className="tb-header__actions">
-          {isReviewer ? (
-            <span className="tb-review-mode-badge" style={{ background: '#f59e0b', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>Review Mode</span>
-          ) : (
-            <>
-              {isAdmin && data.page?.id && (
-                <button
-                  type="button"
-                  className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
-                  onClick={() => setEditMode((open) => !open)}
-                >
-                  {editMode ? 'Close editor' : 'Edit'}
-                </button>
-              )}
-              <button
-                type="button"
-                className={`tb-highlights-toggle ${highlightsOn ? 'is-on' : ''}`}
-                onClick={() => setHighlightsOn((on) => !on)}
-                title={highlightsOn ? 'Hide highlights' : 'Show highlights'}
-                aria-pressed={highlightsOn}
-              >
-                {highlightsOn ? 'Hide highlights' : 'Show highlights'}
-              </button>
-            </>
-          )}
-          <ReportTopicIssueButton topicSlug={topicSlug} API_BASE={API_BASE} />
+          <ChapterActions placement="header" {...chapterActionsProps} />
         </div>
       </header>
 
@@ -1503,12 +1560,20 @@ export default function TextbookTopic() {
               )}
             </div>
           )}
+          <ChapterActions placement="aside" {...chapterActionsProps} />
           {currentProgressTarget && (
-            <ChapterReadingStatus
-              status={readingStatus}
-              saving={savingReadingStatus}
-              onChange={handleReadingStatusChange}
-            />
+            <>
+              <ChapterReadingStatus
+                status={readingStatus}
+                saving={savingReadingStatus}
+                onChange={handleReadingStatusChange}
+              />
+              <ChapterConfidence
+                value={confidence.value}
+                error={confidence.error}
+                onChange={confidence.change}
+              />
+            </>
           )}
         </aside>
       </div>

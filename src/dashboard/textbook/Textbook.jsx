@@ -4,6 +4,7 @@ import { LuCircleCheck, LuCheck, LuMinus, LuChevronDown, LuChevronRight, LuFileT
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { authHeaders } from '../../auth/token'
+import { CONFIDENCE_LABELS, CONFIDENCE_LEVELS } from './textbookProgressLabels.js'
 
 const STATUS_LABELS = {
   not_read: 'Not read',
@@ -11,11 +12,6 @@ const STATUS_LABELS = {
   completed: 'Completed',
 }
 
-const CONFIDENCE_LABELS = {
-  low: 'Low',
-  moderate: 'Moderate',
-  high: 'High',
-}
 
 function TopicCard({ topic, progress, onStatusChange, onConfidenceChange, onTopicClick }) {
   const hasPage = !!topic.has_page || !!(topic.textbook_pages && topic.textbook_pages[0]) || !!topic.page
@@ -96,7 +92,7 @@ function TopicCard({ topic, progress, onStatusChange, onConfidenceChange, onTopi
       {/* Confidence toggle */}
       <div className="tb-topic-card__confidence">
         <div className="tb-confidence-toggle">
-          {['low', 'moderate', 'high'].map((level) => (
+          {CONFIDENCE_LEVELS.map((level) => (
             <button
               key={level}
               className={`tb-confidence-option tb-confidence-option--${level} ${confidence === level ? 'tb-confidence-option--active' : ''}`}
@@ -187,7 +183,7 @@ function SubtopicItem({ node, depth = 0, progress, onStatusChange, onConfidenceC
         {/* Confidence */}
         <div className="tb-topic-card__confidence">
           <div className="tb-confidence-toggle">
-            {['low', 'moderate', 'high'].map((level) => (
+            {CONFIDENCE_LEVELS.map((level) => (
               <button
                 key={level}
                 className={`tb-confidence-option tb-confidence-option--${level} ${confidence === level ? 'tb-confidence-option--active' : ''}`}
@@ -313,15 +309,18 @@ function ProgressHeader({ summary, sortBy, filterBy, onSortChange, onFilterChang
   )
 }
 
-function ChapterCard({ specialty, onClick, priority = false, topicsRead = 0 }) {
+export function ChapterCard({ specialty, onClick, priority = false, topicsRead = 0, progress }) {
   const bgStyle = {
     background: `linear-gradient(135deg, ${specialty.icon_bg_start || '#2E2CC4'} 0%, ${specialty.icon_bg_end || '#3C92C1'} 100%)`
   }
   const img = specialty.thumbnail_url
   const topicCount = Array.isArray(specialty.topics) ? specialty.topics.length : 0
-  const readCount = Math.min(Math.max(topicsRead, 0), topicCount)
-  const isCompleted = topicCount > 0 && readCount === topicCount
-  const percent = topicCount > 0 ? Math.round((readCount / topicCount) * 100) : 0
+  // progress = { read, total } from topic-history (topics without subtopics + subtopics).
+  // Legacy fallback: top-level topic count, for an older backend without progress_by_specialty.
+  const total = typeof progress?.total === 'number' ? progress.total : topicCount
+  const readCount = Math.min(Math.max(typeof progress?.read === 'number' ? progress.read : topicsRead, 0), total)
+  const isCompleted = total > 0 && readCount === total
+  const percent = total > 0 ? Math.round((readCount / total) * 100) : 0
   return (
     <button className="tb-card" onClick={onClick} aria-label={`Open ${specialty.specialty_name || specialty.name}`}>
       <div className="tb-card__cover" style={bgStyle}>
@@ -342,15 +341,16 @@ function ChapterCard({ specialty, onClick, priority = false, topicsRead = 0 }) {
         <div className="tb-card__title">{specialty.specialty_name || specialty.name}</div>
         <div className="tb-card__footer">
           <div className="tb-card__progress">
-            {topicCount > 0 && (
+            {total > 0 && (
               <>
                 <div className={`tb-card__meta ${isCompleted ? 'tb-card__meta--completed' : ''}`}>
                   {isCompleted && <LuCircleCheck className="tb-card__meta-icon" aria-hidden />}
-                  {isCompleted ? 'Completed' : `${readCount} of ${topicCount} topics read`}
+                  {isCompleted ? `Completed · ${readCount}/${total}` : `${readCount} of ${total} read`}
                 </div>
                 <div
                   className="tb-card__bar"
                   role="progressbar"
+                  aria-label={`${readCount} of ${total} read`}
                   aria-valuenow={percent}
                   aria-valuemin={0}
                   aria-valuemax={100}
@@ -495,6 +495,7 @@ export default function Textbook() {
   const [historyError, setHistoryError] = useState(null)
   const [topicsReadCount, setTopicsReadCount] = useState(0)
   const [topicsReadBySpecialty, setTopicsReadBySpecialty] = useState({})
+  const [progressBySpecialty, setProgressBySpecialty] = useState({})
 
   // Progress tracking state (for specialty view)
   const [progressData, setProgressData] = useState({})
@@ -529,6 +530,7 @@ export default function Textbook() {
           setHistoryItems(Array.isArray(data?.items) ? data.items : [])
           setTopicsReadCount(typeof data?.topics_read_count === 'number' ? data.topics_read_count : 0)
           setTopicsReadBySpecialty(data?.topics_read_by_specialty && typeof data.topics_read_by_specialty === 'object' ? data.topics_read_by_specialty : {})
+          setProgressBySpecialty(data?.progress_by_specialty && typeof data.progress_by_specialty === 'object' ? data.progress_by_specialty : {})
         }
       })
       .catch((err) => {
@@ -537,6 +539,7 @@ export default function Textbook() {
           setHistoryItems([])
           setTopicsReadCount(0)
           setTopicsReadBySpecialty({})
+          setProgressBySpecialty({})
         }
       })
       .finally(() => {
@@ -1024,7 +1027,7 @@ export default function Textbook() {
         <p className="tb-sub">Browse specialties as chapters. Click a chapter to view its topics.</p>
         {!historyLoading && (
           <p className="tb-topics-read" aria-live="polite">
-            {topicsReadCount === 0 ? 'No topics read yet' : `${topicsReadCount} topic${topicsReadCount !== 1 ? 's' : ''} read`}
+            {topicsReadCount === 0 ? 'No items read yet' : `${topicsReadCount} item${topicsReadCount !== 1 ? 's' : ''} read`}
           </p>
         )}
         <form className="tb-search" data-track="textbook.search" onSubmit={runSearch} role="search" aria-label="Search textbook">
@@ -1103,6 +1106,7 @@ export default function Textbook() {
             specialty={spec}
             priority={idx < 6}
             topicsRead={topicsReadBySpecialty[spec.specialty_id] ?? 0}
+            progress={progressBySpecialty[spec.specialty_id]}
             onClick={() => navigate(`/dashboard/textbook/specialty/${spec.specialty_slug || spec.slug}`)}
           />
         ))}

@@ -7,6 +7,7 @@ import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
 import TopicSummary from './TopicSummary'
+import { topicSummaryKey } from './topicSummaryKey'
 import ReferenceRangesPanel from './ReferenceRangesPanel'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import {
@@ -1663,10 +1664,11 @@ export default function GroupPractice() {
                   </div>
                 )}
 
-                {result && currentQuestion?.learning_summary && (
+                {result && (currentQuestion?.learning_summary || currentQuestion?.extra_learning_summaries?.length > 0) && (
                   <TopicSummary
-                    key={currentQuestion.learning_summary.version_id}
+                    key={topicSummaryKey(currentQuestion.learning_summary, currentQuestion.extra_learning_summaries)}
                     summary={currentQuestion.learning_summary}
+                    extras={currentQuestion.extra_learning_summaries}
                     questionId={currentQuestion.id}
                     API_BASE={API_BASE}
                   />

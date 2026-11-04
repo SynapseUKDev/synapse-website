@@ -1,6 +1,6 @@
 // Kept until a full page reload: coming back to this page shows the last coverage, filters and
 // results at once while fresh data loads in the background.
-export const cache = { coverage: null, lists: new Map(), view: null }
+export const cache = { coverage: null, attentionOpen: null, lists: new Map(), view: null }
 export const listKey = (filters, page) => JSON.stringify({ ...filters, page })
 
 /** After a delete elsewhere: hide the row at once instead of until the background refresh. */
@@ -15,6 +15,7 @@ export function dropFromSummariesCache(summaryId) {
 /** Test hook: forget everything cached. */
 export function clearSummariesCache() {
   cache.coverage = null
+  cache.attentionOpen = null
   cache.lists.clear()
   cache.view = null
 }

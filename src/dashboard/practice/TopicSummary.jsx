@@ -21,26 +21,69 @@ function reviewedLabel(value) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function SummarySources({ summary, questionId, API_BASE }) {
+  const reviewed = reviewedLabel(summary.reviewed_at)
+  const sources = Array.isArray(summary.sources) ? summary.sources : []
+  return (
+    <footer className="topic-summary__footer">
+      {summary.textbook_href && (
+        <a className="topic-summary__textbook" href={summary.textbook_href} target="_blank" rel="noopener noreferrer">
+          <LuBookOpen aria-hidden="true" />
+          <span>Read textbook</span>
+          <LuExternalLink aria-hidden="true" className="topic-summary__external" />
+        </a>
+      )}
+
+      {sources.length > 0 && (
+        <div className="topic-summary__sources">
+          <h4 className="topic-summary__sources-title">Sources</h4>
+          <ul>
+            {sources.map((source, index) => (
+              <li key={`${source.kind}-${index}`}>
+                {source.kind === 'textbook' && source.href ? (
+                  <a href={source.href} target="_blank" rel="noopener noreferrer">{source.label}</a>
+                ) : source.url ? (
+                  <a href={source.url} target="_blank" rel="noopener noreferrer">{source.label}</a>
+                ) : (
+                  <span>{source.label}</span>
+                )}
+                {source.version && <span className="topic-summary__meta"> ({source.version})</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="topic-summary__footer-row">
+        {reviewed && <span className="topic-summary__reviewed">Reviewed {reviewed}</span>}
+        <ReportIssueButton questionId={questionId} API_BASE={API_BASE} summary={summary} />
+      </div>
+    </footer>
+  )
+}
+
 /**
  * Shared "Topic summary" panel, shown under the explanations once they are revealed.
- * Renders nothing without a summary. Call sites key it by summary.version_id so a newly
- * published version replaces the old content.
+ * One block: the question's summary, then any extra summaries an editor added, each as its own
+ * headed section with its own sources. Renders nothing without a summary. Call sites key it with
+ * topicSummaryKey so a newly published version replaces the old content.
  */
-export default function TopicSummary({ summary, questionId, API_BASE }) {
+export default function TopicSummary({ summary, extras, questionId, API_BASE }) {
   const [expanded, setExpanded] = useState(true)
   const headingId = useId()
   const bodyId = useId()
-  if (!summary) return null
-
-  const reviewed = reviewedLabel(summary.reviewed_at)
-  const sources = Array.isArray(summary.sources) ? summary.sources : []
+  const sections = [summary, ...(Array.isArray(extras) ? extras : [])].filter(Boolean)
+  if (sections.length === 0) return null
+  const several = sections.length > 1
 
   return (
     <section className="topic-summary" aria-labelledby={headingId}>
       <div className="topic-summary__header">
         <div className="topic-summary__heading">
-          <h3 id={headingId} className="topic-summary__eyebrow">Topic summary</h3>
-          <p className="topic-summary__title">{summary.title}</p>
+          <h3 id={headingId} className="topic-summary__eyebrow">{several ? 'Topic summaries' : 'Topic summary'}</h3>
+          <p className="topic-summary__title">
+            {several ? sections.map((s) => s.title).join(' · ') : sections[0].title}
+          </p>
         </div>
         <button
           type="button"
@@ -56,46 +99,17 @@ export default function TopicSummary({ summary, questionId, API_BASE }) {
       </div>
 
       <div id={bodyId} className="topic-summary__body" hidden={!expanded}>
-        <div className="topic-summary__markdown">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {summary.body_markdown || ''}
-          </ReactMarkdown>
-        </div>
-
-        <footer className="topic-summary__footer">
-          {summary.textbook_href && (
-            <a className="topic-summary__textbook" href={summary.textbook_href} target="_blank" rel="noopener noreferrer">
-              <LuBookOpen aria-hidden="true" />
-              <span>Read textbook</span>
-              <LuExternalLink aria-hidden="true" className="topic-summary__external" />
-            </a>
-          )}
-
-          {sources.length > 0 && (
-            <div className="topic-summary__sources">
-              <h4 className="topic-summary__sources-title">Sources</h4>
-              <ul>
-                {sources.map((source, index) => (
-                  <li key={`${source.kind}-${index}`}>
-                    {source.kind === 'textbook' && source.href ? (
-                      <a href={source.href} target="_blank" rel="noopener noreferrer">{source.label}</a>
-                    ) : source.url ? (
-                      <a href={source.url} target="_blank" rel="noopener noreferrer">{source.label}</a>
-                    ) : (
-                      <span>{source.label}</span>
-                    )}
-                    {source.version && <span className="topic-summary__meta"> ({source.version})</span>}
-                  </li>
-                ))}
-              </ul>
+        {sections.map((section) => (
+          <article key={section.summary_id || section.version_id} className="topic-summary__section">
+            {several && <h4 className="topic-summary__section-title">{section.title}</h4>}
+            <div className="topic-summary__markdown">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {section.body_markdown || ''}
+              </ReactMarkdown>
             </div>
-          )}
-
-          <div className="topic-summary__footer-row">
-            {reviewed && <span className="topic-summary__reviewed">Reviewed {reviewed}</span>}
-            <ReportIssueButton questionId={questionId} API_BASE={API_BASE} summary={summary} />
-          </div>
-        </footer>
+            <SummarySources summary={section} questionId={questionId} API_BASE={API_BASE} />
+          </article>
+        ))}
       </div>
     </section>
   )

@@ -119,3 +119,41 @@ html[data-theme='dark'] .qsum__result.is-selected {
   border: 0;
   background: none;
 }
+
+/* Extra summaries (migration 108): shown to learners after the main one. */
+.qsum__extras {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--syn-border);
+}
+
+.qsum__subheading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--syn-muted);
+}
+
+.qsum__extra-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qsum__extra-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.qsum__extra-list .qsum__mode {
+  margin-left: 8px;
+}

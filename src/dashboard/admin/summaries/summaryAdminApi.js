@@ -155,6 +155,65 @@ export const fetchQuestionLink = (questionId, options) => requestSummaries(`/que
 export const setQuestionLink = (questionId, summaryId) =>
   requestSummaries(`/questions${id(questionId)}/link`, { method: 'PUT', body: { summary_id: summaryId } })
 export const clearQuestionLink = (questionId) => requestSummaries(`/questions${id(questionId)}/link`, { method: 'DELETE' })
+/** The question shows no summary (kept through uploads) until a summary or automatic selection is chosen. */
+export const removeQuestionSummary = (questionId) =>
+  requestSummaries(`/questions${id(questionId)}/link`, { method: 'PUT', body: { summary_id: null } })
+/** Extra summaries shown after the question's main one (migration 108, at most 4). */
+export const MAX_EXTRA_SUMMARIES = 4
+export const addExtraSummary = (questionId, summaryId) =>
+  requestSummaries(`/questions${id(questionId)}/extras`, { method: 'POST', body: { summary_id: summaryId } })
+export const removeExtraSummary = (questionId, summaryId) =>
+  requestSummaries(`/questions${id(questionId)}/extras${id(summaryId)}`, { method: 'DELETE' })
+
+/* Summary review → Needs attention: drafts and empty items from condition CSV uploads (migration 106). */
+export const ATTENTION_STATE_LABELS = {
+  draft: 'Draft — hidden from students',
+  awaiting_content: 'Awaiting content',
+  approved: 'Approved',
+  rejected: 'Rejected',
+}
+export const listAttention = (query, options) => requestSummaries('/attention', { ...options, query })
+export const fetchAttentionItem = (itemId, options) => requestSummaries(`/attention${id(itemId)}`, options)
+export function saveAttentionDraft(itemId, { expectedRevision, title, bodyMarkdown, externalReferences, reason }) {
+  return requestSummaries(`/attention${id(itemId)}/draft`, {
+    method: 'PUT',
+    body: {
+      expected_revision: expectedRevision,
+      title,
+      body_markdown: bodyMarkdown,
+      external_references: externalReferences,
+      ...(reason ? { reason } : {}),
+    },
+  })
+}
+export const approveAttention = (itemId, expectedRevision, reason) =>
+  requestSummaries(`/attention${id(itemId)}/approve`, { method: 'POST', body: { expected_revision: expectedRevision, reason } })
+export const rejectAttention = (itemId, expectedRevision, reason) =>
+  requestSummaries(`/attention${id(itemId)}/reject`, {
+    method: 'POST',
+    body: { expected_revision: expectedRevision, ...(reason ? { reason } : {}) },
+  })
+
+/* Evidence links in the review editor. */
+/** One evidence link per line: "https://… | Label". */
+export function referencesToText(refs) {
+  return (refs || []).map((r) => (r.label ? `${r.url} | ${r.label}` : r.url || '')).filter(Boolean).join('\n')
+}
+
+/** Parses the lines back, keeping each existing reference's other fields (citation id, version…). */
+export function textToReferences(text, existing = []) {
+  const byUrl = new Map((existing || []).filter((r) => r?.url).map((r) => [r.url, r]))
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [url, ...rest] = line.split('|')
+      const label = rest.join('|').trim()
+      const clean = url.trim()
+      return { ...(byUrl.get(clean) || {}), url: clean, ...(label ? { label } : {}) }
+    })
+}
 
 /** "Croup → Management", or "Croup → Management (Pregnancy)" for a narrower scope. */
 export function summaryLabel(summary) {

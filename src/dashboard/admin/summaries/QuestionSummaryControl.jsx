@@ -2,11 +2,15 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import TopicSummary from '../../practice/TopicSummary'
 import {
+  MAX_EXTRA_SUMMARIES,
   SUMMARIES_PAGE_PATH,
+  addExtraSummary,
   clearQuestionLink,
   fetchQuestionLink,
   fetchSummary,
   listSummaries,
+  removeExtraSummary,
+  removeQuestionSummary,
   setQuestionLink,
   summaryLabel,
   toPreviewSummary,
@@ -24,16 +28,18 @@ function formatDate(value) {
 /**
  * Admin question editor (qbank permission): shows which summary this question displays and lets the
  * editor choose any published summary, from any topic, for this one question — or go back to
- * automatic matching. The question's wording, answer, explanations and topic are never changed here.
- * onChange(learningSummary) receives the learner summary the question now shows (or null).
- * Practice's admin-only "Edit summary" button links here with #summary, which scrolls to it.
+ * automatic matching, or remove the summary from this question (kept through uploads). Editors can
+ * also add extra summaries, shown after the main one as separate sections. The question's
+ * wording, answer, explanations and topic are never changed here.
+ * onChange(learningSummary, extraLearningSummaries) receives what the question now shows.
+ * Also shown, collapsed, under Practice's admin inline editor. A #summary URL hash scrolls to it.
  */
-export default function QuestionSummaryControl({ questionId, onChange }) {
+export default function QuestionSummaryControl({ questionId, onChange, labelledBy }) {
   const sectionRef = useRef(null)
   const [link, setLink] = useState(null)
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState(null)
-  const [picking, setPicking] = useState(false)
+  const [picking, setPicking] = useState(false) // false | 'main' | 'extra'
   const [query, setQuery] = useState('')
   const [results, setResults] = useState(null)
   const [chosen, setChosen] = useState(null) // { id, label, preview }
@@ -52,8 +58,14 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
     return () => controller.abort()
   }, [questionId])
 
+  // Nothing linked yet: the search opens straight away. A deliberate "Removed" waits for a click.
+  const autoPick = link?.mode === 'automatic' && !link.automatic_summary
+  const showPicker = picking || autoPick
+  // In that open-by-default case the list waits for a search term, so the editor stays compact.
+  const waitForQuery = autoPick && !picking && !query.trim()
+
   useEffect(() => {
-    if (!picking) return undefined
+    if (!showPicker || waitForQuery) return undefined
     const controller = new AbortController()
     const timer = setTimeout(() => {
       listSummaries({ status: 'published', q: query.trim(), page_size: 20 }, { signal: controller.signal })
@@ -64,7 +76,7 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [picking, query])
+  }, [showPicker, waitForQuery, query])
 
   async function choose(summary) {
     setChosen({ id: summary.id, label: summaryLabel(summary), preview: null })
@@ -86,7 +98,7 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
     try {
       const next = await action()
       setLink(next)
-      onChange?.(next.learning_summary || null)
+      onChange?.(next.learning_summary || null, next.extra_learning_summaries || [])
       setPicking(false)
       setChosen(null)
       setNotice(success(next))
@@ -98,10 +110,27 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
   }
 
   const save = () =>
+    picking === 'extra'
+      ? apply(
+          () => addExtraSummary(questionId, chosen.id),
+          () => `Added. This question now also shows ${chosen.label}.`,
+        )
+      : apply(
+          () => setQuestionLink(questionId, chosen.id),
+          () => `Saved. Everyone viewing this question now sees ${chosen.label}.`,
+        )
+  const removeExtra = (extra) =>
     apply(
-      () => setQuestionLink(questionId, chosen.id),
-      () => `Saved. Everyone viewing this question now sees ${chosen.label}.`,
+      () => removeExtraSummary(questionId, extra.id),
+      () => `Removed ${summaryLabel(extra)} from this question.`,
     )
+  const removeSummary = () => {
+    if (!window.confirm('Show no summary on this question? It stays removed through future uploads until you choose a summary or automatic selection.')) return
+    apply(
+      () => removeQuestionSummary(questionId),
+      () => 'Removed. This question now shows no summary.',
+    )
+  }
   const useAutomatic = () =>
     apply(
       () => clearQuestionLink(questionId),
@@ -120,20 +149,26 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
     return error ? <p className="asum-error qsum" role="alert">{error}</p> : null
   }
 
-  const shown = link.mode === 'manual' ? link.manual_summary : link.automatic_summary
+  const shown = link.mode === 'manual' ? link.manual_summary : link.mode === 'none' ? null : link.automatic_summary
+  const manualMode = link.mode === 'manual' || link.mode === 'none'
+  const modeLabel = link.mode === 'none' ? 'Removed' : link.mode === 'manual' ? 'Manual choice' : 'Automatic'
+  const extras = Array.isArray(link.extras) ? link.extras : []
+  const addingExtra = picking === 'extra'
+  const alreadyShown = (summaryId) =>
+    addingExtra ? summaryId === shown?.id || extras.some((e) => e.id === summaryId) : link.mode === 'manual' && link.manual_summary?.id === summaryId
   return (
-    <section id="summary" ref={sectionRef} className="qsum" aria-labelledby={`qsum-heading-${questionId}`}>
-      <h2 id={`qsum-heading-${questionId}`} className="qsum__heading">Topic summary</h2>
+    <section id="summary" ref={sectionRef} className="qsum" aria-labelledby={labelledBy || `qsum-heading-${questionId}`}>
+      {!labelledBy && <h2 id={`qsum-heading-${questionId}`} className="qsum__heading">Topic summary</h2>}
       <p className="qsum__status">
-        {shown ? summaryLabel(shown) : 'No summary'}
+        {shown ? summaryLabel(shown) : link.mode === 'none' ? 'No summary' : 'No summary yet'}
         <span className="qsum__mode">
-          {link.mode === 'manual' ? `Manual choice${link.set_at ? ` · ${formatDate(link.set_at)}` : ''}` : 'Automatic'}
+          {manualMode && link.set_at ? `${modeLabel} · ${formatDate(link.set_at)}` : modeLabel}
         </span>
       </p>
       {shown && shown.status !== 'published' && (
         <p className="qsum__note">This summary is {shown.status === 'archived' ? 'withdrawn' : 'a draft'}, so learners see no summary here.</p>
       )}
-      {link.mode === 'manual' && (
+      {manualMode && (
         <p className="qsum__note">
           Automatic match: {link.automatic_summary ? summaryLabel(link.automatic_summary) : 'none'}
         </p>
@@ -141,17 +176,22 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
       {notice && <p className="asum-success" role="status">{notice}</p>}
       {error && <p className="asum-error" role="alert">{error}</p>}
 
-      {!picking && (
+      {!showPicker && (
         <div className="asum-actions">
           {shown && (
             <Link className="asum-button" to={`${SUMMARIES_PAGE_PATH}/${shown.id}`}>
               Open summary page
             </Link>
           )}
-          <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(true); setNotice(null) }}>
-            Change summary
+          <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking('main'); setNotice(null) }}>
+            {shown ? 'Change summary' : 'Choose summary'}
           </button>
-          {link.mode === 'manual' && (
+          {shown && (
+            <button type="button" className="asum-button" disabled={busy} onClick={removeSummary}>
+              Remove summary
+            </button>
+          )}
+          {manualMode && (
             <button type="button" className="asum-button" disabled={busy} onClick={useAutomatic}>
               Use automatic selection
             </button>
@@ -159,9 +199,41 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
         </div>
       )}
 
-      {picking && (
+      {(extras.length > 0 || (!showPicker && (shown || link.mode === 'none'))) && (
+        <div className="qsum__extras">
+          <h3 className="qsum__subheading">Also shown</h3>
+          {extras.length === 0 ? (
+            <p className="qsum__note">No extra summaries. Add one to show it as a separate section after the main summary.</p>
+          ) : (
+            <ul className="qsum__extra-list" aria-label="Extra summaries">
+              {extras.map((extra) => (
+                <li key={extra.id}>
+                  <span>
+                    {summaryLabel(extra)}
+                    {extra.status !== 'published' && <span className="qsum__mode">Not shown: {extra.status === 'archived' ? 'withdrawn' : 'draft'}</span>}
+                  </span>
+                  <button type="button" className="asum-button" disabled={busy} onClick={() => removeExtra(extra)}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!showPicker && extras.length < MAX_EXTRA_SUMMARIES && (
+            <div className="asum-actions">
+              <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking('extra'); setNotice(null) }}>
+                Add another summary
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showPicker && (
         <div className="qsum__picker">
-          <label htmlFor={`qsum-search-${questionId}`}>Search published summaries in any topic</label>
+          <label htmlFor={`qsum-search-${questionId}`}>
+            {addingExtra ? 'Search for a summary to add' : 'Search published summaries in any topic'}
+          </label>
           <input
             id={`qsum-search-${questionId}`}
             type="search"
@@ -169,8 +241,12 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
             placeholder="Topic or drug name, e.g. Croup"
             autoComplete="off"
             onChange={(e) => setQuery(e.target.value)}
+            // Inside the question editor's form: Enter must not submit the question.
+            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
           />
-          {results === null ? (
+          {waitForQuery ? (
+            <p className="qsum__note">Type a topic or drug name to see matching summaries.</p>
+          ) : results === null ? (
             <p className="qsum__note">Loading…</p>
           ) : results.length === 0 ? (
             <p className="qsum__note">No published summaries match.</p>
@@ -202,14 +278,16 @@ export default function QuestionSummaryControl({ questionId, onChange }) {
             <button
               type="button"
               className="asum-button asum-button--primary"
-              disabled={busy || !chosen?.preview || (link.mode === 'manual' && link.manual_summary?.id === chosen.id)}
+              disabled={busy || !chosen?.preview || alreadyShown(chosen.id)}
               onClick={save}
             >
-              Save for this question
+              {addingExtra ? 'Add to this question' : 'Save for this question'}
             </button>
-            <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(false); setChosen(null) }}>
-              Cancel
-            </button>
+            {!autoPick && (
+              <button type="button" className="asum-button" disabled={busy} onClick={() => { setPicking(false); setChosen(null) }}>
+                Cancel
+              </button>
+            )}
           </div>
         </div>
       )}

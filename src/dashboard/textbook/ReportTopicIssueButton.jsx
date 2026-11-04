@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { LuMessageSquareWarning } from 'react-icons/lu'
 import { authHeaders } from '../../auth/token'
 import '../practice/Practice.css'
@@ -103,13 +104,14 @@ export default function ReportTopicIssueButton({ topicSlug, API_BASE }) {
         <span className="report-trigger-text">Report</span>
       </button>
 
-      {successMessage && (
+      {successMessage && createPortal(
         <div className="report-toast" role="status">
           {successMessage}
-        </div>
+        </div>,
+        document.body
       )}
 
-      {open && (
+      {open && createPortal(
         <div className="report-modal-overlay" onClick={handleCancel}>
           <div className="report-modal ph-no-capture" onClick={(e) => e.stopPropagation()}>
             <div className="report-modal__header">
@@ -172,7 +174,8 @@ export default function ReportTopicIssueButton({ topicSlug, API_BASE }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

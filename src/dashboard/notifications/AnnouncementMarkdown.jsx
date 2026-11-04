@@ -77,20 +77,6 @@ const components = {
   },
 }
 
-export function announcementPlainPreview(text, max = 140) {
-  const plain = String(text || '')
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`[^`]*`/g, ' ')
-    .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]*)]\([^)]*\)/g, '$1')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/[#>*_~]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  if (plain.length <= max) return plain
-  return `${plain.slice(0, max)}…`
-}
-
 export default function AnnouncementMarkdown({ children }) {
   const source = preserveExtraSpacing(children)
   if (!source.trim()) return null
