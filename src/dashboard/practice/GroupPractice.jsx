@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { authHeaders, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
-import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuArrowLeft, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuUsers } from 'react-icons/lu'
+import { LuSave, LuFlag, LuChevronLeft, LuArrowRight, LuArrowLeft, LuPause, LuPlay, LuBookOpen, LuShare2, LuPlus, LuCircleCheck, LuCircleAlert, LuLightbulb, LuX, LuSlash, LuHighlighter, LuEraser, LuExternalLink, LuUsers, LuPencil } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import DiscussionPanel from './DiscussionPanel'
 import ReportIssueButton from './ReportIssueButton'
@@ -1541,6 +1541,19 @@ export default function GroupPractice() {
                     <LuFlag aria-hidden />
                     <span className="practice-action-label">{flagged.has(questionId) ? 'Flagged' : 'Flag'}</span>
                   </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--icon admin-edit-trigger"
+                      onClick={() => setAdminEditorOpen((open) => !open)}
+                      title={adminEditorOpen ? 'Close editor' : 'Edit question'}
+                      aria-label={adminEditorOpen ? 'Close editor' : 'Edit question'}
+                    >
+                      <LuPencil aria-hidden />
+                      <span className="practice-action-label">{adminEditorOpen ? 'Close editor' : 'Edit'}</span>
+                    </button>
+                  )}
+                  <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
                   {(highlights[currentQuestion.id]?.length > 0) && (
                     <button
                       type="button"
@@ -1694,16 +1707,6 @@ export default function GroupPractice() {
           )}
 
           <div style={{ gridColumn: '1', gridRow: result ? '3' : '2' }}>
-            {isAdmin && (
-              <button
-                type="button"
-                className="btn btn--ghost btn--icon admin-edit-trigger"
-                onClick={() => setAdminEditorOpen((open) => !open)}
-              >
-                {adminEditorOpen ? 'Close editor' : 'Edit'}
-              </button>
-            )}
-            <ReportIssueButton questionId={currentQuestion.id} API_BASE={API_BASE} />
             {isAdmin && adminEditorOpen && currentQuestion.id && (
               <div className="admin-card admin-inline-panel admin-inline-panel--question">
                 <div className="admin-inline-panel__header">
