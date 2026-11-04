@@ -3,6 +3,7 @@ import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
 import { LuChevronLeft, LuUsers, LuUser, LuClock, LuStethoscope, LuClipboardList, LuEye, LuPencil } from 'react-icons/lu'
 import LoadingScreen from '../../components/loading/LoadingScreen'
+import OsceCompletionToggle from './OsceCompletionToggle'
 import { track } from '../../usage/client.js'
 import { EVENTS } from '../../usage/catalog.js'
 import './Osce.css'
@@ -97,15 +98,17 @@ export default function OsceStationLanding() {
             </button>
             <h1 className="osce-group__page-title">{station.title}</h1>
           </div>
-          {canManageOsce && (
-            <button 
-              className="osce-btn osce-btn--secondary osce-btn--sm" 
-              onClick={() => navigate(`/dashboard/admin/osce/station/${station.id}`)}
-              style={{ marginTop: 8 }}
-            >
-              <LuPencil size={16} /> Edit Station
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <OsceCompletionToggle stationId={station.id} />
+            {canManageOsce && (
+              <button
+                className="osce-btn osce-btn--secondary osce-btn--sm"
+                onClick={() => navigate(`/dashboard/admin/osce/station/${station.id}`)}
+              >
+                <LuPencil size={16} /> Edit Station
+              </button>
+            )}
+          </div>
         </div>
         <div className="osce-station__meta" style={{ marginTop: 12 }}>
           <span className="osce__tag osce__tag--type">

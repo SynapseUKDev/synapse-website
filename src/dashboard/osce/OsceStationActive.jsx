@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import OsceBlockRenderer from './OsceBlockRenderer'
+import OsceCompletionToggle from './OsceCompletionToggle'
 import './Osce.css'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import { track } from '../../usage/client.js'
@@ -522,6 +523,9 @@ export default function OsceStationActive() {
             </div>
           </div>
 
+          {/* Solo practice only: group OSCE rooms don't show the learner's completion mark */}
+          {!roomCode && <OsceCompletionToggle stationId={station.id} />}
+
           {(session?.host_user_id === user?.id || effectiveRole === 'examiner') && roomCode && (
             <button 
               className="osce-btn osce-btn--danger osce-btn--sm" 
@@ -551,9 +555,14 @@ export default function OsceStationActive() {
                     <div className="osce-section__title">
                       {section.title}
                       {section.initially_hidden && !revealed[section.id] && <span className="osce-section__hidden-badge">Hidden</span>}
-                      <span style={{ fontSize: 10, color: 'var(--syn-muted)', marginLeft: 8, fontWeight: 400 }}>
-                        ({section.visible_to?.join(', ')})
-                      </span>
+                      {section.visible_to?.length > 0 && (
+                        <span className="osce-section__roles" aria-label={`Seen by: ${section.visible_to.join(', ')}`}>
+                          <span className="osce-section__roles-label" aria-hidden><LuEye size={13} /> Seen by</span>
+                          {section.visible_to.map((r) => (
+                            <span key={r} className="osce-role-chip" aria-hidden>{r}</span>
+                          ))}
+                        </span>
+                      )}
                     </div>
                     {isHidden ? (
                       <button className="osce-timer__btn" onClick={(e) => { e.stopPropagation(); revealSection(section.id) }} style={{ fontSize: '0.75rem' }}><LuEye size={14} /> Reveal</button>

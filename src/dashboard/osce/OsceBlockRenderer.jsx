@@ -138,15 +138,19 @@ function ChecklistBlock({ content, interactive }) {
 
 function KeyValueBlock({ content }) {
   const pairs = content?.pairs || []
+  // A real table with one shared key-column width (see .osce-kv in Osce.css), so
+  // consecutive key-value blocks in a section line up with each other.
   return (
-    <div className="osce-block--kv">
-      {pairs.map((pair, idx) => (
-        <React.Fragment key={idx}>
-          <div className="osce-kv__key">{pair.key}:</div>
-          <div className="osce-kv__value">{pair.value}</div>
-        </React.Fragment>
-      ))}
-    </div>
+    <table className="osce-kv">
+      <tbody>
+        {pairs.map((pair, idx) => (
+          <tr key={idx}>
+            <th scope="row">{pair.key}</th>
+            <td>{pair.value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 
