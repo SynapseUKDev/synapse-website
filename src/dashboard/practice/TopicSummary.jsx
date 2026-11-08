@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { LuBookOpen, LuChevronDown, LuExternalLink } from 'react-icons/lu'
 import ReportIssueButton from './ReportIssueButton'
+import { withoutTitleEcho } from './summaryBody'
 import './TopicSummary.css'
 
 // Summary bodies are Markdown only. No rehype-raw: any HTML in a body stays inert text.
@@ -104,7 +105,7 @@ export default function TopicSummary({ summary, extras, questionId, API_BASE }) 
             {several && <h4 className="topic-summary__section-title">{section.title}</h4>}
             <div className="topic-summary__markdown">
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                {section.body_markdown || ''}
+                {withoutTitleEcho(section.body_markdown, section.title)}
               </ReactMarkdown>
             </div>
             <SummarySources summary={section} questionId={questionId} API_BASE={API_BASE} />

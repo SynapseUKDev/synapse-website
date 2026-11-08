@@ -199,3 +199,28 @@ describe('TopicSummary', () => {
     expect(screen.getByRole('button', { name: /hide topic summary/i })).toHaveAttribute('aria-expanded', 'true')
   })
 })
+
+describe('withoutTitleEcho', () => {
+  test('drops a first line that repeats the title', async () => {
+    const { withoutTitleEcho } = await import('../../src/dashboard/practice/summaryBody')
+    const body = 'Peritonitis: investigations.\n\n**Investigations:**\n\n- Bloods'
+    expect(withoutTitleEcho(body, 'Peritonitis investigations')).toBe('**Investigations:**\n\n- Bloods')
+    expect(withoutTitleEcho('Asthma (Paediatric): management.\n\n- x', 'Asthma (Paediatric) management')).toBe('- x')
+  })
+
+  test('keeps real content', async () => {
+    const { withoutTitleEcho } = await import('../../src/dashboard/practice/summaryBody')
+    const keep = [
+      ['**Class and mechanism:** Warfarin is a vitamin K antagonist.', 'Warfarin overview'],
+      ['Note: always check the dose.\n\n- x', 'Peritonitis investigations'],
+      ['This overview describes malaria prevention.', 'Malaria prevention screening'],
+    ]
+    for (const [body, title] of keep) expect(withoutTitleEcho(body, title)).toBe(body)
+  })
+
+  test('the panel no longer shows the repeated line', () => {
+    renderSummary(makeSummary({ title: 'Peritonitis investigations', body_markdown: 'Peritonitis: investigations.\n\n- Erect CXR' }))
+    expect(screen.queryByText('Peritonitis: investigations.')).not.toBeInTheDocument()
+    expect(screen.getByText('Erect CXR')).toBeInTheDocument()
+  })
+})

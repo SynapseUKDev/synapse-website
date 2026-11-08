@@ -99,6 +99,9 @@
 
 .topic-summary__table-wrap th,
 .topic-summary__table-wrap td {
+  /* Break between words, never inside one: "anywhere" (inherited from the body) let narrow
+     columns split words like "Disposition" letter by letter. Very long tokens still wrap. */
+  overflow-wrap: break-word;
   padding: 6px 8px;
   border: 1px solid #dbe4f0;
   text-align: left;
