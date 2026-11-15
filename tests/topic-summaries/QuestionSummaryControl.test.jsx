@@ -11,6 +11,7 @@ import {
   listSummaries,
   removeExtraSummary,
   removeQuestionSummary,
+  setQuestionCategory,
   setQuestionLink,
 } from '../../src/dashboard/admin/summaries/summaryAdminApi'
 
@@ -20,6 +21,7 @@ vi.mock('../../src/dashboard/admin/summaries/summaryAdminApi', async (importOrig
     ...actual,
     fetchQuestionLink: vi.fn(),
     setQuestionLink: vi.fn(),
+    setQuestionCategory: vi.fn(),
     clearQuestionLink: vi.fn(),
     removeQuestionSummary: vi.fn(),
     addExtraSummary: vi.fn(),
@@ -196,5 +198,41 @@ describe('QuestionSummaryControl', () => {
     await waitFor(() => expect(removeExtraSummary).toHaveBeenCalledWith(Q, 's-croup'))
     expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary, [])
     expect(await screen.findByText(/No extra summaries/)).toBeInTheDocument()
+  })
+
+  test('an uncategorised question gets a category and is linked automatically', async () => {
+    vi.mocked(fetchQuestionLink).mockResolvedValue({ ...automatic, question_category: null, automatic_summary: null, learning_summary: null })
+    const onChange = vi.fn()
+    render(<MemoryRouter><QuestionSummaryControl questionId={Q} onChange={onChange} /></MemoryRouter>)
+    const select = await screen.findByLabelText('Category')
+    const save = screen.getByRole('button', { name: 'Save category' })
+    expect(save).toBeDisabled()
+    fireEvent.change(select, { target: { value: 'management' } })
+    vi.mocked(setQuestionCategory).mockResolvedValue({
+      question_category: 'management',
+      auto_linked: true,
+      manual_choice: false,
+      link: { ...automatic, question_category: 'management' },
+    })
+    fireEvent.click(save)
+    await waitFor(() => expect(setQuestionCategory).toHaveBeenCalledWith(Q, 'management'))
+    expect(await screen.findByText(/linked automatically to Epiglottitis → Management/)).toBeInTheDocument()
+    expect(onChange).toHaveBeenLastCalledWith(automatic.learning_summary, [])
+    expect(screen.getByText('Epiglottitis → Management')).toBeInTheDocument()
+  })
+
+  test('a drug category with no automatic match asks for a summary', async () => {
+    vi.mocked(fetchQuestionLink).mockResolvedValue({ ...automatic, question_category: 'management' })
+    render(<MemoryRouter><QuestionSummaryControl questionId={Q} /></MemoryRouter>)
+    fireEvent.change(await screen.findByLabelText('Category'), { target: { value: 'drugs' } })
+    vi.mocked(setQuestionCategory).mockResolvedValue({
+      question_category: 'drugs',
+      auto_linked: false,
+      manual_choice: false,
+      link: { ...automatic, question_category: 'drugs', automatic_summary: null, learning_summary: null },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save category' }))
+    expect(await screen.findByText(/Drug questions are not matched automatically/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Search published summaries in any topic/)).toBeInTheDocument()
   })
 })

@@ -5,6 +5,7 @@ import {
   MAX_EXTRA_SUMMARIES,
   SUMMARIES_PAGE_PATH,
   addExtraSummary,
+  categoryOutcome,
   clearQuestionLink,
   fetchQuestionLink,
   fetchSummary,
@@ -15,6 +16,7 @@ import {
   summaryLabel,
   toPreviewSummary,
 } from './summaryAdminApi'
+import QuestionCategoryControl from './QuestionCategoryControl'
 import './AdminSummaries.css'
 import './QuestionSummaryControl.css'
 
@@ -29,8 +31,9 @@ function formatDate(value) {
  * Admin question editor (qbank permission): shows which summary this question displays and lets the
  * editor choose any published summary, from any topic, for this one question — or go back to
  * automatic matching, or remove the summary from this question (kept through uploads). Editors can
- * also add extra summaries, shown after the main one as separate sections. The question's
- * wording, answer, explanations and topic are never changed here.
+ * also add extra summaries, shown after the main one as separate sections, and set the question's
+ * category (which re-does the automatic match, migration 114). The question's wording, answer,
+ * explanations and topic are never changed here.
  * onChange(learningSummary, extraLearningSummaries) receives what the question now shows.
  * Also shown, collapsed, under Practice's admin inline editor. A #summary URL hash scrolls to it.
  */
@@ -131,6 +134,14 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
       () => 'Removed. This question now shows no summary.',
     )
   }
+  const categorySaved = (result) => {
+    setLink(result.link)
+    onChange?.(result.link.learning_summary || null, result.link.extra_learning_summaries || [])
+    setPicking(false)
+    setChosen(null)
+    setError(null)
+    setNotice(categoryOutcome(result))
+  }
   const useAutomatic = () =>
     apply(
       () => clearQuestionLink(questionId),
@@ -159,6 +170,7 @@ export default function QuestionSummaryControl({ questionId, onChange, labelledB
   return (
     <section id="summary" ref={sectionRef} className="qsum" aria-labelledby={labelledBy || `qsum-heading-${questionId}`}>
       {!labelledBy && <h2 id={`qsum-heading-${questionId}`} className="qsum__heading">Topic summary</h2>}
+      <QuestionCategoryControl questionId={questionId} value={link.question_category} onSaved={categorySaved} />
       <p className="qsum__status">
         {shown ? summaryLabel(shown) : link.mode === 'none' ? 'No summary' : 'No summary yet'}
         <span className="qsum__mode">

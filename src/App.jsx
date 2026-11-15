@@ -34,6 +34,7 @@ import AdminQuestionEditorPage from './dashboard/admin/questions/AdminQuestionEd
 import AdminQuestionImportReviewPage from './dashboard/admin/questions/AdminQuestionImportReview.jsx'
 import AdminSummaryDetail from './dashboard/admin/summaries/AdminSummaryDetail.jsx'
 import AdminSummaryQueue from './dashboard/admin/summaries/AdminSummaryQueue.jsx'
+import AdminSummaryGaps from './dashboard/admin/summaries/AdminSummaryGaps.jsx'
 import AdminSummaryAttention from './dashboard/admin/summaries/AdminSummaryAttention.jsx'
 import AdminSummaryAttentionItem from './dashboard/admin/summaries/AdminSummaryAttentionItem.jsx'
 import InstitutionDashboard from './dashboard/institution/InstitutionDashboard.jsx'
@@ -165,6 +166,7 @@ function App() {
           <Route path="admin/questions/:questionId" element={<AdminQuestionEditorPage />} />
           <Route path="admin/question-imports/:batchId" element={<AdminQuestionImportReviewPage />} />
           <Route path="admin/summaries/queue" element={<AdminSummaryQueue />} />
+          <Route path="admin/summaries/gaps" element={<AdminSummaryGaps />} />
           <Route path="admin/summaries/attention" element={<AdminSummaryAttention />} />
           <Route path="admin/summaries/attention/:itemId" element={<AdminSummaryAttentionItem />} />
           <Route path="admin/summaries/:summaryId" element={<AdminSummaryDetail />} />

@@ -42,6 +42,7 @@ export const ROUTE_PATTERNS = [
   '/dashboard/admin/questions/:questionId',
   '/dashboard/admin/question-imports/:batchId',
   '/dashboard/admin/summaries/queue',
+  '/dashboard/admin/summaries/gaps',
   '/dashboard/admin/summaries/attention',
   '/dashboard/admin/summaries/attention/:itemId',
   '/dashboard/admin/summaries/:summaryId',

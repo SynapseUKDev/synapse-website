@@ -56,18 +56,19 @@ function CoverageStrip({ coverage, error }) {
     ['Categorised', coverage.with_category],
     ['Linked', coverage.linked],
     ['Showing a summary', coverage.linked_published],
-    ['No category', coverage.no_category, true],
-    ['Not linked', coverage.no_link, true],
+    ['No category', coverage.no_category, true, `${SUMMARIES_PAGE_PATH}/gaps?kind=no_category`],
+    ['Not linked', coverage.no_link, true, `${SUMMARIES_PAGE_PATH}/gaps?kind=not_linked`],
     ['Linked, unpublished', coverage.linked_unpublished, true],
     ['Source blocked', coverage.source_blocked, true],
   ]
   return (
     <section className="asum-coverage" aria-label="Summary coverage">
       <dl>
-        {items.map(([label, value, attention]) => (
+        {items.map(([label, value, attention, to]) => (
           <div key={label} className={`asum-coverage__item ${attention && value > 0 ? 'asum-coverage__item--attention' : ''}`}>
-            <dt>{label}</dt>
+            <dt>{to ? <Link to={to}>{label}</Link> : label}</dt>
             <dd>{(value ?? 0).toLocaleString('en-GB')}</dd>
+            {to && value > 0 && <Link className="asum-coverage__fix" to={to}>Fix these →</Link>}
           </div>
         ))}
       </dl>

@@ -119,6 +119,11 @@ const id = (value) => `/${encodeURIComponent(value)}`
 export const listSummaries = (query, options) => requestSummaries('', { ...options, query })
 export const fetchCoverage = (options) => requestSummaries('/coverage', options)
 export const fetchQueue = (query, options) => requestSummaries('/queue', { ...options, query })
+/** Active questions with no category (kind 'no_category') or no summary chosen ('not_linked'), migration 114. */
+export const fetchGaps = (query, options) => requestSummaries('/gaps', { ...options, query })
+/** Sets the category and re-does the automatic link: { question_category, auto_linked, manual_choice, link }. */
+export const setQuestionCategory = (questionId, category) =>
+  requestSummaries(`/questions${id(questionId)}/category`, { method: 'PUT', body: { question_category: category } })
 export const fetchSummary = (summaryId, options) => requestSummaries(id(summaryId), options)
 /** Linked questions in the practice payload shape, each carrying the given version (admin preview). */
 export const fetchPracticePreview = (summaryId, versionId, options) =>
@@ -271,4 +276,14 @@ export function toPreviewSummary(summary, version) {
     reviewed_at: version.reviewed_at,
     textbook_href: href,
   }
+}
+
+/** What happened to the question's summary after a category change. */
+export function categoryOutcome(result) {
+  if (result.manual_choice) return 'Category saved. The question keeps its manually chosen summary.'
+  if (result.auto_linked && result.link?.automatic_summary)
+    return `Category saved and linked automatically to ${summaryLabel(result.link.automatic_summary)}.`
+  if (result.question_category === 'drugs')
+    return 'Category saved. Drug questions are not matched automatically: choose the drug summary.'
+  return 'Category saved. No published summary of this category exists for its condition yet: choose one.'
 }

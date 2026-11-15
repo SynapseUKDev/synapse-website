@@ -69,6 +69,36 @@
   color: #b45309;
 }
 
+.asum-coverage__item dt a {
+  color: inherit;
+}
+
+.asum-coverage__fix {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.asum-category {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.asum-category select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.asum-row-note {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--syn-muted);
+}
+
 .asum-coverage__note {
   margin: 0;
   font-size: 14px;
