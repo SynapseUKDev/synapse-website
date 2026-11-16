@@ -124,6 +124,9 @@ export const fetchGaps = (query, options) => requestSummaries('/gaps', { ...opti
 /** Sets the category and re-does the automatic link: { question_category, auto_linked, manual_choice, link }. */
 export const setQuestionCategory = (questionId, category) =>
   requestSummaries(`/questions${id(questionId)}/category`, { method: 'PUT', body: { question_category: category } })
+/** Moves a question to another condition (topic); its category is kept and the link re-done (migration 115). */
+export const setQuestionCondition = (questionId, topicId) =>
+  requestSummaries(`/questions${id(questionId)}/condition`, { method: 'PUT', body: { topic_id: topicId } })
 export const fetchSummary = (summaryId, options) => requestSummaries(id(summaryId), options)
 /** Linked questions in the practice payload shape, each carrying the given version (admin preview). */
 export const fetchPracticePreview = (summaryId, versionId, options) =>
@@ -286,4 +289,15 @@ export function categoryOutcome(result) {
   if (result.question_category === 'drugs')
     return 'Category saved. Drug questions are not matched automatically: choose the drug summary.'
   return 'Category saved. No published summary of this category exists for its condition yet: choose one.'
+}
+
+/** Message after a condition change, from the PUT /questions/:id/condition result. */
+export function conditionOutcome(result) {
+  if (result.manual_choice) return 'Condition changed. The question keeps its manually chosen summary.'
+  if (result.auto_linked && result.link?.automatic_summary)
+    return `Condition changed and linked automatically to ${summaryLabel(result.link.automatic_summary)}.`
+  if (result.auto_linked) return 'Condition changed. The question keeps its summary.'
+  if (!result.question_category) return 'Condition changed. Choose a category to link a summary.'
+  if (result.question_category === 'drugs') return 'Condition changed. Choose the drug summary.'
+  return 'Condition changed. No published summary of this category exists for the new condition yet: choose one.'
 }

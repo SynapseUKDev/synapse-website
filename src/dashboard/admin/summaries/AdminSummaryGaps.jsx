@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { Link, useOutletContext, useSearchParams } from 'react-router-dom'
 import { LuChevronLeft } from 'react-icons/lu'
 import { canManageQbank } from '../questions/questionAdminAccess'
-import { CATEGORY_LABELS, categoryOutcome, fetchGaps } from './summaryAdminApi'
+import { categoryOutcome, conditionOutcome, fetchGaps } from './summaryAdminApi'
 import QuestionCategoryControl from './QuestionCategoryControl'
+import QuestionConditionControl from './QuestionConditionControl'
 import './AdminSummaries.css'
 
 const PAGE_SIZE = 25
@@ -13,9 +14,9 @@ const KINDS = [
 ]
 const INTRO = {
   no_category:
-    'Active questions with no category. Choose one: the question is then linked automatically to its condition’s summary for that category, if one is published.',
+    'Active questions with no category. Choose one: the question is then linked automatically to its condition’s summary for that category, if one is published. Change the condition if it is wrong.',
   not_linked:
-    'Active questions with a category but no summary. Open the question to choose a summary from any topic, or change the category if it is wrong.',
+    'Active questions with a category but no summary. Choose a summary from any topic, or change the condition or category if it is wrong.',
 }
 
 /** QBank → Summaries → questions missing a category or a summary (migration 114). */
@@ -26,7 +27,7 @@ export default function AdminSummaryGaps() {
   const [page, setPage] = useState(1)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
-  const [outcomes, setOutcomes] = useState({}) // question id → { category, text }
+  const [outcomes, setOutcomes] = useState({}) // question id → { category, topic, text, linked }
   const allowed = canManageQbank(user)
 
   useEffect(() => {
@@ -88,8 +89,8 @@ export default function AdminSummaryGaps() {
       {result && (
         <>
           <p className="asum-results" aria-live="polite">{result.total.toLocaleString('en-GB')} question(s)</p>
-          <div className="asum-table-wrap">
-            <table className="asum-table">
+          <div className="asum-table-wrap asum-table-wrap--gaps">
+            <table className="asum-table asum-gaps-table">
               <thead>
                 <tr>
                   <th scope="col">Question</th>
@@ -101,27 +102,39 @@ export default function AdminSummaryGaps() {
               <tbody>
                 {result.items.map((item) => {
                   const outcome = outcomes[item.id]
-                  const category = outcome?.category ?? item.question_category
+                  const category = outcome ? outcome.category : item.question_category
+                  const topic = outcome?.topic ?? { id: item.topic_id, name: item.topic_name }
+                  const saved = (r, text) =>
+                    setOutcomes((all) => ({
+                      ...all,
+                      [item.id]: {
+                        category: r.question_category,
+                        topic: r.topic ?? topic,
+                        text,
+                        linked: r.auto_linked || r.manual_choice,
+                      },
+                    }))
                   return (
                     <tr key={item.id}>
                       <td>
                         <Link to={`/dashboard/admin/questions/${item.id}`}>{item.stem || `Question ${item.id.slice(0, 8)}`}</Link>
                       </td>
-                      <td>{item.topic_name || '—'}</td>
+                      <td>
+                        <QuestionConditionControl
+                          questionId={item.id}
+                          topicId={topic.id}
+                          topicName={topic.name}
+                          onSaved={(r) => saved(r, conditionOutcome(r))}
+                        />
+                      </td>
                       <td>
                         <QuestionCategoryControl
                           compact
                           questionId={item.id}
                           value={category}
-                          onSaved={(r) =>
-                            setOutcomes((all) => ({
-                              ...all,
-                              [item.id]: { category: r.question_category, text: categoryOutcome(r), linked: r.auto_linked || r.manual_choice },
-                            }))
-                          }
+                          onSaved={(r) => saved(r, categoryOutcome(r))}
                         />
                         {outcome && <p className="asum-row-note" role="status">{outcome.text}</p>}
-                        {!outcome && category && <p className="asum-row-note">Now: {CATEGORY_LABELS[category] || category}</p>}
                       </td>
                       <td>
                         {outcome?.linked ? (

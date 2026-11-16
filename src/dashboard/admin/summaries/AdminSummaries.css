@@ -81,16 +81,143 @@
 }
 
 .asum-category {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.asum-category--compact {
+  margin: 0;
+}
+
+.asum-category__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--syn-navy-700);
+}
+
+.asum-category__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: 0 0 12px;
 }
 
-.asum-category select {
+/* Matches the filter selects: rounded, bordered, own chevron. */
+.asum-select {
+  flex: 1 1 160px;
   min-width: 0;
-  max-width: 100%;
+  max-width: 280px;
+  appearance: none;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background-color: var(--surface-card);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  color: var(--syn-navy-700);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 7px 30px 7px 10px;
+  cursor: pointer;
+}
+
+.asum-select:hover:not(:disabled) {
+  border-color: var(--syn-navy-700);
+}
+
+.asum-select:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.asum-condition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+
+.asum-condition--editing {
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.asum-condition--editing .topic-combobox {
+  font-size: 14px;
+}
+
+.asum-condition--editing .topic-combobox__control input {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.asum-condition__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.asum-link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0369a1;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.asum-link-button:hover {
+  color: #075985;
+}
+
+.asum-gaps-table td {
+  vertical-align: top;
+}
+
+.asum-gaps-table th:nth-child(2),
+.asum-gaps-table td:nth-child(2) {
+  width: 22%;
+}
+
+.asum-gaps-table th:nth-child(3),
+.asum-gaps-table td:nth-child(3) {
+  width: 22%;
+}
+
+.asum-gaps-table th:nth-child(4),
+.asum-gaps-table td:nth-child(4) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* Let the condition search list drop below the table on wide screens (no clipping). */
+@media (min-width: 900px) {
+  .asum-table-wrap--gaps {
+    overflow: visible;
+  }
+
+  .asum-table-wrap--gaps thead th:first-child {
+    border-top-left-radius: 14px;
+  }
+
+  .asum-table-wrap--gaps thead th:last-child {
+    border-top-right-radius: 14px;
+  }
+
+  .asum-table-wrap--gaps tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 14px;
+  }
+
+  .asum-table-wrap--gaps tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 14px;
+  }
 }
 
 .asum-row-note {
@@ -448,6 +575,8 @@
 
 .asum-field select:focus-visible,
 .asum-field input:focus-visible,
+.asum-select:focus-visible,
+.asum-link-button:focus-visible,
 .asum-segmented button:focus-visible,
 .asum-button:focus-visible,
 .asum-version:focus-visible,
@@ -609,4 +738,12 @@ html[data-theme='dark'] .asum-shortcut__icon {
 
 html[data-theme='dark'] .asum-shortcut--attention .asum-shortcut__icon {
   color: #ffffff;
+}
+
+html[data-theme='dark'] .asum-link-button {
+  color: #38bdf8;
+}
+
+html[data-theme='dark'] .asum-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }

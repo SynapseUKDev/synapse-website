@@ -26,29 +26,35 @@ export default function QuestionCategoryControl({ questionId, value, onSaved, co
   }
 
   const selectId = `qcat-${questionId}`
+  const dirty = Boolean(category) && category !== (value || '')
   return (
-    <div className="asum-category">
-      <label htmlFor={selectId} className={compact ? 'asum-sr-only' : undefined}>
+    <div className={`asum-category${compact ? ' asum-category--compact' : ''}`}>
+      <label htmlFor={selectId} className={compact ? 'asum-sr-only' : 'asum-category__label'}>
         Category
       </label>
-      <select id={selectId} value={category} disabled={busy} onChange={(e) => setCategory(e.target.value)}>
-        <option value="" disabled>
-          Choose a category…
-        </option>
-        {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-          <option key={key} value={key}>
-            {label}
+      <div className="asum-category__row">
+        <select
+          id={selectId}
+          className="asum-select"
+          value={category}
+          disabled={busy}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option value="" disabled>
+            Choose a category…
           </option>
-        ))}
-      </select>
-      <button
-        type="button"
-        className="asum-button asum-button--primary"
-        disabled={busy || !category || category === (value || '')}
-        onClick={save}
-      >
-        {busy ? 'Saving…' : 'Save category'}
-      </button>
+          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+        {dirty && (
+          <button type="button" className="asum-button asum-button--primary asum-button--small" disabled={busy} onClick={save}>
+            {busy ? 'Saving…' : 'Save category'}
+          </button>
+        )}
+      </div>
       {error && (
         <p className="asum-error" role="alert">
           {error}

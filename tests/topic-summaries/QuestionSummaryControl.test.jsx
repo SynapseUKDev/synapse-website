@@ -205,9 +205,9 @@ describe('QuestionSummaryControl', () => {
     const onChange = vi.fn()
     render(<MemoryRouter><QuestionSummaryControl questionId={Q} onChange={onChange} /></MemoryRouter>)
     const select = await screen.findByLabelText('Category')
-    const save = screen.getByRole('button', { name: 'Save category' })
-    expect(save).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Save category' })).toBeNull()
     fireEvent.change(select, { target: { value: 'management' } })
+    const save = screen.getByRole('button', { name: 'Save category' })
     vi.mocked(setQuestionCategory).mockResolvedValue({
       question_category: 'management',
       auto_linked: true,
