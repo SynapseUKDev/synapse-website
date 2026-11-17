@@ -16,14 +16,14 @@ export function getDashboardNavItems(user) {
   const isAdmin = !!user?.is_admin || !!user?.capabilities?.is_admin || !!user?.capabilities?.can_access_admin
   const isReviewer = !!user?.capabilities?.can_review
 
-  // Institution admins are staff rather than students, so they get their own
-  // cut-down nav. Settings and Logout live in the sidebar footer, so they stay
-  // reachable without being listed here.
-  if (user?.capabilities?.is_institution_admin) {
-    return [{ id: 'institution', label: 'Institution', icon: LuBuilding2, to: '/dashboard/institution' }]
-  }
+  // Institution admins manage their students but can also use the platform
+  // themselves, so their Institution page sits in front of the usual nav.
+  const isInstitutionAdmin = !!user?.capabilities?.is_institution_admin
 
   return [
+    ...(isInstitutionAdmin
+      ? [{ id: 'institution', label: 'Institution', icon: LuBuilding2, to: '/dashboard/institution' }]
+      : []),
     { id: 'dashboard', label: 'Dashboard', icon: LuChartLine, to: '/dashboard' },
     { id: 'question-bank', label: 'Question Bank', icon: LuCircleHelp, to: '/dashboard/question-bank' },
     { id: 'textbook', label: 'UKMLA Textbook', icon: LuBookOpen, to: '/dashboard/textbook' },

@@ -12,6 +12,7 @@ export default defineConfig({
       'tests/flashcards-v2/**/*.{test,spec}.{js,jsx}',
       'tests/topic-summaries/**/*.{test,spec}.{js,jsx}',
       'tests/textbook/**/*.{test,spec}.{js,jsx}',
+      'tests/dashboard-nav/**/*.{test,spec}.{js,jsx}',
     ],
   },
 })

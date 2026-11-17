@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../sidebar/Sidebar'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
@@ -110,10 +110,13 @@ function DashboardLayout() {
     }
   }, [user, location.pathname, navigate])
 
-  // Institution admins manage students rather than study, so the student
-  // dashboard is not their landing page.
+  // Institution admins land on their Institution page when they first arrive,
+  // but can still open the student dashboard from the nav afterwards.
+  const landingChecked = useRef(false)
   useEffect(() => {
-    if (user?.capabilities?.is_institution_admin && location.pathname.replace(/\/$/, '') === '/dashboard') {
+    if (!user || landingChecked.current) return
+    landingChecked.current = true
+    if (user.capabilities?.is_institution_admin && location.pathname.replace(/\/$/, '') === '/dashboard') {
       navigate('/dashboard/institution', { replace: true })
     }
   }, [user, location.pathname, navigate])

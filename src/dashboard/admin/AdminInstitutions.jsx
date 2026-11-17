@@ -357,6 +357,60 @@ export default function AdminInstitutions() {
     }
   }
 
+  // Analytics switches are staged locally and saved together, so flipping
+  // several admins doesn't reload the list after every click.
+  const [analyticsDraft, setAnalyticsDraft] = useState({})
+  useEffect(() => setAnalyticsDraft({}), [selectedId])
+
+  const analyticsExcluded = (admin) =>
+    admin.user_id in analyticsDraft ? analyticsDraft[admin.user_id] : !!admin.analytics_excluded
+
+  const stageAnalytics = (admins, excluded) => {
+    setAnalyticsDraft((prev) => {
+      const next = { ...prev }
+      for (const admin of admins) {
+        if (excluded === !!admin.analytics_excluded) delete next[admin.user_id]
+        else next[admin.user_id] = excluded
+      }
+      return next
+    })
+  }
+
+  const saveAnalytics = async () => {
+    const entries = Object.entries(analyticsDraft)
+    if (!selectedId || entries.length === 0) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const errors = await Promise.all(
+        entries.map(async ([userId, excluded]) => {
+          try {
+            const res = await authenticatedFetch(`${API_BASE}/admin/institutions/${selectedId}/admins/${userId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ analytics_excluded: excluded }),
+            })
+            return res.ok ? null : await readError(res, 'Failed to update analytics setting')
+          } catch {
+            return 'Failed to update analytics setting'
+          }
+        })
+      )
+      await loadDetail(selectedId)
+      // Keep only the failed changes staged so they can be retried.
+      setAnalyticsDraft(Object.fromEntries(entries.filter((_, i) => errors[i])))
+      const failed = errors.filter(Boolean)
+      const saved = entries.length - failed.length
+      if (failed.length > 0) {
+        setError(`${failed.length} change${failed.length === 1 ? '' : 's'} could not be saved: ${failed[0]}`)
+      }
+      if (saved > 0) setNotice(`Analytics settings saved for ${saved} admin${saved === 1 ? '' : 's'}.`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const refreshInstitution = async (id) => {
     await loadList()
     await loadDetail(id)
@@ -859,6 +913,22 @@ export default function AdminInstitutions() {
                         </div>
                       </div>
                       <div className="insta-member__actions">
+                        <label
+                          className={`insta-switch${admin.user_id in analyticsDraft ? ' insta-switch--dirty' : ''}`}
+                          title="Excluded admins are marked internal and left out of usage analytics"
+                        >
+                          <input
+                            type="checkbox"
+                            role="switch"
+                            checked={analyticsExcluded(admin)}
+                            onChange={(e) => stageAnalytics([admin], e.target.checked)}
+                            disabled={busy}
+                          />
+                          Exclude from analytics
+                          {admin.user_id in analyticsDraft && (
+                            <span className="insta-switch__dirty" aria-label="Unsaved" title="Unsaved change" />
+                          )}
+                        </label>
                         <button
                           type="button"
                           className="admin-btn-issue admin-btn-issue--ghost"
@@ -872,6 +942,47 @@ export default function AdminInstitutions() {
                   ))}
                 </div>
               )}
+
+              {(detail?.admins || []).length > 0 && (() => {
+                const admins = detail.admins
+                const pending = Object.keys(analyticsDraft).length
+                const excludedCount = admins.filter(analyticsExcluded).length
+                const allExcluded = excludedCount === admins.length
+                return (
+                  <div className={`insta-savebar${pending > 0 ? ' insta-savebar--dirty' : ''}`}>
+                    <span className="insta-savebar__status">
+                      {pending > 0
+                        ? `${pending} unsaved change${pending === 1 ? '' : 's'}`
+                        : `${excludedCount} of ${admins.length} excluded from analytics`}
+                    </span>
+                    <div className="insta-savebar__actions">
+                      <button
+                        type="button"
+                        className="admin-btn-issue admin-btn-issue--ghost"
+                        onClick={() => stageAnalytics(admins, !allExcluded)}
+                        disabled={busy}
+                      >
+                        {allExcluded ? 'Include all' : 'Exclude all'}
+                      </button>
+                      {pending > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            className="admin-btn-issue admin-btn-issue--ghost"
+                            onClick={() => setAnalyticsDraft({})}
+                            disabled={busy}
+                          >
+                            Discard
+                          </button>
+                          <button type="button" className="admin-btn-issue" onClick={saveAnalytics} disabled={busy}>
+                            {busy ? 'Saving...' : 'Save changes'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
 
               <form className="admin-form admin-form--small insta-add" onSubmit={addAdmin}>
                 <div className="admin-form__row">
@@ -1034,7 +1145,7 @@ export default function AdminInstitutions() {
                         Select all {selectableLoaded.length}
                       </button>
                     )}
-                    <label className="insta-bulk__assign">
+                    <div className="insta-bulk__assign" role="group" aria-label="Assign year group">
                       <span className="insta-bulk__assign-label">Year group</span>
                       <select
                         value={bulkCohortId}
@@ -1056,7 +1167,7 @@ export default function AdminInstitutions() {
                       >
                         Assign
                       </button>
-                    </label>
+                    </div>
                     <button
                       type="button"
                       className="admin-btn-issue admin-btn-issue--ghost"

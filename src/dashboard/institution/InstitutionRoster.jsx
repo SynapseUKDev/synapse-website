@@ -404,7 +404,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
               Select all {selectableLoaded.length}
             </button>
           )}
-          <label className="inst-bulk__assign">
+          <div className="inst-bulk__assign" role="group" aria-label="Assign year group">
             <span className="inst-bulk__assign-label">Year group</span>
             <select
               className="db-select"
@@ -427,7 +427,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
             >
               {busyId === 'assign' ? 'Assigning...' : 'Assign'}
             </button>
-          </label>
+          </div>
           <button
             type="button"
             className="qb-btn qb-btn--sm"
