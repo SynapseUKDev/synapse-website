@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useNavigate, useParams, useLocation, useOutletContext } from 'react-router-dom'
-import { LuChevronLeft, LuChevronRight } from 'react-icons/lu'
+import { LuChevronLeft, LuChevronRight, LuEye, LuEyeOff, LuHighlighter } from 'react-icons/lu'
 import './Textbook.css'
 import { extractImagesFromBlock, shouldRenderAsImageCarousel } from './textbookBlockImages.js'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
@@ -21,7 +21,8 @@ import {
 import { CONFIDENCE_LABELS, CONFIDENCE_LEVELS, isGroupingTopicFor } from './textbookProgressLabels.js'
 import { useChapterConfidence } from './useChapterConfidence.js'
 
-const HIGHLIGHT_COLORS = new Set(['yellow', 'green', 'pink', 'blue', 'red', 'orange', 'purple', 'teal'])
+const HIGHLIGHT_COLOR_LIST = ['yellow', 'green', 'pink', 'blue', 'red', 'orange', 'purple', 'teal']
+const HIGHLIGHT_COLORS = new Set(HIGHLIGHT_COLOR_LIST)
 const normalizeHighlightColor = (color) => HIGHLIGHT_COLORS.has(color) ? color : 'yellow'
 const HIGHLIGHT_COLOR_STORAGE_KEY = 'synapse-last-highlight-color'
 const getHighlightColorStorageKey = (userId) => userId ? `${HIGHLIGHT_COLOR_STORAGE_KEY}:${userId}` : HIGHLIGHT_COLOR_STORAGE_KEY
@@ -40,6 +41,23 @@ const setStoredHighlightColor = (userId, color) => {
     /* ignore */
   }
   return normalized
+}
+// Highlighter on = dragging over text saves a highlight; off = normal browser text selection.
+const HIGHLIGHT_MODE_STORAGE_KEY = 'synapse-highlight-mode'
+const getHighlightModeStorageKey = (userId) => userId ? `${HIGHLIGHT_MODE_STORAGE_KEY}:${userId}` : HIGHLIGHT_MODE_STORAGE_KEY
+const getStoredHighlightMode = (userId) => {
+  try {
+    return localStorage.getItem(getHighlightModeStorageKey(userId)) !== 'off'
+  } catch {
+    return true
+  }
+}
+const setStoredHighlightMode = (userId, on) => {
+  try {
+    localStorage.setItem(getHighlightModeStorageKey(userId), on ? 'on' : 'off')
+  } catch {
+    /* ignore */
+  }
 }
 const READING_STATUS_LABELS = {
   not_read: 'Not read',
@@ -508,34 +526,81 @@ function ImageCarousel({ images }) {
   )
 }
 
-export function ChapterActions({ placement, isReviewer, isAdmin, hasPage, editMode, onToggleEdit, highlightsOn, onToggleHighlights, topicSlug, API_BASE }) {
+export function ChapterActions({
+  placement,
+  isReviewer,
+  isAdmin,
+  hasPage,
+  editMode,
+  onToggleEdit,
+  highlightsOn,
+  onToggleHighlights,
+  highlightMode,
+  onToggleHighlightMode,
+  highlightColor,
+  onChangeHighlightColor,
+  topicSlug,
+  API_BASE,
+}) {
   return (
-    <div className={`tb-chapter-actions tb-chapter-actions--${placement}`}>
-      {isReviewer ? (
-        <span className="tb-review-mode-badge" style={{ background: '#f59e0b', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>Review Mode</span>
-      ) : (
-        <>
-          {isAdmin && hasPage && (
+    <div className={`tb-chapter-tools tb-chapter-tools--${placement}`}>
+      <div className={`tb-chapter-actions tb-chapter-actions--${placement}`}>
+        {isReviewer ? (
+          <span className="tb-review-mode-badge" style={{ background: '#f59e0b', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>Review Mode</span>
+        ) : (
+          <>
+            {isAdmin && hasPage && (
+              <button
+                type="button"
+                className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
+                onClick={onToggleEdit}
+              >
+                {editMode ? 'Close editor' : 'Edit'}
+              </button>
+            )}
             <button
               type="button"
-              className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
-              onClick={onToggleEdit}
+              role="switch"
+              aria-checked={!!highlightMode}
+              className={`tb-highlights-toggle tb-highlighter-switch ${highlightMode ? 'is-on' : ''}`}
+              onClick={onToggleHighlightMode}
+              title={highlightMode ? 'Highlighter on: dragging over text highlights it' : 'Highlighter off: dragging selects text normally'}
             >
-              {editMode ? 'Close editor' : 'Edit'}
+              <LuHighlighter aria-hidden />
+              <span className="tb-highlighter-switch__label">Highlighter</span>
+              <span className="tb-switch" aria-hidden><span className="tb-switch__knob" /></span>
             </button>
-          )}
-          <button
-            type="button"
-            className={`tb-highlights-toggle ${highlightsOn ? 'is-on' : ''}`}
-            onClick={onToggleHighlights}
-            title={highlightsOn ? 'Hide highlights' : 'Show highlights'}
-            aria-pressed={highlightsOn}
-          >
-            {highlightsOn ? 'Hide highlights' : 'Show highlights'}
-          </button>
-        </>
+            <button
+              type="button"
+              className={`tb-highlights-toggle tb-highlights-visibility ${highlightsOn ? '' : 'is-hidden'}`}
+              onClick={onToggleHighlights}
+              aria-label={highlightsOn ? 'Hide highlights' : 'Show highlights'}
+              title={highlightsOn ? 'Hide my highlights' : 'Show my highlights'}
+            >
+              {highlightsOn ? <LuEye aria-hidden /> : <LuEyeOff aria-hidden />}
+            </button>
+          </>
+        )}
+        <ReportTopicIssueButton topicSlug={topicSlug} API_BASE={API_BASE} />
+      </div>
+      {!isReviewer && highlightMode && (
+        <div className="tb-highlighter-panel">
+          <div className="tb-highlighter-colors" role="radiogroup" aria-label="Highlight colour">
+            {HIGHLIGHT_COLOR_LIST.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={highlightColor === c}
+                className={`hl-popover__color hl-popover__color--${c} ${highlightColor === c ? 'is-active' : ''}`}
+                onClick={() => onChangeHighlightColor(c)}
+                aria-label={`${c.charAt(0).toUpperCase() + c.slice(1)} highlight`}
+              />
+            ))}
+          </div>
+          <p className="tb-highlighter-hint">Drag over text to highlight. Click a highlight to add a note or change its colour.</p>
+        </div>
       )}
-      <ReportTopicIssueButton topicSlug={topicSlug} API_BASE={API_BASE} />
     </div>
   )
 }
@@ -839,6 +904,7 @@ export default function TextbookTopic() {
   const [popoverHl, setPopoverHl] = useState(null);
   const [popoverRect, setPopoverRect] = useState(null);
   const [lastHighlightColor, setLastHighlightColor] = useState(() => getStoredHighlightColor(user?.id))
+  const [highlightMode, setHighlightMode] = useState(() => getStoredHighlightMode(user?.id))
   const [readingStatus, setReadingStatus] = useState('not_read')
   const [savingReadingStatus, setSavingReadingStatus] = useState(false)
 
@@ -896,6 +962,16 @@ export default function TextbookTopic() {
     onToggleEdit: () => setEditMode((open) => !open),
     highlightsOn,
     onToggleHighlights: () => setHighlightsOn((on) => !on),
+    highlightMode,
+    onToggleHighlightMode: () => {
+      const next = !highlightMode
+      setStoredHighlightMode(user?.id, next)
+      setHighlightMode(next)
+      // New highlights would be invisible while saved ones are hidden.
+      if (next) setHighlightsOn(true)
+    },
+    highlightColor: lastHighlightColor,
+    onChangeHighlightColor: (color) => setLastHighlightColor(setStoredHighlightColor(user?.id, color)),
     topicSlug,
     API_BASE,
   }
@@ -903,6 +979,7 @@ export default function TextbookTopic() {
 
   useEffect(() => {
     setLastHighlightColor(getStoredHighlightColor(user?.id))
+    setHighlightMode(getStoredHighlightMode(user?.id))
   }, [user?.id])
 
   useEffect(() => {
@@ -987,6 +1064,8 @@ export default function TextbookTopic() {
   useEffect(() => {
     const onMouseUp = async (e) => {
       if (editMode) return
+      // Highlighter off (or highlights hidden): leave the browser's normal text selection alone.
+      if (!isReviewer && (!highlightMode || !highlightsOn)) return
       if (e?.target?.closest?.('.hl-popover') || e?.target?.closest?.('.hl-popover-backdrop')) return
       const clickedEl = e?.target?.nodeType === Node.TEXT_NODE ? e.target.parentElement : e?.target
       if (clickedEl?.closest?.('mark.tb-user-mark')) return
@@ -1112,19 +1191,12 @@ export default function TextbookTopic() {
         } catch { }
       }
 
+      // The note/colour popover opens only when the learner clicks a highlight, not on creation.
       if (created.length > 0) {
         setHighlights((prev) => {
           const filtered = prev.filter((h) => !deletedIds.has(h.id))
           return [...filtered, ...created]
         })
-
-        setPopoverRect({
-          top: selectionRect.top,
-          left: selectionRect.left,
-          width: selectionRect.width,
-          height: selectionRect.height,
-        })
-        setPopoverHl(created[created.length - 1])
       }
     }
     document.addEventListener('mouseup', onMouseUp, true)
@@ -1133,7 +1205,7 @@ export default function TextbookTopic() {
       document.removeEventListener('mouseup', onMouseUp, true)
       document.removeEventListener('touchend', onMouseUp, true)
     }
-  }, [data?.page?.id, API_BASE, highlights, editMode, lastHighlightColor, isReviewer])
+  }, [data?.page?.id, API_BASE, highlights, editMode, lastHighlightColor, isReviewer, highlightMode, highlightsOn])
 
   const handleDeleteHighlight = async (hlId) => {
     try {

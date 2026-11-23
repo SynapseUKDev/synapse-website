@@ -12,6 +12,7 @@ import AdminInstitutions from './AdminInstitutions'
 import AdminStudyReports from './AdminStudyReports'
 import AdminAnnouncements from './AdminAnnouncements'
 import AdminFlashcardsV2 from './flashcards-v2/AdminFlashcardsV2'
+import AdminOsceIssues from './AdminOsceIssues'
 import './Admin.css'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
@@ -502,6 +503,15 @@ export default function Admin() {
             {activeTab === 'mock-papers' && 'Mock Import'}
             {activeTab === 'osce' && 'Manage Stations'}
           </button>
+          {activeTab === 'osce' && (
+            <button
+              type="button"
+              className={`admin-subtab-btn ${subTab === 'issues' ? 'is-active' : ''}`}
+              onClick={() => setSubTab('issues')}
+            >
+              Reported Issues
+            </button>
+          )}
           <button
             type="button"
             className={`admin-subtab-btn ${subTab === 'review' ? 'is-active' : ''}`}
@@ -861,6 +871,10 @@ export default function Admin() {
 
       {activeTab === 'osce' && subTab === 'main' && (
         <OsceAdminPanel embedded={true} />
+      )}
+
+      {activeTab === 'osce' && subTab === 'issues' && canManageOsce && (
+        <AdminOsceIssues API_BASE={API_BASE} />
       )}
 
       {subTab === 'review' && (

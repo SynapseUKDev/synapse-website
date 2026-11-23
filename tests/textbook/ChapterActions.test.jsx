@@ -24,6 +24,10 @@ const base = {
   onToggleEdit: () => {},
   highlightsOn: true,
   onToggleHighlights: () => {},
+  highlightMode: false,
+  onToggleHighlightMode: () => {},
+  highlightColor: 'yellow',
+  onChangeHighlightColor: () => {},
   topicSlug: 'cardiac-arrest',
   API_BASE: 'http://api.test',
 }
@@ -55,6 +59,7 @@ describe('ChapterActions', () => {
     expect(screen.getByText('Review Mode')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Report' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /highlights/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
@@ -62,15 +67,36 @@ describe('ChapterActions', () => {
     const onToggleHighlights = vi.fn()
     render(<ChapterActions {...base} highlightsOn={false} onToggleHighlights={onToggleHighlights} />)
     const btn = screen.getByRole('button', { name: 'Show highlights' })
-    expect(btn).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(btn)
     expect(onToggleHighlights).toHaveBeenCalledTimes(1)
   })
 
+  test('highlighter switch reflects state and calls back', () => {
+    const onToggleHighlightMode = vi.fn()
+    const { rerender } = render(<ChapterActions {...base} onToggleHighlightMode={onToggleHighlightMode} />)
+    const sw = screen.getByRole('switch', { name: /Highlighter/ })
+    expect(sw).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(sw)
+    expect(onToggleHighlightMode).toHaveBeenCalledTimes(1)
+    rerender(<ChapterActions {...base} highlightMode onToggleHighlightMode={onToggleHighlightMode} />)
+    expect(screen.getByRole('switch', { name: /Highlighter/ })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  test('colour picker shows only while the highlighter is on and picks a colour', () => {
+    const onChangeHighlightColor = vi.fn()
+    const { rerender } = render(<ChapterActions {...base} onChangeHighlightColor={onChangeHighlightColor} />)
+    expect(screen.queryByRole('radiogroup', { name: 'Highlight colour' })).not.toBeInTheDocument()
+    rerender(<ChapterActions {...base} highlightMode highlightColor="green" onChangeHighlightColor={onChangeHighlightColor} />)
+    expect(screen.getByRole('radio', { name: 'Green highlight' })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByRole('radio', { name: 'Pink highlight' }))
+    expect(onChangeHighlightColor).toHaveBeenCalledWith('pink')
+  })
+
   test('placement sets the modifier class', () => {
     const { container, rerender } = render(<ChapterActions {...base} placement="aside" />)
-    expect(container.firstChild).toHaveClass('tb-chapter-actions', 'tb-chapter-actions--aside')
+    expect(container.firstChild).toHaveClass('tb-chapter-tools', 'tb-chapter-tools--aside')
+    expect(container.querySelector('.tb-chapter-actions')).toHaveClass('tb-chapter-actions--aside')
     rerender(<ChapterActions {...base} placement="header" />)
-    expect(container.firstChild).toHaveClass('tb-chapter-actions--header')
+    expect(container.firstChild).toHaveClass('tb-chapter-tools--header')
   })
 })

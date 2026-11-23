@@ -13,6 +13,7 @@ export default defineConfig({
       'tests/topic-summaries/**/*.{test,spec}.{js,jsx}',
       'tests/textbook/**/*.{test,spec}.{js,jsx}',
       'tests/dashboard-nav/**/*.{test,spec}.{js,jsx}',
+      'tests/osce/**/*.{test,spec}.{js,jsx}',
     ],
   },
 })

@@ -86,6 +86,7 @@
 .osce-station__header { margin-bottom: 24px; }
 .osce-station__title { font-size: 28px; font-weight: 800; color: var(--syn-navy-700); margin: 0 0 12px; }
 .osce-station__meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.osce-station__header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ── Sections ────────────────────────────────────────── */
 .osce-section { border: 1px solid var(--syn-border); border-radius: 16px; overflow: hidden; background: var(--surface-card); }

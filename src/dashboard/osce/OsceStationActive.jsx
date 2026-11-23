@@ -6,6 +6,7 @@ import { authenticatedFetch, getAccessToken, getRefreshToken, setTokens } from '
 import LoadingScreen from '../../components/loading/LoadingScreen'
 import OsceBlockRenderer from './OsceBlockRenderer'
 import OsceCompletionToggle from './OsceCompletionToggle'
+import ReportOsceIssueButton from './ReportOsceIssueButton'
 import './Osce.css'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import { track } from '../../usage/client.js'
@@ -485,6 +486,22 @@ export default function OsceStationActive() {
     })
   }
 
+  // What a learner can point a report at: only parts of the station shown in this view.
+  const reportSectionOptions = (() => {
+    if (!station) return []
+    const seesExaminer = effectiveRole === 'examiner' || effectiveRole === 'all'
+    const visibleSections = [...sections]
+      .filter((s) => effectiveRole === 'all' || (s.visible_to || []).includes(effectiveRole))
+      .sort((a, b) => a.position - b.position)
+    const opts = [{ value: 'general', label: 'Whole station / general' }]
+    visibleSections.forEach((s) => opts.push({ value: `section:${s.id}`, label: s.title || 'Untitled section' }))
+    if (seesExaminer && station.viva_questions?.length > 0) opts.push({ value: 'viva_questions', label: 'Viva Questions' })
+    if (seesExaminer && domains.length > 0) opts.push({ value: 'mark_scheme', label: 'Mark Scheme' })
+    if (seesExaminer && failCriteria.length > 0) opts.push({ value: 'auto_fail_criteria', label: 'Automatic Fail Criteria' })
+    if ((seesExaminer || effectiveRole === 'patient') && station.actual_diagnosis) opts.push({ value: 'final_diagnosis', label: 'Final Diagnosis' })
+    return opts
+  })()
+
   if (loading) {
     return (
       <div className="osce-station">
@@ -523,8 +540,11 @@ export default function OsceStationActive() {
             </div>
           </div>
 
-          {/* Solo practice only: group OSCE rooms don't show the learner's completion mark */}
-          {!roomCode && <OsceCompletionToggle stationId={station.id} />}
+          <div className="osce-station__header-actions">
+            {/* Solo practice only: group OSCE rooms don't show the learner's completion mark */}
+            {!roomCode && <OsceCompletionToggle stationId={station.id} />}
+            <ReportOsceIssueButton stationId={station.id} sectionOptions={reportSectionOptions} API_BASE={API_BASE} />
+          </div>
 
           {(session?.host_user_id === user?.id || effectiveRole === 'examiner') && roomCode && (
             <button 

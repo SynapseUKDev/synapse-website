@@ -627,3 +627,11 @@ html[data-theme="dark"] .admin-announcement-editor .w-md-editor-toolbar {
   border: 0;
   background: none;
 }
+
+.admin-osce-issues__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
