@@ -164,6 +164,290 @@ html[data-theme='dark'] {
   font-size: 14px;
 }
 
+/* ── Condition search (combobox) ─────────────────────────── */
+.tb-csearch {
+  position: relative;
+  margin-top: 8px;
+}
+
+.tb-csearch__field {
+  position: relative;
+}
+
+.tb-csearch__icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--syn-muted);
+  pointer-events: none;
+}
+
+.tb-csearch__input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  padding: 11px 38px 11px 36px;
+  font-family: inherit;
+  font-size: 15px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+}
+
+.tb-csearch__input:focus {
+  outline: none;
+  border-color: #2E2CC4;
+  box-shadow: 0 0 0 3px rgba(46, 44, 196, 0.15);
+}
+
+.tb-csearch--compact .tb-csearch__input {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 14px;
+}
+
+.tb-csearch__clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--syn-muted);
+  cursor: pointer;
+}
+
+.tb-csearch__clear:hover {
+  background: var(--dm-surface-container-high, #f1f5f9);
+}
+
+.tb-csearch__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  max-height: min(360px, 60vh);
+  overflow-y: auto;
+  background: var(--surface-card);
+  border: 1px solid var(--syn-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(11, 22, 55, 0.14);
+}
+
+.tb-csearch__option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tb-csearch__option.is-active {
+  background: var(--surface-tint-cyan, #e0f2fe);
+}
+
+.tb-csearch__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-weight: 600;
+  color: var(--syn-navy-700);
+}
+
+.tb-csearch__name strong {
+  color: #2E2CC4;
+}
+
+.tb-csearch__here {
+  font-weight: 500;
+  color: var(--syn-muted);
+}
+
+.tb-csearch__meta {
+  font-size: 12px;
+  color: var(--syn-muted);
+}
+
+.tb-csearch__option--all {
+  margin-top: 4px;
+  border-top: 1px solid var(--syn-border);
+  border-radius: 0 0 8px 8px;
+}
+
+.tb-csearch__option--all .tb-csearch__name {
+  font-weight: 600;
+  color: #2E2CC4;
+}
+
+.tb-csearch__empty {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--syn-muted);
+}
+
+/* Condition page: find-in-chapter and jump-to-condition side by side on wide screens */
+.tb-topic-search {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tb-topic-search .tb-search,
+.tb-topic-search .tb-csearch {
+  margin-top: 0;
+}
+
+@media (min-width: 640px) {
+  .tb-topic-search {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Dashboard: Chapters | A–Z toggle ─────────────────────── */
+.tb-view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 20px 0 12px;
+  border: 1px solid var(--syn-border);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+
+.tb-view-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--syn-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tb-view-toggle__btn.is-active {
+  background: #2E2CC4;
+  color: #fff;
+}
+
+/* ── A–Z list ─────────────────────────────────────────────── */
+/* Shrink-wrapped floating pill (not a full-width band), so the page's colour shows around it */
+.tb-az__letters {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  border: 1px solid var(--syn-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-card) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(11, 22, 55, 0.08);
+}
+
+.tb-az__letter {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--syn-border);
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--syn-navy-700);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tb-az__letter:hover:not(:disabled) {
+  border-color: #2E2CC4;
+  color: #2E2CC4;
+}
+
+.tb-az__letter:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tb-az__count {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--syn-muted);
+}
+
+.tb-az__group {
+  scroll-margin-top: 96px;
+}
+
+.tb-az__heading {
+  margin: 18px 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--syn-navy-700);
+}
+
+.tb-az__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tb-az__item {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--syn-border);
+  border-radius: 10px;
+  background: var(--surface-card);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tb-az__item:hover {
+  border-color: #2E2CC4;
+}
+
+.tb-az__name {
+  font-weight: 600;
+  color: var(--syn-navy-700);
+}
+
+.tb-az__meta {
+  font-size: 12px;
+  color: var(--syn-muted);
+}
+
 /* Highlight */
 /* Search highlighting only */
 .tb-search-mark {
@@ -3532,5 +3816,16 @@ html[data-theme="dark"] .tb-admin-img-modal__save-error {
   .tb-admin-image-item,
   .tb-admin-image-item__grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* The mobile dashboard header (64px, sticky) sits above the A–Z letter bar */
+@media (max-width: 768px) {
+  .tb-az__letters {
+    top: 72px;
+  }
+
+  .tb-az__group {
+    scroll-margin-top: 170px;
   }
 }

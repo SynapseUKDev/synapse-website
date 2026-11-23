@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { LuCircleCheck, LuCheck, LuMinus, LuChevronDown, LuChevronRight, LuFileText } from 'react-icons/lu'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { LuCircleCheck, LuCheck, LuMinus, LuChevronDown, LuChevronRight, LuFileText, LuLayoutGrid, LuArrowDownAZ } from 'react-icons/lu'
 import './Textbook.css'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import { authHeaders } from '../../auth/token'
 import { CONFIDENCE_LABELS, CONFIDENCE_LEVELS } from './textbookProgressLabels.js'
+import ConditionSearch from './ConditionSearch.jsx'
+import ConditionAZ from './ConditionAZ.jsx'
 
 const STATUS_LABELS = {
   not_read: 'Not read',
@@ -484,12 +486,12 @@ export default function Textbook() {
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
   const [expandedSet, setExpandedSet] = useState(new Set())
-  const [searchQ, setSearchQ] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [searchErr, setSearchErr] = useState(null)
-  const [searchResults, setSearchResults] = useState([])
-  const MAX_INLINE_RESULTS = 12
-  const [hasSearched, setHasSearched] = useState(false)
+  // Dashboard view: chapter cards or the A–Z list. In the URL so Back returns to it.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const dashboardView = searchParams.get('view') === 'az' ? 'az' : 'chapters'
+  const setDashboardView = (view) => {
+    setSearchParams(view === 'az' ? { view: 'az' } : {}, { replace: true })
+  }
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyItems, setHistoryItems] = useState([])
   const [historyError, setHistoryError] = useState(null)
@@ -555,63 +557,6 @@ export default function Textbook() {
       if (next.has(slugValue)) next.delete(slugValue); else next.add(slugValue)
       return next
     })
-  }
-
-  async function runSearch(e) {
-    if (e && e.preventDefault) e.preventDefault()
-    const q = (searchQ || '').trim()
-    if (q.length < 2) {
-      setSearchResults([])
-      setSearchErr(null)
-      setHasSearched(false)
-      return
-    }
-    try {
-      setHasSearched(true)
-      setSearching(true)
-      setSearchErr(null)
-      const specialtyId = data?.specialty?.id || data?.specialty_id || null
-      const params = new URLSearchParams({ q, limit: String(MAX_INLINE_RESULTS) })
-      if (slug && specialtyId) params.set('specialty_id', String(specialtyId))
-      const res = await fetch(`${API_BASE}/textbook/search?${params.toString()}`, {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      })
-      if (!res.ok) throw new Error(`Search failed: ${res.status}`)
-      const json = await res.json()
-      setSearchResults(Array.isArray(json?.results) ? json.results : [])
-    } catch (err) {
-      setSearchErr(err?.message || 'Search failed')
-      setSearchResults([])
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  function clearSearch() {
-    setSearchQ('')
-    setSearchErr(null)
-    setSearchResults([])
-    setHasSearched(false)
-  }
-
-  function viewAll() {
-    const q = (searchQ || '').trim()
-    if (!q) return
-    const specialtyId = data?.specialty?.id || data?.specialty_id || null
-    const sp = new URLSearchParams({ q })
-    if (slug && specialtyId) sp.set('specialty_id', String(specialtyId))
-    navigate(`/dashboard/textbook/search?${sp.toString()}`)
-  }
-
-  function openResult(r) {
-    if (!r) return
-    const slug = r.target_slug
-    const anchor = r.section_anchor
-    if (slug) {
-      const hash = anchor ? `#sec-${anchor}` : ''
-      navigate(`/dashboard/textbook/topic/${slug}${hash}`)
-    }
   }
 
   function formatLastViewed(isoOrTimestamp) {
@@ -927,39 +872,11 @@ export default function Textbook() {
           </div>
           <h1 className="tb-title">{data.specialty?.name}</h1>
           <p className="tb-sub">Track your progress and confidence in key {data.specialty?.name?.toLowerCase()} topics.</p>
-          <form className="tb-search" data-track="textbook.search" onSubmit={runSearch} role="search" aria-label="Search textbook">
-            <input
-              className="tb-search__input"
-              type="search"
-              placeholder="Search textbook content or conditions…"
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              aria-label="Search query"
-            />
-            <button className="tb-search__btn" type="submit" disabled={searching}>Search</button>
-            {!!searchQ && <button type="button" className="tb-search__btn tb-search__btn--secondary" onClick={clearSearch}>Clear</button>}
-          </form>
-          {hasSearched && (
-            <div className="tb-search-results" aria-live="polite">
-              {searching && <div className="tb-search__status">Searching…</div>}
-              {searchErr && <div className="tb-error">{searchErr}</div>}
-              {!searching && searchResults.length === 0 && !searchErr && (
-                <div className="tb-search__status">No results found</div>
-              )}
-              {searchResults.map((r, idx) => (
-                <button key={idx} className="tb-search-item" onClick={() => openResult(r)}>
-                  <div className="tb-search-item__titles">
-                    <div className="tb-search-item__page">{r.page_title}</div>
-                    {r.section_title && <div className="tb-search-item__section">{r.section_title}</div>}
-                  </div>
-                  <div className="tb-search-item__snippet" dangerouslySetInnerHTML={{ __html: r.snippet_html }} />
-                </button>
-              ))}
-              {searchResults.length === MAX_INLINE_RESULTS && (
-                <button className="tb-search__viewall" onClick={viewAll}>View all results</button>
-              )}
-            </div>
-          )}
+          <ConditionSearch
+            API_BASE={API_BASE}
+            specialtyId={data.specialty?.id}
+            placeholder={`Search conditions or ${data.specialty?.name || 'this specialty'} content…`}
+          />
         </header>
 
         {/* Progress Header */}
@@ -1024,45 +941,13 @@ export default function Textbook() {
           <span className="tb-current">UKMLA Textbook</span>
         </div>
         <h1 className="tb-title">Chapters</h1>
-        <p className="tb-sub">Browse specialties as chapters. Click a chapter to view its topics.</p>
+        <p className="tb-sub">Browse by chapter, see every condition A–Z, or search to jump straight to one.</p>
         {!historyLoading && (
           <p className="tb-topics-read" aria-live="polite">
             {topicsReadCount === 0 ? 'No items read yet' : `${topicsReadCount} item${topicsReadCount !== 1 ? 's' : ''} read`}
           </p>
         )}
-        <form className="tb-search" data-track="textbook.search" onSubmit={runSearch} role="search" aria-label="Search textbook">
-          <input
-            className="tb-search__input"
-            type="search"
-            placeholder="Search textbook content or conditions…"
-            value={searchQ}
-            onChange={(e) => setSearchQ(e.target.value)}
-            aria-label="Search query"
-          />
-          <button className="tb-search__btn" type="submit" disabled={searching}>Search</button>
-          {!!searchQ && <button type="button" className="tb-search__btn tb-search__btn--secondary" onClick={clearSearch}>Clear</button>}
-        </form>
-        {hasSearched && (
-          <div className="tb-search-results" aria-live="polite">
-            {searching && <div className="tb-search__status">Searching…</div>}
-            {searchErr && <div className="tb-error">{searchErr}</div>}
-            {!searching && searchResults.length === 0 && !searchErr && (
-              <div className="tb-search__status">No results found</div>
-            )}
-            {searchResults.map((r, idx) => (
-              <button key={idx} className="tb-search-item" onClick={() => openResult(r)}>
-                <div className="tb-search-item__titles">
-                  <div className="tb-search-item__page">{r.page_title}</div>
-                  {r.section_title && <div className="tb-search-item__section">{r.section_title}</div>}
-                </div>
-                <div className="tb-search-item__snippet" dangerouslySetInnerHTML={{ __html: r.snippet_html }} />
-              </button>
-            ))}
-            {searchResults.length === MAX_INLINE_RESULTS && (
-              <button className="tb-search__viewall" onClick={viewAll}>View all results</button>
-            )}
-          </div>
-        )}
+        <ConditionSearch API_BASE={API_BASE} />
       </header>
       <section className="tb-continue" aria-label="Continue reading">
         <h2 className="tb-continue__title">Continue reading</h2>
@@ -1099,6 +984,29 @@ export default function Textbook() {
           </div>
         )}
       </section>
+      <div className="tb-view-toggle" role="tablist" aria-label="Browse the textbook">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={dashboardView === 'chapters'}
+          className={`tb-view-toggle__btn ${dashboardView === 'chapters' ? 'is-active' : ''}`}
+          onClick={() => setDashboardView('chapters')}
+        >
+          <LuLayoutGrid aria-hidden /> Chapters
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={dashboardView === 'az'}
+          className={`tb-view-toggle__btn ${dashboardView === 'az' ? 'is-active' : ''}`}
+          onClick={() => setDashboardView('az')}
+        >
+          <LuArrowDownAZ aria-hidden /> A–Z conditions
+        </button>
+      </div>
+      {dashboardView === 'az' ? (
+        <ConditionAZ API_BASE={API_BASE} />
+      ) : (
       <div className="tb-grid">
         {chapterList.map((spec, idx) => (
           <ChapterCard
@@ -1111,6 +1019,7 @@ export default function Textbook() {
           />
         ))}
       </div>
+      )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import './Textbook.css'
 import { extractImagesFromBlock, shouldRenderAsImageCarousel } from './textbookBlockImages.js'
 import LoadingScreen from '../../components/loading/LoadingScreen.jsx'
 import ReportTopicIssueButton from './ReportTopicIssueButton'
+import ConditionSearch from './ConditionSearch.jsx'
 import HighlightPopover from '../../components/highlight/HighlightPopover'
 import ReviewCommentPopover from '../../components/highlight/ReviewCommentPopover'
 import { authHeaders, authenticatedFetch } from '../../auth/token'
@@ -1438,16 +1439,25 @@ export default function TextbookTopic() {
         </div>
         <h1 className="tb-title">{data.page?.title || currentName}</h1>
         {data.page?.summary && <p className="tb-sub">{data.page.summary}</p>}
-        <form className="tb-search" onSubmit={(e) => e.preventDefault()} role="search" aria-label="Search in chapter">
-          <input
-            className="tb-search__input"
-            type="search"
-            placeholder="Search within this chapter…"
-            value={topicQ}
-            onChange={(e) => setTopicQ(e.target.value)}
-            aria-label="Search query in chapter"
+        <div className="tb-topic-search">
+          <form className="tb-search tb-search--chapter" onSubmit={(e) => e.preventDefault()} role="search" aria-label="Search in chapter">
+            <input
+              className="tb-search__input"
+              type="search"
+              placeholder="Find in this chapter…"
+              value={topicQ}
+              onChange={(e) => setTopicQ(e.target.value)}
+              aria-label="Find in this chapter"
+            />
+          </form>
+          <ConditionSearch
+            API_BASE={API_BASE}
+            compact
+            currentSlug={topicSlug}
+            label="Jump to another condition"
+            placeholder="Jump to another condition…"
           />
-        </form>
+        </div>
         <div className="tb-header__actions">
           <ChapterActions placement="header" {...chapterActionsProps} />
         </div>
