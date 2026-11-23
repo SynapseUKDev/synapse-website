@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { formatPct } from '../../utils/percent.js'
 import { useOutletContext, useSearchParams } from 'react-router-dom'
 import { authenticatedFetch } from '../../auth/token'
 import { LuTriangleAlert, LuUsers, LuArmchair, LuActivity, LuTarget } from 'react-icons/lu'
@@ -199,7 +200,7 @@ export default function InstitutionDashboard() {
           value={
             performance?.accuracy_pct === null || performance?.accuracy_pct === undefined
               ? '—'
-              : `${performance.accuracy_pct}%`
+              : formatPct(performance.accuracy_pct)
           }
           sub={`${performance?.total_answered ?? 0} questions answered in total`}
         />

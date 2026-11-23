@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { pct1, formatPct } from '../../utils/percent.js'
 import { authHeaders } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
@@ -1255,7 +1256,7 @@ export default function Practice() {
     // Calculate accuracy and identify weak topics
     const topicPerformance = Object.values(topicStats).map((stats) => {
       const attempted = stats.correct + stats.incorrect
-      const accuracy = attempted > 0 ? Math.round((stats.correct / attempted) * 100) : null
+      const accuracy = pct1(stats.correct, attempted)
 
       return {
         ...stats,
@@ -1483,7 +1484,7 @@ export default function Practice() {
     totalQuestions: reviewModeData?.sessionStats?.totalQuestions || questions.length,
     skipped: reviewModeData?.sessionStats?.skipped || 0,
     accuracy: reviewModeData?.sessionStats?.totalQuestions
-      ? Math.round((reviewModeData?.sessionStats?.correct / (reviewModeData?.sessionStats?.totalQuestions - reviewModeData?.sessionStats?.skipped)) * 100) || 0
+      ? pct1(reviewModeData?.sessionStats?.correct || 0, (reviewModeData?.sessionStats?.totalQuestions || 0) - (reviewModeData?.sessionStats?.skipped || 0)) ?? 0
       : 0
   } : null
 
@@ -1929,7 +1930,7 @@ export default function Practice() {
                         <div className="progress-stat__label">Skipped</div>
                       </div>
                       <div className="progress-stat">
-                        <div className="progress-stat__value stat--blue">{reviewStats?.accuracy || 0}%</div>
+                        <div className="progress-stat__value stat--blue">{formatPct(reviewStats?.accuracy || 0)}</div>
                         <div className="progress-stat__label">Accuracy</div>
                       </div>
                     </div>
@@ -1943,7 +1944,7 @@ export default function Practice() {
                           <div className="progress-stat__label">Completed</div>
                         </div>
                         <div className="progress-stat">
-                          <div className="progress-stat__value stat--green">{sessionAnswered ? Math.round((sessionCorrect / sessionAnswered) * 100) : 0}%</div>
+                          <div className="progress-stat__value stat--green">{formatPct(pct1(sessionCorrect, sessionAnswered) ?? 0)}</div>
                           <div className="progress-stat__label">Accuracy</div>
                         </div>
                         <div className="progress-stat">

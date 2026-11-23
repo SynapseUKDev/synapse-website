@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { pct1, formatPct } from '../../utils/percent.js'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './PracticeResults.css'
 import './PracticeSetup.css'
@@ -51,7 +52,7 @@ export default function PracticeResults() {
 
   const incorrect = Math.max(totalQuestions - correct - (skipped || 0), 0)
   const attempted = totalQuestions - (skipped || 0)
-  const accuracyPct = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
+  const accuracyPct = pct1(correct, attempted) ?? 0
   const totalTimeMin = Math.round((totalMs / 1000) / 60)
   const avgTimeMs = perQuestionMs || (totalQuestions ? totalMs / totalQuestions : 0)
   const avgTimeSec = Math.round((avgTimeMs || 0) / 1000)
@@ -74,9 +75,9 @@ export default function PracticeResults() {
         <div className="prr-hero__left">
           <div className={`score-ring score-ring--${scoreTheme}`} style={{
             ['--pct']: `${accuracyPct}%`
-          }} aria-label={`Accuracy ${accuracyPct}%`}>
+          }} aria-label={`Accuracy ${formatPct(accuracyPct)}`}>
             <div className="score-ring__inner">
-              <div className="score-ring__value">{accuracyPct}%</div>
+              <div className="score-ring__value">{formatPct(accuracyPct)}</div>
               <div className="score-ring__label">Accuracy</div>
             </div>
           </div>
@@ -111,7 +112,7 @@ export default function PracticeResults() {
           <div className="card__body prr-card__body">
             <ul className="highlights">
               <li><span className="dot dot--green" /> You answered {correct} correctly</li>
-              <li><span className="dot dot--blue" /> Accuracy at {accuracyPct}%</li>
+              <li><span className="dot dot--blue" /> Accuracy at {formatPct(accuracyPct)}</li>
               <li><span className="dot dot--amber" /> {skipped} skipped questions</li>
             </ul>
             <div className="prr-bar"><div className="prr-fill" style={{ width: `${accuracyPct}%` }} /></div>
@@ -160,7 +161,7 @@ export default function PracticeResults() {
                       <div className="weak-topic__header">
                         <div className="weak-topic__name">{topic.topic_name}</div>
                         <div className={`weak-topic__accuracy ${accuracy < 50 ? 'weak-topic__accuracy--poor' : accuracy < 60 ? 'weak-topic__accuracy--warning' : 'weak-topic__accuracy--ok'}`}>
-                          {accuracy}%
+                          {formatPct(accuracy)}
                         </div>
                       </div>
                       <div className="weak-topic__stats">

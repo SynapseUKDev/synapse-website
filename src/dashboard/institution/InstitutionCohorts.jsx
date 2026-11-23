@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { formatPct } from '../../utils/percent.js'
 import { LuLayers, LuPencil, LuTrash2, LuChevronUp, LuChevronDown, LuPlus } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
@@ -243,7 +244,7 @@ export default function InstitutionCohorts({ cohorts, unassigned, loading, onCha
                     <td className="inst-table__num">
                       {cohort.accuracy_pct === null || cohort.accuracy_pct === undefined
                         ? '—'
-                        : `${cohort.accuracy_pct}%`}
+                        : formatPct(cohort.accuracy_pct)}
                     </td>
                     <td>
                       <div className="inst-table__actions">

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { formatPct } from '../../utils/percent.js'
 import { LuX } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
@@ -113,7 +114,7 @@ export default function InstitutionStudentDetail({ userId, onClose }) {
                 <div className="inst-summary__value">
                   {summary?.accuracy_pct === null || summary?.accuracy_pct === undefined
                     ? '—'
-                    : `${summary.accuracy_pct}%`}
+                    : formatPct(summary.accuracy_pct)}
                 </div>
               </div>
               <div className="inst-summary__item">
@@ -138,7 +139,7 @@ export default function InstitutionStudentDetail({ userId, onClose }) {
                     <div className="inst-spec__name">{s.name}</div>
                     <div className="inst-spec__num">
                       {s.correct}/{s.attempted}
-                      {s.accuracy_pct === null ? '' : ` • ${s.accuracy_pct}%`}
+                      {s.accuracy_pct === null ? '' : ` • ${formatPct(s.accuracy_pct)}`}
                     </div>
                     <div className="inst-spec__bar">
                       <span style={{ width: maxAttempted > 0 ? `${(s.attempted / maxAttempted) * 100}%` : '0%' }} />

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { formatPct } from '../../utils/percent.js'
 import { LuUsers, LuMail, LuPencil, LuTrash2, LuChartBar, LuPause, LuPlay } from 'react-icons/lu'
 import { authenticatedFetch } from '../../auth/token'
 import LoadingScreen from '../../components/loading/LoadingScreen'
@@ -518,7 +519,7 @@ export default function InstitutionRoster({ cohorts = [], refreshKey, onChanged 
                       <td className="inst-table__num">
                         {student.accuracy_pct === null || student.accuracy_pct === undefined
                           ? '—'
-                          : `${student.accuracy_pct}%`}
+                          : formatPct(student.accuracy_pct)}
                       </td>
                       <td className="inst-table__num">{formatDate(student.last_attempt_at)}</td>
                       <td>

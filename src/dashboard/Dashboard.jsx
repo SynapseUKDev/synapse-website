@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
+import { formatPct } from '../utils/percent.js'
 import { useOutletContext, useNavigate, useSearchParams } from 'react-router-dom'
 import './Dashboard.css'
 import './question-bank/QuestionBank.css'
@@ -515,7 +516,7 @@ export default function Dashboard() {
     let scoreValue
     let scoreLabel
     if (sortBy === 'accuracy_pct') {
-      scoreValue = entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'
+      scoreValue = formatPct(entry.accuracy_pct)
       scoreLabel = 'accuracy'
     } else if (sortBy === 'correct') {
       scoreValue = entry.correct || 0
@@ -539,7 +540,7 @@ export default function Dashboard() {
             {isCurrentUser && displayName !== 'You' && <span className="db-leaderboard__you">(You)</span>}
           </div>
           <div className="db-leaderboard__stats">
-            {entry.total_answered} questions • {entry.accuracy_pct !== null ? `${entry.accuracy_pct}%` : 'N/A'} accuracy
+            {entry.total_answered} questions • {formatPct(entry.accuracy_pct)} accuracy
           </div>
         </div>
         <div className="db-leaderboard__score">

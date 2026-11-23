@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { pct1, formatPct } from '../../utils/percent.js'
 import { authHeaders, getAccessToken, getRefreshToken, setTokens } from '../../auth/token'
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import './Practice.css'
@@ -1745,7 +1746,7 @@ export default function GroupPractice() {
                             <div className="progress-stat__label">Completed</div>
                           </div>
                           <div className="progress-stat">
-                            <div className="progress-stat__value stat--green">{revealedAnswered ? Math.round((revealedCorrect / revealedAnswered) * 100) : 0}%</div>
+                            <div className="progress-stat__value stat--green">{formatPct(pct1(revealedCorrect, revealedAnswered) ?? 0)}</div>
                             <div className="progress-stat__label">Accuracy</div>
                           </div>
                           <div className="progress-stat">

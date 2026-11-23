@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { formatPct } from '../../utils/percent.js'
 import { authHeaders } from '../../auth/token'
 import { useNavigate } from 'react-router-dom'
 import * as Lu from 'react-icons/lu'
@@ -9,7 +10,7 @@ import useStaleJson from '../../utils/useStaleJson'
 import ActivityHeatmap from '../../components/heatmap/ActivityHeatmap'
 
 // Animated counter component for engaging stat display
-function AnimatedCounter({ value, suffix = '', duration = 1000 }) {
+function AnimatedCounter({ value, suffix = '', duration = 1000, decimals = 0 }) {
   const [displayValue, setDisplayValue] = useState(0)
   const startTime = useRef(null)
   const animationFrame = useRef(null)
@@ -28,7 +29,8 @@ function AnimatedCounter({ value, suffix = '', duration = 1000 }) {
 
       // Easing function for smooth animation
       const easeOutQuart = 1 - Math.pow(1 - progress, 4)
-      const currentValue = Math.floor(targetValue * easeOutQuart)
+      const scale = 10 ** decimals
+      const currentValue = Math.floor(targetValue * easeOutQuart * scale) / scale
 
       setDisplayValue(currentValue)
 
@@ -47,9 +49,9 @@ function AnimatedCounter({ value, suffix = '', duration = 1000 }) {
         cancelAnimationFrame(animationFrame.current)
       }
     }
-  }, [value, duration])
+  }, [value, duration, decimals])
 
-  return <>{displayValue}{suffix}</>
+  return <>{displayValue.toFixed(decimals)}{suffix}</>
 }
 
 function SpecialtyCard({ item }) {
@@ -92,7 +94,7 @@ function SpecialtyCard({ item }) {
         Correct: <strong>{correct}</strong> • Incorrect: <strong>{incorrect}</strong>
       </div>
       <div className="qb-card__metrics">
-        <div><div className="qb-metric__label">Average Score</div><div className="qb-metric__value">{item.accuracy_pct ?? 0}%</div></div>
+        <div><div className="qb-metric__label">Average Score</div><div className="qb-metric__value">{formatPct(item.accuracy_pct ?? 0)}</div></div>
         <div><div className="qb-metric__label">Last Studied</div><div className="qb-metric__value">{item.last_studied ? new Date(item.last_studied).toLocaleString() : '—'}</div></div>
         <div><div className="qb-metric__label">Avg Time</div><div className="qb-metric__value">{item.avg_time_ms ? Math.round(item.avg_time_ms / 1000) : '—'} min</div></div>
       </div>
@@ -178,7 +180,7 @@ export default function QuestionBank() {
             </div>
           </div>
           <div className="qb-stat__value">
-            <AnimatedCounter value={summary?.accuracy_pct ?? 0} suffix="%" duration={1200} />
+            <AnimatedCounter value={Number(summary?.accuracy_pct ?? 0)} suffix="%" duration={1200} decimals={1} />
           </div>
         </div>
         <div className="qb-stat qb-stat--interactive">

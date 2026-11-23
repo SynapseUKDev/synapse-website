@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { formatPct } from '../../utils/percent.js'
 import { useLocation, useNavigate } from 'react-router-dom'
 import TopicSummary from './TopicSummary'
 import { LuChevronLeft, LuTrophy, LuMedal, LuAward, LuUsers, LuArrowLeft, LuArrowRight, LuBookOpen, LuCircleCheck, LuCircleAlert } from 'react-icons/lu'
@@ -405,7 +406,7 @@ export default function GroupLeaderboard() {
                                  '#ef4444'
                         }}
                       >
-                        {score.accuracy}%
+                        {formatPct(score.accuracy)}
                       </div>
                       <div className="leaderboard-item__label">Accuracy</div>
                     </div>
@@ -431,9 +432,9 @@ export default function GroupLeaderboard() {
               <div className="leaderboard-stat">
                 <div className="leaderboard-stat__label">Average Accuracy</div>
                 <div className="leaderboard-stat__value">
-                  {scores.length > 0 
-                    ? Math.round(scores.reduce((sum, s) => sum + s.accuracy, 0) / scores.length)
-                    : 0}%
+                  {formatPct(scores.length > 0
+                    ? Math.round((scores.reduce((sum, s) => sum + s.accuracy, 0) / scores.length) * 10) / 10
+                    : 0)}
                 </div>
               </div>
             </div>
