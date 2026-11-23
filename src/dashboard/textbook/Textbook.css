@@ -730,14 +730,36 @@ mark.tb-user-mark[data-note]:hover::after {
   margin-top: 10px;
 }
 
+/* Highlighter row: its own full-width line under Edit/Report, so the label never truncates */
+.tb-highlighter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tb-highlighter-row > .tb-highlights-toggle {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 /* Highlighter switch: icon + label + a small track/knob that reads as on/off at a glance */
-.tb-chapter-actions > .tb-highlighter-switch {
+.tb-highlighter-row > .tb-highlighter-switch {
   flex: 1 1 auto;
+  padding: 0 12px;
+}
+
+.tb-highlighter-switch svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
 }
 
 .tb-highlighter-switch__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  text-align: left;
 }
 
 .tb-switch {
@@ -771,10 +793,11 @@ mark.tb-user-mark[data-note]:hover::after {
 }
 
 /* Eye button: icon-only, square */
-.tb-chapter-actions > .tb-highlights-visibility {
+.tb-highlighter-row > .tb-highlights-visibility {
   flex: 0 0 34px;
   width: 34px;
   padding: 0;
+  justify-content: center;
 }
 
 .tb-highlights-visibility svg {

@@ -548,41 +548,43 @@ export function ChapterActions({
         {isReviewer ? (
           <span className="tb-review-mode-badge" style={{ background: '#f59e0b', color: '#fff', padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 700 }}>Review Mode</span>
         ) : (
-          <>
-            {isAdmin && hasPage && (
-              <button
-                type="button"
-                className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
-                onClick={onToggleEdit}
-              >
-                {editMode ? 'Close editor' : 'Edit'}
-              </button>
-            )}
+          isAdmin && hasPage && (
             <button
               type="button"
-              role="switch"
-              aria-checked={!!highlightMode}
-              className={`tb-highlights-toggle tb-highlighter-switch ${highlightMode ? 'is-on' : ''}`}
-              onClick={onToggleHighlightMode}
-              title={highlightMode ? 'Highlighter on: dragging over text highlights it' : 'Highlighter off: dragging selects text normally'}
+              className={`btn btn--ghost btn--icon admin-edit-trigger ${editMode ? 'is-active' : ''}`}
+              onClick={onToggleEdit}
             >
-              <LuHighlighter aria-hidden />
-              <span className="tb-highlighter-switch__label">Highlighter</span>
-              <span className="tb-switch" aria-hidden><span className="tb-switch__knob" /></span>
+              {editMode ? 'Close editor' : 'Edit'}
             </button>
-            <button
-              type="button"
-              className={`tb-highlights-toggle tb-highlights-visibility ${highlightsOn ? '' : 'is-hidden'}`}
-              onClick={onToggleHighlights}
-              aria-label={highlightsOn ? 'Hide highlights' : 'Show highlights'}
-              title={highlightsOn ? 'Hide my highlights' : 'Show my highlights'}
-            >
-              {highlightsOn ? <LuEye aria-hidden /> : <LuEyeOff aria-hidden />}
-            </button>
-          </>
+          )
         )}
         <ReportTopicIssueButton topicSlug={topicSlug} API_BASE={API_BASE} />
       </div>
+      {!isReviewer && (
+        <div className="tb-highlighter-row">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!!highlightMode}
+            className={`tb-highlights-toggle tb-highlighter-switch ${highlightMode ? 'is-on' : ''}`}
+            onClick={onToggleHighlightMode}
+            title={highlightMode ? 'Highlighter on: dragging over text highlights it' : 'Highlighter off: dragging selects text normally'}
+          >
+            <LuHighlighter aria-hidden />
+            <span className="tb-highlighter-switch__label">Highlighter</span>
+            <span className="tb-switch" aria-hidden><span className="tb-switch__knob" /></span>
+          </button>
+          <button
+            type="button"
+            className={`tb-highlights-toggle tb-highlights-visibility ${highlightsOn ? '' : 'is-hidden'}`}
+            onClick={onToggleHighlights}
+            aria-label={highlightsOn ? 'Hide highlights' : 'Show highlights'}
+            title={highlightsOn ? 'Hide my highlights' : 'Show my highlights'}
+          >
+            {highlightsOn ? <LuEye aria-hidden /> : <LuEyeOff aria-hidden />}
+          </button>
+        </div>
+      )}
       {!isReviewer && highlightMode && (
         <div className="tb-highlighter-panel">
           <div className="tb-highlighter-colors" role="radiogroup" aria-label="Highlight colour">
